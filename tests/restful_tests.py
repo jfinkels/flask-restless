@@ -35,6 +35,8 @@ class ModelTestCase(unittest.TestCase):
         create_all()
         session.commit()
 
+        self.model = models.Person
+
     def tearDown(self):
         """Destroying the sqlite database file
         """
@@ -46,7 +48,7 @@ class ModelTestCase(unittest.TestCase):
     def test_column_introspection(self):
         """Makes sure that the column list works properly
         """
-        columns = models.Person.get_columns()
+        columns = self.model.get_columns()
         assert sorted(columns.keys()) == sorted([
                 'age', 'birth_date', 'computers', 'id', 'name'])
         relations = models.Person.get_relations()
@@ -55,7 +57,7 @@ class ModelTestCase(unittest.TestCase):
     def test_instance_introspection(self):
         """Testing the instance introspection
         """
-        me = models.Person()
+        me = self.model()
         me.name = u'Lincoln'
         me.age = 24
         me.birth_date = date(1986, 9, 15)
@@ -70,7 +72,7 @@ class ModelTestCase(unittest.TestCase):
     def test_deep_instrospection(self):
         """Testing the introspection of related fields
         """
-        someone = models.Person()
+        someone = self.model()
         someone.name = u'John'
         someone.age = 25
         computer1 = models.Computer()
