@@ -27,8 +27,26 @@
 """
 
 from datetime import date, datetime
-from elixir import EntityBase, EntityMeta
+from elixir import EntityBase, EntityMeta, session
 from sqlalchemy.orm.properties import RelationshipProperty
+
+
+def get_or_create(model, **kwargs):
+    """Helper function to search for an object or create it otherwise,
+    based on the Django's Model.get_or_create() method.
+    """
+    instance = model.query.filter_by(**kwargs).first()
+    if instance:
+        return instance, False
+    else:
+        params = {}
+        for key, val in kwargs.iteritems():
+            params[key] = val
+        instance = model(**params)
+        session.add(instance)
+        session.flush()
+        return instance, True
+
 
 class Entity(EntityBase):
     """An extension to the elixir Entity class to fix `to_dict` method.

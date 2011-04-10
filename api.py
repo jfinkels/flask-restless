@@ -42,6 +42,8 @@ from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import func
 
+from model import get_or_create
+
 __all__ = 'api',
 
 api = Module(__name__, name='api')
@@ -62,28 +64,6 @@ def setup(models, validators):
     """
     CONFIG['models'] = models
     CONFIG['validators'] = validators
-
-
-def get_or_create(model, **kwargs):
-    """Helper function to search for an object or create it otherwise,
-    based on the Django's Model.get_or_create() method.
-    """
-    instance = model.query.filter_by(**kwargs).first()
-    if instance:
-        return instance, False
-    else:
-        params = {}
-        for key, val in kwargs.iteritems():
-            params[key] = val
-        instance = model(**params)
-        session.add(instance)
-        try:
-            session.flush()
-        except IntegrityError:
-            session.rollback()
-            raise Exception(
-                'Could not create a new instance with the given params')
-        return instance, True
 
 
 @api.route('/<modelname>/', methods=('POST',))

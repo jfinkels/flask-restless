@@ -27,7 +27,7 @@ from elixir import create_all, session, drop_all
 from sqlalchemy import create_engine
 
 sys.path.append('..')
-import api
+import model, api
 from testapp import models, validators
 
 class ModelTestCase(unittest.TestCase):
@@ -94,6 +94,22 @@ class ModelTestCase(unittest.TestCase):
         assert len(computers) == 1
         assert computers[0]['name'] == u'lixeiro'
         assert computers[0]['vendor'] == u'Lemote'
+
+    def test_get_or_create(self):
+        """Testing the model.get_or_create() method
+        """
+        # Here we're sure that we have a fresh table with no rows, so
+        # let's create the first one:
+        instance, created = model.get_or_create(self.model, name=u'Lincoln', age=24)
+        assert created
+        assert instance.name == u'Lincoln'
+        assert instance.age == 24
+
+        # Now that we have a row, let's try to get it again
+        second_instance, created = model.get_or_create(self.model, name=u'Lincoln')
+        assert not created
+        assert second_instance.name == u'Lincoln'
+        assert second_instance.age == 24
 
 class RestfulTestCase(unittest.TestCase):
     """Test case class for the restful api itself
