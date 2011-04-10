@@ -144,6 +144,19 @@ class RestfulTestCase(unittest.TestCase):
     def test_new_person(self):
         """Tests the creation of new persons
         """
+        # We should receive an exception if it's not possible to parse
+        # received data
+        response = self.app.post('/api/Person/', data="It isn't a valid JSON")
+        assert loads(response.data)['message'] == 'Unable to decode data'
+
+        # Now, let's test the validation stuff
+        response = self.app.post(
+            '/api/Person/',
+            data=dumps({'name': u'Test', 'age': 'oi'}))
+        assert loads(response.data)['message'] == 'Validation error'
+        print sorted(loads(response.data)['error_list'].keys())
+        assert loads(response.data)['error_list'].keys() == ['age']
+
         response = self.app.post(
             '/api/Person/',
             data=dumps({'name': 'Lincoln', 'age': 23}))
@@ -156,6 +169,21 @@ class RestfulTestCase(unittest.TestCase):
         deep = {'computers':[]}
         inst = models.Person.get_by(id=1).to_dict(deep)
         assert response.data == dumps(inst)
+
+    def test_new_with_submodels(self):
+        """Tests the creation of a model with some related fields
+        """
+        data = {
+            'name': u'John', 'age': 2041,
+            'computers': [
+                {'name': u'lixeiro', 'vendor': u'Lemote'},
+            ],
+        }
+        response = self.app.post('/api/Person/', data=dumps(data))
+        assert loads(response.data)['status'] == 'ok'
+
+        response = self.app.get('/api/Person/')
+        assert len(loads(response.data)) == 1
 
     def test_remove_person(self):
         """Adds a new person and tests its removal.

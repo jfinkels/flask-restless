@@ -106,7 +106,9 @@ def create(modelname):
     # Handling relations, a single level is allowed
     for col in set(relations).intersection(params.keys()):
         submodel = cols[col].property.mapper.class_
+        subvalidator = getattr(CONFIG['validators'], submodel.__name__)
         for subparams in params[col]:
+            subparams = subvalidator.to_python(subparams)
             subinst = get_or_create(submodel, **subparams)[0]
             getattr(instance, col).append(subinst)
 
