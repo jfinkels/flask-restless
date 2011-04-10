@@ -26,6 +26,9 @@ from sqlalchemy import create_engine
 from testapp import models
 
 class ModelTestCase(unittest.TestCase):
+    """Tests focused on `restful.model` module
+    """
+
     def setUp(self):
         self.db_fd, self.db_file = mkstemp()
         models.setup(create_engine('sqlite:///%s' % self.db_file))
@@ -33,12 +36,16 @@ class ModelTestCase(unittest.TestCase):
         session.commit()
 
     def tearDown(self):
+        """Destroying the sqlite database file
+        """
         drop_all()
         session.commit()
         os.close(self.db_fd)
         os.unlink(self.db_file)
 
-    def test_introspection(self):
+    def test_column_introspection(self):
+        """Makes sure that the column list works properly
+        """
         columns = models.Person.get_columns()
         assert sorted(columns.keys()) == sorted([
                 'age', 'birth_date', 'computers', 'id', 'name'])
@@ -46,6 +53,8 @@ class ModelTestCase(unittest.TestCase):
         assert relations == ['computers']
 
     def test_instance_introspection(self):
+        """Testing the instance introspection
+        """
         me = models.Person()
         me.name = u'Lincoln'
         me.age = 24
@@ -58,7 +67,9 @@ class ModelTestCase(unittest.TestCase):
         assert me_dict['name'] == u'Lincoln'
         assert me_dict['age'] == 24
 
-    def test_deepinstrospection(self):
+    def test_deep_instrospection(self):
+        """Testing the introspection of related fields
+        """
         someone = models.Person()
         someone.name = u'John'
         someone.age = 25
