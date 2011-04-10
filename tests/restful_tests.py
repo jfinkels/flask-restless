@@ -202,10 +202,10 @@ class RestfulTestCase(unittest.TestCase):
 
 
 def suite():
-    suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(ModelTestCase))
-    suite.addTest(unittest.makeSuite(RestfulTestCase))
-    return suite
+    test_suite = unittest.TestSuite()
+    test_suite.addTest(unittest.makeSuite(ModelTestCase))
+    test_suite.addTest(unittest.makeSuite(RestfulTestCase))
+    return test_suite
 
 if __name__ == '__main__':
     unittest.main(defaultTest='suite')
