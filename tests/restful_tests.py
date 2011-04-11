@@ -287,6 +287,78 @@ class RestfulTestCase(unittest.TestCase):
         assert loaded['computers'][0]['vendor'] == \
             data['computers']['add'][0]['vendor']
 
+    def test_update_submodels2(self):
+        """Tests the removal of a submodel item when updating"""
+        # Creating the row that is gonna be updated
+        data = {
+            'name': u'Lincoln', 'age': 23,
+            'computers': [
+                {'name': u'lixeiro', 'vendor': u'Lemote'},
+                {'name': u'pidinti', 'vendor': u'HP'},
+            ],
+        }
+        self.app.post('/api/Person/', data=dumps(data))
+
+        # Data for the update
+        update_data = {
+            'computers': {
+                'remove': [{'name': u'pidinti'}], # It was stolen :(
+            }
+        }
+        resp = self.app.put('/api/Person/1/', data=dumps(update_data))
+        assert resp.status_code == 200
+        assert loads(resp.data)['status'] == 'ok'
+
+        # Let's check it out
+        response = self.app.get('/api/Person/1/')
+        loaded = loads(response.data)
+        assert len(loaded['computers']) == 1
+
+    def test_update_submodels3(self):
+        """Tests the auto delete of entries marked with __delete__ flag
+        in update. It also tests adding an already created instance as a
+        related item.
+        """
+        # Creating all rows needed in our test
+        person_data = {'name': u'Lincoln', 'age': 23}
+        resp = self.app.post('/api/Person/', data=dumps(person_data))
+        assert resp.status_code == 200
+        comp_data = {'name': u'lixeiro', 'vendor': u'Lemote'}
+        resp = self.app.post('/api/Computer/', data=dumps(comp_data))
+        assert resp.status_code == 200
+
+        # updating person to add the computer
+        update_data = {'computers': {'add': [{'id': 1}]}}
+        self.app.put('/api/Person/1/', data=dumps(update_data))
+
+        # Making sure that everything worked properly
+        resp = self.app.get('/api/Person/1/')
+        assert resp.status_code == 200
+        loaded = loads(resp.data)
+        assert len(loaded['computers']) == 1
+        assert loaded['computers'][0]['name'] == u'lixeiro'
+
+        # Now, let's remove it and delete it
+        update2_data = {
+            'computers': {
+                'remove': [
+                    {'id': 1, '__delete__': True},
+                ],
+            },
+        }
+        resp = self.app.put('/api/Person/1/', data=dumps(update2_data))
+        assert resp.status_code == 200
+
+        # Testing to make sure it was removed from the related field
+        resp = self.app.get('/api/Person/1/')
+        assert resp.status_code == 200
+        loaded = loads(resp.data)
+        assert len(loaded['computers']) == 0
+
+        # Making sure it was remoevd from the database
+        resp = self.app.get('/api/Computer/1/')
+        assert resp.status_code == 404
+
 
 def suite():
     test_suite = unittest.TestSuite()

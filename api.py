@@ -34,7 +34,7 @@
     :license: AGPLv3, see COPYTING for more details
 """
 
-from flask import Module, request
+from flask import Module, request, abort
 from simplejson import dumps, loads, JSONDecodeError
 from formencode import Invalid, validators as fvalidators
 from elixir import session
@@ -547,6 +547,9 @@ def get(modelname, instid):
     """
     model = getattr(CONFIG['models'], modelname)
     inst = model.get_by(id=instid)
+    if inst is None:
+        abort(404)
+
     relations = model.get_relations()
     deep = dict(zip(relations, [{}]*len(relations)))
     return dumps(inst.to_dict(deep))
