@@ -150,8 +150,9 @@ def build_search_param(model, fname, relation, operation, value):
         The value to be compared in the search
     """
     if relation is not None:
-        model = model.get_columns()[relation].property.mapper.class_
-    field = getattr(model, fname)
+        field = getattr(model, relation)
+    else:
+        field = getattr(model, fname)
 
     ops = {
         'equals_to': lambda: field == value,
@@ -167,7 +168,8 @@ def build_search_param(model, fname, relation, operation, value):
         'is_not_null': lambda: field != None,
         'desc': field.desc,
         'asc': field.asc,
-        'has': lambda: field.has(value),
+        'has': lambda: field.has(**{fname: value}),
+        'any': lambda: field.any(**{fname: value}),
     }
 
     return ops.get(operation)()
