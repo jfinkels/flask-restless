@@ -359,6 +359,109 @@ class RestfulTestCase(unittest.TestCase):
         resp = self.app.get('/api/Computer/1/')
         assert resp.status_code == 404
 
+    def test_search(self):
+        """Tests basic search"""
+        create = lambda x:self.app.post('/api/Person/', data=dumps(x))
+        create({'name': u'Lincoln', 'age': 23})
+        create({'name': u'Mary', 'age': 19})
+        create({'name': u'Lucy', 'age': 25})
+        create({'name': u'Katy', 'age': 7})
+        create({'name': u'John', 'age': 28})
+
+        search = {
+            'filters': [
+                {'name': 'name', 'val': '%y%', 'op': 'like'}
+             ]
+        }
+
+        # Let's search for users with that above filter
+        resp = self.app.get('/api/Person/?q=%s' % dumps(search))
+        assert resp.status_code == 200
+        loaded = loads(resp.data)
+        assert len(loaded) == 3 # Mary, Lucy and Katy
+
+        # Let's try something more complex, let's sum all age values
+        # available in our database
+        search = {
+            'functions': [{'name': 'sum', 'field': 'age'}]
+        }
+
+        resp = self.app.get('/api/Person/?q=%s' % dumps(search))
+        assert resp.status_code == 200
+        assert loads(resp.data) == {"sum__age": 102.0}
+
+        # Tests searching for a single row
+        search = {
+            'type': 'one',      # I'm sure we have only one row here
+            'filters': [
+                {'name': 'name', 'val': u'Lincoln', 'op': 'equals_to'}
+            ],
+        }
+        resp = self.app.get('/api/Person/?q=%s' % dumps(search))
+        assert resp.status_code == 200
+        assert loads(resp.data)['name'] == u'Lincoln'
+
+        # Looking for something that does not exist on the database
+        search['filters'][0]['val'] = 'Sammy'
+        resp = self.app.get('/api/Person/?q=%s' % dumps(search))
+        assert resp.status_code == 200
+        assert loads(resp.data)['message'] == 'No result found'
+
+        # We have to receive an error if the user provides an invalid
+        # data to the search, like this:
+        search = {
+            'filters': [
+                {'name': 'age', 'val': 'It should not be a string', 'op': 'gt'}
+            ]
+        }
+        resp = self.app.get('/api/Person/?q=%s' % dumps(search))
+        assert resp.status_code == 200
+        assert loads(resp.data)['status'] == 'error'
+
+        # Testing the order_by stuff
+        search = {'order_by': [{'field': 'age', 'direction': 'asc'}]}
+        resp = self.app.get('/api/Person/?q=%s' % dumps(search))
+        assert resp.status_code == 200
+        loaded = loads(resp.data)
+        assert loaded[0]['age'] == 7
+        assert loaded[1]['age'] == 19
+        assert loaded[2]['age'] == 23
+        assert loaded[3]['age'] == 25
+        assert loaded[4]['age'] == 28
+
+        # Test the IN operation
+        search = {
+            'filters': [
+                {'name': 'age', 'val': [7, 28], 'op': 'in'}
+            ]
+        }
+        resp = self.app.get('/api/Person/?q=%s' % dumps(search))
+        assert resp.status_code == 200
+        loaded = loads(resp.data)
+        assert loaded[0]['age'] == 7
+        assert loaded[1]['age'] == 28
+
+        # Testing related search
+        update = {
+            'computers': {
+                'add': [{'name': u'lixeiro', 'vendor': u'Lenovo'}]
+            }
+        }
+        resp = self.app.put('/api/Person/1/', data=dumps(update))
+        assert resp.status_code == 200
+
+        search = {
+            'type': 'one',
+            'filters': [
+                {'name': 'computers__name',
+                 'val': u'lixeiro',
+                 'op': 'any'}
+            ]
+        }
+        resp = self.app.get('/api/Person/?q=%s' % dumps(search))
+        assert resp.status_code == 200
+        assert loads(resp.data)['computers'][0]['name'] == 'lixeiro'
+
 
 def suite():
     test_suite = unittest.TestSuite()
