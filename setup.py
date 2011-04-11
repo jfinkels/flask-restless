@@ -6,14 +6,14 @@ def read(fname):
 
 setup(
     name='RESTfulEf',
-    version='0.1',
+    version='0.1.1',
     author='Lincoln de Sousa',
     author_email='lincoln@comum.org',
     description='A generic restful api generator based on elixir and flask',
     license='AGPLv3+',
     keywords='rest api flask elixir',
     url='http://projects.comum.org/restful',
-    packages=('restful', 'tests'),
+    packages=('restful',),
     long_description=read('README'),
     classifiers=[
         'Development Status :: 4 - Beta',
