@@ -1,0 +1,24 @@
+restful is a python library to help people write RESTful services
+
+                                                 -- Master Of Obvious
+
+Everytime I write a system, I have the need for writing a CRUD
+system. Sometimes I don't do it my self, but I use an already existing
+one, like Django. Almost everytime, it's not enough. In almost all
+cases, I need a higher customization level, that unfortunately, these
+frameworks will not give me.
+
+One of the main reasons to say that these frameworks are not enough is
+that I like (and sometimes need) to use a lot of javascript to create
+more interesting javascript interfaces. So, it makes the html code
+produced by the CRUD framework hard to change.
+
+This way, I though that a good option could be creating a javascript
+interface to directly handle things that, usually, I'd need a customized
+server-side controller.
+
+This library tries to be a comfortable and generic controller for all
+these common actions. Allowing the programmer to use it directly from
+javascript.
+
+I'll keep updating this file, I promise!
