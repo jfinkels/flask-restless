@@ -481,6 +481,35 @@ class RestfulTestCase(unittest.TestCase):
         assert loaded[1]['other'] == 19
 
 
+    def test_search2(self):
+        """Testing more search things.
+        """
+        create = lambda x:self.app.post('/api/Person/', data=dumps(x))
+        create({'name': u'Fuxu', 'age': 32})
+        create({'name': u'Everton', 'age': 33})
+        create({'name': u'Lincoln', 'age': 24})
+
+        # Let's test the search using an id
+        search = {
+            'type': 'one',
+            'filters': [{'name': 'id', 'op': 'equals_to', 'val': 1}]
+        }
+        resp = self.app.get('/api/Person/?q=%s' % dumps(search))
+        assert resp.status_code == 200
+        assert loads(resp.data)['name'] == u'Fuxu'
+
+        # Testing limit and offset
+        search = { 'limit': 1, 'offset': 1 }
+        resp = self.app.get('/api/Person/?q=%s' % dumps(search))
+        assert resp.status_code == 200
+        assert loads(resp.data)[0]['name'] == u'Everton'
+
+        # Testing multiple results when calling .one()
+        resp = self.app.get('/api/Person/?q=%s' % dumps({'type': 'one'}))
+        assert resp.status_code == 200
+        assert loads(resp.data)['message'] == 'Multiple results found'
+
+
 def suite():
     test_suite = unittest.TestSuite()
     test_suite.addTest(unittest.makeSuite(ModelTestCase))

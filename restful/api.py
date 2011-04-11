@@ -306,7 +306,7 @@ def _build_query(model, search_params):
     if search_params.get('limit'):
         query = query.limit(search_params.get('limit'))
     if search_params.get('offset'):
-        query = query.offset(search_params('offset'))
+        query = query.offset(search_params.get('offset'))
     return query
 
 
