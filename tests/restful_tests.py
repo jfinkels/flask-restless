@@ -27,7 +27,7 @@ from elixir import create_all, session, drop_all
 from sqlalchemy import create_engine
 
 sys.path.append('..')
-import model, api
+from restful import model, api
 from testapp import models, validators
 
 class ModelTestCase(unittest.TestCase):

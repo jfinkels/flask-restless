@@ -1,6 +1,6 @@
 import sys
 sys.path.append('../..')
-from model import Entity
+from restful.model import Entity
 from elixir import metadata, setup_all, session, Field, Float, Unicode, \
     ManyToOne, OneToMany, Date, DateTime
 
