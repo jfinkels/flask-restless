@@ -265,8 +265,8 @@ def _extract_operators(model, search_params):
         try:
             if isinstance(val, list):
                 converted_value = []
-                for i in val:
-                    converted_value.append(field.to_python(i))
+                for subval in val:
+                    converted_value.append(field.to_python(subval))
             else:
                 converted_value = field.to_python(val)
         except Invalid, exc:
