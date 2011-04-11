@@ -448,7 +448,9 @@ def update_relations(model, query, params):
             if 'id' in subparams:
                 subinst = submodel.get_by(id=subparams['id'])
             else:
-                subinst = submodel.get_by(**subparams)
+                vssubparams = _validate_field_list(
+                    submodel.__name__, subparams, subparams.keys())
+                subinst = submodel.get_by(**vssubparams)
             for instance in query:
                 field = getattr(instance, col)
                 field.remove(subinst)
