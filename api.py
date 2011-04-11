@@ -39,7 +39,6 @@ from simplejson import dumps, loads, JSONDecodeError
 from formencode import Invalid, validators as fvalidators
 from elixir import session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql import func
 
 from model import get_or_create
