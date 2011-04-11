@@ -259,6 +259,34 @@ class RestfulTestCase(unittest.TestCase):
         assert resp.status_code == 200
         assert loads(resp.data)['age'] == 24
 
+    def test_update_submodels(self):
+        """Tests the update (PUT) operation with submodules
+        """
+        # Let's create a row as usual
+        self.app.post(
+            '/api/Person/',
+            data=dumps({'name': u'Lincoln', 'age': 23}))
+
+        # Updating it with some new sub fields
+        data = {
+            'computers': {
+                'add': [{'name': u'lixeiro', 'vendor': u'Lemote'}]
+            },
+        }
+        response = self.app.put('/api/Person/1/', data=dumps(data))
+        print response.data
+        assert response.status_code == 200
+
+        # Let's check it out
+        response = self.app.get('/api/Person/1/')
+        loaded = loads(response.data)
+
+        assert len(loaded['computers']) == 1
+        assert loaded['computers'][0]['name'] == \
+            data['computers']['add'][0]['name']
+        assert loaded['computers'][0]['vendor'] == \
+            data['computers']['add'][0]['vendor']
+
 
 def suite():
     test_suite = unittest.TestSuite()

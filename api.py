@@ -376,6 +376,32 @@ def search(modelname):
     return _perform_search(model, data)
 
 
+def _validate_field_list(model, data, field_list):
+    """Returns a list of fields validated by formencode
+
+    This function may raise the ``formencode.Invalid`` exception.
+
+    `model`
+        The name of the model
+    """
+    params = {}
+    exceptions = []
+    for key in field_list:
+        try:
+            validator = getattr(CONFIG['validators'], model)().fields[key]
+            params[key] = validator.to_python(data[key])
+        except Invalid, exc:
+            exceptions.append(exc)
+
+    if exceptions:
+        all_exceptions = []
+        for exc in exceptions:
+            all_exceptions.extend(exc.unpack_errors())
+        return dumps({'status': 'error', 'message': 'Validation error',
+                      'error_list': all_exceptions})
+    return params
+
+
 def update_relations(model, query, params):
     """Updates related fields of a model that are present in ``params``.
 
@@ -406,7 +432,9 @@ def update_relations(model, query, params):
             if 'id' in subparams:
                 subinst = submodel.get_by(id=subparams.pop('id'))
             else:
-                subinst = get_or_create(submodel, **subparams)[0]
+                vssubparams = _validate_field_list(
+                    submodel.__name__, subparams, subparams.keys())
+                subinst = get_or_create(submodel, **vssubparams)[0]
             for instance in query:
                 getattr(instance, col).append(subinst)
 
@@ -429,32 +457,6 @@ def update_relations(model, query, params):
 
         fields.append(col)
     return fields
-
-
-def _validate_field_list(model, data, field_list):
-    """Returns a list of fields validated by formencode
-
-    This function may raise the ``formencode.Invalid`` exception.
-
-    `model`
-        The name of the model
-    """
-    params = {}
-    exceptions = []
-    for key in field_list:
-        try:
-            validator = getattr(CONFIG['validators'], model)().fields[key]
-            params[key] = validator.to_python(data[key])
-        except Invalid, exc:
-            exceptions.append(exc)
-
-    if exceptions:
-        all_exceptions = []
-        for exc in exceptions:
-            all_exceptions.extend(exc.unpack_errors())
-        return dumps({'status': 'error', 'message': 'Validation error',
-                      'error_list': all_exceptions})
-    return params
 
 
 @api.route('/<modelname>/', methods=('PUT',))
