@@ -431,6 +431,32 @@ def update_relations(model, query, params):
     return fields
 
 
+def _validate_field_list(model, data, field_list):
+    """Returns a list of fields validated by formencode
+
+    This function may raise the ``formencode.Invalid`` exception.
+
+    `model`
+        The name of the model
+    """
+    params = {}
+    exceptions = []
+    for key in field_list:
+        try:
+            validator = getattr(CONFIG['validators'], model)().fields[key]
+            params[key] = validator.to_python(data[key])
+        except Invalid, exc:
+            exceptions.append(exc)
+
+    if exceptions:
+        all_exceptions = []
+        for exc in exceptions:
+            all_exceptions.extend(exc.unpack_errors())
+        return dumps({'status': 'error', 'message': 'Validation error',
+                      'error_list': all_exceptions})
+    return params
+
+
 @api.route('/<modelname>/', methods=('PUT',))
 def update(modelname):
     """Calls the .update() method in a set of results.
@@ -455,20 +481,47 @@ def update(modelname):
     except ExceptionFound, exc:
         return exc.msg
 
-    # Handling related fields
     relations = set(update_relations(model, query, data['form']))
+    field_list = set(data['form'].keys()) ^ relations
+    params = _validate_field_list(modelname, data['form'], field_list)
 
-    # Time to handle single fields
-    params = {}
-    for key in set(data['form'].keys()).difference(relations):
-        try:
-            validator = getattr(CONFIG['validators'], modelname)().fields[key]
-            params[key] = validator.to_python(data['form'][key])
-        except Invalid, exc:
-            return dumps({'status': 'error', 'message': 'Validation error',
-                          'error_list': exc.unpack_errors()})
+    # We got an error :(
+    if isinstance(params, basestring):
+        return params
+
+    # Let's update all instances present in the query
     if params:
         query.update(params, False)
+
+    session.commit()
+    return dumps({'status': 'ok', 'message': 'You rock!'})
+
+
+@api.route('/<modelname>/<int:instid>/', methods=('PUT',))
+def update_instance(modelname, instid):
+    """Calls the update method in a single instance
+
+    The ``request.data`` var will be loaded as a JSON and all of the
+    fields are going to be passed to the .update() method.
+    """
+    model = getattr(CONFIG['models'], modelname)
+    try:
+        data = loads(request.data)
+    except JSONDecodeError:
+        return dumps({'status': 'error', 'message': 'Unable to decode data'})
+
+    inst = model.get_by(id=instid)
+    relations = set(update_relations(model, [inst], data))
+    field_list = set(data.keys()) ^ relations
+    params = _validate_field_list(modelname, data, field_list)
+
+    # We got an error :(
+    if isinstance(params, basestring):
+        return params
+
+    # Let's update field by field
+    for field in field_list:
+        setattr(inst, field, params[field])
     session.commit()
     return dumps({'status': 'ok', 'message': 'You rock!'})
 

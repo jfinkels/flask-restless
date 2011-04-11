@@ -154,7 +154,6 @@ class RestfulTestCase(unittest.TestCase):
             '/api/Person/',
             data=dumps({'name': u'Test', 'age': 'oi'}))
         assert loads(response.data)['message'] == 'Validation error'
-        print sorted(loads(response.data)['error_list'].keys())
         assert loads(response.data)['error_list'].keys() == ['age']
 
         response = self.app.post(
@@ -243,6 +242,22 @@ class RestfulTestCase(unittest.TestCase):
         for i in loaded:
             assert i['birth_date'] == ('%s-%s-%s' % (
                     year, str(month).zfill(2), str(day).zfill(2)))
+
+    def test_single_update(self):
+        """Tests the update (PUT) operation in a single instance
+        """
+        resp = self.app.post(
+            '/api/Person/',
+            data=dumps({'name': 'Lincoln', 'age': 10}))
+        assert resp.status_code == 200
+        assert loads(resp.data)['status'] == 'ok'
+
+        resp = self.app.put('/api/Person/1/', data=dumps({'age': 24}))
+        assert resp.status_code == 200
+
+        resp = self.app.get('/api/Person/1/')
+        assert resp.status_code == 200
+        assert loads(resp.data)['age'] == 24
 
 
 def suite():
