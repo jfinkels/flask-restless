@@ -236,7 +236,7 @@ def _extract_operators(model, search_params):
     # Evaluting and validating field contents
     for i in search_params.get('filters', ()):
         fname = i['name']
-        val = i['val']
+        val = i.get('val')
 
         relation = None
         if '__' in fname:

@@ -55,7 +55,7 @@ class ModelTestCase(unittest.TestCase):
         """
         columns = self.model.get_columns()
         assert sorted(columns.keys()) == sorted([
-                'age', 'birth_date', 'computers', 'id', 'name'])
+                'age', 'birth_date', 'computers', 'id', 'name', 'other'])
         relations = models.Person.get_relations()
         assert relations == ['computers']
 
@@ -70,7 +70,7 @@ class ModelTestCase(unittest.TestCase):
 
         me_dict = me.to_dict()
         assert sorted(me_dict.keys()) == sorted([
-                'birth_date', 'age', 'id', 'name'])
+                'birth_date', 'age', 'id', 'name', 'other'])
         assert me_dict['name'] == u'Lincoln'
         assert me_dict['age'] == 24
 
@@ -362,11 +362,11 @@ class RestfulTestCase(unittest.TestCase):
     def test_search(self):
         """Tests basic search"""
         create = lambda x:self.app.post('/api/Person/', data=dumps(x))
-        create({'name': u'Lincoln', 'age': 23})
-        create({'name': u'Mary', 'age': 19})
-        create({'name': u'Lucy', 'age': 25})
-        create({'name': u'Katy', 'age': 7})
-        create({'name': u'John', 'age': 28})
+        create({'name': u'Lincoln', 'age': 23, 'other': 22})
+        create({'name': u'Mary', 'age': 19, 'other': 19})
+        create({'name': u'Lucy', 'age': 25, 'other': 20})
+        create({'name': u'Katy', 'age': 7, 'other': 10})
+        create({'name': u'John', 'age': 28, 'other': 10})
 
         search = {
             'filters': [
@@ -461,6 +461,24 @@ class RestfulTestCase(unittest.TestCase):
         resp = self.app.get('/api/Person/?q=%s' % dumps(search))
         assert resp.status_code == 200
         assert loads(resp.data)['computers'][0]['name'] == 'lixeiro'
+
+        # Testing the comparation for two fields. We want to compare
+        # `age' and `other' fields. If the first one is lower than or
+        # equals to the second one, we want the object
+        search = {
+            'filters': [
+                {'name': 'age', 'op': 'lte', 'field': 'other'}
+            ],
+            'order_by': [
+                {'field': 'other'}
+            ]
+        }
+        resp = self.app.get('/api/Person/?q=%s' % dumps(search))
+        assert resp.status_code == 200
+        loaded = loads(resp.data)
+        assert len(loaded) == 2
+        assert loaded[0]['other'] == 10
+        assert loaded[1]['other'] == 19
 
 
 def suite():

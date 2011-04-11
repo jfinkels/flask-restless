@@ -13,6 +13,7 @@ class Computer(Entity):
 class Person(Entity):
     name = Field(Unicode, unique=True)
     age = Field(Float)
+    other = Field(Float)
     computers = OneToMany('Computer')
     birth_date = Field(Date)
 
