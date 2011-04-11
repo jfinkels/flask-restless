@@ -272,7 +272,7 @@ def _extract_operators(model, search_params):
             else:
                 converted_value = field.to_python(val)
         except Invalid, exc:
-            exceptions.extend(exc)
+            exceptions.extend({fname: exc.msg})
             continue
 
         # Collecting the query
@@ -393,14 +393,11 @@ def _validate_field_list(model, data, field_list):
             validator = getattr(CONFIG['validators'], model)().fields[key]
             params[key] = validator.to_python(data[key])
         except Invalid, exc:
-            exceptions.append(exc)
+            exceptions.append({key: exc.msg})
 
     if exceptions:
-        all_exceptions = []
-        for exc in exceptions:
-            all_exceptions.extend(exc.unpack_errors())
         return dumps({'status': 'error', 'message': 'Validation error',
-                      'error_list': all_exceptions})
+                      'error_list': exceptions})
     return params
 
 
@@ -482,10 +479,7 @@ def update(modelname):
         data = loads(request.data)
     except JSONDecodeError:
         return dumps({'status': 'error', 'message': 'Unable to decode data'})
-    try:
-        query = _build_query(model, data.get('query', {}))
-    except ExceptionFound, exc:
-        return exc.msg
+    query = _build_query(model, data.get('query', {}))
 
     relations = set(update_relations(model, query, data['form']))
     field_list = set(data['form'].keys()) ^ relations

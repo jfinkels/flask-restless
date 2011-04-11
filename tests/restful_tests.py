@@ -230,6 +230,29 @@ class RestfulTestCase(unittest.TestCase):
             '/api/Person/',
             data=dumps({'name': 'Mary', 'age': 23}))
 
+        # Trying to pass invalid data to the update method
+        resp = self.app.put('/api/Person/', data='Hello there')
+        assert loads(resp.data)['message'] == 'Unable to decode data'
+
+        # Trying to pass valid JSON with invalid object to the API
+        resp = self.app.put(
+            '/api/Person/',
+            data=dumps({'form': {'age': 'Hello there'}}))
+        loaded = loads(resp.data)
+        assert loaded['message'] == 'Validation error'
+        assert loaded['error_list'] == [{'age': 'Please enter a number'}]
+
+        # Passing invalid search fields to test the exceptions
+        resp = self.app.put(
+            '/api/Person/',
+            data=dumps({
+                    'query': {'name': 'age', 'op': 'gt', 'val': 'test'},
+                    'form': {'age': 'Hello there'}
+                    }))
+        loaded = loads(resp.data)
+        assert loaded['message'] == 'Validation error'
+        assert loaded['error_list'] == [{'age': 'Please enter a number'}]
+
         # Changing the birth date field of the entire collection
         day, month, year = 15, 9, 1986
         birth_date = date(year, month, day).strftime('%d/%m/%Y') # iso8601
@@ -251,6 +274,16 @@ class RestfulTestCase(unittest.TestCase):
             data=dumps({'name': 'Lincoln', 'age': 10}))
         assert resp.status_code == 200
         assert loads(resp.data)['status'] == 'ok'
+
+        # Trying to pass invalid data to the update method
+        resp = self.app.put('/api/Person/1/', data='Hello there')
+        assert loads(resp.data)['message'] == 'Unable to decode data'
+
+        # Trying to pass valid JSON with unvalid object to the API
+        resp = self.app.put('/api/Person/1/', data=dumps({'age': 'Hello there'}))
+        loaded = loads(resp.data)
+        assert loaded['message'] == 'Validation error'
+        assert loaded['error_list'] == [{'age': 'Please enter a number'}]
 
         resp = self.app.put('/api/Person/1/', data=dumps({'age': 24}))
         assert resp.status_code == 200
@@ -274,7 +307,6 @@ class RestfulTestCase(unittest.TestCase):
             },
         }
         response = self.app.put('/api/Person/1/', data=dumps(data))
-        print response.data
         assert response.status_code == 200
 
         # Let's check it out
@@ -361,6 +393,11 @@ class RestfulTestCase(unittest.TestCase):
 
     def test_search(self):
         """Tests basic search"""
+        # Trying to pass invalid params to the search method
+        resp = self.app.get('/api/Person/?q=Test')
+        assert resp.status_code == 200
+        assert loads(resp.data)['message'] == 'Unable to decode data'
+
         create = lambda x:self.app.post('/api/Person/', data=dumps(x))
         create({'name': u'Lincoln', 'age': 23, 'other': 22})
         create({'name': u'Mary', 'age': 19, 'other': 19})
