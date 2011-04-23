@@ -6,7 +6,7 @@ def read(fname):
 
 setup(
     name='RESTfulEf',
-    version='0.1.1',
+    version='0.2',
     author='Lincoln de Sousa',
     author_email='lincoln@comum.org',
     description='A generic restful api generator based on elixir and flask',
