@@ -19,8 +19,8 @@
     restful.api
     ~~~~~~~~~~~
 
-    Defines a flask model called `api` that provides a generic model API
-    to be exposed using REST spec.
+    Defines a flask model that provides a generic model API to be
+    exposed using REST spec.
 
     This module is intended to be a generic way for creating, updating,
     searching and deleting entries of an sqlalchemy model (declared with
@@ -43,9 +43,9 @@ from sqlalchemy.sql import func
 
 from model import get_or_create
 
-__all__ = 'api',
+__all__ = 'module',
 
-api = Module(__name__, name='api')
+module = Module(__name__, name='api')
 
 CONFIG = {
     'models': None,
@@ -65,7 +65,7 @@ def setup(models, validators):
     CONFIG['validators'] = validators
 
 
-@api.route('/<modelname>/', methods=('POST',))
+@module.route('/<modelname>/', methods=('POST',))
 def create(modelname):
     """Creates a new instance of a given model based on request data
 
@@ -353,7 +353,7 @@ def _perform_search(model, search_params):
         return dumps([x.to_dict(deep) for x in query.all()])
 
 
-@api.route('/<modelname>/', methods=('GET',))
+@module.route('/<modelname>/', methods=('GET',))
 def search(modelname):
     """Defines a generic search function
 
@@ -460,7 +460,7 @@ def update_relations(model, query, params):
     return fields
 
 
-@api.route('/<modelname>/', methods=('PUT',))
+@module.route('/<modelname>/', methods=('PUT',))
 def update(modelname):
     """Calls the .update() method in a set of results.
 
@@ -497,7 +497,7 @@ def update(modelname):
     return dumps({'status': 'ok', 'message': 'You rock!'})
 
 
-@api.route('/<modelname>/<int:instid>/', methods=('PUT',))
+@module.route('/<modelname>/<int:instid>/', methods=('PUT',))
 def update_instance(modelname, instid):
     """Calls the update method in a single instance
 
@@ -526,7 +526,7 @@ def update_instance(modelname, instid):
     return dumps({'status': 'ok', 'message': 'You rock!'})
 
 
-@api.route('/<modelname>/<int:instid>/')
+@module.route('/<modelname>/<int:instid>/')
 def get(modelname, instid):
     """Returns a json representation of an instance of a model.
 
@@ -551,7 +551,7 @@ def get(modelname, instid):
     return dumps(inst.to_dict(deep))
 
 
-@api.route('/<modelname>/<int:instid>/', methods=('DELETE',))
+@module.route('/<modelname>/<int:instid>/', methods=('DELETE',))
 def delete(modelname, instid):
     """Removes an instance from the database based on its id
     """
