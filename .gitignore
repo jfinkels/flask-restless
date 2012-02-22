@@ -1,6 +1,9 @@
 *.pyc
 /tests/.coverage
 
+# temporary files
+*~
+
 # virtualenv environments
 env*/
 
