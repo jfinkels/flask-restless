@@ -1,8 +1,20 @@
 import os
 from setuptools import setup
 
+
 def read(fname):
     open(os.path.join(os.path.dirname(__file__), fname)).read()
+
+
+def from_requirements_file():
+    """Returns a list of required Python packages from the
+    :file:`requirements.txt` file in this directory.
+
+    """
+    with open('requirements.txt', 'r') as f:
+        requirements = f.read()
+    return requirements.split()
+
 
 setup(
     name='RESTfulEf',
@@ -14,6 +26,7 @@ setup(
     keywords='rest api flask elixir',
     url='http://projects.comum.org/restful',
     packages=('restful',),
+    install_requires=from_requirements_file(),
     long_description=read('README'),
     classifiers=[
         'Development Status :: 4 - Beta',
