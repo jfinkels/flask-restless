@@ -75,7 +75,7 @@ class ModelTestCase(unittest.TestCase):
         assert me_dict['name'] == u'Lincoln'
         assert me_dict['age'] == 24
 
-    def test_deep_instrospection(self):
+    def test_deep_introspection(self):
         """Testing the introspection of related fields
         """
         someone = self.model()
