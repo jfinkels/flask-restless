@@ -1,2 +1,10 @@
 *.pyc
 /tests/.coverage
+
+# virtualenv environments
+env*/
+
+# build artifacts from python setup.py build or python setup.py install
+build/
+dist/
+*egg*/
