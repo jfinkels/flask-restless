@@ -39,10 +39,7 @@ def get_or_create(model, **kwargs):
     if instance:
         return instance, False
     else:
-        params = {}
-        for key, val in kwargs.iteritems():
-            params[key] = val
-        instance = model(**params)
+        instance = model(**kwargs)
         session.add(instance)
         session.commit()
         return instance, True
