@@ -176,12 +176,12 @@ def build_search_param(model, fname, relation, operation, value):
     return ops.get(operation)()
 
 
-def _evalute_functions(model, functions):
-    """Evalutes a query that executes functions
+def _evaluate_functions(model, functions):
+    """Evaluates a query that executes functions
 
     If you pass a model and a list of functions to this func, it will
     execute them in the database and return a JSON string containing an
-    object with all results evaluted.
+    object with all results evaluated.
 
     `model`
 
@@ -215,8 +215,8 @@ def _evalute_functions(model, functions):
 
     # Ok, now is the time to execute it, pack in a JSON string and
     # return to the user.
-    evaluted = session.query(*processed).one()
-    return dumps(dict(zip(funcnames, evaluted)))
+    evaluated = session.query(*processed).one()
+    return dumps(dict(zip(funcnames, evaluated)))
 
 
 class ExceptionFound(Exception):
@@ -325,7 +325,7 @@ def _perform_search(model, search_params):
 
         A dictionary containing all available search parameters. The
         real job of this function is to look for all search parameters
-        of this dict and evalute a query built with these args.
+        of this dict and evaluate a query built with these args.
     """
     # Building the query
     try:
@@ -335,7 +335,7 @@ def _perform_search(model, search_params):
 
     # Aplying functions
     if search_params.get('functions'):
-        return _evalute_functions(model, search_params.get('functions'))
+        return _evaluate_functions(model, search_params.get('functions'))
 
     relations = model.get_relations()
     deep = dict(zip(relations, [{}] * len(relations)))
@@ -413,7 +413,7 @@ def update_relations(model, query, params):
 
     `query`
 
-        An sqlalchemy Query instance that evalutes to all instances that
+        An sqlalchemy Query instance that evaluates to all instances that
         should be updated.
 
     `params`
