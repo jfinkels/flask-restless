@@ -235,7 +235,7 @@ def _extract_operators(model, search_params):
     operations = []
     exceptions = []
 
-    # Evaluting and validating field contents
+    # Evaluating and validating field contents
     for i in search_params.get('filters', ()):
         fname = i['name']
         val = i.get('val')
