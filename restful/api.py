@@ -35,13 +35,14 @@
 """
 
 from flask import Module, request, abort
-from simplejson import dumps, loads, JSONDecodeError
+from json import dumps, loads
 from formencode import Invalid, validators as fvalidators
 from elixir import session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.sql import func
 
 from model import get_or_create
+
 
 __all__ = 'module',
 
@@ -88,7 +89,7 @@ def create(modelname):
     try:
         params = getattr(CONFIG['validators'],
                          modelname)().to_python(loads(request.data))
-    except JSONDecodeError:
+    except (TypeError, ValueError, OverflowError):
         return dumps({'status': 'error', 'message': 'Unable to decode data'})
     except Invalid, exc:
         return dumps({'status': 'error', 'message': 'Validation error',
@@ -371,7 +372,7 @@ def search(modelname):
     """
     try:
         data = loads(request.values.get('q', '{}'))
-    except JSONDecodeError:
+    except (TypeError, ValueError, OverflowError):
         return dumps({'status': 'error', 'message': 'Unable to decode data'})
 
     model = getattr(CONFIG['models'], modelname)
@@ -477,7 +478,7 @@ def update(modelname):
     model = getattr(CONFIG['models'], modelname)
     try:
         data = loads(request.data)
-    except JSONDecodeError:
+    except (TypeError, ValueError, OverflowError):
         return dumps({'status': 'error', 'message': 'Unable to decode data'})
     query = _build_query(model, data.get('query', {}))
 
@@ -507,7 +508,7 @@ def update_instance(modelname, instid):
     model = getattr(CONFIG['models'], modelname)
     try:
         data = loads(request.data)
-    except JSONDecodeError:
+    except (TypeError, ValueError, OverflowError):
         return dumps({'status': 'error', 'message': 'Unable to decode data'})
 
     inst = model.get_by(id=instid)
