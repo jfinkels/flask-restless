@@ -127,7 +127,7 @@ class RestfulTestCase(unittest.TestCase):
         create_all()
 
         app = flask.Flask(__name__)
-        app.register_module(api.module, url_prefix="/api")
+        app.register_blueprint(api.blueprint, url_prefix="/api")
         api.setup(models, validators)
         self.app = app.test_client()
 

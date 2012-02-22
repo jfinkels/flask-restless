@@ -34,7 +34,7 @@
     :license: AGPLv3, see COPYTING for more details
 """
 
-from flask import Module, request, abort
+from flask import Blueprint, request, abort
 from json import dumps, loads
 from formencode import Invalid, validators as fvalidators
 from elixir import session
@@ -44,9 +44,9 @@ from sqlalchemy.sql import func
 from model import get_or_create
 
 
-__all__ = 'module',
+__all__ = 'blueprint',
 
-module = Module(__name__, name='api')
+blueprint = Blueprint('api', __name__)
 
 CONFIG = {
     'models': None,
@@ -66,7 +66,7 @@ def setup(models, validators):
     CONFIG['validators'] = validators
 
 
-@module.route('/<modelname>/', methods=('POST',))
+@blueprint.route('/<modelname>/', methods=('POST',))
 def create(modelname):
     """Creates a new instance of a given model based on request data
 
@@ -226,6 +226,7 @@ class ExceptionFound(Exception):
         super(ExceptionFound, self).__init__()
         self.msg = msg
 
+
 def _extract_operators(model, search_params):
     """Extracts operators from the search_params."""
     validator = getattr(CONFIG['validators'], model.__name__)
@@ -256,7 +257,7 @@ def _extract_operators(model, search_params):
 
         # We are going to compare a field with another one, so there's
         # no reason to parse
-        if i.has_key('field'):
+        if 'field' in i:
             param = build_search_param(
                 model, fname, relation, i['op'], getattr(model, i['field']))
             operations.append(param)
@@ -288,6 +289,7 @@ def _extract_operators(model, search_params):
             )
 
     return operations
+
 
 def _build_query(model, search_params):
     """Builds an sqlalchemy.Query instance based on the params present
@@ -336,13 +338,13 @@ def _perform_search(model, search_params):
         return _evalute_functions(model, search_params.get('functions'))
 
     relations = model.get_relations()
-    deep = dict(zip(relations, [{}]*len(relations)))
+    deep = dict(zip(relations, [{}] * len(relations)))
     if search_params.get('type') == 'one':
         try:
             return dumps(query.one().to_dict(deep))
         except NoResultFound:
             return dumps({
-                    'status':'error',
+                    'status': 'error',
                     'message': 'No result found',
                     })
         except MultipleResultsFound:
@@ -354,7 +356,7 @@ def _perform_search(model, search_params):
         return dumps([x.to_dict(deep) for x in query.all()])
 
 
-@module.route('/<modelname>/', methods=('GET',))
+@blueprint.route('/<modelname>/', methods=('GET',))
 def search(modelname):
     """Defines a generic search function
 
@@ -461,7 +463,7 @@ def update_relations(model, query, params):
     return fields
 
 
-@module.route('/<modelname>/', methods=('PUT',))
+@blueprint.route('/<modelname>/', methods=('PUT',))
 def update(modelname):
     """Calls the .update() method in a set of results.
 
@@ -498,7 +500,7 @@ def update(modelname):
     return dumps({'status': 'ok', 'message': 'You rock!'})
 
 
-@module.route('/<modelname>/<int:instid>/', methods=('PUT',))
+@blueprint.route('/<modelname>/<int:instid>/', methods=('PUT',))
 def update_instance(modelname, instid):
     """Calls the update method in a single instance
 
@@ -527,7 +529,7 @@ def update_instance(modelname, instid):
     return dumps({'status': 'ok', 'message': 'You rock!'})
 
 
-@module.route('/<modelname>/<int:instid>/')
+@blueprint.route('/<modelname>/<int:instid>/')
 def get(modelname, instid):
     """Returns a json representation of an instance of a model.
 
@@ -548,11 +550,11 @@ def get(modelname, instid):
         abort(404)
 
     relations = model.get_relations()
-    deep = dict(zip(relations, [{}]*len(relations)))
+    deep = dict(zip(relations, [{}] * len(relations)))
     return dumps(inst.to_dict(deep))
 
 
-@module.route('/<modelname>/<int:instid>/', methods=('DELETE',))
+@blueprint.route('/<modelname>/<int:instid>/', methods=('DELETE',))
 def delete(modelname, instid):
     """Removes an instance from the database based on its id
     """
