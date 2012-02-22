@@ -44,7 +44,7 @@ def get_or_create(model, **kwargs):
             params[key] = val
         instance = model(**params)
         session.add(instance)
-        session.flush()
+        session.commit()
         return instance, True
 
 

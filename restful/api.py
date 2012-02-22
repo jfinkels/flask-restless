@@ -559,4 +559,5 @@ def delete(modelname, instid):
     inst = model.get_by(id=instid)
     if inst is not None:
         inst.delete()
+        session.commit()
     return dumps({'status': 'ok'})
