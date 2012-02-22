@@ -171,7 +171,7 @@ class RestfulTestCase(unittest.TestCase):
 
         deep = {'computers': []}
         inst = models.Person.get_by(id=1).to_dict(deep)
-        assert response.data == dumps(inst)
+        assert loads(response.data) == inst
 
     def test_new_with_submodels(self):
         """Tests the creation of a model with some related fields
@@ -202,7 +202,7 @@ class RestfulTestCase(unittest.TestCase):
         deep = {'computers': []}
         inst = models.Person.get_by(id=1).to_dict(deep)
         response = self.app.get('/api/Person/1/')
-        assert response.data == dumps(inst)
+        assert loads(response.data) == inst
 
         # Deleting it
         response = self.app.delete('/api/Person/1/')
@@ -265,7 +265,7 @@ class RestfulTestCase(unittest.TestCase):
 
         # Finally, testing if the change was made
         response = self.app.get('/api/Person/')
-        loaded = loads(response.data)
+        loaded = loads(response.data)['objects']
         for i in loaded:
             assert i['birth_date'] == ('%s-%s-%s' % (
                     year, str(month).zfill(2), str(day).zfill(2)))
@@ -420,7 +420,7 @@ class RestfulTestCase(unittest.TestCase):
         resp = self.app.get('/api/Person/?q=%s' % dumps(search))
         assert resp.status_code == 200
         loaded = loads(resp.data)
-        assert len(loaded) == 3  # Mary, Lucy and Katy
+        assert len(loaded['objects']) == 3  # Mary, Lucy and Katy
 
         # Let's try something more complex, let's sum all age values
         # available in our database
@@ -430,7 +430,9 @@ class RestfulTestCase(unittest.TestCase):
 
         resp = self.app.get('/api/Person/?q=%s' % dumps(search))
         assert resp.status_code == 200
-        assert loads(resp.data) == {"sum__age": 102.0}
+        data = loads(resp.data)
+        assert 'sum__age' in data
+        assert data['sum__age'] == 102.0
 
         # Tests searching for a single row
         search = {
@@ -464,12 +466,12 @@ class RestfulTestCase(unittest.TestCase):
         search = {'order_by': [{'field': 'age', 'direction': 'asc'}]}
         resp = self.app.get('/api/Person/?q=%s' % dumps(search))
         assert resp.status_code == 200
-        loaded = loads(resp.data)
-        assert loaded[0]['age'] == 7
-        assert loaded[1]['age'] == 19
-        assert loaded[2]['age'] == 23
-        assert loaded[3]['age'] == 25
-        assert loaded[4]['age'] == 28
+        loaded = loads(resp.data)['objects']
+        assert loaded[0][u'age'] == 7
+        assert loaded[1][u'age'] == 19
+        assert loaded[2][u'age'] == 23
+        assert loaded[3][u'age'] == 25
+        assert loaded[4][u'age'] == 28
 
         # Test the IN operation
         search = {
@@ -479,9 +481,9 @@ class RestfulTestCase(unittest.TestCase):
         }
         resp = self.app.get('/api/Person/?q=%s' % dumps(search))
         assert resp.status_code == 200
-        loaded = loads(resp.data)
-        assert loaded[0]['age'] == 7
-        assert loaded[1]['age'] == 28
+        loaded = loads(resp.data)['objects']
+        assert loaded[0][u'age'] == 7
+        assert loaded[1][u'age'] == 28
 
         # Testing related search
         update = {
@@ -517,7 +519,7 @@ class RestfulTestCase(unittest.TestCase):
         }
         resp = self.app.get('/api/Person/?q=%s' % dumps(search))
         assert resp.status_code == 200
-        loaded = loads(resp.data)
+        loaded = loads(resp.data)['objects']
         assert len(loaded) == 2
         assert loaded[0]['other'] == 10
         assert loaded[1]['other'] == 19
@@ -543,7 +545,7 @@ class RestfulTestCase(unittest.TestCase):
         search = {'limit': 1, 'offset': 1}
         resp = self.app.get('/api/Person/?q=%s' % dumps(search))
         assert resp.status_code == 200
-        assert loads(resp.data)[0]['name'] == u'Everton'
+        assert loads(resp.data)['objects'][0]['name'] == u'Everton'
 
         # Testing multiple results when calling .one()
         resp = self.app.get('/api/Person/?q=%s' % dumps({'type': 'one'}))

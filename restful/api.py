@@ -35,6 +35,8 @@
 """
 
 from flask import Blueprint, request, abort
+from flask import jsonify
+from flask.views import MethodView
 from json import dumps, loads
 from formencode import Invalid, validators as fvalidators
 from elixir import session
@@ -64,59 +66,6 @@ def setup(models, validators):
     """
     CONFIG['models'] = models
     CONFIG['validators'] = validators
-
-
-@blueprint.route('/<modelname>/', methods=('POST',))
-def create(modelname):
-    """Creates a new instance of a given model based on request data
-
-    This function parses the string contained in ``Flask.request.data``
-    as a JSON object and then validates it with a validator placed in
-    ``CONFIG['validators'].<modelname>``.
-
-    After that, it separates all columns that defines relationships with
-    other entities, creates a model with the simple columns and then
-    creates instances of these submodules and associates to the related
-    fiels. This happens only in the first level.
-
-    `modelname`
-
-        Model name which the new instance will be created. To retrieve
-        the model, we do a ``getattr(CONFIG['models'], <modelname>)``.
-    """
-    model = getattr(CONFIG['models'], modelname)
-
-    try:
-        params = getattr(CONFIG['validators'],
-                         modelname)().to_python(loads(request.data))
-    except (TypeError, ValueError, OverflowError):
-        return dumps({'status': 'error', 'message': 'Unable to decode data'})
-    except Invalid, exc:
-        return dumps({'status': 'error', 'message': 'Validation error',
-                      'error_list': exc.unpack_errors()})
-
-    # Getting the list of relations that will be added later
-    cols = model.get_columns()
-    relations = model.get_relations()
-
-    # Looking for what we're going to set to the model right now
-    props = set(cols.keys()).intersection(params.keys()).difference(relations)
-    instance = model(**dict([(i, params[i]) for i in props]))
-
-    # Handling relations, a single level is allowed
-    for col in set(relations).intersection(params.keys()):
-        submodel = cols[col].property.mapper.class_
-        subvalidator = getattr(CONFIG['validators'], submodel.__name__)
-        for subparams in params[col]:
-            subparams = subvalidator.to_python(subparams)
-            subinst = get_or_create(submodel, **subparams)[0]
-            getattr(instance, col).append(subinst)
-
-    session.add(instance)
-    session.commit()
-
-    # We return a ok message and the just created instance id
-    return dumps({'status': 'ok', 'message': 'You rock!', 'id': instance.id})
 
 
 def build_search_param(model, fname, relation, operation, value):
@@ -216,7 +165,7 @@ def _evaluate_functions(model, functions):
     # Ok, now is the time to execute it, pack in a JSON string and
     # return to the user.
     evaluated = session.query(*processed).one()
-    return dumps(dict(zip(funcnames, evaluated)))
+    return dict(zip(funcnames, evaluated))
 
 
 class ExceptionFound(Exception):
@@ -283,10 +232,8 @@ def _extract_operators(model, search_params):
         operations.append(param)
 
     if exceptions:
-        raise ExceptionFound(
-            dumps({'status': 'error', 'message': 'Invalid data',
-                   'error_list': exceptions})
-            )
+        raise ExceptionFound(dict(status='error', message='Invalid data',
+                                  error_list=exceptions))
 
     return operations
 
@@ -341,44 +288,13 @@ def _perform_search(model, search_params):
     deep = dict(zip(relations, [{}] * len(relations)))
     if search_params.get('type') == 'one':
         try:
-            return dumps(query.one().to_dict(deep))
+            return query.one().to_dict(deep)
         except NoResultFound:
-            return dumps({
-                    'status': 'error',
-                    'message': 'No result found',
-                    })
+            return {'status': 'error', 'message': 'No result found'}
         except MultipleResultsFound:
-            return dumps({
-                    'status': 'error',
-                    'message': 'Multiple results found',
-                    })
+            return {'status': 'error', 'message': 'Multiple results found'}
     else:
-        return dumps([x.to_dict(deep) for x in query.all()])
-
-
-@blueprint.route('/<modelname>/', methods=('GET',))
-def search(modelname):
-    """Defines a generic search function
-
-    As the other functions of our backend, this function should work for
-    all entities declared in the ``CONFIG['models']`` module. It
-    provides a way to execute a query received from the query string and
-    serialize its results in JSON.
-
-    This function currently understands two kinds of commands: Simple
-    fields and order_by fields.
-
-    `modelname`
-
-        Name of the model that the search will be performed.
-    """
-    try:
-        data = loads(request.values.get('q', '{}'))
-    except (TypeError, ValueError, OverflowError):
-        return dumps({'status': 'error', 'message': 'Unable to decode data'})
-
-    model = getattr(CONFIG['models'], modelname)
-    return _perform_search(model, data)
+        return [x.to_dict(deep) for x in query.all()]
 
 
 def _validate_field_list(model, data, field_list):
@@ -463,104 +379,200 @@ def update_relations(model, query, params):
     return fields
 
 
-@blueprint.route('/<modelname>/', methods=('PUT',))
-def update(modelname):
-    """Calls the .update() method in a set of results.
+class API(MethodView):
+    """Provides method-based dispatching for :http:request:`get`,
+    :http:request:`post`, :http:request:`put`, and :http:request:`delete`
+    requests, for both collections of models and individual models.
 
-    The ``request.data`` field should be filled with a JSON string that
-    contains an object with two fields: query and form. The first one
-    should have an object that looks the same as the one passed to the
-    ``search`` method. The second field (form) should contain an object
-    with all fields that will be passed to the ``update()`` method.
-
-    `modelname`
-
-        The name of the model that the update will be done.
     """
-    model = getattr(CONFIG['models'], modelname)
-    try:
-        data = loads(request.data)
-    except (TypeError, ValueError, OverflowError):
-        return dumps({'status': 'error', 'message': 'Unable to decode data'})
-    query = _build_query(model, data.get('query', {}))
 
-    relations = set(update_relations(model, query, data['form']))
-    field_list = set(data['form'].keys()) ^ relations
-    params = _validate_field_list(modelname, data['form'], field_list)
+    def post(self, modelname):
+        """Creates a new instance of a given model based on request data
 
-    # We got an error :(
-    if isinstance(params, basestring):
-        return params
+        This function parses the string contained in ``Flask.request.data``
+        as a JSON object and then validates it with a validator placed in
+        ``CONFIG['validators'].<modelname>``.
 
-    # Let's update all instances present in the query
-    if params:
-        query.update(params, False)
+        After that, it separates all columns that defines relationships with
+        other entities, creates a model with the simple columns and then
+        creates instances of these submodules and associates to the related
+        fiels. This happens only in the first level.
 
-    session.commit()
-    return dumps({'status': 'ok', 'message': 'You rock!'})
+        `modelname`
 
+            Model name which the new instance will be created. To retrieve
+            the model, we do a ``getattr(CONFIG['models'], <modelname>)``.
+        """
+        model = getattr(CONFIG['models'], modelname)
 
-@blueprint.route('/<modelname>/<int:instid>/', methods=('PUT',))
-def update_instance(modelname, instid):
-    """Calls the update method in a single instance
+        try:
+            params = getattr(CONFIG['validators'],
+                             modelname)().to_python(loads(request.data))
+        except (TypeError, ValueError, OverflowError):
+            return dumps({'status': 'error',
+                          'message': 'Unable to decode data'})
+        except Invalid, exc:
+            return dumps({'status': 'error', 'message': 'Validation error',
+                          'error_list': exc.unpack_errors()})
 
-    The ``request.data`` var will be loaded as a JSON and all of the
-    fields are going to be passed to the .update() method.
-    """
-    model = getattr(CONFIG['models'], modelname)
-    try:
-        data = loads(request.data)
-    except (TypeError, ValueError, OverflowError):
-        return dumps({'status': 'error', 'message': 'Unable to decode data'})
+        # Getting the list of relations that will be added later
+        cols = model.get_columns()
+        relations = model.get_relations()
 
-    inst = model.get_by(id=instid)
-    relations = set(update_relations(model, [inst], data))
-    field_list = set(data.keys()) ^ relations
-    params = _validate_field_list(modelname, data, field_list)
+        # Looking for what we're going to set to the model right now
+        colkeys = cols.keys()
+        paramkeys = params.keys()
+        props = set(colkeys).intersection(paramkeys).difference(relations)
+        instance = model(**dict([(i, params[i]) for i in props]))
 
-    # We got an error :(
-    if isinstance(params, basestring):
-        return params
+        # Handling relations, a single level is allowed
+        for col in set(relations).intersection(params.keys()):
+            submodel = cols[col].property.mapper.class_
+            subvalidator = getattr(CONFIG['validators'], submodel.__name__)
+            for subparams in params[col]:
+                subparams = subvalidator.to_python(subparams)
+                subinst = get_or_create(submodel, **subparams)[0]
+                getattr(instance, col).append(subinst)
 
-    # Let's update field by field
-    for field in field_list:
-        setattr(inst, field, params[field])
-    session.commit()
-    return dumps({'status': 'ok', 'message': 'You rock!'})
-
-
-@blueprint.route('/<modelname>/<int:instid>/')
-def get(modelname, instid):
-    """Returns a json representation of an instance of a model.
-
-    It's an http binding to the ``get_by`` method of a model that
-    returns data of an instance of a given model.
-
-    ``modelname``
-
-        The model that get_by is going to be called
-
-    `instid`
-
-        Instance id
-    """
-    model = getattr(CONFIG['models'], modelname)
-    inst = model.get_by(id=instid)
-    if inst is None:
-        abort(404)
-
-    relations = model.get_relations()
-    deep = dict(zip(relations, [{}] * len(relations)))
-    return dumps(inst.to_dict(deep))
-
-
-@blueprint.route('/<modelname>/<int:instid>/', methods=('DELETE',))
-def delete(modelname, instid):
-    """Removes an instance from the database based on its id
-    """
-    model = getattr(CONFIG['models'], modelname)
-    inst = model.get_by(id=instid)
-    if inst is not None:
-        inst.delete()
+        session.add(instance)
         session.commit()
-    return dumps({'status': 'ok'})
+
+        # We return a ok message and the just created instance id
+        return jsonify(status='ok', message='You rock!', id=instance.id)
+
+    def search(self, modelname):
+        """Defines a generic search function
+
+        As the other functions of our backend, this function should work for
+        all entities declared in the ``CONFIG['models']`` module. It
+        provides a way to execute a query received from the query string and
+        serialize its results in JSON.
+
+        This function currently understands two kinds of commands: Simple
+        fields and order_by fields.
+
+        `modelname`
+
+            Name of the model that the search will be performed.
+        """
+        try:
+            data = loads(request.values.get('q', '{}'))
+        except (TypeError, ValueError, OverflowError):
+            return dumps({'status': 'error',
+                          'message': 'Unable to decode data'})
+
+        model = getattr(CONFIG['models'], modelname)
+        result = _perform_search(model, data)
+        # for security purposes, don't transmit list as top-level JSON
+        if isinstance(result, list):
+            return jsonify(objects=result)
+        else:
+            return jsonify(result)
+
+    def put_many(self, modelname):
+        """Calls the .update() method in a set of results.
+
+        The ``request.data`` field should be filled with a JSON string that
+        contains an object with two fields: query and form. The first one
+        should have an object that looks the same as the one passed to the
+        ``search`` method. The second field (form) should contain an object
+        with all fields that will be passed to the ``update()`` method.
+
+        `modelname`
+
+            The name of the model that the update will be done.
+        """
+        model = getattr(CONFIG['models'], modelname)
+        try:
+            data = loads(request.data)
+        except (TypeError, ValueError, OverflowError):
+            return dumps({'status': 'error',
+                          'message': 'Unable to decode data'})
+        query = _build_query(model, data.get('query', {}))
+
+        relations = set(update_relations(model, query, data['form']))
+        field_list = set(data['form'].keys()) ^ relations
+        params = _validate_field_list(modelname, data['form'], field_list)
+
+        # We got an error :(
+        if isinstance(params, basestring):
+            return params
+
+        # Let's update all instances present in the query
+        if params:
+            query.update(params, False)
+
+        session.commit()
+        return jsonify(status='ok', message='You rock!')
+
+    def put(self, modelname, instid):
+        """Calls the update method in a single instance
+
+        The ``request.data`` var will be loaded as a JSON and all of the
+        fields are going to be passed to the .update() method.
+        """
+        if instid is None:
+            return self.put_many(modelname)
+        model = getattr(CONFIG['models'], modelname)
+        try:
+            data = loads(request.data)
+        except (TypeError, ValueError, OverflowError):
+            return jsonify(status='error', message='Unable to decode data')
+
+        inst = model.get_by(id=instid)
+        relations = set(update_relations(model, [inst], data))
+        field_list = set(data.keys()) ^ relations
+        params = _validate_field_list(modelname, data, field_list)
+
+        # We got an error :(
+        if isinstance(params, basestring):
+            return params
+
+        # Let's update field by field
+        for field in field_list:
+            setattr(inst, field, params[field])
+        session.commit()
+        return jsonify(status='ok', message='You rock!')
+
+    def get(self, modelname, instid):
+        """Returns a json representation of an instance of a model.
+
+        It's an http binding to the ``get_by`` method of a model that
+        returns data of an instance of a given model.
+
+        ``modelname``
+
+            The model that get_by is going to be called
+
+        `instid`
+
+            Instance id
+        """
+        if instid is None:
+            return self.search(modelname)
+        model = getattr(CONFIG['models'], modelname)
+        inst = model.get_by(id=instid)
+        if inst is None:
+            abort(404)
+
+        relations = model.get_relations()
+        deep = dict(zip(relations, [{}] * len(relations)))
+        return jsonify(inst.to_dict(deep))
+
+    def delete(self, modelname, instid):
+        """Removes an instance from the database based on its id
+        """
+        model = getattr(CONFIG['models'], modelname)
+        inst = model.get_by(id=instid)
+        if inst is not None:
+            inst.delete()
+            session.commit()
+        return jsonify(status='ok')
+
+
+api_view = API.as_view('api')
+blueprint.add_url_rule('/<modelname>/', view_func=api_view, methods=['POST', ])
+blueprint.add_url_rule('/<modelname>/', defaults={'instid': None},
+                       view_func=api_view, methods=['GET', 'PUT'])
+blueprint.add_url_rule('/<modelname>/<int:instid>/', view_func=api_view,
+                       methods=['GET', 'PUT', 'DELETE'])
