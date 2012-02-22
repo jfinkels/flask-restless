@@ -30,6 +30,7 @@ sys.path.append('..')
 from restful import model, api
 from testapp import models, validators
 
+
 class ModelTestCase(unittest.TestCase):
     """Tests focused on `restful.model` module
     """
@@ -88,7 +89,7 @@ class ModelTestCase(unittest.TestCase):
         session.commit()
 
         relations = models.Person.get_relations()
-        deep = dict(zip(relations, [{}]*len(relations)))
+        deep = dict(zip(relations, [{}] * len(relations)))
 
         computers = someone.to_dict(deep)['computers']
         assert len(computers) == 1
@@ -100,16 +101,19 @@ class ModelTestCase(unittest.TestCase):
         """
         # Here we're sure that we have a fresh table with no rows, so
         # let's create the first one:
-        instance, created = model.get_or_create(self.model, name=u'Lincoln', age=24)
+        instance, created = model.get_or_create(self.model, name=u'Lincoln',
+                                                age=24)
         assert created
         assert instance.name == u'Lincoln'
         assert instance.age == 24
 
         # Now that we have a row, let's try to get it again
-        second_instance, created = model.get_or_create(self.model, name=u'Lincoln')
+        second_instance, created = model.get_or_create(self.model,
+                                                       name=u'Lincoln')
         assert not created
         assert second_instance.name == u'Lincoln'
         assert second_instance.age == 24
+
 
 class RestfulTestCase(unittest.TestCase):
     """Test case class for the restful api itself
@@ -165,7 +169,7 @@ class RestfulTestCase(unittest.TestCase):
         response = self.app.get('/api/Person/1/')
         assert response.status_code == 200
 
-        deep = {'computers':[]}
+        deep = {'computers': []}
         inst = models.Person.get_by(id=1).to_dict(deep)
         assert response.data == dumps(inst)
 
@@ -195,7 +199,7 @@ class RestfulTestCase(unittest.TestCase):
         assert loads(response.data)['status'] == 'ok'
 
         # Making sure it has been created
-        deep = {'computers':[]}
+        deep = {'computers': []}
         inst = models.Person.get_by(id=1).to_dict(deep)
         response = self.app.get('/api/Person/1/')
         assert response.data == dumps(inst)
@@ -255,7 +259,7 @@ class RestfulTestCase(unittest.TestCase):
 
         # Changing the birth date field of the entire collection
         day, month, year = 15, 9, 1986
-        birth_date = date(year, month, day).strftime('%d/%m/%Y') # iso8601
+        birth_date = date(year, month, day).strftime('%d/%m/%Y')  # iso8601
         form = {'birth_date': birth_date}
         self.app.put('/api/Person/', data=dumps({'form': form}))
 
@@ -280,7 +284,8 @@ class RestfulTestCase(unittest.TestCase):
         assert loads(resp.data)['message'] == 'Unable to decode data'
 
         # Trying to pass valid JSON with unvalid object to the API
-        resp = self.app.put('/api/Person/1/', data=dumps({'age': 'Hello there'}))
+        resp = self.app.put('/api/Person/1/',
+                            data=dumps({'age': 'Hello there'}))
         loaded = loads(resp.data)
         assert loaded['message'] == 'Validation error'
         assert loaded['error_list'] == [{'age': 'Please enter a number'}]
@@ -334,7 +339,7 @@ class RestfulTestCase(unittest.TestCase):
         # Data for the update
         update_data = {
             'computers': {
-                'remove': [{'name': u'pidinti'}], # It was stolen :(
+                'remove': [{'name': u'pidinti'}],  # It was stolen :(
             }
         }
         resp = self.app.put('/api/Person/1/', data=dumps(update_data))
@@ -398,7 +403,7 @@ class RestfulTestCase(unittest.TestCase):
         assert resp.status_code == 200
         assert loads(resp.data)['message'] == 'Unable to decode data'
 
-        create = lambda x:self.app.post('/api/Person/', data=dumps(x))
+        create = lambda x: self.app.post('/api/Person/', data=dumps(x))
         create({'name': u'Lincoln', 'age': 23, 'other': 22})
         create({'name': u'Mary', 'age': 19, 'other': 19})
         create({'name': u'Lucy', 'age': 25, 'other': 20})
@@ -415,7 +420,7 @@ class RestfulTestCase(unittest.TestCase):
         resp = self.app.get('/api/Person/?q=%s' % dumps(search))
         assert resp.status_code == 200
         loaded = loads(resp.data)
-        assert len(loaded) == 3 # Mary, Lucy and Katy
+        assert len(loaded) == 3  # Mary, Lucy and Katy
 
         # Let's try something more complex, let's sum all age values
         # available in our database
@@ -517,11 +522,10 @@ class RestfulTestCase(unittest.TestCase):
         assert loaded[0]['other'] == 10
         assert loaded[1]['other'] == 19
 
-
     def test_search2(self):
         """Testing more search things.
         """
-        create = lambda x:self.app.post('/api/Person/', data=dumps(x))
+        create = lambda x: self.app.post('/api/Person/', data=dumps(x))
         create({'name': u'Fuxu', 'age': 32})
         create({'name': u'Everton', 'age': 33})
         create({'name': u'Lincoln', 'age': 24})
@@ -536,7 +540,7 @@ class RestfulTestCase(unittest.TestCase):
         assert loads(resp.data)['name'] == u'Fuxu'
 
         # Testing limit and offset
-        search = { 'limit': 1, 'offset': 1 }
+        search = {'limit': 1, 'offset': 1}
         resp = self.app.get('/api/Person/?q=%s' % dumps(search))
         assert resp.status_code == 200
         assert loads(resp.data)[0]['name'] == u'Everton'
