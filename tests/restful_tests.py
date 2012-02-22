@@ -22,7 +22,7 @@ from tempfile import mkstemp
 from datetime import date, datetime
 
 import flask
-from simplejson import dumps, loads
+from json import dumps, loads
 from elixir import create_all, session, drop_all
 from sqlalchemy import create_engine
 
