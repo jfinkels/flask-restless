@@ -27,6 +27,7 @@ setup(
     url='http://projects.comum.org/restful',
     packages=('restful',),
     install_requires=from_requirements_file(),
+    test_suite='tests.restful_tests',
     long_description=read('README'),
     classifiers=[
         'Development Status :: 4 - Beta',
