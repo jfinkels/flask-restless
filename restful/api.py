@@ -32,14 +32,16 @@
     library.
 
     :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
+    :copyright:2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
     :license: AGPLv3, see COPYTING for more details
 """
+
+import json
 
 from flask import Blueprint, request, abort
 from flask import jsonify
 from flask import make_response
 from flask.views import MethodView
-from json import dumps, loads
 from formencode import Invalid, validators as fvalidators
 from elixir import session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
@@ -486,7 +488,7 @@ class API(MethodView):
 
         """
         try:
-            data = loads(request.args.get('q', '{}'))
+            data = json.loads(request.args.get('q', '{}'))
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
@@ -522,7 +524,7 @@ class API(MethodView):
         """
         model = getattr(CONFIG['models'], modelname)
         try:
-            data = loads(request.data)
+            data = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
         query = _build_query(model, request.args)
@@ -561,7 +563,7 @@ class API(MethodView):
             Instance id
         """
         if instid is None:
-            return self.search(modelname)
+            return self._search(modelname)
         model = getattr(CONFIG['models'], modelname)
         inst = model.get_by(id=instid)
         if inst is None:
@@ -602,7 +604,7 @@ class API(MethodView):
 
         try:
             validator = getattr(CONFIG['validators'], modelname)()
-            params = validator.to_python(loads(request.data))
+            params = validator.to_python(json.loads(request.data))
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
         except Invalid as exc:
@@ -620,7 +622,7 @@ class API(MethodView):
         instance = model(**dict([(i, params[i]) for i in props]))
 
         # Handling relations, a single level is allowed
-        for col in set(relations).intersection(params.keys()):
+        for col in set(relations).intersection(paramkeys):
             submodel = cols[col].property.mapper.class_
             subvalidator = getattr(CONFIG['validators'], submodel.__name__)
             for subparams in params[col]:
@@ -647,10 +649,10 @@ class API(MethodView):
 
         """
         if instid is None:
-            return self.put_many(modelname)
+            return self._put_many(modelname)
         model = getattr(CONFIG['models'], modelname)
         try:
-            data = loads(request.data)
+            data = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
