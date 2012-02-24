@@ -435,7 +435,7 @@ class RestfulTestCase(unittest.TestCase):
         search = {
             'type': 'one',      # I'm sure we have only one row here
             'filters': [
-                {'name': 'name', 'val': u'Lincoln', 'op': 'equals_to'}
+                {'name': 'name', 'val': u'Lincoln', 'op': 'equals'}
             ],
         }
         resp = self.app.search('/api/Person/', dumps(search))
@@ -507,6 +507,7 @@ class RestfulTestCase(unittest.TestCase):
         # Testing the comparation for two fields. We want to compare
         # `age' and `other' fields. If the first one is lower than or
         # equals to the second one, we want the object
+        # TODO what is this? document it.
         search = {
             'filters': [
                 {'name': 'age', 'op': 'lte', 'field': 'other'}
@@ -533,7 +534,7 @@ class RestfulTestCase(unittest.TestCase):
         # Let's test the search using an id
         search = {
             'type': 'one',
-            'filters': [{'name': 'id', 'op': 'equals_to', 'val': 1}]
+            'filters': [{'name': 'id', 'op': 'equal_to', 'val': 1}]
         }
         resp = self.app.search('/api/Person/', dumps(search))
         assert resp.status_code == 200

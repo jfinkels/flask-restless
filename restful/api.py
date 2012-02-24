@@ -60,11 +60,21 @@ CONFIG = {
 }
 
 OPERATORS = {
-    'equals_to': lambda f, a, fn: f == a,
-    'not_equals_to': lambda f, a, fn: f != a,
+    '==': lambda f, a, fn: f == a,
+    'eq': lambda f, a, fn: f == a,
+    'equals': lambda f, a, fn: f == a,
+    'equal_to': lambda f, a, fn: f == a,
+    '!=': lambda f, a, fn: f != a,
+    'neq': lambda f, a, fn: f != a,
+    'not_equal_to': lambda f, a, fn: f != a,
+    'does_not_equal': lambda f, a, fn: f != a,
+    '>': lambda f, a, fn: f > a,
     'gt': lambda f, a, fn: f > a,
+    '<': lambda f, a, fn: f < a,
     'lt': lambda f, a, fn: f < a,
+    '>=': lambda f, a, fn: f >= a,
     'gte': lambda f, a, fn: f >= a,
+    '<=': lambda f, a, fn: f <= a,
     'lte': lambda f, a, fn: f <= a,
     'like': lambda f, a, fn: f.like(a),
     'in': lambda f, a, fn: f.in_(a),
@@ -85,6 +95,9 @@ the field object on which to apply the operator. The second argument is the
 second argument to the operator, should one exist. The third argument is the
 name of the field. All functions use the first argument, some use the second,
 and few use the third.
+
+Some operations have multiple names. For example, the equality operation can be
+described by the strings ``'=='``, ``'eq'``, ``'equals'``, etc.
 
 """
 
@@ -494,8 +507,25 @@ class API(MethodView):
         filters, see the `SQLAlchemy SQL expression tutorial
         <http://docs.sqlalchemy.org/en/latest/core/tutorial.html>`_.
 
-        This function currently understands two kinds of commands: Simple
-        fields and order_by fields.
+        The general structure of request data as a JSON string is as follows::
+
+            {
+              "type": "one",
+              "order_by": [{"field": "age"}],
+              "limit": 2,
+              "offset": 1,
+              "filters":
+                [
+                  {"name": "name", "val": "%y%", "op": "like"},
+                  {"name": "age", "val": [18, 19, 20, 21], "op": "in"},
+                  ...
+                ],
+              "functions":
+                [
+                  {"name": "sum", "field": "age"},
+                  ...
+                ]
+            }
 
         """
         try:
