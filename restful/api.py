@@ -442,21 +442,48 @@ class API(MethodView):
 
     """
 
-    def search(self, modelname):
+    def _search(self, modelname):
         """Defines a generic search function for the database model whose name
         is ``modelname``.
 
-        As the other functions of our backend, this function should work for
-        all entities declared in the ``CONFIG['models']`` module. It
-        provides a way to execute a query received from the query string and
-        serialize its results in JSON.
+        Like the other methods in this class, this function should work for all
+        entities declared in the ``CONFIG['models']`` module. It provides a way
+        to execute a query received from a query string and serialize its
+        results as a JSON string.
+
+        To search for entities meeting some criteria, the client makes a
+        request to :http:get:`/api/:modelname` with a query string containing
+        the parameters of the search. The parameters of the search can involve
+        filters and/or functions. In a filter, the client specifies the name of
+        the field by which to filter, the operation to perform on the field,
+        and the value which is the argument to that operation. In a function,
+        the client specifies the name of a SQL function which is executed on
+        the search results; the result of executing the function is returned to
+        the client.
+
+        The parameters of the search must be provided in JSON form as the value
+        of the ``q`` request query parameter. For example, in a database of
+        people, to search for all people with a name containing a "y", the
+        client would make a :http:method:`get` request to ``/api/person`` with
+        query parameter as follows::
+
+            q={"filters": [{"name": "name", "op": "like", "val": "%y%"}]}
+
+        The response would have :http:status:`200` and content::
+
+            {"objects": [{"name": "Mary"}, {"name": "Byron"}, ...]}
+
+        For more information SQLAlchemy functions and operators for use in
+        filters, see the `SQLAlchemy SQL expression tutorial
+        <http://docs.sqlalchemy.org/en/latest/core/tutorial.html>`_.
 
         This function currently understands two kinds of commands: Simple
         fields and order_by fields.
 
         `modelname`
 
-            Name of the model that the search will be performed.
+            Name of the model on which the search will be performed.
+
         """
         try:
             data = loads(request.args.get('q', '{}'))
@@ -480,7 +507,7 @@ class API(MethodView):
         else:
             return jsonify(result)
 
-    def put_many(self, modelname):
+    def _put_many(self, modelname):
         """Calls the .update() method in a set of results.
 
         The ``request.data`` field should be filled with a JSON string that
