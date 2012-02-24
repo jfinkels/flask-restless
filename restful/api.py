@@ -442,60 +442,9 @@ class API(MethodView):
 
     """
 
-    def post(self, modelname):
-        """Creates a new instance of a given model based on request data.
-
-        This function parses the string contained in ``Flask.request.data`` as
-        a JSON object and then validates it with a validator accessed from
-        ``CONFIG['validators'].<modelname>``.
-
-        After that, it separates all columns that defines relationships with
-        other entities, creates a model with the simple columns and then
-        creates instances of these submodules and associates to the related
-        fiels. This happens only in the first level.
-
-        `modelname`
-
-            Model name which the new instance will be created. To retrieve
-            the model, we do a ``getattr(CONFIG['models'], <modelname>)``.
-        """
-        model = getattr(CONFIG['models'], modelname)
-
-        try:
-            validator = getattr(CONFIG['validators'], modelname)()
-            params = validator.to_python(loads(request.data))
-        except (TypeError, ValueError, OverflowError):
-            return jsonify_status_code(400, message='Unable to decode data')
-        except Invalid as exc:
-            return jsonify_status_code(400, message='Validation error',
-                                       error_list=exc.unpack_errors())
-
-        # Getting the list of relations that will be added later
-        cols = model.get_columns()
-        relations = model.get_relations()
-
-        # Looking for what we're going to set to the model right now
-        colkeys = cols.keys()
-        paramkeys = params.keys()
-        props = set(colkeys).intersection(paramkeys).difference(relations)
-        instance = model(**dict([(i, params[i]) for i in props]))
-
-        # Handling relations, a single level is allowed
-        for col in set(relations).intersection(params.keys()):
-            submodel = cols[col].property.mapper.class_
-            subvalidator = getattr(CONFIG['validators'], submodel.__name__)
-            for subparams in params[col]:
-                subparams = subvalidator.to_python(subparams)
-                subinst = get_or_create(submodel, **subparams)[0]
-                getattr(instance, col).append(subinst)
-
-        session.add(instance)
-        session.commit()
-
-        return jsonify_status_code(201, id=instance.id)
-
     def search(self, modelname):
-        """Defines a generic search function
+        """Defines a generic search function for the database model whose name
+        is ``modelname``.
 
         As the other functions of our backend, this function should work for
         all entities declared in the ``CONFIG['models']`` module. It
@@ -570,6 +519,93 @@ class API(MethodView):
         session.commit()
         return jsonify(num_modified=num_modified)
 
+    def get(self, modelname, instid):
+        """Returns a json representation of an instance of a model.
+
+        It's an http binding to the ``get_by`` method of a model that
+        returns data of an instance of a given model.
+
+        ``modelname``
+
+            The model that get_by is going to be called
+
+        `instid`
+
+            Instance id
+        """
+        if instid is None:
+            return self.search(modelname)
+        model = getattr(CONFIG['models'], modelname)
+        inst = model.get_by(id=instid)
+        if inst is None:
+            abort(404)
+
+        relations = model.get_relations()
+        deep = dict(zip(relations, [{}] * len(relations)))
+        return jsonify(inst.to_dict(deep))
+
+    def delete(self, modelname, instid):
+        """Removes an instance from the database based on its id
+        """
+        model = getattr(CONFIG['models'], modelname)
+        inst = model.get_by(id=instid)
+        if inst is not None:
+            inst.delete()
+            session.commit()
+        return make_response(None, 204)
+
+    def post(self, modelname):
+        """Creates a new instance of a given model based on request data.
+
+        This function parses the string contained in ``Flask.request.data`` as
+        a JSON object and then validates it with a validator accessed from
+        ``CONFIG['validators'].<modelname>``.
+
+        After that, it separates all columns that defines relationships with
+        other entities, creates a model with the simple columns and then
+        creates instances of these submodules and associates to the related
+        fiels. This happens only in the first level.
+
+        `modelname`
+
+            Model name which the new instance will be created. To retrieve
+            the model, we do a ``getattr(CONFIG['models'], <modelname>)``.
+        """
+        model = getattr(CONFIG['models'], modelname)
+
+        try:
+            validator = getattr(CONFIG['validators'], modelname)()
+            params = validator.to_python(loads(request.data))
+        except (TypeError, ValueError, OverflowError):
+            return jsonify_status_code(400, message='Unable to decode data')
+        except Invalid as exc:
+            return jsonify_status_code(400, message='Validation error',
+                                       error_list=exc.unpack_errors())
+
+        # Getting the list of relations that will be added later
+        cols = model.get_columns()
+        relations = model.get_relations()
+
+        # Looking for what we're going to set to the model right now
+        colkeys = cols.keys()
+        paramkeys = params.keys()
+        props = set(colkeys).intersection(paramkeys).difference(relations)
+        instance = model(**dict([(i, params[i]) for i in props]))
+
+        # Handling relations, a single level is allowed
+        for col in set(relations).intersection(params.keys()):
+            submodel = cols[col].property.mapper.class_
+            subvalidator = getattr(CONFIG['validators'], submodel.__name__)
+            for subparams in params[col]:
+                subparams = subvalidator.to_python(subparams)
+                subinst = get_or_create(submodel, **subparams)[0]
+                getattr(instance, col).append(subinst)
+
+        session.add(instance)
+        session.commit()
+
+        return jsonify_status_code(201, id=instance.id)
+
     def put(self, modelname, instid):
         """Updates the instance specified by ``instid`` of the named model, or
         updates multiple instances if ``instid`` is ``None``.
@@ -611,41 +647,6 @@ class API(MethodView):
 
         # return the updated object
         return self.get(modelname, instid)
-
-    def get(self, modelname, instid):
-        """Returns a json representation of an instance of a model.
-
-        It's an http binding to the ``get_by`` method of a model that
-        returns data of an instance of a given model.
-
-        ``modelname``
-
-            The model that get_by is going to be called
-
-        `instid`
-
-            Instance id
-        """
-        if instid is None:
-            return self.search(modelname)
-        model = getattr(CONFIG['models'], modelname)
-        inst = model.get_by(id=instid)
-        if inst is None:
-            abort(404)
-
-        relations = model.get_relations()
-        deep = dict(zip(relations, [{}] * len(relations)))
-        return jsonify(inst.to_dict(deep))
-
-    def delete(self, modelname, instid):
-        """Removes an instance from the database based on its id
-        """
-        model = getattr(CONFIG['models'], modelname)
-        inst = model.get_by(id=instid)
-        if inst is not None:
-            inst.delete()
-            session.commit()
-        return make_response(None, 204)
 
 
 api_view = API.as_view('api')
