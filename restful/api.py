@@ -489,10 +489,6 @@ class API(MethodView):
         This function currently understands two kinds of commands: Simple
         fields and order_by fields.
 
-        `modelname`
-
-            Name of the model on which the search will be performed.
-
         """
         try:
             data = json.loads(request.args.get('q', '{}'))
@@ -525,9 +521,6 @@ class API(MethodView):
         ``search`` method. The second field (form) should contain an object
         with all fields that will be passed to the ``update()`` method.
 
-        `modelname`
-
-            The name of the model that the update will be done.
         """
         model = getattr(CONFIG['models'], modelname)
         try:
@@ -556,18 +549,20 @@ class API(MethodView):
         return jsonify(num_modified=num_modified)
 
     def get(self, modelname, instid):
-        """Returns a json representation of an instance of a model.
+        """Returns a JSON representation of an instance of model with the
+        specified name.
 
-        It's an http binding to the ``get_by`` method of a model that
-        returns data of an instance of a given model.
+        If ``instid`` is ``None``, this method returns the result of a search
+        with parameters specified in the query string of the request. If no
+        search parameters are specified, this method returns all instances of
+        the specified model.
 
-        ``modelname``
+        If ``instid`` is an integer, this method returns the instance of the
+        model with that identifying integer. (Implementation note: the
+        underlying implementation uses the :func:`elixir.entity.Entity.get_by`
+        method.) If no such instance exists, this method responds with
+        :http:status:`404`.
 
-            The model that get_by is going to be called
-
-        `instid`
-
-            Instance id
         """
         if instid is None:
             return self._search(modelname)
@@ -581,7 +576,13 @@ class API(MethodView):
         return jsonify(inst.to_dict(deep))
 
     def delete(self, modelname, instid):
-        """Removes an instance from the database based on its id
+        """Removes the specified instance of the model with the specified name
+        from the database.
+
+        Since :http:method:`delete` is an idempotent method according to the
+        :rfc:`2616`, this method responds with :http:status:`204` regardless of
+        whether an object was deleted.
+
         """
         model = getattr(CONFIG['models'], modelname)
         inst = model.get_by(id=instid)
@@ -593,19 +594,19 @@ class API(MethodView):
     def post(self, modelname):
         """Creates a new instance of a given model based on request data.
 
-        This function parses the string contained in ``Flask.request.data`` as
-        a JSON object and then validates it with a validator accessed from
-        ``CONFIG['validators'].<modelname>``.
+        This function parses the string contained in
+        :attr:`flask.request.data`` as a JSON object and then validates it with
+        a validator accessed from ``CONFIG['validators'].<modelname>``.
+
+        The :attr:`flask.request.data` attribute will be parsed as a JSON
+        object containing the mapping from field name to value to which to
+        initialize the created instance of the model.
 
         After that, it separates all columns that defines relationships with
         other entities, creates a model with the simple columns and then
-        creates instances of these submodules and associates to the related
-        fiels. This happens only in the first level.
+        creates instances of these submodels and associates them with the
+        related fields. This happens only at the first level of nesting.
 
-        `modelname`
-
-            Model name which the new instance will be created. To retrieve
-            the model, we do a ``getattr(CONFIG['models'], <modelname>)``.
         """
         model = getattr(CONFIG['models'], modelname)
 
@@ -622,7 +623,7 @@ class API(MethodView):
         cols = model.get_columns()
         relations = model.get_relations()
 
-        # Looking for what we're going to set to the model right now
+        # Looking for what we're going to set on the model right now
         colkeys = cols.keys()
         paramkeys = params.keys()
         props = set(colkeys).intersection(paramkeys).difference(relations)
@@ -651,8 +652,11 @@ class API(MethodView):
         update the specified instance or instances.
 
         If ``instid`` is ``None``, the query string will be used to search for
-        instances (using the :func:`search` function), and all matching
+        instances (using the :func:`_search` method), and all matching
         instances will be updated according to the content of the request data.
+        See the :func:`_search` documentation on more information about search
+        parameters for restricting the set of instances on which updates will
+        be made in this case.
 
         """
         if instid is None:
