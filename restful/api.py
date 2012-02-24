@@ -59,6 +59,35 @@ CONFIG = {
     'validators': None,
 }
 
+OPERATORS = {
+    'equals_to': lambda f, a, fn: f == a,
+    'not_equals_to': lambda f, a, fn: f != a,
+    'gt': lambda f, a, fn: f > a,
+    'lt': lambda f, a, fn: f < a,
+    'gte': lambda f, a, fn: f >= a,
+    'lte': lambda f, a, fn: f <= a,
+    'like': lambda f, a, fn: f.like(a),
+    'in': lambda f, a, fn: f.in_(a),
+    'not_in': lambda f, a, fn: ~f.in_(a),
+    'is_null': lambda f, a, fn: f == None,
+    'is_not_null': lambda f, a, fn: f != None,
+    'desc': lambda f, a, fn: f.desc,
+    'asc': lambda f, a, fn: f.asc,
+    'has': lambda f, a, fn: f.has(**{fn: a}),
+    'any': lambda f, a, fn: f.any(**{fn: a})
+}
+"""The mapping from operator name (as accepted by the search method) to a
+function which returns the SQLAlchemy expression corresponding to that
+operator.
+
+The function in each of the values takes three arguments. The first argument is
+the field object on which to apply the operator. The second argument is the
+second argument to the operator, should one exist. The third argument is the
+name of the field. All functions use the first argument, some use the second,
+and few use the third.
+
+"""
+
 
 def setup(models, validators):
     """Sets up models and validators to be exposed by the REST API
@@ -72,61 +101,39 @@ def setup(models, validators):
     CONFIG['validators'] = validators
 
 
-def build_search_param(model, fname, relation, operation, value):
-    """Translates an operation described as a string to a valid
-    sqlalchemy query parameter.
+def _build_search_param(model, fieldname, operator, argument, relation=None):
+    """Translates an operation described as a string to a valid SQLAlchemy
+    query parameter using a field or relation of the specified model.
 
-    This takes, for example, the operation ``gt`` and converts it to
-    something like this: ``field > value``.
+    More specifically, this translates the string representation of an
+    operation, for example ``'gt'``, to an expression corresponding to a
+    SQLAlchemy expression, ``field > argument``. The recognized operators are
+    given by the keys of :data:`OPERATORS`.
 
-    `model`
+    If ``relation`` is not ``None``, the returned search parameter will
+    correspond to a search on the field named ``fieldname`` on the entity
+    related to ``model`` whose name, as a string, is ``relation``.
 
-        An instance of an entity being searched
+    ``model`` is an instance of a :class:`elixir.entity.Entity` being searched.
 
-    `fname`
+    ``fieldname`` is the name of the field of ``model`` to which the operation
+    will be applied as part of the search. If ``relation`` is specified, the
+    operation will be applied to the field with name ``fieldname`` on the
+    entity related to ``model`` whose name, as a string, is ``relation``.
 
-        The name of the field being searched
+    ``operation`` is a string representating the operation which will be
+     executed between the field and the argument received. For example,
+     ``'gt'``, ``'lt'``, ``'like'``, ``'in'`` etc.
 
-    `relation`
+    ``argument`` is the argument to which to apply the ``operator``.
 
-        Name of the relationship attribute. This field should be
-        ``None`` to fields that does not refer to relationships.
+    ``relation`` is the name of the relationship attribute of ``model`` to
+    which the operation will be applied as part of the search, or ``None`` if
+    this function should not use a related entity in the search.
 
-    `operation`
-
-        Describes which operation should be done between the field and
-        the value received. For example: equals_to, gt, lt, like, in
-        etc. Read the source code of this function to see a complete
-        list of possible operators.
-
-    `value`
-
-        The value to be compared in the search
     """
-    if relation is not None:
-        field = getattr(model, relation)
-    else:
-        field = getattr(model, fname)
-
-    ops = {
-        'equals_to': lambda: field == value,
-        'not_equals_to': lambda: field != value,
-        'gt': lambda: field > value,
-        'lt': lambda: field < value,
-        'gte': lambda: field >= value,
-        'lte': lambda: field <= value,
-        'like': lambda: field.like(value),
-        'in': lambda: field.in_(value),
-        'not_in': lambda: ~field.in_(value),
-        'is_null': lambda: field == None,
-        'is_not_null': lambda: field != None,
-        'desc': field.desc,
-        'asc': field.asc,
-        'has': lambda: field.has(**{fname: value}),
-        'any': lambda: field.any(**{fname: value}),
-    }
-
-    return ops.get(operation)()
+    field = getattr(model, relation or fieldname)
+    return OPERATORS.get(operator)(field, argument, fieldname)
 
 
 def _evaluate_functions(model, functions):
@@ -248,8 +255,9 @@ def _extract_operators(model, search_params):
         # We are going to compare a field with another one, so there's
         # no reason to parse
         if 'field' in i:
-            param = build_search_param(
-                model, fname, relation, i['op'], getattr(model, i['field']))
+            argument = getattr(model, i['field'])
+            param = _build_search_param(model, fname, i['op'], argument,
+                                        relation)
             operations.append(param)
             continue
 
@@ -268,8 +276,8 @@ def _extract_operators(model, search_params):
             continue
 
         # Collecting the query
-        param = build_search_param(
-            model, fname, relation, i['op'], converted_value)
+        param = _build_search_param(model, fname, i['op'], converted_value,
+                                    relation)
         operations.append(param)
 
     if len(exception) > 0:
