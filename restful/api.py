@@ -1,6 +1,7 @@
 # -*- coding: utf-8; Mode: Python -*-
 #
 # Copyright (C) 2011  Lincoln de Sousa <lincoln@comum.org>
+# Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
@@ -36,6 +37,7 @@
 
 from flask import Blueprint, request, abort
 from flask import jsonify
+from flask import make_response
 from flask.views import MethodView
 from json import dumps, loads
 from formencode import Invalid, validators as fvalidators
@@ -168,12 +170,49 @@ def _evaluate_functions(model, functions):
     return dict(zip(funcnames, evaluated))
 
 
-class ExceptionFound(Exception):
-    """Exception raised if there's something wrong in the validation of
-    fields."""
-    def __init__(self, msg):
-        super(ExceptionFound, self).__init__()
-        self.msg = msg
+class AggregateException(Exception):
+    """A validation exception which aggregates error messages for multiple
+    fields.
+
+    This class contains a list of dictionaries, :attr:`messages`, in which each
+    dictionary contains a single mapping, which maps an error location
+    identifier (for example, field name in an aggregation of validation errors)
+    to an error message which corresponds to that location (for example, ``'Age
+    must be a positive integer'``). For example, the :attr:`messages` list
+    might looks like this::
+
+        [{'age': 'Must be a positive integer', 'name': 'Must be specified'}]
+
+    The error messages are aggregated in this way so that they can be easily
+    translated to a JSON string using the :func:`json.dumps` function.
+
+    Code which will raise this exception should append singleton dictionaries
+    to the list of error messages using the :func:`append` function, which
+    simply delegates to the corresponding function on the list of
+    messages. Code which will catch this exception can access the list of
+    singleton dictionaries by accessing the :attr:`messages` attribute.
+
+    """
+
+    def __init__(self, *args, **kw):
+        """Passes the positional and keyword arguments to the constructor of
+        the superclass and creates an empty :attr:`messages` list.
+
+        """
+        super(AggregateException, self).__init__(*args, **kw)
+        self.messages = []
+
+    def __str__(self):
+        """Returns the string representation of the underlying list of error
+        messages.
+
+        """
+        return self.messages.__str__()
+
+    def __len__(self): return len(self.messages)
+    def __iter__(self): return self.messages.__iter__()
+    def append(self, mapping): return self.messages.append(mapping)
+    def extend(self, mappings): return self.messages.extend(mappings)
 
 
 def _extract_operators(model, search_params):
@@ -182,7 +221,7 @@ def _extract_operators(model, search_params):
 
     # Where processed operations will be stored
     operations = []
-    exceptions = []
+    exception = AggregateException()
 
     # Evaluating and validating field contents
     for i in search_params.get('filters', ()):
@@ -222,8 +261,8 @@ def _extract_operators(model, search_params):
                     converted_value.append(field.to_python(subval))
             else:
                 converted_value = field.to_python(val)
-        except Invalid, exc:
-            exceptions.extend({fname: exc.msg})
+        except Invalid as exc:
+            exception.append({fname: exc.msg})
             continue
 
         # Collecting the query
@@ -231,9 +270,8 @@ def _extract_operators(model, search_params):
             model, fname, relation, i['op'], converted_value)
         operations.append(param)
 
-    if exceptions:
-        raise ExceptionFound(dict(status='error', message='Invalid data',
-                                  error_list=exceptions))
+    if len(exception) > 0:
+        raise exception
 
     return operations
 
@@ -241,10 +279,15 @@ def _extract_operators(model, search_params):
 def _build_query(model, search_params):
     """Builds an sqlalchemy.Query instance based on the params present
     in ``search_params``.
+
+    This function raises :exc:`AggregateException` if the operators specified
+    in ``search_params`` are invalid.
+
     """
     # Adding field filters
     query = model.query
-    for i in _extract_operators(model, search_params):
+    extracted_operators = _extract_operators(model, search_params)
+    for i in extracted_operators:
         query = query.filter(i)
 
     # Order the search
@@ -264,6 +307,9 @@ def _perform_search(model, search_params):
     """This function is the one that actually feeds the ``query`` object
     and performs the search.
 
+    If there is an error while building the query, this function will raise an
+    :exc:`AggregateException`.
+
     `model`
 
         The model which search will be made
@@ -275,10 +321,7 @@ def _perform_search(model, search_params):
         of this dict and evaluate a query built with these args.
     """
     # Building the query
-    try:
-        query = _build_query(model, search_params)
-    except ExceptionFound, exc:
-        return exc.msg
+    query = _build_query(model, search_params)
 
     # Aplying functions
     if search_params.get('functions'):
@@ -287,36 +330,37 @@ def _perform_search(model, search_params):
     relations = model.get_relations()
     deep = dict(zip(relations, [{}] * len(relations)))
     if search_params.get('type') == 'one':
-        try:
-            return query.one().to_dict(deep)
-        except NoResultFound:
-            return {'status': 'error', 'message': 'No result found'}
-        except MultipleResultsFound:
-            return {'status': 'error', 'message': 'Multiple results found'}
+        # may raise NoResultFound or MultipleResultsFound
+        return query.one().to_dict(deep)
     else:
         return [x.to_dict(deep) for x in query.all()]
 
 
 def _validate_field_list(model, data, field_list):
-    """Returns a list of fields validated by formencode
+    """Returns a list of fields validated by :mod:`formencode`.
 
-    This function may raise the ``formencode.Invalid`` exception.
+    If :mod:`formencode` discovers invalid form input, this function raises
+    :exc:`AggregateException`. The :attr:`AggregateException.messages`
+    dictionary on the raised exception maps field name to a list of validation
+    error messages for that field.
 
     `model`
         The name of the model
+
     """
     params = {}
-    exceptions = []
+    exception = AggregateException()
     for key in field_list:
         try:
             validator = getattr(CONFIG['validators'], model)().fields[key]
             params[key] = validator.to_python(data[key])
-        except Invalid, exc:
-            exceptions.append({key: exc.msg})
+        except Invalid as exc:
+            exception.append({key: exc.msg})
+        except KeyError:
+            exception.append({key: 'No such key exists'})
 
-    if exceptions:
-        return dumps({'status': 'error', 'message': 'Validation error',
-                      'error_list': exceptions})
+    if len(exception) > 0:
+        raise exception
     return params
 
 
@@ -379,6 +423,18 @@ def update_relations(model, query, params):
     return fields
 
 
+def jsonify_status_code(status_code, *args, **kw):
+    """Returns a jsonified response with the specified HTTP status code.
+
+    The positional and keyword arguments are passed directly to the
+    :func:`flask.jsonify` function which creates the response.
+
+    """
+    response = jsonify(*args, **kw)
+    response.status_code = status_code
+    return response
+
+
 class API(MethodView):
     """Provides method-based dispatching for :http:request:`get`,
     :http:request:`post`, :http:request:`put`, and :http:request:`delete`
@@ -387,10 +443,10 @@ class API(MethodView):
     """
 
     def post(self, modelname):
-        """Creates a new instance of a given model based on request data
+        """Creates a new instance of a given model based on request data.
 
-        This function parses the string contained in ``Flask.request.data``
-        as a JSON object and then validates it with a validator placed in
+        This function parses the string contained in ``Flask.request.data`` as
+        a JSON object and then validates it with a validator accessed from
         ``CONFIG['validators'].<modelname>``.
 
         After that, it separates all columns that defines relationships with
@@ -406,14 +462,13 @@ class API(MethodView):
         model = getattr(CONFIG['models'], modelname)
 
         try:
-            params = getattr(CONFIG['validators'],
-                             modelname)().to_python(loads(request.data))
+            validator = getattr(CONFIG['validators'], modelname)()
+            params = validator.to_python(loads(request.data))
         except (TypeError, ValueError, OverflowError):
-            return dumps({'status': 'error',
-                          'message': 'Unable to decode data'})
-        except Invalid, exc:
-            return dumps({'status': 'error', 'message': 'Validation error',
-                          'error_list': exc.unpack_errors()})
+            return jsonify_status_code(400, message='Unable to decode data')
+        except Invalid as exc:
+            return jsonify_status_code(400, message='Validation error',
+                                       error_list=exc.unpack_errors())
 
         # Getting the list of relations that will be added later
         cols = model.get_columns()
@@ -437,8 +492,7 @@ class API(MethodView):
         session.add(instance)
         session.commit()
 
-        # We return a ok message and the just created instance id
-        return jsonify(status='ok', message='You rock!', id=instance.id)
+        return jsonify_status_code(201, id=instance.id)
 
     def search(self, modelname):
         """Defines a generic search function
@@ -456,13 +510,21 @@ class API(MethodView):
             Name of the model that the search will be performed.
         """
         try:
-            data = loads(request.values.get('q', '{}'))
+            data = loads(request.args.get('q', '{}'))
         except (TypeError, ValueError, OverflowError):
-            return dumps({'status': 'error',
-                          'message': 'Unable to decode data'})
+            return jsonify_status_code(400, message='Unable to decode data')
 
         model = getattr(CONFIG['models'], modelname)
-        result = _perform_search(model, data)
+        try:
+            result = _perform_search(model, data)
+        except AggregateException as exception:
+            message = 'Validation of search query failed'
+            return jsonify_status_code(400, message=message,
+                                       error_list=exception.messages)
+        except NoResultFound:
+            return jsonify(message='No result found')
+        except MultipleResultsFound:
+            return jsonify(message='Multiple results found')
         # for security purposes, don't transmit list as top-level JSON
         if isinstance(result, list):
             return jsonify(objects=result)
@@ -486,30 +548,40 @@ class API(MethodView):
         try:
             data = loads(request.data)
         except (TypeError, ValueError, OverflowError):
-            return dumps({'status': 'error',
-                          'message': 'Unable to decode data'})
-        query = _build_query(model, data.get('query', {}))
+            return jsonify_status_code(400, message='Unable to decode data')
+        query = _build_query(model, request.args)
 
-        relations = set(update_relations(model, query, data['form']))
-        field_list = set(data['form'].keys()) ^ relations
-        params = _validate_field_list(modelname, data['form'], field_list)
+        if len(data) == 0:
+            return make_response(None, 204)
 
-        # We got an error :(
-        if isinstance(params, basestring):
-            return params
+        relations = set(update_relations(model, query, data))
+        field_list = set(data.keys()) ^ relations
+        try:
+            params = _validate_field_list(modelname, data, field_list)
+        except AggregateException as exception:
+            return jsonify_status_code(400, message='Validation error',
+                                       error_list=exception.messages)
 
         # Let's update all instances present in the query
+        num_modified = 0
         if params:
-            query.update(params, False)
+            num_modified = query.update(params, False)
 
         session.commit()
-        return jsonify(status='ok', message='You rock!')
+        return jsonify(num_modified=num_modified)
 
     def put(self, modelname, instid):
-        """Calls the update method in a single instance
+        """Updates the instance specified by ``instid`` of the named model, or
+        updates multiple instances if ``instid`` is ``None``.
 
-        The ``request.data`` var will be loaded as a JSON and all of the
-        fields are going to be passed to the .update() method.
+        The :attr:`flask.request.data` attribute will be parsed as a JSON
+        object containing the mapping from field name to value to which to
+        update the specified instance or instances.
+
+        If ``instid`` is ``None``, the query string will be used to search for
+        instances (using the :func:`search` function), and all matching
+        instances will be updated according to the content of the request data.
+
         """
         if instid is None:
             return self.put_many(modelname)
@@ -517,22 +589,28 @@ class API(MethodView):
         try:
             data = loads(request.data)
         except (TypeError, ValueError, OverflowError):
-            return jsonify(status='error', message='Unable to decode data')
+            return jsonify_status_code(400, message='Unable to decode data')
+
+        # If there is no data to update, just return HTTP 204 No Content.
+        if len(data) == 0:
+            return make_response(None, 204)
 
         inst = model.get_by(id=instid)
         relations = set(update_relations(model, [inst], data))
         field_list = set(data.keys()) ^ relations
-        params = _validate_field_list(modelname, data, field_list)
-
-        # We got an error :(
-        if isinstance(params, basestring):
-            return params
+        try:
+            params = _validate_field_list(modelname, data, field_list)
+        except AggregateException as exception:
+            return jsonify_status_code(400, message='Validation error',
+                                       error_list=exception.messages)
 
         # Let's update field by field
         for field in field_list:
             setattr(inst, field, params[field])
         session.commit()
-        return jsonify(status='ok', message='You rock!')
+
+        # return the updated object
+        return self.get(modelname, instid)
 
     def get(self, modelname, instid):
         """Returns a json representation of an instance of a model.
@@ -567,7 +645,7 @@ class API(MethodView):
         if inst is not None:
             inst.delete()
             session.commit()
-        return jsonify(status='ok')
+        return make_response(None, 204)
 
 
 api_view = API.as_view('api')
