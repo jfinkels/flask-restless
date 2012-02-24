@@ -471,9 +471,16 @@ class API(MethodView):
 
             q={"filters": [{"name": "name", "op": "like", "val": "%y%"}]}
 
-        The response would have :http:status:`200` and content::
+        If multiple objects meet the criteria of the search, the response has
+        :http:status:`200` and content of the form::
 
             {"objects": [{"name": "Mary"}, {"name": "Byron"}, ...]}
+
+        If the result of the search is a single instance of the model, the JSON
+        representation of that instance would be the top-level object in the
+        content of the response::
+
+            {"name": "Mary"}
 
         For more information SQLAlchemy functions and operators for use in
         filters, see the `SQLAlchemy SQL expression tutorial
