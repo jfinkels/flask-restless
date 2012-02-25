@@ -128,11 +128,13 @@ class RestfulTestCase(unittest.TestCase):
 
         app = flask.Flask(__name__)
         app.config['DEBUG'] = True
-        app.register_blueprint(api.blueprint, url_prefix="/api")
+        app.config['TESTING'] = True
         api.setup(models, validators)
+        # setup the URLs for the Person and Computer API
+        api.add_api('Person', methods=['GET', 'PATCH', 'POST', 'DELETE'])
+        api.add_api('Computer', methods=['GET', 'POST'])
+        app.register_blueprint(api.blueprint, url_prefix="/api")
         self.app = app.test_client()
-        # So that we get meaningful error messages instead of just 500 errors.
-        self.app.testing = True
         # To facilitate searching
         self.app.search = lambda url, query: \
             self.app.get(url + '?q={}'.format(query))
@@ -155,22 +157,22 @@ class RestfulTestCase(unittest.TestCase):
         """Tests the creation of new persons
         """
         # Invalid JSON in request data should respond with error.
-        response = self.app.post('/api/Person/', data='Invalid JSON string')
+        response = self.app.post('/api/Person', data='Invalid JSON string')
         assert response.status_code == 400
         assert loads(response.data)['message'] == 'Unable to decode data'
 
         # Now, let's test the validation stuff
-        response = self.app.post('/api/Person/', data=dumps({'name': u'Test',
+        response = self.app.post('/api/Person', data=dumps({'name': u'Test',
                                                              'age': 'oi'}))
         assert loads(response.data)['message'] == 'Validation error'
         assert loads(response.data)['error_list'].keys() == ['age']
 
-        response = self.app.post('/api/Person/',
+        response = self.app.post('/api/Person',
                                  data=dumps({'name': 'Lincoln', 'age': 23}))
         assert response.status_code == 201
         assert 'id' in loads(response.data)
 
-        response = self.app.get('/api/Person/1/')
+        response = self.app.get('/api/Person/1')
         assert response.status_code == 200
 
         deep = {'computers': []}
@@ -182,18 +184,18 @@ class RestfulTestCase(unittest.TestCase):
         """
         data = {'name': u'John', 'age': 2041,
                 'computers': [{'name': u'lixeiro', 'vendor': u'Lemote'}]}
-        response = self.app.post('/api/Person/', data=dumps(data))
+        response = self.app.post('/api/Person', data=dumps(data))
         assert response.status_code == 201
         assert 'id' in loads(response.data)
 
-        response = self.app.get('/api/Person/')
+        response = self.app.get('/api/Person')
         assert len(loads(response.data)) == 1
 
     def test_remove_person(self):
         """Adds a new person and tests its removal.
         """
         # Creating the person who's gonna be deleted
-        response = self.app.post('/api/Person/',
+        response = self.app.post('/api/Person',
                                  data=dumps({'name': 'Lincoln', 'age': 23}))
         assert response.status_code == 201
         assert 'id' in loads(response.data)
@@ -201,11 +203,11 @@ class RestfulTestCase(unittest.TestCase):
         # Making sure it has been created
         deep = {'computers': []}
         inst = models.Person.get_by(id=1).to_dict(deep)
-        response = self.app.get('/api/Person/1/')
+        response = self.app.get('/api/Person/1')
         assert loads(response.data) == inst
 
         # Deleting it
-        response = self.app.delete('/api/Person/1/')
+        response = self.app.delete('/api/Person/1')
         assert response.status_code == 204
 
         # Making sure it has been deleted
@@ -218,34 +220,34 @@ class RestfulTestCase(unittest.TestCase):
         since the :http:method:`delete` method is an idempotent method.
 
         """
-        response = self.app.delete('/api/Person/1/')
+        response = self.app.delete('/api/Person/1')
         assert response.status_code == 204
 
     def test_update(self):
-        """Tests the update (:http:method:`put`) operation on a collection.
+        """Tests the update (:http:method:`patch`) operation on a collection.
 
         """
         # Creating some people
-        self.app.post('/api/Person/',
+        self.app.post('/api/Person',
                       data=dumps({'name': 'Lincoln', 'age': 23}))
-        self.app.post('/api/Person/',
+        self.app.post('/api/Person',
                       data=dumps({'name': 'Lucy', 'age': 23}))
-        self.app.post('/api/Person/',
+        self.app.post('/api/Person',
                       data=dumps({'name': 'Mary', 'age': 25}))
 
         # Trying to pass invalid data to the update method
-        resp = self.app.put('/api/Person/', data='Hello there')
+        resp = self.app.patch('/api/Person', data='Hello there')
         assert loads(resp.data)['message'] == 'Unable to decode data'
 
         # Trying to pass valid JSON with invalid object to the API
-        resp = self.app.put('/api/Person/', data=dumps({'age': 'Hello there'}))
+        resp = self.app.patch('/api/Person', data=dumps({'age': 'Hello'}))
         assert resp.status_code == 400
         loaded = loads(resp.data)
         assert loaded['message'] == 'Validation error'
         assert loaded['error_list'] == [{'age': 'Please enter a number'}]
 
         # Passing invalid search fields to test the exceptions
-        resp = self.app.put('/api/Person/', data=dumps({'age': 'Hello there'}),
+        resp = self.app.patch('/api/Person', data=dumps({'age': 'Hello'}),
                             query_string=dict(name='age', op='gt', val='test'))
         loaded = loads(resp.data)
         assert loaded['message'] == 'Validation error'
@@ -255,60 +257,60 @@ class RestfulTestCase(unittest.TestCase):
         day, month, year = 15, 9, 1986
         birth_date = date(year, month, day).strftime('%d/%m/%Y')  # iso8601
         form = {'birth_date': birth_date}
-        self.app.put('/api/Person/', data=dumps(form))
+        self.app.patch('/api/Person', data=dumps(form))
 
         # Finally, testing if the change was made
-        response = self.app.get('/api/Person/')
+        response = self.app.get('/api/Person')
         loaded = loads(response.data)['objects']
         for i in loaded:
             assert i['birth_date'] == ('%s-%s-%s' % (
                     year, str(month).zfill(2), str(day).zfill(2)))
 
     def test_single_update(self):
-        """Tests the update (:http:method:`put`) operation on a single
+        """Tests the update (:http:method:`patch`) operation on a single
         instance.
 
         """
-        resp = self.app.post('/api/Person/', data=dumps({'name': 'Lincoln',
+        resp = self.app.post('/api/Person', data=dumps({'name': 'Lincoln',
                                                          'age': 10}))
         assert resp.status_code == 201
         assert 'id' in loads(resp.data)
 
         # Trying to pass invalid data to the update method
-        resp = self.app.put('/api/Person/1/', data='Invalid JSON string')
+        resp = self.app.patch('/api/Person/1', data='Invalid JSON string')
         assert resp.status_code == 400
         assert loads(resp.data)['message'] == 'Unable to decode data'
 
         # Trying to pass valid JSON but an invalid value to the API
-        resp = self.app.put('/api/Person/1/',
+        resp = self.app.patch('/api/Person/1',
                             data=dumps({'age': 'Hello there'}))
         assert resp.status_code == 400
         loaded = loads(resp.data)
         assert loaded['message'] == 'Validation error'
         assert loaded['error_list'] == [{'age': 'Please enter a number'}]
 
-        resp = self.app.put('/api/Person/1/', data=dumps({'age': 24}))
+        resp = self.app.patch('/api/Person/1', data=dumps({'age': 24}))
         assert resp.status_code == 200
 
-        resp = self.app.get('/api/Person/1/')
+        resp = self.app.get('/api/Person/1')
         assert resp.status_code == 200
         assert loads(resp.data)['age'] == 24
 
     def test_update_submodels(self):
         """Tests the update (:http:method:`put`) operation with submodels."""
         # Let's create a row as usual
-        response = self.app.post('/api/Person/',
+        response = self.app.post('/api/Person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
         assert response.status_code == 201
 
         data = {'computers':
                     {'add': [{'name': u'lixeiro', 'vendor': u'Lemote'}]}
                 }
-        response = self.app.put('/api/Person/1/', data=dumps(data))
+        response = self.app.patch('/api/Person/1', data=dumps(data))
         assert response.status_code == 200
 
         # Let's check it out
-        response = self.app.get('/api/Person/1/')
+        response = self.app.get('/api/Person/1')
         loaded = loads(response.data)
 
         assert len(loaded['computers']) == 1
@@ -327,7 +329,7 @@ class RestfulTestCase(unittest.TestCase):
                 {'name': u'pidinti', 'vendor': u'HP'},
             ],
         }
-        self.app.post('/api/Person/', data=dumps(data))
+        self.app.post('/api/Person', data=dumps(data))
 
         # Data for the update
         update_data = {
@@ -335,12 +337,12 @@ class RestfulTestCase(unittest.TestCase):
                 'remove': [{'name': u'pidinti'}],  # It was stolen :(
             }
         }
-        resp = self.app.put('/api/Person/1/', data=dumps(update_data))
+        resp = self.app.patch('/api/Person/1', data=dumps(update_data))
         assert resp.status_code == 200
         assert loads(resp.data)['id'] == 1
 
         # Let's check it out
-        response = self.app.get('/api/Person/1/')
+        response = self.app.get('/api/Person/1')
         loaded = loads(response.data)
         assert len(loaded['computers']) == 1
 
@@ -353,18 +355,18 @@ class RestfulTestCase(unittest.TestCase):
         """
         # Creating all rows needed in our test
         person_data = {'name': u'Lincoln', 'age': 23}
-        resp = self.app.post('/api/Person/', data=dumps(person_data))
+        resp = self.app.post('/api/Person', data=dumps(person_data))
         assert resp.status_code == 201
         comp_data = {'name': u'lixeiro', 'vendor': u'Lemote'}
-        resp = self.app.post('/api/Computer/', data=dumps(comp_data))
+        resp = self.app.post('/api/Computer', data=dumps(comp_data))
         assert resp.status_code == 201
 
         # updating person to add the computer
         update_data = {'computers': {'add': [{'id': 1}]}}
-        self.app.put('/api/Person/1/', data=dumps(update_data))
+        self.app.patch('/api/Person/1', data=dumps(update_data))
 
         # Making sure that everything worked properly
-        resp = self.app.get('/api/Person/1/')
+        resp = self.app.get('/api/Person/1')
         assert resp.status_code == 200
         loaded = loads(resp.data)
         assert len(loaded['computers']) == 1
@@ -378,17 +380,17 @@ class RestfulTestCase(unittest.TestCase):
                 ],
             },
         }
-        resp = self.app.put('/api/Person/1/', data=dumps(update2_data))
+        resp = self.app.patch('/api/Person/1', data=dumps(update2_data))
         assert resp.status_code == 200
 
         # Testing to make sure it was removed from the related field
-        resp = self.app.get('/api/Person/1/')
+        resp = self.app.get('/api/Person/1')
         assert resp.status_code == 200
         loaded = loads(resp.data)
         assert len(loaded['computers']) == 0
 
         # Making sure it was removed from the database
-        resp = self.app.get('/api/Computer/1/')
+        resp = self.app.get('/api/Computer/1')
         assert resp.status_code == 404
 
     def test_search(self):
@@ -396,11 +398,11 @@ class RestfulTestCase(unittest.TestCase):
         # Trying to pass invalid params to the search method
         # TODO this is no longer a valid test, since the query is no longer
         # passed as JSON in body of the request
-        #resp = self.app.get('/api/Person/', query_string='Test')
+        #resp = self.app.get('/api/Person', query_string='Test')
         #assert resp.status_code == 400
         #assert loads(resp.data)['message'] == 'Unable to decode data'
 
-        create = lambda x: self.app.post('/api/Person/', data=dumps(x))
+        create = lambda x: self.app.post('/api/Person', data=dumps(x))
         create({'name': u'Lincoln', 'age': 23, 'other': 22})
         create({'name': u'Mary', 'age': 19, 'other': 19})
         create({'name': u'Lucy', 'age': 25, 'other': 20})
@@ -414,7 +416,7 @@ class RestfulTestCase(unittest.TestCase):
         }
 
         # Let's search for users with that above filter
-        resp = self.app.search('/api/Person/', dumps(search))
+        resp = self.app.search('/api/Person', dumps(search))
         assert resp.status_code == 200
         loaded = loads(resp.data)
         assert len(loaded['objects']) == 3  # Mary, Lucy and Katy
@@ -425,7 +427,7 @@ class RestfulTestCase(unittest.TestCase):
             'functions': [{'name': 'sum', 'field': 'age'}]
         }
 
-        resp = self.app.search('/api/Person/', dumps(search))
+        resp = self.app.search('/api/Person', dumps(search))
         assert resp.status_code == 200
         data = loads(resp.data)
         assert 'sum__age' in data
@@ -438,13 +440,13 @@ class RestfulTestCase(unittest.TestCase):
                 {'name': 'name', 'val': u'Lincoln', 'op': 'equals'}
             ],
         }
-        resp = self.app.search('/api/Person/', dumps(search))
+        resp = self.app.search('/api/Person', dumps(search))
         assert resp.status_code == 200
         assert loads(resp.data)['name'] == u'Lincoln'
 
         # Looking for something that does not exist on the database
         search['filters'][0]['val'] = 'Sammy'
-        resp = self.app.search('/api/Person/', dumps(search))
+        resp = self.app.search('/api/Person', dumps(search))
         assert resp.status_code == 200
         assert loads(resp.data)['message'] == 'No result found'
 
@@ -455,14 +457,14 @@ class RestfulTestCase(unittest.TestCase):
                 {'name': 'age', 'val': 'It should not be a string', 'op': 'gt'}
             ]
         }
-        resp = self.app.search('/api/Person/', dumps(search))
+        resp = self.app.search('/api/Person', dumps(search))
         assert resp.status_code == 400
         assert loads(resp.data)['error_list'][0] == \
             {'age': 'Please enter a number'}
 
         # Testing the order_by stuff
         search = {'order_by': [{'field': 'age', 'direction': 'asc'}]}
-        resp = self.app.search('/api/Person/', dumps(search))
+        resp = self.app.search('/api/Person', dumps(search))
         assert resp.status_code == 200
         loaded = loads(resp.data)['objects']
         assert loaded[0][u'age'] == 7
@@ -477,7 +479,7 @@ class RestfulTestCase(unittest.TestCase):
                 {'name': 'age', 'val': [7, 28], 'op': 'in'}
             ]
         }
-        resp = self.app.search('/api/Person/', dumps(search))
+        resp = self.app.search('/api/Person', dumps(search))
         assert resp.status_code == 200
         loaded = loads(resp.data)['objects']
         assert loaded[0][u'age'] == 7
@@ -489,7 +491,7 @@ class RestfulTestCase(unittest.TestCase):
                 'add': [{'name': u'lixeiro', 'vendor': u'Lenovo'}]
             }
         }
-        resp = self.app.put('/api/Person/1/', data=dumps(update))
+        resp = self.app.patch('/api/Person/1', data=dumps(update))
         assert resp.status_code == 200
 
         search = {
@@ -500,7 +502,7 @@ class RestfulTestCase(unittest.TestCase):
                  'op': 'any'}
             ]
         }
-        resp = self.app.search('/api/Person/', dumps(search))
+        resp = self.app.search('/api/Person', dumps(search))
         assert resp.status_code == 200
         assert loads(resp.data)['computers'][0]['name'] == 'lixeiro'
 
@@ -516,7 +518,7 @@ class RestfulTestCase(unittest.TestCase):
                 {'field': 'other'}
             ]
         }
-        resp = self.app.search('/api/Person/', dumps(search))
+        resp = self.app.search('/api/Person', dumps(search))
         assert resp.status_code == 200
         loaded = loads(resp.data)['objects']
         assert len(loaded) == 2
@@ -526,7 +528,7 @@ class RestfulTestCase(unittest.TestCase):
     def test_search2(self):
         """Testing more search things.
         """
-        create = lambda x: self.app.post('/api/Person/', data=dumps(x))
+        create = lambda x: self.app.post('/api/Person', data=dumps(x))
         create({'name': u'Fuxu', 'age': 32})
         create({'name': u'Everton', 'age': 33})
         create({'name': u'Lincoln', 'age': 24})
@@ -536,18 +538,18 @@ class RestfulTestCase(unittest.TestCase):
             'type': 'one',
             'filters': [{'name': 'id', 'op': 'equal_to', 'val': 1}]
         }
-        resp = self.app.search('/api/Person/', dumps(search))
+        resp = self.app.search('/api/Person', dumps(search))
         assert resp.status_code == 200
         assert loads(resp.data)['name'] == u'Fuxu'
 
         # Testing limit and offset
         search = {'limit': 1, 'offset': 1}
-        resp = self.app.search('/api/Person/', dumps(search))
+        resp = self.app.search('/api/Person', dumps(search))
         assert resp.status_code == 200
         assert loads(resp.data)['objects'][0]['name'] == u'Everton'
 
         # Testing multiple results when calling .one()
-        resp = self.app.search('/api/Person/', dumps({'type': 'one'}))
+        resp = self.app.search('/api/Person', dumps({'type': 'one'}))
         assert resp.status_code == 200
         assert loads(resp.data)['message'] == 'Multiple results found'
 

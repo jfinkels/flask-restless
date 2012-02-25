@@ -460,14 +460,24 @@ def jsonify_status_code(status_code, *args, **kw):
 
 class API(MethodView):
     """Provides method-based dispatching for :http:request:`get`,
-    :http:request:`post`, :http:request:`put`, and :http:request:`delete`
+    :http:request:`post`, :http:request:`patch`, and :http:request:`delete`
     requests, for both collections of models and individual models.
 
     """
 
-    def _search(self, modelname):
-        """Defines a generic search function for the database model whose name
-        is ``modelname``.
+    def __init__(self, modelname, *args, **kw):
+        """Calls the constructor of the superclass and specifies the model for
+        which this class provides a ReSTful API.
+
+        ``modelname`` is the name of the database model for which this instance
+        of the class is an API.
+
+        """
+        super(API, self).__init__(*args, **kw)
+        self.modelname = modelname
+
+    def _search(self):
+        """Defines a generic search function for the database model.
 
         Like the other methods in this class, this function should work for all
         entities declared in the ``CONFIG['models']`` module. It provides a way
@@ -533,7 +543,7 @@ class API(MethodView):
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
-        model = getattr(CONFIG['models'], modelname)
+        model = getattr(CONFIG['models'], self.modelname)
         try:
             result = _perform_search(model, data)
         except AggregateException as exception:
@@ -550,7 +560,8 @@ class API(MethodView):
         else:
             return jsonify(result)
 
-    def _put_many(self, modelname):
+    # TODO should this exist?
+    def _patch_many(self):
         """Calls the .update() method in a set of results.
 
         The ``request.data`` field should be filled with a JSON string that
@@ -560,7 +571,7 @@ class API(MethodView):
         with all fields that will be passed to the ``update()`` method.
 
         """
-        model = getattr(CONFIG['models'], modelname)
+        model = getattr(CONFIG['models'], self.modelname)
         try:
             data = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
@@ -573,7 +584,7 @@ class API(MethodView):
         relations = set(update_relations(model, query, data))
         field_list = set(data.keys()) ^ relations
         try:
-            params = _validate_field_list(modelname, data, field_list)
+            params = _validate_field_list(self.modelname, data, field_list)
         except AggregateException as exception:
             return jsonify_status_code(400, message='Validation error',
                                        error_list=exception.messages)
@@ -586,7 +597,7 @@ class API(MethodView):
         session.commit()
         return jsonify(num_modified=num_modified)
 
-    def get(self, modelname, instid):
+    def get(self, instid):
         """Returns a JSON representation of an instance of model with the
         specified name.
 
@@ -603,8 +614,8 @@ class API(MethodView):
 
         """
         if instid is None:
-            return self._search(modelname)
-        model = getattr(CONFIG['models'], modelname)
+            return self._search()
+        model = getattr(CONFIG['models'], self.modelname)
         inst = model.get_by(id=instid)
         if inst is None:
             abort(404)
@@ -613,7 +624,7 @@ class API(MethodView):
         deep = dict(zip(relations, [{}] * len(relations)))
         return jsonify(inst.to_dict(deep))
 
-    def delete(self, modelname, instid):
+    def delete(self, instid):
         """Removes the specified instance of the model with the specified name
         from the database.
 
@@ -622,14 +633,14 @@ class API(MethodView):
         whether an object was deleted.
 
         """
-        model = getattr(CONFIG['models'], modelname)
+        model = getattr(CONFIG['models'], self.modelname)
         inst = model.get_by(id=instid)
         if inst is not None:
             inst.delete()
             session.commit()
         return make_response(None, 204)
 
-    def post(self, modelname):
+    def post(self):
         """Creates a new instance of a given model based on request data.
 
         This function parses the string contained in
@@ -646,10 +657,10 @@ class API(MethodView):
         related fields. This happens only at the first level of nesting.
 
         """
-        model = getattr(CONFIG['models'], modelname)
+        model = getattr(CONFIG['models'], self.modelname)
 
         try:
-            validator = getattr(CONFIG['validators'], modelname)()
+            validator = getattr(CONFIG['validators'], self.modelname)()
             params = validator.to_python(json.loads(request.data))
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
@@ -681,7 +692,7 @@ class API(MethodView):
 
         return jsonify_status_code(201, id=instance.id)
 
-    def put(self, modelname, instid):
+    def patch(self, instid):
         """Updates the instance specified by ``instid`` of the named model, or
         updates multiple instances if ``instid`` is ``None``.
 
@@ -698,8 +709,8 @@ class API(MethodView):
 
         """
         if instid is None:
-            return self._put_many(modelname)
-        model = getattr(CONFIG['models'], modelname)
+            return self._patch_many()
+        model = getattr(CONFIG['models'], self.modelname)
         try:
             data = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
@@ -713,7 +724,7 @@ class API(MethodView):
         relations = set(update_relations(model, [inst], data))
         field_list = set(data.keys()) ^ relations
         try:
-            params = _validate_field_list(modelname, data, field_list)
+            params = _validate_field_list(self.modelname, data, field_list)
         except AggregateException as exception:
             return jsonify_status_code(400, message='Validation error',
                                        error_list=exception.messages)
@@ -724,12 +735,53 @@ class API(MethodView):
         session.commit()
 
         # return the updated object
-        return self.get(modelname, instid)
+        return self.get(instid)
 
 
-api_view = API.as_view('api')
-blueprint.add_url_rule('/<modelname>/', view_func=api_view, methods=['POST', ])
-blueprint.add_url_rule('/<modelname>/', defaults={'instid': None},
-                       view_func=api_view, methods=['GET', 'PUT'])
-blueprint.add_url_rule('/<modelname>/<int:instid>/', view_func=api_view,
-                       methods=['GET', 'PUT', 'DELETE'])
+# alternately: def add_api(modelname, readonly=True):
+def add_api(modelname, methods=['GET']):
+    """TODO fill me in.
+
+    This function must be called **before** calling the
+    :func:`flask.Flask.register_blueprint` function on your Flask application.
+
+    ``modelname`` is the name of the entity in the database for which an
+    ReSTful interface will be created.
+
+    ``methods`` specify the HTTP methods which will be made available on the
+    ReSTful API for the specified model, subject to the following caveats:
+    * If :http:method:`get` is in this list, the API will allow getting a
+      single instance of the model, getting all instances of the model, and
+      searching the model using search parameters.
+    * If :http:method:`patch` is in this list, the API will allow updating a
+      single instance of the model, updating all instances of the model, and
+      updating a subset of all instances of the model specified using search
+      parameters.
+    * If :http:method:`delete` is in this list, the API will allow deletion of
+      a single instance of the model per request.
+    * If :http:method:`post` is in this list, the API will allow posting a new
+      instance of the model per request.
+    The default list of methods provides a read-only interface (that is, only
+    :http:method:`get` requests are allowed).
+
+    """
+    methods = frozenset(methods)
+    # sets of methods used for different endpoints
+    no_instance_methods = methods & {'POST'}
+    possibly_empty_instance_methods = methods & {'GET', 'PATCH'}
+    instance_methods = methods & {'GET', 'PATCH', 'DELETE'}
+    # the base URL of the endpoints on which requests will be made
+    collection_endpoint = '/{}'.format(modelname)
+    instance_endpoint = collection_endpoint + '/<int:instid>'
+    # the view function for the API for this model
+    api_view = API.as_view('{}_api'.format(modelname), modelname)
+    # add the URL rules to the blueprint: the first is for methods on the
+    # collection only, the second is for methods which may or may not specify
+    # an instance, the third is for methods which must specify an instance
+    blueprint.add_url_rule(collection_endpoint, methods=no_instance_methods,
+                           view_func=api_view)
+    blueprint.add_url_rule(collection_endpoint, defaults={'instid': None},
+                           methods=possibly_empty_instance_methods,
+                           view_func=api_view)
+    blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
+                           view_func=api_view)
