@@ -359,23 +359,23 @@ def _perform_search(model, search_params):
         return [x.to_dict(deep) for x in query.all()]
 
 
-def _validate_field_list(model, data, field_list):
+def _validate_field_list(modelname, data, field_list):
     """Returns a list of fields validated by :mod:`formencode`.
 
     If :mod:`formencode` discovers invalid form input, this function raises
-    :exc:`AggregateException`. The :attr:`AggregateException.messages`
-    dictionary on the raised exception maps field name to a list of validation
-    error messages for that field.
+    :exc:`AggregateException`. The :attr:`AggregateException.messages` list on
+    the raised exception is a list of singleton dictionaries mapping field name
+    to a validation error message for that field.
 
-    `model`
-        The name of the model
+    ``modelname`` is the name of the model whose validator will be accessed
+    from the ``CONFIG['validators']`` dictionary.
 
     """
     params = {}
     exception = AggregateException()
     for key in field_list:
         try:
-            validator = getattr(CONFIG['validators'], model)().fields[key]
+            validator = getattr(CONFIG['validators'], modelname)().fields[key]
             params[key] = validator.to_python(data[key])
         except Invalid as exc:
             exception.append({key: exc.msg})
