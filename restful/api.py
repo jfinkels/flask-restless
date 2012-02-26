@@ -36,28 +36,25 @@
     :license: AGPLv3, see COPYTING for more details
 """
 
+from collections import namedtuple
 import json
 
-from flask import Blueprint, request, abort
+from flask import abort
+from flask import Blueprint
 from flask import jsonify
 from flask import make_response
+from flask import request
 from flask.views import MethodView
 from formencode import Invalid, validators as fvalidators
 from elixir import session
-from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from sqlalchemy.orm.exc import MultipleResultsFound
+from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import func
 
 from model import get_or_create
 
 
-__all__ = 'blueprint',
-
-blueprint = Blueprint('api', __name__)
-
-CONFIG = {
-    'models': None,
-    'validators': None,
-}
+__all__ = 'APIManager',
 
 OPERATORS = {
     '==': lambda f, a, fn: f == a,
@@ -101,95 +98,30 @@ described by the strings ``'=='``, ``'eq'``, ``'equals'``, etc.
 
 """
 
-
-def setup(models, validators):
-    """Sets up models and validators to be exposed by the REST API
-
-    This function should be called only once after executing your web
-    app. It's intended to setup the global configuration dictionary of
-    this module that holds references to the models and validators
-    modules of the user app.
-    """
-    CONFIG['models'] = models
-    CONFIG['validators'] = validators
-
-
-def _build_search_param(model, fieldname, operator, argument, relation=None):
-    """Translates an operation described as a string to a valid SQLAlchemy
-    query parameter using a field or relation of the specified model.
-
-    More specifically, this translates the string representation of an
-    operation, for example ``'gt'``, to an expression corresponding to a
-    SQLAlchemy expression, ``field > argument``. The recognized operators are
-    given by the keys of :data:`OPERATORS`.
-
-    If ``relation`` is not ``None``, the returned search parameter will
-    correspond to a search on the field named ``fieldname`` on the entity
-    related to ``model`` whose name, as a string, is ``relation``.
-
-    ``model`` is an instance of a :class:`elixir.entity.Entity` being searched.
-
-    ``fieldname`` is the name of the field of ``model`` to which the operation
-    will be applied as part of the search. If ``relation`` is specified, the
-    operation will be applied to the field with name ``fieldname`` on the
-    entity related to ``model`` whose name, as a string, is ``relation``.
-
-    ``operation`` is a string representating the operation which will be
-     executed between the field and the argument received. For example,
-     ``'gt'``, ``'lt'``, ``'like'``, ``'in'`` etc.
-
-    ``argument`` is the argument to which to apply the ``operator``.
-
-    ``relation`` is the name of the relationship attribute of ``model`` to
-    which the operation will be applied as part of the search, or ``None`` if
-    this function should not use a related entity in the search.
+class Function(object):
+    """A representation of a SQLAlchemy function to be applied to a field in
+    the model.
 
     """
-    field = getattr(model, relation or fieldname)
-    return OPERATORS.get(operator)(field, argument, fieldname)
 
+    def __init__(self, functionname, fieldname):
+        """Stores the specified function name and fieldname.
 
-def _evaluate_functions(model, functions):
-    """Evaluates a query that executes functions
+        ``functionname`` is the name of the SQLAlchemy function to be applied
+        to the field of a model specified by ``fieldname``.
 
-    If you pass a model and a list of functions to this func, it will
-    execute them in the database and return a JSON string containing an
-    object with all results evaluated.
+        """
+        self.functionname = functionname
+        self.fieldname = fieldname
 
-    `model`
+    def __str__(self):
+        """Returns the string ``'<funcname>__<fieldname>'``."""
+        return '{}__{}'.format(self.functionname, self.fieldname)
 
-        An elixir model that functions are going to be executed agains.
-
-    `functions`
-
-        A list of functions in the following syntas: ``func:field``. For
-        example, if you want the sum and the average of a field, you can
-        pass something like this: ['sum:amount', 'avg:amount'].
-    """
-    processed = []
-    funcnames = []
-    for val in functions:
-        funcname = val['name']
-        fname = val['field']
-
-        # So, now is the time to use a bit of dynamic blackmagic of
-        # python. with the function name, we retrieve its object from
-        # the sqlalchemy ``func`` func module. And with the field name,
-        # we retrieve ti from the model class.
-        funcobj = getattr(func, funcname)
-        field = getattr(model, fname)
-
-        # Time to store things to be executed. The processed list stores
-        # functions that will be executed in the database and funcnames
-        # contains names of the entries that will be returned to the
-        # caller.
-        processed.append(funcobj(field))
-        funcnames.append('%s__%s' % (funcname, fname))
-
-    # Ok, now is the time to execute it, pack in a JSON string and
-    # return to the user.
-    evaluated = session.query(*processed).one()
-    return dict(zip(funcnames, evaluated))
+    @staticmethod
+    def make(dictionary):
+        """TODO fill me in."""
+        return Function(dictionary['name'], dictionary['field'])
 
 
 class AggregateException(Exception):
@@ -237,215 +169,6 @@ class AggregateException(Exception):
     def extend(self, mappings): return self.messages.extend(mappings)
 
 
-def _extract_operators(model, search_params):
-    """Extracts operators from the search_params."""
-    validator = getattr(CONFIG['validators'], model.__name__)
-
-    # Where processed operations will be stored
-    operations = []
-    exception = AggregateException()
-
-    # Evaluating and validating field contents
-    for i in search_params.get('filters', ()):
-        fname = i['name']
-        val = i.get('val')
-
-        relation = None
-        if '__' in fname:
-            relation, fname = fname.split('__')
-            cls = model.get_columns()[relation].property.mapper.class_
-            field = getattr(CONFIG['validators'], cls.__name__).fields[fname]
-        else:
-            # Here we handle fields that does not defines relations with
-            # other entities and the ID field is a special case, since
-            # it's not defined in the validator but must be searchable
-            # as well as the other fields.
-            if fname == 'id':
-                field = fvalidators.Int()
-            else:
-                field = validator.fields[fname]
-
-        # We are going to compare a field with another one, so there's
-        # no reason to parse
-        if 'field' in i:
-            argument = getattr(model, i['field'])
-            param = _build_search_param(model, fname, i['op'], argument,
-                                        relation)
-            operations.append(param)
-            continue
-
-        # Here is another special case. There are some operations, like
-        # IN that can receive a list. This way, we need to be prepared
-        # to pass it to the next level, validated of course.
-        try:
-            if isinstance(val, list):
-                converted_value = []
-                for subval in val:
-                    converted_value.append(field.to_python(subval))
-            else:
-                converted_value = field.to_python(val)
-        except Invalid as exc:
-            exception.append({fname: exc.msg})
-            continue
-
-        # Collecting the query
-        param = _build_search_param(model, fname, i['op'], converted_value,
-                                    relation)
-        operations.append(param)
-
-    if len(exception) > 0:
-        raise exception
-
-    return operations
-
-
-def _build_query(model, search_params):
-    """Builds an sqlalchemy.Query instance based on the params present
-    in ``search_params``.
-
-    This function raises :exc:`AggregateException` if the operators specified
-    in ``search_params`` are invalid.
-
-    """
-    # Adding field filters
-    query = model.query
-    extracted_operators = _extract_operators(model, search_params)
-    for i in extracted_operators:
-        query = query.filter(i)
-
-    # Order the search
-    for val in search_params.get('order_by', ()):
-        field = getattr(model, val['field'])
-        query = query.order_by(getattr(field, val.get('direction', 'asc'))())
-
-    # Limit it
-    if search_params.get('limit'):
-        query = query.limit(search_params.get('limit'))
-    if search_params.get('offset'):
-        query = query.offset(search_params.get('offset'))
-    return query
-
-
-def _perform_search(model, search_params):
-    """This function is the one that actually feeds the ``query`` object
-    and performs the search.
-
-    If there is an error while building the query, this function will raise an
-    :exc:`AggregateException`.
-
-    `model`
-
-        The model which search will be made
-
-    `search_params`
-
-        A dictionary containing all available search parameters. The
-        real job of this function is to look for all search parameters
-        of this dict and evaluate a query built with these args.
-    """
-    # Building the query
-    query = _build_query(model, search_params)
-
-    # Aplying functions
-    if search_params.get('functions'):
-        return _evaluate_functions(model, search_params.get('functions'))
-
-    relations = model.get_relations()
-    deep = dict(zip(relations, [{}] * len(relations)))
-    if search_params.get('type') == 'one':
-        # may raise NoResultFound or MultipleResultsFound
-        return query.one().to_dict(deep)
-    else:
-        return [x.to_dict(deep) for x in query.all()]
-
-
-def _validate_field_list(modelname, data, field_list):
-    """Returns a list of fields validated by :mod:`formencode`.
-
-    If :mod:`formencode` discovers invalid form input, this function raises
-    :exc:`AggregateException`. The :attr:`AggregateException.messages` list on
-    the raised exception is a list of singleton dictionaries mapping field name
-    to a validation error message for that field.
-
-    ``modelname`` is the name of the model whose validator will be accessed
-    from the ``CONFIG['validators']`` dictionary.
-
-    """
-    params = {}
-    exception = AggregateException()
-    for key in field_list:
-        try:
-            validator = getattr(CONFIG['validators'], modelname)().fields[key]
-            params[key] = validator.to_python(data[key])
-        except Invalid as exc:
-            exception.append({key: exc.msg})
-        except KeyError:
-            exception.append({key: 'No such key exists'})
-
-    if len(exception) > 0:
-        raise exception
-    return params
-
-
-def update_relations(model, query, params):
-    """Updates related fields of a model that are present in ``params``.
-
-    `model`
-
-        An elixir model instance that will have its relations updated.
-
-    `query`
-
-        An sqlalchemy Query instance that evaluates to all instances that
-        should be updated.
-
-    `params`
-
-        A dictionary with two keys ``add`` and ``remove``. Both of them
-        contains a list of items that should be added or removed from
-        such a relation.
-    """
-    fields = []
-    cols = model.get_columns()
-    relations = model.get_relations()
-    for col in set(relations).intersection(params.keys()):
-        submodel = cols[col].property.mapper.class_
-        from_request = params[col]
-
-        # Let's add new columns to the relation being managed.
-        for subparams in from_request.get('add', ()):
-            if 'id' in subparams:
-                subinst = submodel.get_by(id=subparams.pop('id'))
-            else:
-                vssubparams = _validate_field_list(
-                    submodel.__name__, subparams, subparams.keys())
-                subinst = get_or_create(submodel, **vssubparams)[0]
-            for instance in query:
-                getattr(instance, col).append(subinst)
-
-        # Now is the time to handle relations being removed from a field
-        # of the instance. We'll do nothing here if there's no id param
-        for subparams in from_request.get('remove', ()):
-            try:
-                remove = subparams.pop('__delete__')
-            except KeyError:
-                remove = False
-            if 'id' in subparams:
-                subinst = submodel.get_by(id=subparams['id'])
-            else:
-                vssubparams = _validate_field_list(
-                    submodel.__name__, subparams, subparams.keys())
-                subinst = submodel.get_by(**vssubparams)
-            for instance in query:
-                field = getattr(instance, col)
-                field.remove(subinst)
-            if remove:
-                subinst.delete()
-
-        fields.append(col)
-    return fields
-
-
 def jsonify_status_code(status_code, *args, **kw):
     """Returns a jsonified response with the specified HTTP status code.
 
@@ -458,6 +181,250 @@ def jsonify_status_code(status_code, *args, **kw):
     return response
 
 
+# TODO remove validation, it belongs in the backend, decoupled?
+def _validate_field_list(model, validator, data, field_list):
+    """Returns a list of fields validated by :mod:`formencode`.
+
+    If :mod:`formencode` discovers invalid form input, this function raises
+    :exc:`AggregateException`. The :attr:`AggregateException.messages` list
+    on the raised exception is a list of singleton dictionaries mapping
+    field name to a validation error message for that field.
+
+    """
+    params = {}
+    exception = AggregateException()
+    for key in field_list:
+        try:
+            fieldvalidator = validator.fields[key]
+            params[key] = fieldvalidator.to_python(data[key])
+        except Invalid as exc:
+            exception.append({key: exc.msg})
+        except KeyError:
+            exception.append({key: 'No such key exists'})
+
+    if len(exception) > 0:
+        raise exception
+    return params
+
+
+class SearchManager(object):
+    """TODO fill me in."""
+
+    def __init__(self, model, validator, *args, **kw):
+        """TODO fill me in.
+
+        ``validator`` is the validator for ``model``.
+
+        """
+        super(SearchManager, self).__init__(*args, **kw)
+        self.model = model
+        self.validator = validator
+
+    def _build_search_param(self, fieldname, operator, argument,
+                            relation=None):
+        """Translates an operation described as a string to a valid SQLAlchemy
+        query parameter using a field or relation of the specified model.
+
+        More specifically, this translates the string representation of an
+        operation, for example ``'gt'``, to an expression corresponding to a
+        SQLAlchemy expression, ``field > argument``. The recognized operators
+        are given by the keys of :data:`OPERATORS`.
+
+        If ``relation`` is not ``None``, the returned search parameter will
+        correspond to a search on the field named ``fieldname`` on the entity
+        related to ``model`` whose name, as a string, is ``relation``.
+
+        ``model`` is an instance of a :class:`elixir.entity.Entity` being
+        searched.
+
+        ``fieldname`` is the name of the field of ``model`` to which the
+        operation will be applied as part of the search. If ``relation`` is
+        specified, the operation will be applied to the field with name
+        ``fieldname`` on the entity related to ``model`` whose name, as a
+        string, is ``relation``.
+
+        ``operation`` is a string representating the operation which will be
+         executed between the field and the argument received. For example,
+         ``'gt'``, ``'lt'``, ``'like'``, ``'in'`` etc.
+
+        ``argument`` is the argument to which to apply the ``operator``.
+
+        ``relation`` is the name of the relationship attribute of ``model`` to
+        which the operation will be applied as part of the search, or ``None``
+        if this function should not use a related entity in the search.
+
+        """
+        field = getattr(self.model, relation or fieldname)
+        return OPERATORS.get(operator)(field, argument, fieldname)
+
+    def _extract_operators(self, search_params):
+        """Extracts operators from the search_params."""
+
+        # Where processed operations will be stored
+        operations = []
+        exception = AggregateException()
+
+        # Evaluating and validating field contents
+        for i in search_params.get('filters', ()):
+            fname = i['name']
+            val = i.get('val')
+
+            relation = None
+            if '__' in fname:
+                relation, fname = fname.split('__')
+                cls = self.model.get_columns()[relation].property.mapper.class_
+                field = self.validator.fields[fname]
+            else:
+                # Here we handle fields that does not defines relations with
+                # other entities and the ID field is a special case, since
+                # it's not defined in the validator but must be searchable
+                # as well as the other fields.
+                if fname == 'id':
+                    field = fvalidators.Int()
+                else:
+                    field = self.validator.fields[fname]
+
+            # We are going to compare a field with another one, so there's
+            # no reason to parse
+            if 'field' in i:
+                argument = getattr(self.model, i['field'])
+                param = self._build_search_param(fname, i['op'], argument,
+                                                 relation)
+                operations.append(param)
+                continue
+
+            # Here is another special case. There are some operations, like
+            # IN that can receive a list. This way, we need to be prepared
+            # to pass it to the next level, validated of course.
+            # TODO should validation be done here?
+            try:
+                if isinstance(val, list):
+                    converted_value = [field.to_python(x) for x in val]
+                else:
+                    converted_value = field.to_python(val)
+            except Invalid as exc:
+                exception.append({fname: exc.msg})
+                continue
+
+            # Collecting the query
+            param = self._build_search_param(fname, i['op'], converted_value,
+                                             relation)
+            operations.append(param)
+
+        if len(exception) > 0:
+            raise exception
+
+        return operations
+
+    def _build_query(self, search_params):
+        """Builds an SQLAlchemy query instance based on the search parameters
+        present in ``search_params``.
+
+        Building the query proceeds in this order:
+        1. filtering the query
+        2. ordering the query
+        3. limiting the query
+        4. offsetting the query
+
+        This function raises :exc:`AggregateException` if the operators
+        specified in ``search_params`` are invalid.
+
+        """
+        # Adding field filters
+        query = self.model.query
+        extracted_operators = self._extract_operators(search_params)
+        for i in extracted_operators:
+            query = query.filter(i)
+
+        # Order the search
+        for val in search_params.get('order_by', ()):
+            field = getattr(self.model, val['field'])
+            direction = getattr(field, val.get('direction', 'asc'))
+            query = query.order_by(direction())
+
+        # Limit it
+        if 'limit' in search_params:
+            query = query.limit(search_params.get('limit'))
+        if 'offset' in search_params:
+            query = query.offset(search_params.get('offset'))
+        return query
+
+    def _evaluate_functions(self, functions):
+        """Executes the each of the SQLAlchemy functions specified in
+        ``functions``, a list of instances of the :class:`Function` class, on
+        the model specified in the constructor of this class and returns a
+        dictionary mapping function name (slightly modified, see below) to
+        result of evaluation of that function.
+
+        ``functions`` is a list of :class:`Function` objects. For example, if
+        you want the sum and the average of a field::
+
+            >>> search = SearchManager(MyModel)
+            >>> f1 = Function('sum', 'amount')
+            >>> f2 = Function('avg', 'amount')
+            >>> search._evaluate_functions(f1, f2)
+            {'avg__amount': 456, 'sum__amount': 123}
+
+        The return value is a dictionary mapping ``'<funcname>__<fieldname>'``
+        to the result of evaluating that function on that field.
+
+        """
+        processed = []
+        funcnames = []
+        for f in functions:
+            # We retrieve the function by name from the SQLAlchemy ``func``
+            # module and the field by name from the model class.
+            funcobj = getattr(func, f.functionname)
+            field = getattr(self.model, f.fieldname)
+
+            # Time to store things to be executed. The processed list stores
+            # functions that will be executed in the database and funcnames
+            # contains names of the entries that will be returned to the
+            # caller.
+            processed.append(funcobj(field))
+            funcnames.append(str(f))
+
+        evaluated = session.query(*processed).one()
+        return dict(zip(funcnames, evaluated))
+
+    def search(self, search_params):
+        """Performs the search specified by the given parameters on the model
+        specified in the constructor of this class.
+
+        ``search_params`` is a dictionary containing all available search
+        parameters. (Implementation note: the real job of this function is to
+        look for all search parameters of this dictionary and evaluate a
+        SQLAlchemy query built with these arguments.) For more information on
+        available search parameters, see :ref:`search`.
+
+        If there is an error while building the query, this function will raise
+        an :exc:`AggregateException`.
+
+        If ``search_params`` specifies that the type of the search is
+        ``'one'``, then this method will raise
+        :exc:`sqlalchemy.orm.exc.NoResultFound` if no results are found and
+        :exc:`sqlalchemy.orm.exc.MultipleResultsFound` if multiple results are
+        found.
+
+        """
+        # Building the query
+        query = self._build_query(search_params)
+
+        # Aplying functions
+        if 'functions' in search_params:
+            asdict = search_params['functions']
+            functions = (Function.make(d) for d in asdict)
+            return self._evaluate_functions(functions)
+
+        relations = self.model.get_relations()
+        deep = dict(zip(relations, [{}] * len(relations)))
+        if search_params.get('type') == 'one':
+            # may raise NoResultFound or MultipleResultsFound
+            return query.one().to_dict(deep)
+        else:
+            return [x.to_dict(deep) for x in query.all()]
+
+
 class API(MethodView):
     """Provides method-based dispatching for :http:request:`get`,
     :http:request:`post`, :http:request:`patch`, and :http:request:`delete`
@@ -465,27 +432,99 @@ class API(MethodView):
 
     """
 
-    def __init__(self, modelname, *args, **kw):
+    def __init__(self, model, validators={}, *args, **kw):
         """Calls the constructor of the superclass and specifies the model for
         which this class provides a ReSTful API.
 
-        ``modelname`` is the name of the database model for which this instance
-        of the class is an API.
+        ``model`` is the :class:`elixir.entity.Entity` class of the database
+        model for which this instance of the class is an API.
+
+        ``validators`` is a dictionary mapping model name to a validator for
+        that model. This should include at least the validator for ``model``
+        (if one exists) and the validators for any models which are related to
+        ``model`` via a SQLAlchemy relationship.
 
         """
         super(API, self).__init__(*args, **kw)
-        self.modelname = modelname
+        self.model = model
+        self.validators = validators
+        self.searchmanager = \
+            SearchManager(self.model, self.validators[self.model.__name__])
+
+    @property
+    def validator(self):
+        """Returns the validator for the model specified in the constructor of
+        this class.
+
+        """
+        return self.validators.get(self.model.__name__)
+
+    # TODO change this to have more sensible arguments
+    def _update_relations(self, query, params):
+        """Adds or removes models which are related to the model specified in
+        the constructor of this class.
+
+        ``query`` is a SQLAlchemy query instance that evaluates to all
+        instances of the model specified in the constructor of this class that
+        should be updated.
+
+        `params`
+
+            A dictionary with two keys ``add`` and ``remove``. Both of them
+            contains a list of items that should be added or removed from
+            such a relation.
+        """
+        fields = []
+        cols = self.model.get_columns()
+        relations = self.model.get_relations()
+        for col in set(relations).intersection(params.keys()):
+            submodel = cols[col].property.mapper.class_
+            from_request = params[col]
+
+            # Let's add new columns to the relation being managed.
+            for subparams in from_request.get('add', ()):
+                if 'id' in subparams:
+                    subinst = submodel.get_by(id=subparams.pop('id'))
+                else:
+                    submodelvalidator = self.validators[submodel.__name__]
+                    vssubparams = _validate_field_list(submodel,
+                                                       submodelvalidator,
+                                                       subparams,
+                                                       subparams.keys())
+                    subinst = get_or_create(submodel, **vssubparams)[0]
+                for instance in query:
+                    getattr(instance, col).append(subinst)
+
+            # Now is the time to handle relations being removed from a field
+            # of the instance. We'll do nothing here if there's no id param
+            for subparams in from_request.get('remove', ()):
+                try:
+                    remove = subparams.pop('__delete__')
+                except KeyError:
+                    remove = False
+                if 'id' in subparams:
+                    subinst = submodel.get_by(id=subparams['id'])
+                else:
+                    submodelvalidator = self.validators[submodel.__name__]
+                    vssubparams = _validate_field_list(submodel,
+                                                       submodelvalidator,
+                                                       subparams,
+                                                       subparams.keys())
+                    subinst = submodel.get_by(**vssubparams)
+                for instance in query:
+                    field = getattr(instance, col)
+                    field.remove(subinst)
+                if remove:
+                    subinst.delete()
+
+            fields.append(col)
+        return fields
 
     def _search(self):
         """Defines a generic search function for the database model.
 
-        Like the other methods in this class, this function should work for all
-        entities declared in the ``CONFIG['models']`` module. It provides a way
-        to execute a query received from a query string and serialize its
-        results as a JSON string.
-
         To search for entities meeting some criteria, the client makes a
-        request to :http:get:`/api/:modelname` with a query string containing
+        request to :http:get:`/api/<modelname>` with a query string containing
         the parameters of the search. The parameters of the search can involve
         filters and/or functions. In a filter, the client specifies the name of
         the field by which to filter, the operation to perform on the field,
@@ -511,7 +550,7 @@ class API(MethodView):
         representation of that instance would be the top-level object in the
         content of the response::
 
-            {"name": "Mary"}
+            {"name": "Mary", ...}
 
         For more information SQLAlchemy functions and operators for use in
         filters, see the `SQLAlchemy SQL expression tutorial
@@ -521,13 +560,14 @@ class API(MethodView):
 
             {
               "type": "one",
-              "order_by": [{"field": "age"}],
+              "order_by": [{"field": "age", "direction": "asc"}],
               "limit": 2,
               "offset": 1,
               "filters":
                 [
                   {"name": "name", "val": "%y%", "op": "like"},
                   {"name": "age", "val": [18, 19, 20, 21], "op": "in"},
+                  {"name": "age", "op": "gt", "field": "height"},
                   ...
                 ],
               "functions":
@@ -537,15 +577,19 @@ class API(MethodView):
                 ]
             }
 
+        For a complete description of all possible search parameters, see
+        :ref:`search`.
+
         """
+        # try to get search query from the request query parameters
         try:
             data = json.loads(request.args.get('q', '{}'))
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
-        model = getattr(CONFIG['models'], self.modelname)
+        # try to perform the specified search on the model
         try:
-            result = _perform_search(model, data)
+            result = self.searchmanager.search(data)
         except AggregateException as exception:
             message = 'Validation of search query failed'
             return jsonify_status_code(400, message=message,
@@ -554,6 +598,7 @@ class API(MethodView):
             return jsonify(message='No result found')
         except MultipleResultsFound:
             return jsonify(message='Multiple results found')
+
         # for security purposes, don't transmit list as top-level JSON
         if isinstance(result, list):
             return jsonify(objects=result)
@@ -571,20 +616,24 @@ class API(MethodView):
         with all fields that will be passed to the ``update()`` method.
 
         """
-        model = getattr(CONFIG['models'], self.modelname)
+        # TODO this code is common to patch
         try:
             data = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
-        query = _build_query(model, request.args)
+        # build the query dictionary from the request query string
+        query = self.searchmanager._build_query(request.args)
 
+        # TODO this code is common to patch
         if len(data) == 0:
             return make_response(None, 204)
 
-        relations = set(update_relations(model, query, data))
+        # TODO this code is common to patch
+        relations = set(self._update_relations(query, data))
         field_list = set(data.keys()) ^ relations
         try:
-            params = _validate_field_list(self.modelname, data, field_list)
+            params = _validate_field_list(self.model, self.validator, data,
+                                          field_list)
         except AggregateException as exception:
             return jsonify_status_code(400, message='Validation error',
                                        error_list=exception.messages)
@@ -593,8 +642,8 @@ class API(MethodView):
         num_modified = 0
         if params:
             num_modified = query.update(params, False)
-
         session.commit()
+
         return jsonify(num_modified=num_modified)
 
     def get(self, instid):
@@ -615,13 +664,11 @@ class API(MethodView):
         """
         if instid is None:
             return self._search()
-        model = getattr(CONFIG['models'], self.modelname)
-        inst = model.get_by(id=instid)
+        inst = self.model.get_by(id=instid)
         if inst is None:
             abort(404)
-
-        relations = model.get_relations()
-        deep = dict(zip(relations, [{}] * len(relations)))
+        relations = self.model.get_relations()
+        deep = dict(zip(relations, [{} for n in range(len(relations))]))
         return jsonify(inst.to_dict(deep))
 
     def delete(self, instid):
@@ -633,8 +680,7 @@ class API(MethodView):
         whether an object was deleted.
 
         """
-        model = getattr(CONFIG['models'], self.modelname)
-        inst = model.get_by(id=instid)
+        inst = self.model.get_by(id=instid)
         if inst is not None:
             inst.delete()
             session.commit()
@@ -645,7 +691,7 @@ class API(MethodView):
 
         This function parses the string contained in
         :attr:`flask.request.data`` as a JSON object and then validates it with
-        a validator accessed from ``CONFIG['validators'].<modelname>``.
+        a validator specified in the constructor of this class.
 
         The :attr:`flask.request.data` attribute will be parsed as a JSON
         object containing the mapping from field name to value to which to
@@ -656,12 +702,13 @@ class API(MethodView):
         creates instances of these submodels and associates them with the
         related fields. This happens only at the first level of nesting.
 
-        """
-        model = getattr(CONFIG['models'], self.modelname)
+        Currently, this method can only handle instantiating a model with a
+        single level of relationship data.
 
+        """
+        # try to read the parameters for the model from the body of the request
         try:
-            validator = getattr(CONFIG['validators'], self.modelname)()
-            params = validator.to_python(json.loads(request.data))
+            params = self.validator.to_python(json.loads(request.data))
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
         except Invalid as exc:
@@ -669,24 +716,27 @@ class API(MethodView):
                                        error_list=exc.unpack_errors())
 
         # Getting the list of relations that will be added later
-        cols = model.get_columns()
-        relations = model.get_relations()
+        cols = self.model.get_columns()
+        relations = self.model.get_relations()
 
         # Looking for what we're going to set on the model right now
         colkeys = cols.keys()
         paramkeys = params.keys()
         props = set(colkeys).intersection(paramkeys).difference(relations)
-        instance = model(**dict([(i, params[i]) for i in props]))
+
+        # Instantiate the model with the parameters
+        instance = self.model(**dict([(i, params[i]) for i in props]))
 
         # Handling relations, a single level is allowed
         for col in set(relations).intersection(paramkeys):
             submodel = cols[col].property.mapper.class_
-            subvalidator = getattr(CONFIG['validators'], submodel.__name__)
+            subvalidator = self.validators[submodel.__name__]
             for subparams in params[col]:
                 subparams = subvalidator.to_python(subparams)
                 subinst = get_or_create(submodel, **subparams)[0]
                 getattr(instance, col).append(subinst)
 
+        # add the created model to the session
         session.add(instance)
         session.commit()
 
@@ -708,28 +758,36 @@ class API(MethodView):
         be made in this case.
 
         """
+        # TODO this code is common to _patch_many
+        # if no instance is specified, try to patch many using a search
         if instid is None:
             return self._patch_many()
-        model = getattr(CONFIG['models'], self.modelname)
+        
+        # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
+        # TODO this code is common to _patch_many
         # If there is no data to update, just return HTTP 204 No Content.
         if len(data) == 0:
             return make_response(None, 204)
 
-        inst = model.get_by(id=instid)
-        relations = set(update_relations(model, [inst], data))
+        # TODO this code is common to _patch_many
+        relations = set(self._update_relations([self.model.get_by(id=instid)],
+                                               data))
         field_list = set(data.keys()) ^ relations
         try:
-            params = _validate_field_list(self.modelname, data, field_list)
+            params = _validate_field_list(self.model, self.validator, data,
+                                          field_list)
         except AggregateException as exception:
             return jsonify_status_code(400, message='Validation error',
                                        error_list=exception.messages)
 
         # Let's update field by field
+        # TODO can this be made the same as in _patch_many?
+        inst = self.model.get_by(id=instid)
         for field in field_list:
             setattr(inst, field, params[field])
         session.commit()
@@ -738,50 +796,96 @@ class API(MethodView):
         return self.get(instid)
 
 
-# alternately: def add_api(modelname, readonly=True):
-def add_api(modelname, methods=['GET']):
-    """TODO fill me in.
+class APIManager(object):
+    """TODO fill me in."""
 
-    This function must be called **before** calling the
-    :func:`flask.Flask.register_blueprint` function on your Flask application.
+    def __init__(self, app):
+        """TODO fill me in.
 
-    ``modelname`` is the name of the entity in the database for which an
-    ReSTful interface will be created.
+        ``app`` is the :class:`flask.Flask` object containing the user's Flask
+        application.
 
-    ``methods`` specify the HTTP methods which will be made available on the
-    ReSTful API for the specified model, subject to the following caveats:
-    * If :http:method:`get` is in this list, the API will allow getting a
-      single instance of the model, getting all instances of the model, and
-      searching the model using search parameters.
-    * If :http:method:`patch` is in this list, the API will allow updating a
-      single instance of the model, updating all instances of the model, and
-      updating a subset of all instances of the model specified using search
-      parameters.
-    * If :http:method:`delete` is in this list, the API will allow deletion of
-      a single instance of the model per request.
-    * If :http:method:`post` is in this list, the API will allow posting a new
-      instance of the model per request.
-    The default list of methods provides a read-only interface (that is, only
-    :http:method:`get` requests are allowed).
+        """
+        self.app = app
 
-    """
-    methods = frozenset(methods)
-    # sets of methods used for different endpoints
-    no_instance_methods = methods & {'POST'}
-    possibly_empty_instance_methods = methods & {'GET', 'PATCH'}
-    instance_methods = methods & {'GET', 'PATCH', 'DELETE'}
-    # the base URL of the endpoints on which requests will be made
-    collection_endpoint = '/{}'.format(modelname)
-    instance_endpoint = collection_endpoint + '/<int:instid>'
-    # the view function for the API for this model
-    api_view = API.as_view('{}_api'.format(modelname), modelname)
-    # add the URL rules to the blueprint: the first is for methods on the
-    # collection only, the second is for methods which may or may not specify
-    # an instance, the third is for methods which must specify an instance
-    blueprint.add_url_rule(collection_endpoint, methods=no_instance_methods,
-                           view_func=api_view)
-    blueprint.add_url_rule(collection_endpoint, defaults={'instid': None},
-                           methods=possibly_empty_instance_methods,
-                           view_func=api_view)
-    blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
-                           view_func=api_view)
+    # alternately: def add_api(modelname, readonly=True):
+    def create_api(self, model, validators={}, methods=['GET'],
+                   url_prefix='/api'):
+        """Creates a ReSTful API interface as a blueprint and registers it on
+        the :class:`flask.Flask` application specified in the constructor to
+        this class.
+
+        The endpoints for the API for ``model`` will be available at
+        ``<url_prefix>/<modelname>``, where ``<url_prefix>`` is the last
+        parameter to this function and ``<modelname>`` is the lowercase string
+        representation of the model class, as accessed by
+        ``model.__name__``. (If any black magic was performed on
+        ``model.__name__``, this will be reflected in the endpoint URL.)
+
+        This function must be called at most once for each model for which you
+        wish to create a ReSTful API. Its behavior (for now) is undefined if
+        called more than once.
+
+        ``model`` is the :class:`elixir.entity.Entity` class for which a
+        ReSTful interface will be created. Note this must be a class, not an
+        instance of a class.
+
+        ``validators`` is a dictionary mapping the name of a model as a string
+        to an instance of :class:`formencode.Validator` that specifies the
+        validation rules for the model and its fields. This dictionary should
+        include at least the validator for ``model`` (if one exists) and the
+        validators for models which are related to ``model`` via a SQLAlchemy
+        relationship. If this is not ``None``, the API will return validation
+        errors if invalid input is specified on certain requests. For more
+        information, see :ref:`validation`.
+
+        ``methods`` specify the HTTP methods which will be made available on
+        the ReSTful API for the specified model, subject to the following
+        caveats:
+        * If :http:method:`get` is in this list, the API will allow getting a
+          single instance of the model, getting all instances of the model, and
+          searching the model using search parameters.
+        * If :http:method:`patch` is in this list, the API will allow updating
+          a single instance of the model, updating all instances of the model,
+          and updating a subset of all instances of the model specified using
+          search parameters.
+        * If :http:method:`delete` is in this list, the API will allow deletion
+          of a single instance of the model per request.
+        * If :http:method:`post` is in this list, the API will allow posting a
+          new instance of the model per request.
+        The default list of methods provides a read-only interface (that is,
+        only :http:method:`get` requests are allowed).
+
+        ``url_prefix`` specifies the URL prefix at which this API will be
+        accessible.
+
+        """
+        modelname = model.__name__
+        methods = frozenset(methods)
+        # sets of methods used for different types of endpoints
+        no_instance_methods = methods & {'POST'}
+        possibly_empty_instance_methods = methods & {'GET', 'PATCH'}
+        instance_methods = methods & {'GET', 'PATCH', 'DELETE'}
+        # the base URL of the endpoints on which requests will be made
+        collection_endpoint = '/{}'.format(modelname)
+        instance_endpoint = collection_endpoint + '/<int:instid>'
+        # the name of the API, for use in creating the view and the blueprint
+        apiname = '{}api'.format(modelname)
+        # the view function for the API for this model
+        api_view = API.as_view(apiname, model, validators)
+        # add the URL rules to the blueprint: the first is for methods on the
+        # collection only, the second is for methods which may or may not
+        # specify an instance, the third is for methods which must specify an
+        # instance
+        # TODO what should the second argument here be?
+        # TODO should the url_prefix be specified here or in register_blueprint
+        blueprint = Blueprint(apiname, __name__, url_prefix=url_prefix)
+        blueprint.add_url_rule(collection_endpoint,
+                               methods=no_instance_methods, view_func=api_view)
+        blueprint.add_url_rule(collection_endpoint, defaults={'instid': None},
+                               methods=possibly_empty_instance_methods,
+                               view_func=api_view)
+        blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
+                               view_func=api_view)
+        # register the blueprint on the app
+        self.app.register_blueprint(blueprint)

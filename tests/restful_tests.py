@@ -16,7 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import unittest
-import sys
 import os
 from tempfile import mkstemp
 from datetime import date, datetime
@@ -26,8 +25,8 @@ from json import dumps, loads
 from elixir import create_all, session, drop_all
 from sqlalchemy import create_engine
 
-sys.path.append('..')
 from restful import model, api
+from restful.api import APIManager
 from testapp import models, validators
 
 
@@ -129,11 +128,16 @@ class RestfulTestCase(unittest.TestCase):
         app = flask.Flask(__name__)
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
-        api.setup(models, validators)
+        #api.setup(models, validators)
+        manager = APIManager(app)
         # setup the URLs for the Person and Computer API
-        api.add_api('Person', methods=['GET', 'PATCH', 'POST', 'DELETE'])
-        api.add_api('Computer', methods=['GET', 'POST'])
-        app.register_blueprint(api.blueprint, url_prefix="/api")
+        # TODO move validators to use sqlalchemy-validation
+        manager.create_api(models.Person, validators=validators.allvalidators,
+                           methods=['GET', 'PATCH', 'POST', 'DELETE'])
+        manager.create_api(models.Computer,
+                           validators=validators.allvalidators,
+                           methods=['GET', 'POST'])
+        #app.register_blueprint(api.blueprint, url_prefix="/api")
         self.app = app.test_client()
         # To facilitate searching
         self.app.search = lambda url, query: \
@@ -147,11 +151,11 @@ class RestfulTestCase(unittest.TestCase):
         os.close(self.db_fd)
         os.unlink(self.db_file)
 
-    def test_setup(self):
-        """Just to make sure that everything worked while setting up api
-        """
-        assert api.CONFIG['models'] is models
-        assert api.CONFIG['validators'] is validators
+    # def test_setup(self):
+    #     """Just to make sure that everything worked while setting up api
+    #     """
+    #     assert api.CONFIG['models'] is models
+    #     assert api.CONFIG['validators'] is validators
 
     def test_new_person(self):
         """Tests the creation of new persons

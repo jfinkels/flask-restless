@@ -13,3 +13,5 @@ class Person(Schema):
     birth_date = validators.DateConverter(
         if_missing=None, month_style='dd/mm/yyyy')
     computers = validators.Set()
+
+allvalidators = dict(Computer=Computer, Person=Person)
