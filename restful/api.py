@@ -41,9 +41,6 @@ from elixir import session
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 from sqlalchemy.sql import func
 
-from model import get_or_create
-
-
 __all__ = 'blueprint',
 
 blueprint = Blueprint('api', __name__)
@@ -109,7 +106,7 @@ def create(modelname):
         subvalidator = getattr(CONFIG['validators'], submodel.__name__)
         for subparams in params[col]:
             subparams = subvalidator.to_python(subparams)
-            subinst = get_or_create(submodel, **subparams)[0]
+            subinst = submodel.get_or_create(**subparams)[0]
             getattr(instance, col).append(subinst)
 
     session.add(instance)
@@ -436,7 +433,7 @@ def update_relations(model, query, params):
             else:
                 vssubparams = _validate_field_list(
                     submodel.__name__, subparams, subparams.keys())
-                subinst = get_or_create(submodel, **vssubparams)[0]
+                subinst = submodel.get_or_create(**vssubparams)[0]
             for instance in query:
                 getattr(instance, col).append(subinst)
 
