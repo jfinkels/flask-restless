@@ -36,22 +36,23 @@
     :license: AGPLv3, see COPYTING for more details
 """
 
-from collections import namedtuple
 import json
 
+from dateutil.parser import parse as parse_datetime
+from elixir import session
 from flask import abort
 from flask import Blueprint
 from flask import jsonify
 from flask import make_response
 from flask import request
 from flask.views import MethodView
-from formencode import Invalid, validators as fvalidators
-from elixir import session
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import func
+from sqlalchemy.types import Date
+from sqlalchemy.types import DateTime
 
-from model import get_or_create
+from .model import get_or_create
 
 
 __all__ = 'APIManager',
@@ -124,51 +125,6 @@ class Function(object):
         return Function(dictionary['name'], dictionary['field'])
 
 
-class AggregateException(Exception):
-    """A validation exception which aggregates error messages for multiple
-    fields.
-
-    This class contains a list of dictionaries, :attr:`messages`, in which each
-    dictionary contains a single mapping, which maps an error location
-    identifier (for example, field name in an aggregation of validation errors)
-    to an error message which corresponds to that location (for example, ``'Age
-    must be a positive integer'``). For example, the :attr:`messages` list
-    might looks like this::
-
-        [{'age': 'Must be a positive integer', 'name': 'Must be specified'}]
-
-    The error messages are aggregated in this way so that they can be easily
-    translated to a JSON string using the :func:`json.dumps` function.
-
-    Code which will raise this exception should append singleton dictionaries
-    to the list of error messages using the :func:`append` function, which
-    simply delegates to the corresponding function on the list of
-    messages. Code which will catch this exception can access the list of
-    singleton dictionaries by accessing the :attr:`messages` attribute.
-
-    """
-
-    def __init__(self, *args, **kw):
-        """Passes the positional and keyword arguments to the constructor of
-        the superclass and creates an empty :attr:`messages` list.
-
-        """
-        super(AggregateException, self).__init__(*args, **kw)
-        self.messages = []
-
-    def __str__(self):
-        """Returns the string representation of the underlying list of error
-        messages.
-
-        """
-        return self.messages.__str__()
-
-    def __len__(self): return len(self.messages)
-    def __iter__(self): return self.messages.__iter__()
-    def append(self, mapping): return self.messages.append(mapping)
-    def extend(self, mappings): return self.messages.extend(mappings)
-
-
 def jsonify_status_code(status_code, *args, **kw):
     """Returns a jsonified response with the specified HTTP status code.
 
@@ -181,44 +137,13 @@ def jsonify_status_code(status_code, *args, **kw):
     return response
 
 
-# TODO remove validation, it belongs in the backend, decoupled?
-def _validate_field_list(model, validator, data, field_list):
-    """Returns a list of fields validated by :mod:`formencode`.
-
-    If :mod:`formencode` discovers invalid form input, this function raises
-    :exc:`AggregateException`. The :attr:`AggregateException.messages` list
-    on the raised exception is a list of singleton dictionaries mapping
-    field name to a validation error message for that field.
-
-    """
-    params = {}
-    exception = AggregateException()
-    for key in field_list:
-        try:
-            fieldvalidator = validator.fields[key]
-            params[key] = fieldvalidator.to_python(data[key])
-        except Invalid as exc:
-            exception.append({key: exc.msg})
-        except KeyError:
-            exception.append({key: 'No such key exists'})
-
-    if len(exception) > 0:
-        raise exception
-    return params
-
-
 class SearchManager(object):
     """TODO fill me in."""
 
-    def __init__(self, model, validator, *args, **kw):
-        """TODO fill me in.
-
-        ``validator`` is the validator for ``model``.
-
-        """
+    def __init__(self, model, *args, **kw):
+        """TODO fill me in."""
         super(SearchManager, self).__init__(*args, **kw)
         self.model = model
-        self.validator = validator
 
     def _build_search_param(self, fieldname, operator, argument,
                             relation=None):
@@ -262,7 +187,6 @@ class SearchManager(object):
 
         # Where processed operations will be stored
         operations = []
-        exception = AggregateException()
 
         # Evaluating and validating field contents
         for i in search_params.get('filters', ()):
@@ -272,17 +196,6 @@ class SearchManager(object):
             relation = None
             if '__' in fname:
                 relation, fname = fname.split('__')
-                cls = self.model.get_columns()[relation].property.mapper.class_
-                field = self.validator.fields[fname]
-            else:
-                # Here we handle fields that does not defines relations with
-                # other entities and the ID field is a special case, since
-                # it's not defined in the validator but must be searchable
-                # as well as the other fields.
-                if fname == 'id':
-                    field = fvalidators.Int()
-                else:
-                    field = self.validator.fields[fname]
 
             # We are going to compare a field with another one, so there's
             # no reason to parse
@@ -293,26 +206,9 @@ class SearchManager(object):
                 operations.append(param)
                 continue
 
-            # Here is another special case. There are some operations, like
-            # IN that can receive a list. This way, we need to be prepared
-            # to pass it to the next level, validated of course.
-            # TODO should validation be done here?
-            try:
-                if isinstance(val, list):
-                    converted_value = [field.to_python(x) for x in val]
-                else:
-                    converted_value = field.to_python(val)
-            except Invalid as exc:
-                exception.append({fname: exc.msg})
-                continue
-
             # Collecting the query
-            param = self._build_search_param(fname, i['op'], converted_value,
-                                             relation)
+            param = self._build_search_param(fname, i['op'], val, relation)
             operations.append(param)
-
-        if len(exception) > 0:
-            raise exception
 
         return operations
 
@@ -325,9 +221,6 @@ class SearchManager(object):
         2. ordering the query
         3. limiting the query
         4. offsetting the query
-
-        This function raises :exc:`AggregateException` if the operators
-        specified in ``search_params`` are invalid.
 
         """
         # Adding field filters
@@ -397,9 +290,6 @@ class SearchManager(object):
         SQLAlchemy query built with these arguments.) For more information on
         available search parameters, see :ref:`search`.
 
-        If there is an error while building the query, this function will raise
-        an :exc:`AggregateException`.
-
         If ``search_params`` specifies that the type of the search is
         ``'one'``, then this method will raise
         :exc:`sqlalchemy.orm.exc.NoResultFound` if no results are found and
@@ -432,32 +322,17 @@ class API(MethodView):
 
     """
 
-    def __init__(self, model, validators={}, *args, **kw):
+    def __init__(self, model, *args, **kw):
         """Calls the constructor of the superclass and specifies the model for
         which this class provides a ReSTful API.
 
         ``model`` is the :class:`elixir.entity.Entity` class of the database
         model for which this instance of the class is an API.
 
-        ``validators`` is a dictionary mapping model name to a validator for
-        that model. This should include at least the validator for ``model``
-        (if one exists) and the validators for any models which are related to
-        ``model`` via a SQLAlchemy relationship.
-
         """
         super(API, self).__init__(*args, **kw)
         self.model = model
-        self.validators = validators
-        self.searchmanager = \
-            SearchManager(self.model, self.validators[self.model.__name__])
-
-    @property
-    def validator(self):
-        """Returns the validator for the model specified in the constructor of
-        this class.
-
-        """
-        return self.validators.get(self.model.__name__)
+        self.searchmanager = SearchManager(self.model)
 
     # TODO change this to have more sensible arguments
     def _update_relations(self, query, params):
@@ -486,11 +361,7 @@ class API(MethodView):
                 if 'id' in subparams:
                     subinst = submodel.get_by(id=subparams.pop('id'))
                 else:
-                    submodelvalidator = self.validators[submodel.__name__]
-                    vssubparams = _validate_field_list(submodel,
-                                                       submodelvalidator,
-                                                       subparams,
-                                                       subparams.keys())
+                    vssubparams = subparams
                     subinst = get_or_create(submodel, **vssubparams)[0]
                 for instance in query:
                     getattr(instance, col).append(subinst)
@@ -505,11 +376,7 @@ class API(MethodView):
                 if 'id' in subparams:
                     subinst = submodel.get_by(id=subparams['id'])
                 else:
-                    submodelvalidator = self.validators[submodel.__name__]
-                    vssubparams = _validate_field_list(submodel,
-                                                       submodelvalidator,
-                                                       subparams,
-                                                       subparams.keys())
+                    vssubparams = subparams
                     subinst = submodel.get_by(**vssubparams)
                 for instance in query:
                     field = getattr(instance, col)
@@ -522,6 +389,10 @@ class API(MethodView):
 
     def _search(self):
         """Defines a generic search function for the database model.
+
+        If the query string is empty, or if the specified query is invalid for
+        some reason (for example, searching for all person instances with), the
+        response will be the JSON string ``{"objects": []}``.
 
         To search for entities meeting some criteria, the client makes a
         request to :http:get:`/api/<modelname>` with a query string containing
@@ -590,10 +461,6 @@ class API(MethodView):
         # try to perform the specified search on the model
         try:
             result = self.searchmanager.search(data)
-        except AggregateException as exception:
-            message = 'Validation of search query failed'
-            return jsonify_status_code(400, message=message,
-                                       error_list=exception.messages)
         except NoResultFound:
             return jsonify(message='No result found')
         except MultipleResultsFound:
@@ -607,7 +474,8 @@ class API(MethodView):
 
     # TODO should this exist?
     def _patch_many(self):
-        """Calls the .update() method in a set of results.
+        """Updates each of the instances of the model which match the query
+        string.
 
         The ``request.data`` field should be filled with a JSON string that
         contains an object with two fields: query and form. The first one
@@ -631,12 +499,17 @@ class API(MethodView):
         # TODO this code is common to patch
         relations = set(self._update_relations(query, data))
         field_list = set(data.keys()) ^ relations
-        try:
-            params = _validate_field_list(self.model, self.validator, data,
-                                          field_list)
-        except AggregateException as exception:
-            return jsonify_status_code(400, message='Validation error',
-                                       error_list=exception.messages)
+        originalparams = dict((field, data[field]) for field in field_list)
+
+        # Special case: if there are any dates, convert the string form of the
+        # date into an instance of the Python ``datetime`` object.
+        params = {}
+        for key, val in originalparams.iteritems():
+            fieldtype = getattr(self.model, key).property.columns[0].type
+            if isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime):
+                params[key] = parse_datetime(val)
+            else:
+                params[key] = val
 
         # Let's update all instances present in the query
         num_modified = 0
@@ -708,12 +581,9 @@ class API(MethodView):
         """
         # try to read the parameters for the model from the body of the request
         try:
-            params = self.validator.to_python(json.loads(request.data))
+            params = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
-        except Invalid as exc:
-            return jsonify_status_code(400, message='Validation error',
-                                       error_list=exc.unpack_errors())
 
         # Getting the list of relations that will be added later
         cols = self.model.get_columns()
@@ -730,9 +600,7 @@ class API(MethodView):
         # Handling relations, a single level is allowed
         for col in set(relations).intersection(paramkeys):
             submodel = cols[col].property.mapper.class_
-            subvalidator = self.validators[submodel.__name__]
             for subparams in params[col]:
-                subparams = subvalidator.to_python(subparams)
                 subinst = get_or_create(submodel, **subparams)[0]
                 getattr(instance, col).append(subinst)
 
@@ -778,12 +646,17 @@ class API(MethodView):
         relations = set(self._update_relations([self.model.get_by(id=instid)],
                                                data))
         field_list = set(data.keys()) ^ relations
-        try:
-            params = _validate_field_list(self.model, self.validator, data,
-                                          field_list)
-        except AggregateException as exception:
-            return jsonify_status_code(400, message='Validation error',
-                                       error_list=exception.messages)
+        originalparams = dict((field, data[field]) for field in field_list)
+
+        # Special case: if there are any dates, convert the string form of the
+        # date into an instance of the Python ``datetime`` object.
+        params = {}
+        for key, val in originalparams.iteritems():
+            fieldtype = getattr(self.model, key).property.columns[0].type
+            if isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime):
+                params[key] = parse_datetime(val)
+            else:
+                params[key] = val
 
         # Let's update field by field
         # TODO can this be made the same as in _patch_many?
@@ -809,8 +682,7 @@ class APIManager(object):
         self.app = app
 
     # alternately: def add_api(modelname, readonly=True):
-    def create_api(self, model, validators={}, methods=['GET'],
-                   url_prefix='/api'):
+    def create_api(self, model, methods=['GET'], url_prefix='/api'):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
         this class.
@@ -829,15 +701,6 @@ class APIManager(object):
         ``model`` is the :class:`elixir.entity.Entity` class for which a
         ReSTful interface will be created. Note this must be a class, not an
         instance of a class.
-
-        ``validators`` is a dictionary mapping the name of a model as a string
-        to an instance of :class:`formencode.Validator` that specifies the
-        validation rules for the model and its fields. This dictionary should
-        include at least the validator for ``model`` (if one exists) and the
-        validators for models which are related to ``model`` via a SQLAlchemy
-        relationship. If this is not ``None``, the API will return validation
-        errors if invalid input is specified on certain requests. For more
-        information, see :ref:`validation`.
 
         ``methods`` specify the HTTP methods which will be made available on
         the ReSTful API for the specified model, subject to the following
@@ -872,7 +735,7 @@ class APIManager(object):
         # the name of the API, for use in creating the view and the blueprint
         apiname = '{}api'.format(modelname)
         # the view function for the API for this model
-        api_view = API.as_view(apiname, model, validators)
+        api_view = API.as_view(apiname, model)
         # add the URL rules to the blueprint: the first is for methods on the
         # collection only, the second is for methods which may or may not
         # specify an instance, the third is for methods which must specify an
