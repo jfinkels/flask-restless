@@ -30,12 +30,13 @@ from datetime import date, datetime
 from elixir import EntityBase, EntityMeta, session
 from sqlalchemy.orm.properties import RelationshipProperty
 
+__all__ = ['Entity']
 
 ISO8601_DATE = "%Y-%m-%d"
 """The ISO 8601 string format for :class:`datetime.date` objects."""
 
 ISO8601_DATETIME = "%Y-%m-%dT%H:%M:%S"
-"""The ISO 8601 string format for :class:`datetime.datetime`."""
+"""The ISO 8601 string format for :class:`datetime.datetime` objects."""
 
 
 class Entity(EntityBase):
@@ -103,7 +104,7 @@ class Entity(EntityBase):
             session.commit()
             return instance, True
 
-    def to_dict(self, deep={}, exclude=[]):
+    def to_dict(self, deep=dict(), exclude=list()):
         """Returns a dictionary representation of this instance of the entity
         with any :class:`datetime.date` or :class:`datetime.datetime` objects
         formatted as a string in ISO 8601 format.
