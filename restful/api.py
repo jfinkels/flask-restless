@@ -36,6 +36,7 @@
     :license: AGPLv3, see COPYTING for more details
 """
 
+from collections import namedtuple
 import json
 
 from dateutil.parser import parse as parse_datetime
@@ -99,54 +100,157 @@ described by the strings ``'=='``, ``'eq'``, ``'equals'``, etc.
 
 """
 
-class Function(object):
-    """A representation of a SQLAlchemy function to be applied to a field in
-    the model.
+Function = namedtuple('Function', ['name', 'field'])
+Function.__str__ = lambda self: '{}__{}'.format(self.name, self.field)
 
-    """
+class OrderBy(object):
+    def __init__(self, field, direction='asc'):
+        self.field = field
+        self.direction = direction
+    def __repr__(self):
+        return '<OrderBy {}, {}>'.format(self.field, self.direction)
 
-    def __init__(self, functionname, fieldname):
-        """Stores the specified function name and fieldname.
 
-        ``functionname`` is the name of the SQLAlchemy function to be applied
-        to the field of a model specified by ``fieldname``.
+class IllegalArgumentError(Exception): pass
 
-        """
-        self.functionname = functionname
+class Filter(object):
+    ILLEGAL_ARG_MSG = 'Must specify exactly one of argument and otherfield'
+    def __init__(self, fieldname, operator, argument=None, otherfield=None):
+        if (argument and otherfield) or not (argument or otherfield):
+            raise IllegalArgumentError(ILLEGAL_ARG_MSG)
         self.fieldname = fieldname
+        self.operator = operator
+        self.argument = argument
+        self.otherfield = otherfield
 
-    def __str__(self):
-        """Returns the string ``'<funcname>__<fieldname>'``."""
-        return '{}__{}'.format(self.functionname, self.fieldname)
+    def __repr__(self):
+        return '<Filter {} {} {}>'.format(self.fieldname, self.operator,
+                                          self.argument or self.otherfield)
 
     @staticmethod
-    def make(dictionary):
-        """TODO fill me in."""
-        return Function(dictionary['name'], dictionary['field'])
+    def from_dictionary(dictionary):
+        fieldname = dictionary.get('name')
+        operator = dictionary.get('op')
+        argument = dictionary.get('val')
+        otherfield = dictionary.get('field')
+        return Filter(fieldname, operator, argument, otherfield)
 
 
-def jsonify_status_code(status_code, *args, **kw):
-    """Returns a jsonified response with the specified HTTP status code.
+class SearchParameters(object):
+    ILLEGAL_ARG_MSG = 'Must specify at most one of filters and functions'
+    def __init__(self, filters=[], functions=[], searchtype=None, limit=None,
+                 offset=None, order_by=None):
+        if filters and functions:
+            raise IllegalArgumentException(ILLEGAL_ARG_MSG)
+        self.filters = filters
+        self.functions = functions
+        self.searchtype = searchtype
+        self.limit = limit
+        self.offset = offset
+        self.order_by = order_by
 
-    The positional and keyword arguments are passed directly to the
-    :func:`flask.jsonify` function which creates the response.
+    def __repr__(self):
+        return '<SearchParameters filters={}, functions={}, order_by={}, limit={}, offset={}, type={}>'.format(self.filters, self.functions, self.order_by, self.limit, self.offset, self.searchtype)
+
+    @staticmethod
+    def from_string(string):
+        # may raise exception
+        return self.from_dictionary(json.dumps(string))
+
+    @staticmethod
+    def from_dictionary(dictionary):
+        filters = [Filter.from_dictionary(f) \
+                       for f in dictionary.get('filters', [])]
+        functions = [Function.from_dictionary(f) \
+                         for f in dictionary.get('functions', [])]
+        order_by = [OrderBy(**o) for o in dictionary.get('order_by', [])]
+        searchtype = dictionary.get('type')
+        limit = dictionary.get('limit')
+        offset = dictionary.get('offset')
+        return SearchParameters(filters=filters, functions=functions,
+                                searchtype=searchtype, limit=limit,
+                                offset=offset, order_by=order_by)
+
+
+def search(model, search_params):
+    """Performs the search specified by the given parameters on the model
+    specified in the constructor of this class.
+
+    ``search_params`` is a dictionary containing all available search
+    parameters. (Implementation note: the real job of this function is to
+    look for all search parameters of this dictionary and evaluate a
+    SQLAlchemy query built with these arguments.) For more information on
+    available search parameters, see :ref:`search`.
+
+    If ``search_params`` specifies functions to execute on the matched data,
+    the result of evaluating those functions will be returned instead of the
+    matching instances.
+
+    If ``search_params`` specifies that the type of the search is
+    ``'one'``, then this method will raise
+    :exc:`sqlalchemy.orm.exc.NoResultFound` if no results are found and
+    :exc:`sqlalchemy.orm.exc.MultipleResultsFound` if multiple results are
+    found.
 
     """
-    response = jsonify(*args, **kw)
-    response.status_code = status_code
-    return response
+    # Aplying functions
+    if search_params.functions:
+        return _evaluate_functions(model, search_params.functions)
+
+    # Building the query
+    query = create_query(model, search_params)
+
+    relations = model.get_relations()
+    deep = dict(zip(relations, [{}] * len(relations)))
+    if search_params.searchtype == 'one':
+        # may raise NoResultFound or MultipleResultsFound
+        return query.one().to_dict(deep)
+    else:
+        return [x.to_dict(deep) for x in query.all()]
 
 
-class SearchManager(object):
-    """TODO fill me in."""
+def _evaluate_functions(model, functions):
+    """Executes the each of the SQLAlchemy functions specified in
+    ``functions``, a list of instances of the :class:`Function` class, on
+    the model specified in the constructor of this class and returns a
+    dictionary mapping function name (slightly modified, see below) to
+    result of evaluation of that function.
 
-    def __init__(self, model, *args, **kw):
-        """TODO fill me in."""
-        super(SearchManager, self).__init__(*args, **kw)
-        self.model = model
+    ``functions`` is a list of :class:`Function` objects. For example, if
+    you want the sum and the average of a field::
 
-    def _build_search_param(self, fieldname, operator, argument,
-                            relation=None):
+        >>> search = SearchManager(MyModel)
+        >>> f1 = Function('sum', 'amount')
+        >>> f2 = Function('avg', 'amount')
+        >>> search._evaluate_functions(f1, f2)
+        {'avg__amount': 456, 'sum__amount': 123}
+
+    The return value is a dictionary mapping ``'<funcname>__<fieldname>'``
+    to the result of evaluating that function on that field.
+
+    """
+    processed = []
+    funcnames = []
+    for f in functions:
+        # We retrieve the function by name from the SQLAlchemy ``func``
+        # module and the field by name from the model class.
+        funcobj = getattr(func, f.name)
+        field = getattr(model, f.field)
+        # Time to store things to be executed. The processed list stores
+        # functions that will be executed in the database and funcnames
+        # contains names of the entries that will be returned to the
+        # caller.
+        processed.append(funcobj(field))
+        funcnames.append(str(f))
+    # evaluate all the functions at once and get an iterable of results
+    evaluated = session.query(*processed).one()
+    return dict(zip(funcnames, evaluated))
+
+
+class QueryBuilder(object):
+
+    @staticmethod
+    def _create_operation(model, fieldname, operator, argument, relation=None):
         """Translates an operation described as a string to a valid SQLAlchemy
         query parameter using a field or relation of the specified model.
 
@@ -179,42 +283,59 @@ class SearchManager(object):
         if this function should not use a related entity in the search.
 
         """
-        field = getattr(self.model, relation or fieldname)
+        field = getattr(model, relation or fieldname)
         return OPERATORS.get(operator)(field, argument, fieldname)
 
-    def _extract_operators(self, search_params):
-        """Extracts operators from the search_params."""
 
-        # Where processed operations will be stored
+    @staticmethod
+    def _extract_operators(model, search_params):
+        """Returns the list of operations on ``model`` specified in the
+        :attr:`filters` attribute on the ``search_params`` object.
+
+        ``search_params`` is an instance of the :class:`SearchParameters`
+        class whose fields represent the parameters of the search.
+
+        """
         operations = []
+        for f in search_params.filters:
+            fname = f.fieldname
+            val = f.argument
 
-        # Evaluating and validating field contents
-        for i in search_params.get('filters', ()):
-            fname = i['name']
-            val = i.get('val')
-
+            # get the relationship from the field name, if it exists
+            # TODO document that field names must not contain "__"
             relation = None
             if '__' in fname:
                 relation, fname = fname.split('__')
 
+            # for the sake of brevity
+            makeop = QueryBuilder._create_operation
             # We are going to compare a field with another one, so there's
             # no reason to parse
-            if 'field' in i:
-                argument = getattr(self.model, i['field'])
-                param = self._build_search_param(fname, i['op'], argument,
-                                                 relation)
+            if f.otherfield:
+                otherfield = getattr(model, f.otherfield)
+                param = makeop(model, fname, f.operator, otherfield, relation)
                 operations.append(param)
                 continue
 
             # Collecting the query
-            param = self._build_search_param(fname, i['op'], val, relation)
+            param = makeop(model, fname, f.operator, val, relation)
             operations.append(param)
 
         return operations
 
-    def _build_query(self, search_params):
+    @staticmethod
+    def create_query(model, search_params):
         """Builds an SQLAlchemy query instance based on the search parameters
-        present in ``search_params``.
+        present in ``search_params``, an instance of :class:`SearchParameters`.
+
+        This method returns a SQLAlchemy query in which all matched instances
+        meet the requirements specified in ``search_params``.
+
+        ``model`` is an :class:`elixir.entity.Entity` on which to create a
+        query.
+
+        ``search_params`` is an instance of :class:`SearchParameters` which
+        specify the filters, order, limit, offset, etc. of the query.
 
         Building the query proceeds in this order:
         1. filtering the query
@@ -224,95 +345,44 @@ class SearchManager(object):
 
         """
         # Adding field filters
-        query = self.model.query
-        extracted_operators = self._extract_operators(search_params)
-        for i in extracted_operators:
+        query = model.query
+        operations = QueryBuilder._extract_operators(model, search_params)
+        for i in operations:
             query = query.filter(i)
 
         # Order the search
-        for val in search_params.get('order_by', ()):
-            field = getattr(self.model, val['field'])
-            direction = getattr(field, val.get('direction', 'asc'))
+        for val in search_params.order_by:
+            field = getattr(model, val.field)
+            direction = getattr(field, val.direction)
             query = query.order_by(direction())
 
         # Limit it
-        if 'limit' in search_params:
-            query = query.limit(search_params.get('limit'))
-        if 'offset' in search_params:
-            query = query.offset(search_params.get('offset'))
+        if search_params.limit:
+            query = query.limit(search_params.limit)
+        if search_params.offset:
+            query = query.offset(search_params.offset)
         return query
 
-    def _evaluate_functions(self, functions):
-        """Executes the each of the SQLAlchemy functions specified in
-        ``functions``, a list of instances of the :class:`Function` class, on
-        the model specified in the constructor of this class and returns a
-        dictionary mapping function name (slightly modified, see below) to
-        result of evaluation of that function.
 
-        ``functions`` is a list of :class:`Function` objects. For example, if
-        you want the sum and the average of a field::
+def create_query(model, searchparams):
+    if isinstance(searchparams, dict):
+        searchparams = SearchParameters.from_dictionary(searchparams)
+    elif isinstance(searchparams, str):
+        # may raise exception
+        searchparams = SearchParameters.from_string(searchparams)
+    return QueryBuilder.create_query(model, searchparams)
 
-            >>> search = SearchManager(MyModel)
-            >>> f1 = Function('sum', 'amount')
-            >>> f2 = Function('avg', 'amount')
-            >>> search._evaluate_functions(f1, f2)
-            {'avg__amount': 456, 'sum__amount': 123}
 
-        The return value is a dictionary mapping ``'<funcname>__<fieldname>'``
-        to the result of evaluating that function on that field.
+def jsonify_status_code(status_code, *args, **kw):
+    """Returns a jsonified response with the specified HTTP status code.
 
-        """
-        processed = []
-        funcnames = []
-        for f in functions:
-            # We retrieve the function by name from the SQLAlchemy ``func``
-            # module and the field by name from the model class.
-            funcobj = getattr(func, f.functionname)
-            field = getattr(self.model, f.fieldname)
+    The positional and keyword arguments are passed directly to the
+    :func:`flask.jsonify` function which creates the response.
 
-            # Time to store things to be executed. The processed list stores
-            # functions that will be executed in the database and funcnames
-            # contains names of the entries that will be returned to the
-            # caller.
-            processed.append(funcobj(field))
-            funcnames.append(str(f))
-
-        evaluated = session.query(*processed).one()
-        return dict(zip(funcnames, evaluated))
-
-    def search(self, search_params):
-        """Performs the search specified by the given parameters on the model
-        specified in the constructor of this class.
-
-        ``search_params`` is a dictionary containing all available search
-        parameters. (Implementation note: the real job of this function is to
-        look for all search parameters of this dictionary and evaluate a
-        SQLAlchemy query built with these arguments.) For more information on
-        available search parameters, see :ref:`search`.
-
-        If ``search_params`` specifies that the type of the search is
-        ``'one'``, then this method will raise
-        :exc:`sqlalchemy.orm.exc.NoResultFound` if no results are found and
-        :exc:`sqlalchemy.orm.exc.MultipleResultsFound` if multiple results are
-        found.
-
-        """
-        # Building the query
-        query = self._build_query(search_params)
-
-        # Aplying functions
-        if 'functions' in search_params:
-            asdict = search_params['functions']
-            functions = (Function.make(d) for d in asdict)
-            return self._evaluate_functions(functions)
-
-        relations = self.model.get_relations()
-        deep = dict(zip(relations, [{}] * len(relations)))
-        if search_params.get('type') == 'one':
-            # may raise NoResultFound or MultipleResultsFound
-            return query.one().to_dict(deep)
-        else:
-            return [x.to_dict(deep) for x in query.all()]
+    """
+    response = jsonify(*args, **kw)
+    response.status_code = status_code
+    return response
 
 
 class API(MethodView):
@@ -332,7 +402,6 @@ class API(MethodView):
         """
         super(API, self).__init__(*args, **kw)
         self.model = model
-        self.searchmanager = SearchManager(self.model)
 
     # TODO change this to have more sensible arguments
     def _update_relations(self, query, params):
@@ -458,13 +527,22 @@ class API(MethodView):
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
-        # try to perform the specified search on the model
-        try:
-            result = self.searchmanager.search(data)
-        except NoResultFound:
-            return jsonify(message='No result found')
-        except MultipleResultsFound:
-            return jsonify(message='Multiple results found')
+        # If the query parameters specify that at least one function should be
+        # executed, return the result of executing that function. If no
+        # functions are specified, perform a search and return the instances
+        # which match that search.
+        if 'functions' in data:
+            # TODO data['functions'] may be poorly defined here...
+            functions = [Function(**f) for f in data['functions']]
+            result = _evaluate_functions(self.model, functions)
+        else:
+            try:
+                searchparams = SearchParameters.from_dictionary(data)
+                result = search(self.model, searchparams)
+            except NoResultFound:
+                return jsonify(message='No result found')
+            except MultipleResultsFound:
+                return jsonify(message='Multiple results found')
 
         # for security purposes, don't transmit list as top-level JSON
         if isinstance(result, list):
@@ -490,7 +568,7 @@ class API(MethodView):
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
         # build the query dictionary from the request query string
-        query = self.searchmanager._build_query(request.args)
+        query = create_query(self.model, data)
 
         # TODO this code is common to patch
         if len(data) == 0:
