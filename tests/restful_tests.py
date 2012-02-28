@@ -100,15 +100,13 @@ class ModelTestCase(unittest.TestCase):
         """
         # Here we're sure that we have a fresh table with no rows, so
         # let's create the first one:
-        instance, created = model.get_or_create(self.model, name=u'Lincoln',
-                                                age=24)
+        instance, created = self.model.get_or_create(name=u'Lincoln', age=24)
         assert created
         assert instance.name == u'Lincoln'
         assert instance.age == 24
 
         # Now that we have a row, let's try to get it again
-        second_instance, created = model.get_or_create(self.model,
-                                                       name=u'Lincoln')
+        second_instance, created = self.model.get_or_create(name=u'Lincoln')
         assert not created
         assert second_instance.name == u'Lincoln'
         assert second_instance.age == 24

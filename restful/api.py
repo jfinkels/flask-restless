@@ -57,7 +57,6 @@ from .search import create_query
 from .search import evaluate_functions
 from .search import search
 
-
 __all__ = 'APIManager',
 
 
