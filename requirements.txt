@@ -1,5 +1,4 @@
 flask
 elixir
 sqlalchemy
-formencode
 python-dateutil<2.0
