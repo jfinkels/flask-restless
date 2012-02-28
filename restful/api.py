@@ -52,7 +52,6 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.types import Date
 from sqlalchemy.types import DateTime
 
-from .model import get_or_create
 from .search import create_query
 from .search import evaluate_functions
 from .search import search
@@ -118,7 +117,7 @@ class API(MethodView):
                     subinst = submodel.get_by(id=subparams.pop('id'))
                 else:
                     vssubparams = subparams
-                    subinst = get_or_create(submodel, **vssubparams)[0]
+                    subinst = submodel.get_or_create(**vssubparams)[0]
                 for instance in query:
                     getattr(instance, col).append(subinst)
 
@@ -371,7 +370,7 @@ class API(MethodView):
         for col in set(relations).intersection(paramkeys):
             submodel = cols[col].property.mapper.class_
             for subparams in params[col]:
-                subinst = get_or_create(submodel, **subparams)[0]
+                subinst = submodel.get_or_create(**subparams)[0]
                 getattr(instance, col).append(subinst)
 
         # add the created model to the session
