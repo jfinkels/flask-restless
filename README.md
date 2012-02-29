@@ -34,12 +34,12 @@ This is a partial listing of the contents of this package.
 * `doc/` - the Sphinx documentation for Flask-Restless
 * `COPYING` - the copyright license under which this program is distributed to
   you (the GNU Affero General Public License version 3)
-* `flask/ext/restless` - the Python package containing the extension
+* `flaskext/restless` - the Python package containing the extension
 * `README.md` - this file
 * `setup.py` - Python setuptools configuration file for packaging this
   extension
 
-The `flask/ext/restless` directory is a Python package containing the following
+The `flaskext/restless` directory is a Python package containing the following
 files:
 
 * `api.py` - the view class which creates the ReSTful API

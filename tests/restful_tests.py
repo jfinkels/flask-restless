@@ -25,9 +25,8 @@ from json import dumps, loads
 from elixir import create_all, session, drop_all
 from sqlalchemy import create_engine
 
-from restful import model#, api
-from restful.api import APIManager
-from testapp import models  #, validators
+from flaskext.restless.api import APIManager
+from testapp import models
 
 
 class ModelTestCase(unittest.TestCase):

@@ -70,7 +70,7 @@ setup(
     long_description=__doc__,
     name='Flask-Restless',
     url='http://github.com/jfinkels/flask-restless',
-    packages=['restful'],
+    packages=['flaskext.restless'],
     test_suite='tests',
     version='0.3-dev'
 )
