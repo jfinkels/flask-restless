@@ -72,20 +72,58 @@ described by the strings ``'=='``, ``'eq'``, ``'equals'``, etc.
 
 
 class IllegalArgumentError(Exception):
+    """This exception is raised when illegal arguments are provided as input to
+    a function.
+
+    """
     pass
 
 
 class OrderBy(object):
+    """Represents an "order by" in a SQL query expression."""
+
     def __init__(self, field, direction='asc'):
+        """Instantiates this object with the specified attributes.
+
+        `field` is the name of the field by which to order the result set.
+
+        `direction` is either ``'asc'`` or ``'desc'``, for "ascending" and
+        "descending", respectively.
+
+        """
         self.field = field
         self.direction = direction
 
     def __repr__(self):
+        """Returns a string representation of this object."""
         return '<OrderBy {}, {}>'.format(self.field, self.direction)
 
 
 class Filter(object):
+    """Represents a filter to apply to a SQL query.
+
+    A filter can be, for example, a comparison operator applied to a field of a
+    model and a value or a comparison applied to two fields of the same
+    model. For more information on possible filters, see :ref:`search`.
+
+    """
+
     def __init__(self, fieldname, operator, argument=None, otherfield=None):
+        """Instantiates this object with the specified attributes.
+
+        `fieldname` is the name of the field of a model which will be on the
+        left side of the operator.
+
+        `operator` is the string representation of an operator to apply. The
+        full list of recognized operators can be found at :ref:`search`.
+
+        If `argument` is specified, it is the value to place on the right side
+        of the operator. If `otherfield` is specified, that field on the model
+        will be placed on the right side of the operator. Exactly one of
+        `arguemnt` and `otherfield` must be specified. If not, a
+        :exc:`IllegalArgumentError` will be raised.
+
+        """
         if (argument and otherfield) or not (argument or otherfield):
             raise IllegalArgumentError('Must specify exactly one of argument'
                                        ' and otherfield')
@@ -95,11 +133,35 @@ class Filter(object):
         self.otherfield = otherfield
 
     def __repr__(self):
+        """Returns a string representation of this object."""
         return '<Filter {} {} {}>'.format(self.fieldname, self.operator,
                                           self.argument or self.otherfield)
 
     @staticmethod
     def from_dictionary(dictionary):
+        """Returns a new :class:`Filter` object with arguments parsed from
+        `dictionary`.
+
+        `dictionary` is a dictionary of the form::
+
+            {'name': 'age', 'op': 'lt', 'val': 20}
+
+        or::
+
+            {'name': 'age', 'op': 'lt', 'other': height}
+
+        where ``dictionary['name']`` is the name of the field of the model on
+        which to apply the operator, ``dictionary['op']`` is the name of the
+        operator to apply, ``dictionary['val']`` is the value on the right to
+        which the operator will be applied, and ``dictionary['other']`` is the
+        name of the other field of the model to which the operator will be
+        applied.
+
+        Raises a :exc:`IllegalArgumentError` if both ``'val'`` and ``'field'``
+        are in `dictionary` or if neither ``'val'`` not ``'field'`` are in
+        `dictionary`.
+
+        """
         fieldname = dictionary.get('name')
         operator = dictionary.get('op')
         argument = dictionary.get('val')
@@ -108,8 +170,32 @@ class Filter(object):
 
 
 class SearchParameters(object):
+    """Aggregates the parameters for a search, including filters, search type,
+    limit, offset, and order by directives.
+
+    """
+
     def __init__(self, filters=[], searchtype=None, limit=None, offset=None,
                  order_by=[]):
+        """Instantiates this object with the specified attributes.
+
+        `filters` is a list of :class:`Filter` objects, representing filters to
+        be applied during the search.
+
+        `single` is a boolean representing whether a single result is expected
+        from the search.
+
+        `limit`, if not ``None``, specifies the maximum number of results to
+        return in the search.
+
+        `offset`, if not ``None``, specifies the number of initial results to
+        skip in the result set.
+
+        `order_by` is a list of :class:`OrderBy` objects, representing the
+        ordering directives to apply to the result set which matches the
+        search.
+
+        """
         self.filters = filters
         self.searchtype = searchtype
         self.limit = limit
@@ -117,6 +203,7 @@ class SearchParameters(object):
         self.order_by = order_by
 
     def __repr__(self):
+        """Returns a string representation of the search parameters."""
         return ('<SearchParameters filters={}, order_by={}, limit={},'
                 ' offset={}, type={}>').format(self.filters, self.order_by,
                                                self.limit, self.offset,
@@ -124,8 +211,35 @@ class SearchParameters(object):
 
     @staticmethod
     def from_dictionary(dictionary):
+        """Returns a new :class:`SearchParameters` object with arguments parsed
+        from `dictionary`.
+
+        `dictionary` is a dictionary of the form::
+
+            {
+              'filters': [{'name': 'age', 'op': 'lt', 'val': 20}, ...],
+              'order_by': [{'field': 'age', 'direction': 'desc'}, ...]
+              'limit': 10,
+              'offset': 3,
+              'single': False,
+            }
+
+        where ``dictionary['filters']`` is the list of :class:`Filter` objects
+        (in dictionary form), ``dictionary['order_by']`` is the list of
+        :class:`OrderBy` objects (in dictionary form), ``dictionary['limit']``
+        is the maximum number of matching entries to return,
+        ``dictionary['offset']`` is the number of initial entries to skip in
+        the matching result set, and ``dictionary['single']`` is a Python
+        boolean representing whether or not the search should expect a single
+        result.
+
+        Raises a :exc:`IllegalArgumentError` if there is an error instantiating
+        one of the :class:`Filter` objects.
+
+        """
         # for the sake of brevity...
         from_dict = Filter.from_dictionary
+        # may raise IllegalArgumentError
         filters = [from_dict(f) for f in dictionary.get('filters', [])]
         order_by = [OrderBy(**o) for o in dictionary.get('order_by', [])]
         searchtype = dictionary.get('type')
@@ -136,6 +250,13 @@ class SearchParameters(object):
 
 
 class QueryBuilder(object):
+    """Provides a static function for building a SQLAlchemy query object based
+    on a :class:`SearchParameters` instance.
+
+    Use the static :meth:`create_query` method to create a SQLAlchemy query on
+    a given model.
+
+    """
 
     @staticmethod
     def _create_operation(model, fieldname, operator, argument, relation=None):
@@ -145,7 +266,8 @@ class QueryBuilder(object):
         More specifically, this translates the string representation of an
         operation, for example ``'gt'``, to an expression corresponding to a
         SQLAlchemy expression, ``field > argument``. The recognized operators
-        are given by the keys of :data:`OPERATORS`.
+        are given by the keys of :data:`OPERATORS`. For more information on
+        recognized search operators, see :ref:`search`.
 
         If ``relation`` is not ``None``, the returned search parameter will
         correspond to a search on the field named ``fieldname`` on the entity
