@@ -26,7 +26,7 @@ from elixir import create_all, session, drop_all
 from sqlalchemy import create_engine
 
 from flaskext.restless.api import APIManager
-from testapp import models
+import testapp as models
 
 
 class ModelTestCase(unittest.TestCase):
