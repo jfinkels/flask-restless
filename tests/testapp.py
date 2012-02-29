@@ -1,5 +1,5 @@
 from flaskext.restless.model import Entity
-from elixir import metadata, setup_all, session, Field, Float, Unicode, \
+from elixir import metadata, setup_all, Field, Float, Unicode, \
     ManyToOne, OneToMany, Date, DateTime
 
 class Computer(Entity):
