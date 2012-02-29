@@ -1,4 +1,4 @@
-flask
+flask>=0.7
 elixir
 sqlalchemy
 python-dateutil<2.0
