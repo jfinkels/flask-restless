@@ -22,5 +22,5 @@ This should be the same as the version specified in the :file:`setup.py` file.
 """
 
 # make the following names available as part of the public API
-from api import APIManager
-from model import Entity
+from .manager import APIManager
+from .model import Entity

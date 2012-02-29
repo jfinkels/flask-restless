@@ -19,14 +19,13 @@
 
 :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
 :copyright:2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-:license: AGPLv3, see COPYTING for more details
+:license: GNU AGPLv3, see COPYING for more details
 
 """
 
 from elixir import session
 from sqlalchemy.sql import func
 
-__all__ = ['create_query', 'evaluate_functions', 'search']
 
 OPERATORS = {
     '==': lambda f, a, fn: f == a,

@@ -16,21 +16,21 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-    restful.model
-    ~~~~~~~~~~~~~
+    flaskext.restless.model
+    ~~~~~~~~~~~~~~~~~~~~~~~
 
     Provides a base class to be used by models that are going to be
     exposed by the ReSTful API.
 
     :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
-    :license: AGPLv3, see COPYTING for more details
+    :license: GNU AGPLv3, see COPYING for more details
+
 """
 
 from datetime import date, datetime
 from elixir import EntityBase, EntityMeta, session
 from sqlalchemy.orm.properties import RelationshipProperty
 
-__all__ = ['Entity']
 
 ISO8601_DATE = "%Y-%m-%d"
 """The ISO 8601 string format for :class:`datetime.date` objects."""

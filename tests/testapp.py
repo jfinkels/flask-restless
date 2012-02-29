@@ -1,4 +1,4 @@
-from flaskext.restless.model import Entity
+from flaskext.restless import Entity
 from elixir import metadata, setup_all, Field, Float, Unicode, \
     ManyToOne, OneToMany, Date, DateTime
 

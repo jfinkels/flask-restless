@@ -42,7 +42,9 @@ This is a partial listing of the contents of this package.
 The `flaskext/restless` directory is a Python package containing the following
 files:
 
-* `api.py` - the view class which creates the ReSTful API
+* `view.py` - the view class which implements the ReSTful API
+* `manager.py` - the main class which end users will utilize to create ReSTful
+  APIs for their database models
 * `model.py` - the base class to use for models for which ReSTful APIs will be
   created
 * `search.py` - functions and classes which facilitate searching the database

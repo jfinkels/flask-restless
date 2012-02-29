@@ -17,32 +17,24 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-    restful.api
-    ~~~~~~~~~~~
+    flaskext.restless.views
+    ~~~~~~~~~~~~~~~~~~~~~~~
 
-    Defines a flask model that provides a generic model API to be
-    exposed using REST spec.
-
-    This module is intended to be a generic way for creating, updating,
-    searching and deleting entries of an sqlalchemy model (declared with
-    elixir) through a generic HTTP API.
-
-    All models being exposed by this API are going to be validated using
-    formencode validators that should be declared by the user of this
-    library.
+    Provides :class:`API`, a subclass of :class:`flask.MethodView` which
+    provides generic endpoints for HTTP requests for information about a given
+    model from the database.
 
     :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
     :copyright:2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-    :license: AGPLv3, see COPYING for more details
+    :license: GNU AGPLv3, see COPYING for more details
+
 """
 
-from collections import namedtuple
 import json
 
 from dateutil.parser import parse as parse_datetime
 from elixir import session
 from flask import abort
-from flask import Blueprint
 from flask import jsonify
 from flask import make_response
 from flask import request
@@ -55,8 +47,6 @@ from sqlalchemy.types import DateTime
 from .search import create_query
 from .search import evaluate_functions
 from .search import search
-
-__all__ = 'APIManager',
 
 
 def jsonify_status_code(status_code, *args, **kw):
@@ -436,88 +426,3 @@ class API(MethodView):
 
         # return the updated object
         return self.get(instid)
-
-
-class APIManager(object):
-    """TODO fill me in."""
-
-    def __init__(self, app):
-        """TODO fill me in.
-
-        ``app`` is the :class:`flask.Flask` object containing the user's Flask
-        application.
-
-        """
-        self.app = app
-
-    # alternately: def add_api(modelname, readonly=True):
-    def create_api(self, model, methods=['GET'], url_prefix='/api'):
-        """Creates a ReSTful API interface as a blueprint and registers it on
-        the :class:`flask.Flask` application specified in the constructor to
-        this class.
-
-        The endpoints for the API for ``model`` will be available at
-        ``<url_prefix>/<modelname>``, where ``<url_prefix>`` is the last
-        parameter to this function and ``<modelname>`` is the lowercase string
-        representation of the model class, as accessed by
-        ``model.__name__``. (If any black magic was performed on
-        ``model.__name__``, this will be reflected in the endpoint URL.)
-
-        This function must be called at most once for each model for which you
-        wish to create a ReSTful API. Its behavior (for now) is undefined if
-        called more than once.
-
-        ``model`` is the :class:`elixir.entity.Entity` class for which a
-        ReSTful interface will be created. Note this must be a class, not an
-        instance of a class.
-
-        ``methods`` specify the HTTP methods which will be made available on
-        the ReSTful API for the specified model, subject to the following
-        caveats:
-        * If :http:method:`get` is in this list, the API will allow getting a
-          single instance of the model, getting all instances of the model, and
-          searching the model using search parameters.
-        * If :http:method:`patch` is in this list, the API will allow updating
-          a single instance of the model, updating all instances of the model,
-          and updating a subset of all instances of the model specified using
-          search parameters.
-        * If :http:method:`delete` is in this list, the API will allow deletion
-          of a single instance of the model per request.
-        * If :http:method:`post` is in this list, the API will allow posting a
-          new instance of the model per request.
-        The default list of methods provides a read-only interface (that is,
-        only :http:method:`get` requests are allowed).
-
-        ``url_prefix`` specifies the URL prefix at which this API will be
-        accessible.
-
-        """
-        modelname = model.__name__
-        methods = frozenset(methods)
-        # sets of methods used for different types of endpoints
-        no_instance_methods = methods & {'POST'}
-        possibly_empty_instance_methods = methods & {'GET', 'PATCH'}
-        instance_methods = methods & {'GET', 'PATCH', 'DELETE'}
-        # the base URL of the endpoints on which requests will be made
-        collection_endpoint = '/{}'.format(modelname)
-        instance_endpoint = collection_endpoint + '/<int:instid>'
-        # the name of the API, for use in creating the view and the blueprint
-        apiname = '{}api'.format(modelname)
-        # the view function for the API for this model
-        api_view = API.as_view(apiname, model)
-        # add the URL rules to the blueprint: the first is for methods on the
-        # collection only, the second is for methods which may or may not
-        # specify an instance, the third is for methods which must specify an
-        # instance
-        # TODO what should the second argument here be?
-        # TODO should the url_prefix be specified here or in register_blueprint
-        blueprint = Blueprint(apiname, __name__, url_prefix=url_prefix)
-        blueprint.add_url_rule(collection_endpoint,
-                               methods=no_instance_methods, view_func=api_view)
-        blueprint.add_url_rule(collection_endpoint, defaults={'instid': None},
-                               methods=possibly_empty_instance_methods,
-                               view_func=api_view)
-        blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
-                               view_func=api_view)
-        # register the blueprint on the app
-        self.app.register_blueprint(blueprint)
