@@ -33,7 +33,7 @@
 
     :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
     :copyright:2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-    :license: AGPLv3, see COPYTING for more details
+    :license: AGPLv3, see COPYING for more details
 """
 
 from collections import namedtuple
