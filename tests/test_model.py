@@ -61,10 +61,11 @@ class EntityTestCase(unittest.TestCase):
 
         """
         columns = self.model.get_columns()
-        assert sorted(columns.keys()) == sorted([
-                'age', 'birth_date', 'computers', 'id', 'name', 'other'])
+        self.assertEqual(sorted(columns.keys()), sorted(['age', 'birth_date',
+                                                         'computers', 'id',
+                                                         'name', 'other']))
         relations = Person.get_relations()
-        assert relations == ['computers']
+        self.assertEqual(relations, ['computers'])
 
     def test_date_serialization(self):
         """Tests that date objects in the database are correctly serialized in
@@ -75,9 +76,9 @@ class EntityTestCase(unittest.TestCase):
         person.birth_date = date(1986, 9, 15)
         session.commit()
         persondict = person.to_dict()
-        assert 'birth_date' in persondict
-        assert persondict['birth_date'] == \
-            person.birth_date.strftime(ISO8601_DATE)
+        self.assertIn('birth_date', persondict)
+        self.assertEqual(persondict['birth_date'],
+                         person.birth_date.strftime(ISO8601_DATE))
 
     def test_to_dict(self):
         """Test for serializing attributes of an instance of the model by the
@@ -91,11 +92,13 @@ class EntityTestCase(unittest.TestCase):
         session.commit()
 
         me_dict = me.to_dict()
-        assert sorted(me_dict.keys()) == sorted([
-                'birth_date', 'age', 'id', 'name', 'other'])
-        assert me_dict['name'] == u'Lincoln'
-        assert me_dict['age'] == 24
-        assert me_dict['birth_date'] == me.birth_date.strftime(ISO8601_DATE)
+        self.assertEqual(sorted(me_dict.keys()), sorted(['birth_date', 'age',
+                                                         'id', 'name',
+                                                         'other']))
+        self.assertEqual(me_dict['name'], u'Lincoln')
+        self.assertEqual(me_dict['age'], 24)
+        self.assertEqual(me_dict['birth_date'],
+                         me.birth_date.strftime(ISO8601_DATE))
 
     def test_to_dict_deep(self):
         """Tests that fields corresponding to related model instances are
@@ -117,21 +120,21 @@ class EntityTestCase(unittest.TestCase):
         deep = dict(zip(relations, [{}] * len(relations)))
 
         computers = someone.to_dict(deep)['computers']
-        assert len(computers) == 1
-        assert computers[0]['name'] == u'lixeiro'
-        assert computers[0]['vendor'] == u'Lemote'
+        self.assertEqual(len(computers), 1)
+        self.assertEqual(computers[0]['name'], u'lixeiro')
+        self.assertEqual(computers[0]['vendor'], u'Lemote')
 
     def test_get_or_create(self):
         """Test for :meth:`flaskext.restless.model.Entity.get_or_create()`."""
         # Here we're sure that we have a fresh table with no rows, so
         # let's create the first one:
         instance, created = self.model.get_or_create(name=u'Lincoln', age=24)
-        assert created
-        assert instance.name == u'Lincoln'
-        assert instance.age == 24
+        self.assertTrue(created)
+        self.assertEqual(instance.name, u'Lincoln')
+        self.assertEqual(instance.age, 24)
 
         # Now that we have a row, let's try to get it again
         second_instance, created = self.model.get_or_create(name=u'Lincoln')
-        assert not created
-        assert second_instance.name == u'Lincoln'
-        assert second_instance.age == 24
+        self.assertFalse(created)
+        self.assertEqual(second_instance.name, u'Lincoln')
+        self.assertEqual(second_instance.age, 24)

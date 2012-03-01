@@ -80,8 +80,9 @@ class APITestCase(unittest.TestCase):
         """
         # Invalid JSON in request data should respond with error.
         response = self.app.post('/api/Person', data='Invalid JSON string')
-        assert response.status_code == 400
-        assert loads(response.data)['message'] == 'Unable to decode data'
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(loads(response.data)['message'],
+                         'Unable to decode data')
 
         # Now, let's test the validation stuff
         # response = self.app.post('/api/Person', data=dumps({'name': u'Test',
@@ -91,26 +92,26 @@ class APITestCase(unittest.TestCase):
 
         response = self.app.post('/api/Person',
                                  data=dumps({'name': 'Lincoln', 'age': 23}))
-        assert response.status_code == 201
-        assert 'id' in loads(response.data)
+        self.assertEqual(response.status_code, 201)
+        self.assertIn('id', loads(response.data))
 
         response = self.app.get('/api/Person/1')
-        assert response.status_code == 200
+        self.assertEqual(response.status_code, 200)
 
         deep = {'computers': []}
         inst = Person.get_by(id=1).to_dict(deep)
-        assert loads(response.data) == inst
+        self.assertEqual(loads(response.data), inst)
 
     def test_post_with_submodels(self):
         """Tests the creation of a model with a related field."""
         data = {'name': u'John', 'age': 2041,
                 'computers': [{'name': u'lixeiro', 'vendor': u'Lemote'}]}
         response = self.app.post('/api/Person', data=dumps(data))
-        assert response.status_code == 201
-        assert 'id' in loads(response.data)
+        self.assertEqual(response.status_code, 201)
+        self.assertIn('id', loads(response.data))
 
         response = self.app.get('/api/Person')
-        assert len(loads(response.data)) == 1
+        self.assertEqual(len(loads(response.data)), 1)
 
     def test_delete(self):
         """Test for deleting an instance of the database using the
@@ -120,21 +121,21 @@ class APITestCase(unittest.TestCase):
         # Creating the person who's gonna be deleted
         response = self.app.post('/api/Person',
                                  data=dumps({'name': 'Lincoln', 'age': 23}))
-        assert response.status_code == 201
-        assert 'id' in loads(response.data)
+        self.assertEqual(response.status_code, 201)
+        self.assertIn('id', loads(response.data))
 
         # Making sure it has been created
         deep = {'computers': []}
         inst = Person.get_by(id=1).to_dict(deep)
         response = self.app.get('/api/Person/1')
-        assert loads(response.data) == inst
+        self.assertEqual(loads(response.data), inst)
 
         # Deleting it
         response = self.app.delete('/api/Person/1')
-        assert response.status_code == 204
+        self.assertEqual(response.status_code, 204)
 
         # Making sure it has been deleted
-        assert Person.get_by(id=1) is None
+        self.assertIsNone(Person.get_by(id=1))
 
     def test_delete_absent_instance(self):
         """Test that deleting an instance of the model which does not exist
@@ -145,7 +146,7 @@ class APITestCase(unittest.TestCase):
 
         """
         response = self.app.delete('/api/Person/1')
-        assert response.status_code == 204
+        self.assertEqual(response.status_code, 204)
 
     def test_patch_many(self):
         """Test for updating a collection of instances of the model using the
@@ -188,8 +189,8 @@ class APITestCase(unittest.TestCase):
         response = self.app.get('/api/Person')
         loaded = loads(response.data)['objects']
         for i in loaded:
-            assert i['birth_date'] == ('%s-%s-%s' % (
-                    year, str(month).zfill(2), str(day).zfill(2)))
+            self.assertEqual(i['birth_date'], ('%s-%s-%s' % (
+                    year, str(month).zfill(2), str(day).zfill(2))))
 
     def test_single_update(self):
         """Test for updating a single instance of the model using the
@@ -198,13 +199,13 @@ class APITestCase(unittest.TestCase):
         """
         resp = self.app.post('/api/Person', data=dumps({'name': 'Lincoln',
                                                          'age': 10}))
-        assert resp.status_code == 201
-        assert 'id' in loads(resp.data)
+        self.assertEqual(resp.status_code, 201)
+        self.assertIn('id', loads(resp.data))
 
         # Trying to pass invalid data to the update method
         resp = self.app.patch('/api/Person/1', data='Invalid JSON string')
-        assert resp.status_code == 400
-        assert loads(resp.data)['message'] == 'Unable to decode data'
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(loads(resp.data)['message'], 'Unable to decode data')
 
         # Trying to pass valid JSON but an invalid value to the API
         # resp = self.app.patch('/api/Person/1',
@@ -215,11 +216,11 @@ class APITestCase(unittest.TestCase):
         # assert loaded['error_list'] == [{'age': 'Please enter a number'}]
 
         resp = self.app.patch('/api/Person/1', data=dumps({'age': 24}))
-        assert resp.status_code == 200
+        self.assertEqual(resp.status_code, 200)
 
         resp = self.app.get('/api/Person/1')
-        assert resp.status_code == 200
-        assert loads(resp.data)['age'] == 24
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['age'], 24)
 
     def test_patch_add_submodel(self):
         """Test for updating a single instance of the model by adding a related
@@ -229,23 +230,23 @@ class APITestCase(unittest.TestCase):
         # Let's create a row as usual
         response = self.app.post('/api/Person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
-        assert response.status_code == 201
+        self.assertEqual(response.status_code, 201)
 
         data = {'computers':
                     {'add': [{'name': u'lixeiro', 'vendor': u'Lemote'}]}
                 }
         response = self.app.patch('/api/Person/1', data=dumps(data))
-        assert response.status_code == 200
+        self.assertEqual(response.status_code, 200)
 
         # Let's check it out
         response = self.app.get('/api/Person/1')
         loaded = loads(response.data)
 
-        assert len(loaded['computers']) == 1
-        assert loaded['computers'][0]['name'] == \
-            data['computers']['add'][0]['name']
-        assert loaded['computers'][0]['vendor'] == \
-            data['computers']['add'][0]['vendor']
+        self.assertEqual(len(loaded['computers']), 1)
+        self.assertEqual(loaded['computers'][0]['name'],
+                         data['computers']['add'][0]['name'])
+        self.assertEqual(loaded['computers'][0]['vendor'],
+                         data['computers']['add'][0]['vendor'])
 
         # test that this new computer was added to the database as well
         computer = Computer.get_by(id=1)
@@ -276,13 +277,13 @@ class APITestCase(unittest.TestCase):
             }
         }
         resp = self.app.patch('/api/Person/1', data=dumps(update_data))
-        assert resp.status_code == 200
-        assert loads(resp.data)['id'] == 1
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['id'], 1)
 
         # Let's check it out
         response = self.app.get('/api/Person/1')
         loaded = loads(response.data)
-        assert len(loaded['computers']) == 1
+        self.assertEqual(len(loaded['computers']), 1)
 
     def test_patch_autodelete_submodel(self):
         """Tests the automatic deletion of entries marked with the
@@ -294,10 +295,10 @@ class APITestCase(unittest.TestCase):
         # Creating all rows needed in our test
         person_data = {'name': u'Lincoln', 'age': 23}
         resp = self.app.post('/api/Person', data=dumps(person_data))
-        assert resp.status_code == 201
+        self.assertEqual(resp.status_code, 201)
         comp_data = {'name': u'lixeiro', 'vendor': u'Lemote'}
         resp = self.app.post('/api/Computer', data=dumps(comp_data))
-        assert resp.status_code == 201
+        self.assertEqual(resp.status_code, 201)
 
         # updating person to add the computer
         update_data = {'computers': {'add': [{'id': 1}]}}
@@ -305,10 +306,10 @@ class APITestCase(unittest.TestCase):
 
         # Making sure that everything worked properly
         resp = self.app.get('/api/Person/1')
-        assert resp.status_code == 200
+        self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)
-        assert len(loaded['computers']) == 1
-        assert loaded['computers'][0]['name'] == u'lixeiro'
+        self.assertEqual(len(loaded['computers']), 1)
+        self.assertEqual(loaded['computers'][0]['name'], u'lixeiro')
 
         # Now, let's remove it and delete it
         update2_data = {
@@ -319,17 +320,17 @@ class APITestCase(unittest.TestCase):
             },
         }
         resp = self.app.patch('/api/Person/1', data=dumps(update2_data))
-        assert resp.status_code == 200
+        self.assertEqual(resp.status_code, 200)
 
         # Testing to make sure it was removed from the related field
         resp = self.app.get('/api/Person/1')
-        assert resp.status_code == 200
+        self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)
-        assert len(loaded['computers']) == 0
+        self.assertEqual(len(loaded['computers']), 0)
 
         # Making sure it was removed from the database
         resp = self.app.get('/api/Computer/1')
-        assert resp.status_code == 404
+        self.assertEqual(resp.status_code, 404)
 
     def test_search(self):
         """Tests basic search using the :http:method:`get` method."""
@@ -355,9 +356,9 @@ class APITestCase(unittest.TestCase):
 
         # Let's search for users with that above filter
         resp = self.app.search('/api/Person', dumps(search))
-        assert resp.status_code == 200
+        self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)
-        assert len(loaded['objects']) == 3  # Mary, Lucy and Katy
+        self.assertEqual(len(loaded['objects']), 3)  # Mary, Lucy and Katy
 
         # Let's try something more complex, let's sum all age values
         # available in our database
@@ -366,10 +367,10 @@ class APITestCase(unittest.TestCase):
         }
 
         resp = self.app.search('/api/Person', dumps(search))
-        assert resp.status_code == 200
+        self.assertEqual(resp.status_code, 200)
         data = loads(resp.data)
-        assert 'sum__age' in data
-        assert data['sum__age'] == 102.0
+        self.assertIn('sum__age', data)
+        self.assertEqual(data['sum__age'], 102.0)
 
         # Tests searching for a single row
         search = {
@@ -379,14 +380,14 @@ class APITestCase(unittest.TestCase):
             ],
         }
         resp = self.app.search('/api/Person', dumps(search))
-        assert resp.status_code == 200
-        assert loads(resp.data)['name'] == u'Lincoln'
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['name'], u'Lincoln')
 
         # Looking for something that does not exist on the database
         search['filters'][0]['val'] = 'Sammy'
         resp = self.app.search('/api/Person', dumps(search))
-        assert resp.status_code == 200
-        assert loads(resp.data)['message'] == 'No result found'
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['message'], 'No result found')
 
         # We have to receive an error if the user provides an invalid
         # data to the search, like this:
@@ -396,21 +397,21 @@ class APITestCase(unittest.TestCase):
             ]
         }
         resp = self.app.search('/api/Person', dumps(search))
-        assert resp.status_code == 200
+        self.assertEqual(resp.status_code, 200)
         #assert loads(resp.data)['error_list'][0] == \
         #    {'age': 'Please enter a number'}
-        assert len(loads(resp.data)['objects']) == 0
+        self.assertEqual(len(loads(resp.data)['objects']), 0)
 
         # Testing the order_by stuff
         search = {'order_by': [{'field': 'age', 'direction': 'asc'}]}
         resp = self.app.search('/api/Person', dumps(search))
-        assert resp.status_code == 200
+        self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)['objects']
-        assert loaded[0][u'age'] == 7
-        assert loaded[1][u'age'] == 19
-        assert loaded[2][u'age'] == 23
-        assert loaded[3][u'age'] == 25
-        assert loaded[4][u'age'] == 28
+        self.assertEqual(loaded[0][u'age'], 7)
+        self.assertEqual(loaded[1][u'age'], 19)
+        self.assertEqual(loaded[2][u'age'], 23)
+        self.assertEqual(loaded[3][u'age'], 25)
+        self.assertEqual(loaded[4][u'age'], 28)
 
         # Test the IN operation
         search = {
@@ -419,10 +420,10 @@ class APITestCase(unittest.TestCase):
             ]
         }
         resp = self.app.search('/api/Person', dumps(search))
-        assert resp.status_code == 200
+        self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)['objects']
-        assert loaded[0][u'age'] == 7
-        assert loaded[1][u'age'] == 28
+        self.assertEqual(loaded[0][u'age'], 7)
+        self.assertEqual(loaded[1][u'age'], 28)
 
         # Testing related search
         update = {
@@ -431,7 +432,7 @@ class APITestCase(unittest.TestCase):
             }
         }
         resp = self.app.patch('/api/Person/1', data=dumps(update))
-        assert resp.status_code == 200
+        self.assertEqual(resp.status_code, 200)
 
         search = {
             'single': True,
@@ -442,8 +443,8 @@ class APITestCase(unittest.TestCase):
             ]
         }
         resp = self.app.search('/api/Person', dumps(search))
-        assert resp.status_code == 200
-        assert loads(resp.data)['computers'][0]['name'] == 'lixeiro'
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['computers'][0]['name'], 'lixeiro')
 
         # Testing the comparation for two fields. We want to compare
         # `age' and `other' fields. If the first one is lower than or
@@ -458,11 +459,11 @@ class APITestCase(unittest.TestCase):
             ]
         }
         resp = self.app.search('/api/Person', dumps(search))
-        assert resp.status_code == 200
+        self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)['objects']
-        assert len(loaded) == 2
-        assert loaded[0]['other'] == 10
-        assert loaded[1]['other'] == 19
+        self.assertEqual(len(loaded), 2)
+        self.assertEqual(loaded[0]['other'], 10)
+        self.assertEqual(loaded[1]['other'], 19)
 
     def test_search2(self):
         """Testing more search functionality."""
@@ -477,16 +478,16 @@ class APITestCase(unittest.TestCase):
             'filters': [{'name': 'id', 'op': 'equal_to', 'val': 1}]
         }
         resp = self.app.search('/api/Person', dumps(search))
-        assert resp.status_code == 200
-        assert loads(resp.data)['name'] == u'Fuxu'
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['name'], u'Fuxu')
 
         # Testing limit and offset
         search = {'limit': 1, 'offset': 1}
         resp = self.app.search('/api/Person', dumps(search))
-        assert resp.status_code == 200
-        assert loads(resp.data)['objects'][0]['name'] == u'Everton'
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['objects'][0]['name'], u'Everton')
 
         # Testing multiple results when calling .one()
         resp = self.app.search('/api/Person', dumps({'single': True}))
-        assert resp.status_code == 200
-        assert loads(resp.data)['message'] == 'Multiple results found'
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['message'], 'Multiple results found')
