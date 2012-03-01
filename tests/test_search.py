@@ -54,7 +54,7 @@ class TestSupport(unittest.TestCase):
         os.unlink(self.db_file)
 
 
-class QueryCreationTest(unittest.TestCase):
+class QueryCreationTest(TestSupport):
     """Unit tests for the :func:`flaskext.restless.search.create_query`
     function.
 
@@ -62,7 +62,7 @@ class QueryCreationTest(unittest.TestCase):
     pass
 
 
-class FunctionEvaluationTest(unittest.TestCase):
+class FunctionEvaluationTest(TestSupport):
     """Unit tests for the :func:`flaskext.restless.search.evaluate_functions`
     function.
 
@@ -70,7 +70,7 @@ class FunctionEvaluationTest(unittest.TestCase):
     pass
 
 
-class SearchTest(unittest.TestCase):
+class SearchTest(TestSupport):
     """Unit tests for the :func:`flaskext.restless.search.search` function.
 
     """
