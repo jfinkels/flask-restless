@@ -434,6 +434,7 @@ class APITestCase(unittest.TestCase):
         resp = self.app.patch('/api/Person/1', data=dumps(update))
         self.assertEqual(resp.status_code, 200)
 
+        # TODO document this
         search = {
             'single': True,
             'filters': [
