@@ -174,15 +174,11 @@ class SearchParameters(object):
 
     """
 
-    def __init__(self, filters=[], searchtype=None, limit=None, offset=None,
-                 order_by=[]):
+    def __init__(self, filters=[], limit=None, offset=None, order_by=[]):
         """Instantiates this object with the specified attributes.
 
         `filters` is a list of :class:`Filter` objects, representing filters to
         be applied during the search.
-
-        `single` is a boolean representing whether a single result is expected
-        from the search.
 
         `limit`, if not ``None``, specifies the maximum number of results to
         return in the search.
@@ -196,7 +192,6 @@ class SearchParameters(object):
 
         """
         self.filters = filters
-        self.searchtype = searchtype
         self.limit = limit
         self.offset = offset
         self.order_by = order_by
@@ -204,9 +199,8 @@ class SearchParameters(object):
     def __repr__(self):
         """Returns a string representation of the search parameters."""
         return ('<SearchParameters filters={}, order_by={}, limit={},'
-                ' offset={}, type={}>').format(self.filters, self.order_by,
-                                               self.limit, self.offset,
-                                               self.searchtype)
+                ' offset={}>').format(self.filters, self.order_by, self.limit,
+                                      self.offset)
 
     @staticmethod
     def from_dictionary(dictionary):
@@ -219,18 +213,18 @@ class SearchParameters(object):
               'filters': [{'name': 'age', 'op': 'lt', 'val': 20}, ...],
               'order_by': [{'field': 'age', 'direction': 'desc'}, ...]
               'limit': 10,
-              'offset': 3,
-              'single': False,
+              'offset': 3
             }
 
         where ``dictionary['filters']`` is the list of :class:`Filter` objects
         (in dictionary form), ``dictionary['order_by']`` is the list of
         :class:`OrderBy` objects (in dictionary form), ``dictionary['limit']``
-        is the maximum number of matching entries to return,
+        is the maximum number of matching entries to return, and
         ``dictionary['offset']`` is the number of initial entries to skip in
-        the matching result set, and ``dictionary['single']`` is a Python
-        boolean representing whether or not the search should expect a single
-        result.
+        the matching result set.
+
+        The provided dictionary may have other key/value pairs, but they are
+        ignored.
 
         Raises a :exc:`IllegalArgumentError` if there is an error instantiating
         one of the :class:`Filter` objects.
@@ -241,11 +235,10 @@ class SearchParameters(object):
         # may raise IllegalArgumentError
         filters = [from_dict(f) for f in dictionary.get('filters', [])]
         order_by = [OrderBy(**o) for o in dictionary.get('order_by', [])]
-        searchtype = dictionary.get('type')
         limit = dictionary.get('limit')
         offset = dictionary.get('offset')
-        return SearchParameters(filters=filters, searchtype=searchtype,
-                                limit=limit, offset=offset, order_by=order_by)
+        return SearchParameters(filters=filters, limit=limit, offset=offset,
+                                order_by=order_by)
 
 
 class QueryBuilder(object):
@@ -295,6 +288,7 @@ class QueryBuilder(object):
         field = getattr(model, relation or fieldname)
         return OPERATORS.get(operator)(field, argument, fieldname)
 
+    # TODO rename this to _create_filters
     @staticmethod
     def _extract_operators(model, search_params):
         """Returns the list of operations on ``model`` specified in the
@@ -442,28 +436,31 @@ def search(model, search_params):
     This function essentially calls :func:`create_query` to create a query
     which matches the set of all instances of ``model`` which meet the search
     parameters defined in ``search_params``, then returns all results (or just
-    one if ``search_params['type'] == 'one'``).
+    one if ``search_params['single'] == True``).
 
     This function returns a single instance of the model matching the search
-    parameters if the type of the search is ``'one'``, or a list of all such
-    instances otherwise.
+    parameters if ``search_params['single']`` is ``True``, or a list of all
+    such instances otherwise. If ``search_params['single']`` is ``True``, then
+    this method will raise :exc:`sqlalchemy.orm.exc.NoResultFound` if no
+    results are found and :exc:`sqlalchemy.orm.exc.MultipleResultsFound` if
+    multiple results are found.
 
     ``model`` is a :class:`elixir.Entity` representing the database model to
     query.
 
     ``search_params`` is a dictionary containing all available search
     parameters. For more information on available search parameters, see
-    :ref:`search`.
-
-    If ``search_params`` specifies that the type of the search is
-    ``'one'``, then this method will raise
-    :exc:`sqlalchemy.orm.exc.NoResultFound` if no results are found and
-    :exc:`sqlalchemy.orm.exc.MultipleResultsFound` if multiple results are
-    found.
+    :ref:`search`. Implementation note: this dictionary will be converted to a
+    :class:`SearchParameters` object when the :func:`create_query` function is
+    called.
 
     """
+    # `is_single` is True when 'single' is a key in ``search_params`` and its
+    # corresponding value is anything except those values which evaluate to
+    # False (False, 0, the empty string, the empty list, etc.).
+    is_single = search_params.get('single')
     query = create_query(model, search_params)
-    if search_params.get('type') == 'one':
+    if is_single:
         # may raise NoResultFound or MultipleResultsFound
         return query.one()
     else:

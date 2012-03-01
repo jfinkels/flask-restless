@@ -175,7 +175,7 @@ class API(MethodView):
         The general structure of request data as a JSON string is as follows::
 
             {
-              "type": "one",
+              "single": "True",
               "order_by": [{"field": "age", "direction": "asc"}],
               "limit": 2,
               "offset": 1,

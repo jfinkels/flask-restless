@@ -436,7 +436,7 @@ class RestfulTestCase(unittest.TestCase):
 
         # Tests searching for a single row
         search = {
-            'type': 'one',      # I'm sure we have only one row here
+            'single': True,      # I'm sure we have only one row here
             'filters': [
                 {'name': 'name', 'val': u'Lincoln', 'op': 'equals'}
             ],
@@ -497,7 +497,7 @@ class RestfulTestCase(unittest.TestCase):
         assert resp.status_code == 200
 
         search = {
-            'type': 'one',
+            'single': True,
             'filters': [
                 {'name': 'computers__name',
                  'val': u'lixeiro',
@@ -537,7 +537,7 @@ class RestfulTestCase(unittest.TestCase):
 
         # Let's test the search using an id
         search = {
-            'type': 'one',
+            'single': True,
             'filters': [{'name': 'id', 'op': 'equal_to', 'val': 1}]
         }
         resp = self.app.search('/api/Person', dumps(search))
@@ -551,7 +551,7 @@ class RestfulTestCase(unittest.TestCase):
         assert loads(resp.data)['objects'][0]['name'] == u'Everton'
 
         # Testing multiple results when calling .one()
-        resp = self.app.search('/api/Person', dumps({'type': 'one'}))
+        resp = self.app.search('/api/Person', dumps({'single': True}))
         assert resp.status_code == 200
         assert loads(resp.data)['message'] == 'Multiple results found'
 
