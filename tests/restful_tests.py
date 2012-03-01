@@ -1,6 +1,6 @@
 # -*- coding: utf-8; Mode: Python -*-
 #
-# Copyright (C) 2011  Lincoln de Sousa <lincoln@comum.org>
+# Copyright (C) 2011 Lincoln de Sousa <lincoln@comum.org>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published by
