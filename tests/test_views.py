@@ -14,148 +14,69 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-import unittest
-import os
+"""Unit tests for the :mod:`flaskext.restless.views` module."""
+from datetime import date
+from json import dumps
+from json import loads
 from tempfile import mkstemp
-from datetime import date, datetime
+import os
+import unittest
 
+from elixir import create_all
+from elixir import drop_all
+from elixir import session
 import flask
-from json import dumps, loads
-from elixir import create_all, session, drop_all
 from sqlalchemy import create_engine
 
 from flaskext.restless import APIManager
-import testapp as models
+from .models import setup
+from .models import Computer
+from .models import Person
 
 
-class ModelTestCase(unittest.TestCase):
-    """Tests focused on `restful.model` module
-    """
-
-    def setUp(self):
-        self.db_fd, self.db_file = mkstemp()
-        models.setup(create_engine('sqlite:///%s' % self.db_file))
-        create_all()
-        session.commit()
-
-        self.model = models.Person
-
-    def tearDown(self):
-        """Destroying the sqlite database file
-        """
-        drop_all()
-        session.commit()
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
-
-    def test_column_introspection(self):
-        """Makes sure that the column list works properly
-        """
-        columns = self.model.get_columns()
-        assert sorted(columns.keys()) == sorted([
-                'age', 'birth_date', 'computers', 'id', 'name', 'other'])
-        relations = models.Person.get_relations()
-        assert relations == ['computers']
-
-    def test_instance_introspection(self):
-        """Testing the instance introspection
-        """
-        me = self.model()
-        me.name = u'Lincoln'
-        me.age = 24
-        me.birth_date = date(1986, 9, 15)
-        session.commit()
-
-        me_dict = me.to_dict()
-        assert sorted(me_dict.keys()) == sorted([
-                'birth_date', 'age', 'id', 'name', 'other'])
-        assert me_dict['name'] == u'Lincoln'
-        assert me_dict['age'] == 24
-
-    def test_deep_introspection(self):
-        """Testing the introspection of related fields
-        """
-        someone = self.model()
-        someone.name = u'John'
-        someone.age = 25
-        computer1 = models.Computer()
-        computer1.name = u'lixeiro'
-        computer1.vendor = u'Lemote'
-        computer1.owner = someone
-        computer1.buy_date = datetime.now()
-        session.commit()
-
-        relations = models.Person.get_relations()
-        deep = dict(zip(relations, [{}] * len(relations)))
-
-        computers = someone.to_dict(deep)['computers']
-        assert len(computers) == 1
-        assert computers[0]['name'] == u'lixeiro'
-        assert computers[0]['vendor'] == u'Lemote'
-
-    def test_get_or_create(self):
-        """Testing the model.get_or_create() method
-        """
-        # Here we're sure that we have a fresh table with no rows, so
-        # let's create the first one:
-        instance, created = self.model.get_or_create(name=u'Lincoln', age=24)
-        assert created
-        assert instance.name == u'Lincoln'
-        assert instance.age == 24
-
-        # Now that we have a row, let's try to get it again
-        second_instance, created = self.model.get_or_create(name=u'Lincoln')
-        assert not created
-        assert second_instance.name == u'Lincoln'
-        assert second_instance.age == 24
-
-
-class RestfulTestCase(unittest.TestCase):
-    """Test case class for the restful api itself
-    """
+class APITestCase(unittest.TestCase):
+    """Unit tests for the :class:`flaskext.restless.views.API` class."""
 
     def setUp(self):
-        """Sets up the database and the flask app
+        """Creates the database, the :class:`~flask.Flask` object, the
+        :class:`~flaskext.restless.manager.APIManager` for that application,
+        and creates the ReSTful API endpoints for the :class:`testapp.Person`
+        and :class:`testapp.Computer` models.
+
         """
+        # create the database
         self.db_fd, self.db_file = mkstemp()
-        models.setup(create_engine('sqlite:///%s' % self.db_file))
+        setup(create_engine('sqlite:///%s' % self.db_file))
         create_all()
 
+        # create the Flask application
         app = flask.Flask(__name__)
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
-        #api.setup(models, validators)
-        manager = APIManager(app)
-        # setup the URLs for the Person and Computer API
-        # TODO move validators to use sqlalchemy-validation
-        manager.create_api(models.Person, #validators=validators.allvalidators,
-                           methods=['GET', 'PATCH', 'POST', 'DELETE'])
-        manager.create_api(models.Computer,
-                           #validators=validators.allvalidators,
-                           methods=['GET', 'POST'])
-        #app.register_blueprint(api.blueprint, url_prefix="/api")
         self.app = app.test_client()
-        # To facilitate searching
-        self.app.search = lambda url, query: \
-            self.app.get(url + '?q={}'.format(query))
+
+        # setup the URLs for the Person and Computer API
+        manager = APIManager(app)
+        manager.create_api(Person, methods=['GET', 'PATCH', 'POST', 'DELETE'])
+        manager.create_api(Computer, methods=['GET', 'POST'])
+
+        # to facilitate searching
+        self.app.search = lambda url, q: self.app.get(url + '?q={}'.format(q))
 
     def tearDown(self):
-        """Destroying the sqlite database file
+        """Drops all tables from the temporary database and closes and unlink
+        the temporary file in which it lived.
+
         """
         drop_all()
         session.commit()
         os.close(self.db_fd)
         os.unlink(self.db_file)
 
-    # def test_setup(self):
-    #     """Just to make sure that everything worked while setting up api
-    #     """
-    #     assert api.CONFIG['models'] is models
-    #     assert api.CONFIG['validators'] is validators
+    def test_post(self):
+        """Test for creating a new instance of the database model using the
+        :http:method:`post` method.
 
-    def test_new_person(self):
-        """Tests the creation of new persons
         """
         # Invalid JSON in request data should respond with error.
         response = self.app.post('/api/Person', data='Invalid JSON string')
@@ -177,12 +98,11 @@ class RestfulTestCase(unittest.TestCase):
         assert response.status_code == 200
 
         deep = {'computers': []}
-        inst = models.Person.get_by(id=1).to_dict(deep)
+        inst = Person.get_by(id=1).to_dict(deep)
         assert loads(response.data) == inst
 
-    def test_new_with_submodels(self):
-        """Tests the creation of a model with some related fields
-        """
+    def test_post_with_submodels(self):
+        """Tests the creation of a model with a related field."""
         data = {'name': u'John', 'age': 2041,
                 'computers': [{'name': u'lixeiro', 'vendor': u'Lemote'}]}
         response = self.app.post('/api/Person', data=dumps(data))
@@ -192,8 +112,10 @@ class RestfulTestCase(unittest.TestCase):
         response = self.app.get('/api/Person')
         assert len(loads(response.data)) == 1
 
-    def test_remove_person(self):
-        """Adds a new person and tests its removal.
+    def test_delete(self):
+        """Test for deleting an instance of the database using the
+        :http:method:`delete` method.
+
         """
         # Creating the person who's gonna be deleted
         response = self.app.post('/api/Person',
@@ -203,7 +125,7 @@ class RestfulTestCase(unittest.TestCase):
 
         # Making sure it has been created
         deep = {'computers': []}
-        inst = models.Person.get_by(id=1).to_dict(deep)
+        inst = Person.get_by(id=1).to_dict(deep)
         response = self.app.get('/api/Person/1')
         assert loads(response.data) == inst
 
@@ -212,10 +134,11 @@ class RestfulTestCase(unittest.TestCase):
         assert response.status_code == 204
 
         # Making sure it has been deleted
-        assert models.Person.get_by(id=1) is None
+        assert Person.get_by(id=1) is None
 
-    def test_remove_absent_person(self):
-        """Tests the removal of someone that is not in the database.
+    def test_delete_absent_instance(self):
+        """Test that deleting an instance of the model which does not exist
+        fails.
 
         This should give us the same response as when there is an object there,
         since the :http:method:`delete` method is an idempotent method.
@@ -224,8 +147,9 @@ class RestfulTestCase(unittest.TestCase):
         response = self.app.delete('/api/Person/1')
         assert response.status_code == 204
 
-    def test_update(self):
-        """Tests the update (:http:method:`patch`) operation on a collection.
+    def test_patch_many(self):
+        """Test for updating a collection of instances of the model using the
+        :http:method:`patch` method.
 
         """
         # Creating some people
@@ -268,8 +192,8 @@ class RestfulTestCase(unittest.TestCase):
                     year, str(month).zfill(2), str(day).zfill(2)))
 
     def test_single_update(self):
-        """Tests the update (:http:method:`patch`) operation on a single
-        instance.
+        """Test for updating a single instance of the model using the
+        :http:method:`patch` method.
 
         """
         resp = self.app.post('/api/Person', data=dumps({'name': 'Lincoln',
@@ -297,8 +221,11 @@ class RestfulTestCase(unittest.TestCase):
         assert resp.status_code == 200
         assert loads(resp.data)['age'] == 24
 
-    def test_update_submodels(self):
-        """Tests the update (:http:method:`put`) operation with submodels."""
+    def test_patch_add_submodel(self):
+        """Test for updating a single instance of the model by adding a related
+        model using the :http:method:`patch` method.
+
+        """
         # Let's create a row as usual
         response = self.app.post('/api/Person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
@@ -320,9 +247,19 @@ class RestfulTestCase(unittest.TestCase):
         assert loaded['computers'][0]['vendor'] == \
             data['computers']['add'][0]['vendor']
 
-    def test_update_submodels2(self):
-        """Tests the removal of a submodel item when updating."""
-        # Creating the row that is gonna be updated
+        # test that this new computer was added to the database as well
+        computer = Computer.get_by(id=1)
+        self.assertIsNotNone(computer)
+        self.assertEqual(data['computers']['add'][0]['name'], computer.name)
+        self.assertEqual(data['computers']['add'][0]['vendor'],
+                         computer.vendor)
+
+    def test_patch_remove_submodel(self):
+        """Test for updating a single instance of the model by removing a
+        related model using the :http:method:`patch` method.
+
+        """
+        # Creating the row that will be updated
         data = {
             'name': u'Lincoln', 'age': 23,
             'computers': [
@@ -335,7 +272,7 @@ class RestfulTestCase(unittest.TestCase):
         # Data for the update
         update_data = {
             'computers': {
-                'remove': [{'name': u'pidinti'}],  # It was stolen :(
+                'remove': [{'name': u'pidinti'}],
             }
         }
         resp = self.app.patch('/api/Person/1', data=dumps(update_data))
@@ -347,7 +284,7 @@ class RestfulTestCase(unittest.TestCase):
         loaded = loads(response.data)
         assert len(loaded['computers']) == 1
 
-    def test_update_submodels3(self):
+    def test_patch_autodelete_submodel(self):
         """Tests the automatic deletion of entries marked with the
         ``__delete__`` flag on an update operation.
 
@@ -395,7 +332,7 @@ class RestfulTestCase(unittest.TestCase):
         assert resp.status_code == 404
 
     def test_search(self):
-        """Tests basic search"""
+        """Tests basic search using the :http:method:`get` method."""
         # Trying to pass invalid params to the search method
         # TODO this is no longer a valid test, since the query is no longer
         # passed as JSON in body of the request
@@ -528,8 +465,7 @@ class RestfulTestCase(unittest.TestCase):
         assert loaded[1]['other'] == 19
 
     def test_search2(self):
-        """Testing more search things.
-        """
+        """Testing more search functionality."""
         create = lambda x: self.app.post('/api/Person', data=dumps(x))
         create({'name': u'Fuxu', 'age': 32})
         create({'name': u'Everton', 'age': 33})
@@ -554,13 +490,3 @@ class RestfulTestCase(unittest.TestCase):
         resp = self.app.search('/api/Person', dumps({'single': True}))
         assert resp.status_code == 200
         assert loads(resp.data)['message'] == 'Multiple results found'
-
-
-def suite():
-    test_suite = unittest.TestSuite()
-    test_suite.addTest(unittest.makeSuite(ModelTestCase))
-    test_suite.addTest(unittest.makeSuite(RestfulTestCase))
-    return test_suite
-
-if __name__ == '__main__':
-    unittest.main(defaultTest='suite')

@@ -80,6 +80,7 @@ class API(MethodView):
         self.model = model
 
     # TODO change this to have more sensible arguments
+    # TODO document the __delete__ flag
     def _update_relations(self, query, params):
         """Adds or removes models which are related to the model specified in
         the constructor of this class.

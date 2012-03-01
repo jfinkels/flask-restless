@@ -34,8 +34,13 @@ from flask import Blueprint
 from .views import API
 
 
+# TODO add support for PUT method which just delegates to PATCH?
+# TODO use __tablname__ instead of uppercase class name?
 class APIManager(object):
     """TODO fill me in."""
+
+    APINAME_FORMAT = '{}api'
+    BLUEPRINTNAME_FORMAT = '{}{}'
 
     def __init__(self, app):
         """TODO fill me in.
@@ -45,6 +50,31 @@ class APIManager(object):
 
         """
         self.app = app
+
+    def _next_blueprint_name(self, basename):
+        """Returns the next name for a blueprint with the specified base name.
+
+        This method returns a string of the form ``'{}{}'.format(basename,
+        number)``, where ``number`` is the next non-negative integer not
+        already used in the name of an existing blueprint.
+
+        For example, if `basename` is ``'personapi'`` and blueprints already
+        exist with names ``'personapi0'``, ``'personapi1'``, and
+        ``'personapi2'``, then this function would return ``'personapi3'``. We
+        expect that code which calls this function will subsequently register a
+        blueprint with that name, but that is not necessary.
+
+        """
+        existing_names = filter(lambda s: s.startswith(basename),
+                                self.app.blueprints.iterkeys())
+        # if this is the first one...
+        if not list(existing_names):
+            next_number = 0
+        else:
+            existing_numbers = map(lambda n: int(n.partition(basename)[-1]),
+                                   existing_names)
+            next_number = max(existing_numbers) + 1
+        return APIManager.BLUEPRINTNAME_FORMAT.format(basename, next_number)
 
     # alternately: def add_api(modelname, readonly=True):
     def create_api(self, model, methods=['GET'], url_prefix='/api'):
@@ -98,16 +128,18 @@ class APIManager(object):
         collection_endpoint = '/{}'.format(modelname)
         instance_endpoint = collection_endpoint + '/<int:instid>'
         # the name of the API, for use in creating the view and the blueprint
-        apiname = '{}api'.format(modelname)
+        apiname = APIManager.APINAME_FORMAT.format(modelname)
         # the view function for the API for this model
         api_view = API.as_view(apiname, model)
+        # suffix an integer to apiname according to already existing blueprints
+        blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the
         # collection only, the second is for methods which may or may not
         # specify an instance, the third is for methods which must specify an
         # instance
         # TODO what should the second argument here be?
         # TODO should the url_prefix be specified here or in register_blueprint
-        blueprint = Blueprint(apiname, __name__, url_prefix=url_prefix)
+        blueprint = Blueprint(blueprintname, __name__, url_prefix=url_prefix)
         blueprint.add_url_rule(collection_endpoint,
                                methods=no_instance_methods, view_func=api_view)
         blueprint.add_url_rule(collection_endpoint, defaults={'instid': None},
