@@ -11,3 +11,4 @@ env*/
 build/
 dist/
 *egg*/
+docs/_build

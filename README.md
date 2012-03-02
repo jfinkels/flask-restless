@@ -109,7 +109,12 @@ The documentation is written for Sphinx in [reStructuredText][8] files in the
 `doc/` directory. Documentation for each class and function is provided in the
 docstring in the code.
 
-To build the documentation, run the command
+The documentation uses the Flask Sphinx theme. It is included as a git
+submodule of this project, rooted at `docs/_themes`. To get the themes, do
+
+    git submodule update --init
+
+Now to build the documentation, run the command
 
     python setup.py build_sphinx
 
