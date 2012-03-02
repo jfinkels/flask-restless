@@ -106,7 +106,7 @@ Using `pip` is probably the easiest way to install these:
     pip install sphinx sphinxcontrib-httpdomain
 
 The documentation is written for Sphinx in [reStructuredText][8] files in the
-`doc/` directory. Documentation for each class and function is provided in the
+`docs/` directory. Documentation for each class and function is provided in the
 docstring in the code.
 
 The documentation uses the Flask Sphinx theme. It is included as a git
@@ -119,7 +119,7 @@ Now to build the documentation, run the command
     python setup.py build_sphinx
 
 in the top-level directory. The output can be viewed in a web browser by
-opening `build/sphinx/html/index.html`.
+opening `docs/_build/html/index.html`.
 
 [6]: http://sphinx.pocoo.org/
 [7]: http://packages.python.org/sphinxcontrib-httpdomain/
