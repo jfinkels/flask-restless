@@ -39,6 +39,7 @@ from flask import jsonify
 from flask import make_response
 from flask import request
 from flask.views import MethodView
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.types import Date
@@ -194,8 +195,8 @@ class API(MethodView):
                 ]
             }
 
-        For a complete description of all possible search parameters, see
-        :ref:`search`.
+        For a complete description of all possible search parameters and
+        responses, see :ref:`search`.
 
         """
         # try to get search query from the request query parameters
@@ -209,8 +210,10 @@ class API(MethodView):
         # functions are specified, perform a search and return the instances
         # which match that search.
         if 'functions' in data:
-            # TODO data['functions'] may be poorly defined here...
-            result = evaluate_functions(self.model, data['functions'])
+            try:
+                result = evaluate_functions(self.model, data['functions'])
+            except (AttributeError, OperationalError) as exception:
+                return jsonify_status_code(400, message=exception.message)
             return jsonify(result)
 
         # there were no functions specified, so perform a filtered search
@@ -390,7 +393,7 @@ class API(MethodView):
         # if no instance is specified, try to patch many using a search
         if instid is None:
             return self._patch_many()
-        
+
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.data)

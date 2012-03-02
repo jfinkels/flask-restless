@@ -385,15 +385,27 @@ def evaluate_functions(model, functions):
         >>> evaluate_functions(Person, [f1, f2])
         {'avg__amount': 456, 'sum__amount': 123}
 
-    The return value is a dictionary mapping ``'<funcname>__<fieldname>'``
-    to the result of evaluating that function on that field.
+    The return value is a dictionary mapping ``'<funcname>__<fieldname>'`` to
+    the result of evaluating that function on that field. If `model` is
+    ``None`` or `functions` is empty, this function returns the empty
+    dictionary.
+
+    If a field does not exist on a given model, :exc:`AttributeError` is
+    raised. If a function does not exist,
+    :exc:`sqlalchemy.exc.OperationalError` is raised.
 
     """
+    if not model or not functions:
+        return {}
     processed = []
     funcnames = []
     for f in functions:
         # We retrieve the function by name from the SQLAlchemy ``func``
         # module and the field by name from the model class.
+        #
+        # If the specified function doesn't exist, this raises
+        # OperationalError. If the specified field doesn't exist, this raises
+        # AttributeError.
         funcobj = getattr(func, f['name'])
         field = getattr(model, f['field'])
         # Time to store things to be executed. The processed list stores
@@ -463,5 +475,4 @@ def search(model, search_params):
     if is_single:
         # may raise NoResultFound or MultipleResultsFound
         return query.one()
-    else:
-        return query.all()
+    return query.all()

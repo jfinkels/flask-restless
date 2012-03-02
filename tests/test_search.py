@@ -23,6 +23,9 @@ from elixir import create_all
 from elixir import drop_all
 from elixir import session
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm.exc import MultipleResultsFound
+from sqlalchemy.orm.exc import NoResultFound
 
 from flaskext.restless.search import create_query
 from flaskext.restless.search import evaluate_functions
@@ -37,11 +40,25 @@ class TestSupport(unittest.TestCase):
     """Base class for tests in this module."""
 
     def setUp(self):
-        """Creates the database and all necessary tables."""
+        """Creates the database and all necessary tables, and adds some initial
+        rows to the Person table.
+
+        """
         # set up the database
         self.db_fd, self.db_file = mkstemp()
         setup(create_engine('sqlite:///%s' % self.db_file))
         create_all()
+        session.commit()
+
+        # create some people in the database for testing
+        lincoln = Person(name=u'Lincoln', age=23, other=22)
+        mary = Person(name=u'Mary', age=19, other=19)
+        lucy = Person(name=u'Lucy', age=25, other=20)
+        katy = Person(name=u'Katy', age=7, other=10)
+        john = Person(name=u'John', age=28, other=10)
+        self.people = [lincoln, mary, lucy, katy, john]
+        for person in self.people:
+            session.add(person)
         session.commit()
 
     def tearDown(self):
@@ -60,19 +77,6 @@ class QueryCreationTest(TestSupport):
     function.
 
     """
-
-    def setUp(self):
-        """Creates some objects and adds them to the database."""
-        super(QueryCreationTest, self).setUp()
-        lincoln = Person(name=u'Lincoln', age=23, other=22)
-        mary = Person(name=u'Mary', age=19, other=19)
-        lucy = Person(name=u'Lucy', age=25, other=20)
-        katy = Person(name=u'Katy', age=7, other=10)
-        john = Person(name=u'John', age=28, other=10)
-        self.people = [lincoln, mary, lucy, katy, john]
-        for person in self.people:
-            session.add(person)
-        session.commit()
 
     def test_empty_search(self):
         """Tests that a query with no search parameters returns everything."""
@@ -144,11 +148,74 @@ class FunctionEvaluationTest(TestSupport):
     function.
 
     """
-    pass
+
+    def test_basic_evaluation(self):
+        """Tests for basic function evaluation."""
+        # test for no model
+        result = evaluate_functions(None, [])
+        self.assertEqual(result, {})
+
+        # test for no functions
+        result = evaluate_functions(Person, [])
+        self.assertEqual(result, {})
+
+        # test for summing ages
+        functions = [{'name': 'sum', 'field': 'age'}]
+        result = evaluate_functions(Person, functions)
+        self.assertIn('sum__age', result)
+        self.assertEqual(result['sum__age'], 102.0)
+
+        # test for multiple functions
+        functions = [{'name': 'sum', 'field': 'age'},
+                     {'name': 'avg', 'field': 'other'}]
+        result = evaluate_functions(Person, functions)
+        self.assertIn('sum__age', result)
+        self.assertEqual(result['sum__age'], 102.0)
+        self.assertIn('avg__other', result)
+        self.assertEqual(result['avg__other'], 16.2)
+
+    def test_poorly_defined_functions(self):
+        """Tests that poorly defined functions raise errors."""
+        # test for unknown field
+        functions = [{'name': 'sum', 'field': 'bogus'}]
+        with self.assertRaises(AttributeError):
+            evaluate_functions(Person, functions)
+
+        # test for unknown function
+        functions = [{'name': 'bogus', 'field': 'age'}]
+        with self.assertRaises(OperationalError):
+            evaluate_functions(Person, functions)
 
 
 class SearchTest(TestSupport):
     """Unit tests for the :func:`flaskext.restless.search.search` function.
 
+    The :func:`~flaskext.restless.search.search` function is a essentially a
+    wrapper around the :func:`~flaskext.restless.search.create_query` function
+    which checks whether the parameters of the search indicate that a single
+    result is expected.
+
     """
-    pass
+
+    def test_search(self):
+        """Tests that asking for a single result raises an error unless the
+        result of the query truly has only a single element.
+
+        """
+        # tests getting multiple results
+        d = {'single': True,
+             'filters': [{'name': 'name', 'val': u'%y%', 'op': 'like'}]}
+        with self.assertRaises(MultipleResultsFound):
+            result = search(Person, d)
+
+        # tests getting no results
+        d = {'single': True,
+             'filters': [{'name': 'name', 'val': u'bogusname', 'op': '=='}]}
+        with self.assertRaises(NoResultFound):
+            search(Person, d)
+
+        # tests getting exactly one result
+        d = {'single': True,
+             'filters': [{'name': 'name', 'val': u'Lincoln', 'op': '=='}]}
+        result = search(Person, d)
+        self.assertEqual(result.name, u'Lincoln')

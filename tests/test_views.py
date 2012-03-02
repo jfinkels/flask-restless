@@ -466,6 +466,25 @@ class APITestCase(unittest.TestCase):
         self.assertEqual(loaded[0]['other'], 10)
         self.assertEqual(loaded[1]['other'], 19)
 
+    def test_poorly_defined_functions(self):
+        """Tests that poorly defined requests for function evaluations cause an
+        error message to be returned.
+
+        """
+        # test for bad field name
+        search = {'functions': [{'name': 'sum', 'field': 'bogusfieldname'}]}
+        resp = self.app.search('/api/Person', dumps(search))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('message', loads(resp.data))
+        self.assertIn('bogusfieldname', loads(resp.data)['message'])
+
+        # test for bad function name
+        search = {'functions': [{'name': 'bogusfuncname', 'field': 'age'}]}
+        resp = self.app.search('/api/Person', dumps(search))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('message', loads(resp.data))
+        self.assertIn('bogusfuncname', loads(resp.data)['message'])
+
     def test_search2(self):
         """Testing more search functionality."""
         create = lambda x: self.app.post('/api/Person', data=dumps(x))
