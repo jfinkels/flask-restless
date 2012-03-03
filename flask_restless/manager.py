@@ -42,7 +42,7 @@ class APIManager(object):
     APINAME_FORMAT = '{}api'
     BLUEPRINTNAME_FORMAT = '{}{}'
 
-    def __init__(self, app):
+    def __init__(self, app=None):
         """TODO fill me in.
 
         ``app`` is the :class:`flask.Flask` object containing the user's Flask
@@ -75,6 +75,13 @@ class APIManager(object):
                                    existing_names)
             next_number = max(existing_numbers) + 1
         return APIManager.BLUEPRINTNAME_FORMAT.format(basename, next_number)
+
+    def init_app(self, app):
+        """Stores the specified :class:`flask.Flask` application object on
+        which API endpoints will be registered.
+
+        """
+        self.app = app
 
     # alternately: def add_api(modelname, readonly=True):
     def create_api(self, model, methods=['GET'], url_prefix='/api'):

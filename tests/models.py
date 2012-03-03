@@ -25,7 +25,7 @@ from elixir import OneToMany
 from elixir import setup_all
 from elixir import Unicode
 
-from flaskext.restless import Entity
+from flask.ext.restless import Entity
 
 
 class Computer(Entity):

@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""Unit tests for the :mod:`flaskext.restless.manager` module."""
+"""Unit tests for the :mod:`flask_restless.manager` module."""
 from json import dumps
 from json import loads
 import os
@@ -27,19 +27,19 @@ from elixir import session
 from flask import Flask
 from sqlalchemy import create_engine
 
-from flaskext.restless.manager import APIManager
+from flask.ext.restless.manager import APIManager
 from .models import setup
 from .models import Person
 
 
 class APIManagerTest(unittest.TestCase):
-    """Unit tests for the :class:`flaskext.restless.manager.APIManager` class.
+    """Unit tests for the :class:`flask_restless.manager.APIManager` class.
 
     """
 
     def setUp(self):
         """Creates the database, :class:`~flask.Flask` object, and the
-        :class:`~flaskext.restless.manager.APIManager` for that application.
+        :class:`~flask_restless.manager.APIManager` for that application.
 
         """
         # set up the database
@@ -66,10 +66,9 @@ class APIManagerTest(unittest.TestCase):
         os.unlink(self.db_file)
 
     def test_create_api(self):
-        """Tests that the
-        :meth:`flaskext.restless.manager.APIManager.create_api` method creates
-        endpoints which are accessible by the client, only allow specified HTTP
-        methods, and which provide a correct API to a database.
+        """Tests that the :meth:`flask_restless.manager.APIManager.create_api`
+        method creates endpoints which are accessible by the client, only allow
+        specified HTTP methods, and which provide a correct API to a database.
 
         """
         # create three different APIs for the same model

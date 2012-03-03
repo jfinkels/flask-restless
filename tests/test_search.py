@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""Unit tests for the :mod:`flaskext.restless.search` module."""
+"""Unit tests for the :mod:`flask_restless.search` module."""
 import os
 from tempfile import mkstemp
 import unittest
@@ -27,10 +27,10 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 
-from flaskext.restless.search import create_query
-from flaskext.restless.search import evaluate_functions
-from flaskext.restless.search import search
-from flaskext.restless.search import SearchParameters
+from flask.ext.restless.search import create_query
+from flask.ext.restless.search import evaluate_functions
+from flask.ext.restless.search import search
+from flask.ext.restless.search import SearchParameters
 from .models import setup
 from .models import Computer
 from .models import Person
@@ -73,7 +73,7 @@ class TestSupport(unittest.TestCase):
 
 
 class QueryCreationTest(TestSupport):
-    """Unit tests for the :func:`flaskext.restless.search.create_query`
+    """Unit tests for the :func:`flask_restless.search.create_query`
     function.
 
     """
@@ -86,7 +86,7 @@ class QueryCreationTest(TestSupport):
     def test_dict_same_as_search_params(self):
         """Tests that creating a query using a dictionary results in the same
         query as creating one using a
-        :class:`flaskext.restless.search.SearchParameters` object.
+        :class:`flask_restless.search.SearchParameters` object.
 
         """
         d = {'filters': [{'name': 'name', 'val': u'%y%', 'op': 'like'}]}
@@ -144,7 +144,7 @@ class QueryCreationTest(TestSupport):
 
 
 class FunctionEvaluationTest(TestSupport):
-    """Unit tests for the :func:`flaskext.restless.search.evaluate_functions`
+    """Unit tests for the :func:`flask_restless.search.evaluate_functions`
     function.
 
     """
@@ -188,10 +188,10 @@ class FunctionEvaluationTest(TestSupport):
 
 
 class SearchTest(TestSupport):
-    """Unit tests for the :func:`flaskext.restless.search.search` function.
+    """Unit tests for the :func:`flask_restless.search.search` function.
 
-    The :func:`~flaskext.restless.search.search` function is a essentially a
-    wrapper around the :func:`~flaskext.restless.search.create_query` function
+    The :func:`~flask_restless.search.search` function is a essentially a
+    wrapper around the :func:`~flask_restless.search.create_query` function
     which checks whether the parameters of the search indicate that a single
     result is expected.
 

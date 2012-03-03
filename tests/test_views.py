@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""Unit tests for the :mod:`flaskext.restless.views` module."""
+"""Unit tests for the :mod:`flask_restless.views` module."""
 from datetime import date
 from json import dumps
 from json import loads
@@ -28,20 +28,20 @@ from elixir import session
 import flask
 from sqlalchemy import create_engine
 
-from flaskext.restless import APIManager
+from flask.ext.restless import APIManager
 from .models import setup
 from .models import Computer
 from .models import Person
 
 
 class APITestCase(unittest.TestCase):
-    """Unit tests for the :class:`flaskext.restless.views.API` class."""
+    """Unit tests for the :class:`flask_restless.views.API` class."""
 
     def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
-        :class:`~flaskext.restless.manager.APIManager` for that application,
-        and creates the ReSTful API endpoints for the :class:`testapp.Person`
-        and :class:`testapp.Computer` models.
+        :class:`~flask_restless.manager.APIManager` for that application, and
+        creates the ReSTful API endpoints for the :class:`testapp.Person` and
+        :class:`testapp.Computer` models.
 
         """
         # create the database

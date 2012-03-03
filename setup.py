@@ -65,12 +65,15 @@ setup(
     description='A Flask extension for easy ReSTful API generation',
     download_url='http://pypi.python.org/pypi/Flask-Restless',
     install_requires=from_requirements_file(),
+    include_package_data=True,
     keywords=['ReST', 'API', 'Flask', 'Elixir'],
     license='GNU AGPLv3+',
     long_description=__doc__,
     name='Flask-Restless',
-    url='http://github.com/jfinkels/flask-restless',
-    packages=['flaskext.restless'],
+    platforms='ant',
+    packages=['flask_restless'],
     test_suite='tests',
-    version='0.3-dev'
+    url='http://github.com/jfinkels/flask-restless',
+    version='0.3-dev',
+    zip_safe=False
 )

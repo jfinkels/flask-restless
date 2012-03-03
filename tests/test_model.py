@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-"""Unit tests for the :mod:`flaskext.restless.model` module."""
+"""Unit tests for the :mod:`flask_restless.model` module."""
 from datetime import date, datetime
 import os
 from tempfile import mkstemp
@@ -25,14 +25,14 @@ from elixir import session
 from elixir import drop_all
 from sqlalchemy import create_engine
 
-from flaskext.restless.model import ISO8601_DATE
+from flask.ext.restless.model import ISO8601_DATE
 from .models import Computer
 from .models import Person
 from .models import setup
 
 
 class EntityTestCase(unittest.TestCase):
-    """Unit tests for the :class:`flaskext.restless.model.Entity` class."""
+    """Unit tests for the :class:`flask_restless.model.Entity` class."""
 
     def setUp(self):
         """Creates a SQLite database in a temporary file and creates and sets
@@ -69,7 +69,7 @@ class EntityTestCase(unittest.TestCase):
 
     def test_date_serialization(self):
         """Tests that date objects in the database are correctly serialized in
-        the :meth:`flaskext.restless.model.Entity.to_dict` method.
+        the :meth:`flask_restless.model.Entity.to_dict` method.
 
         """
         person = self.model()
@@ -82,7 +82,7 @@ class EntityTestCase(unittest.TestCase):
 
     def test_to_dict(self):
         """Test for serializing attributes of an instance of the model by the
-        :meth:`flaskext.restless.model.Entity.to_dict` method.
+        :meth:`flask_restless.model.Entity.to_dict` method.
 
         """
         me = self.model()
@@ -103,7 +103,7 @@ class EntityTestCase(unittest.TestCase):
     def test_to_dict_deep(self):
         """Tests that fields corresponding to related model instances are
         correctly serialized by the
-        :meth:`flaskext.restless.model.Entity.to_dict` method.
+        :meth:`flask_restless.model.Entity.to_dict` method.
 
         """
         someone = self.model()
@@ -125,7 +125,7 @@ class EntityTestCase(unittest.TestCase):
         self.assertEqual(computers[0]['vendor'], u'Lemote')
 
     def test_get_or_create(self):
-        """Test for :meth:`flaskext.restless.model.Entity.get_or_create()`."""
+        """Test for :meth:`flask_restless.model.Entity.get_or_create()`."""
         # Here we're sure that we have a fresh table with no rows, so
         # let's create the first one:
         instance, created = self.model.get_or_create(name=u'Lincoln', age=24)
