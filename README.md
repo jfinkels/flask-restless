@@ -129,6 +129,21 @@ opening `docs/_build/html/index.html`.
 
 See the `AUTHORS` file for a list of people who have contributed to this code.
 
+## Artwork ##
+
+The `artwork/flask-restless-small.svg` and
+`docs/_static/flask-restless-small.png` are licensed under the
+[Creative Commons Attribute-ShareAlike 3.0 license][9]. The original image is a
+scan of a (now public domain) illustration by Arthur Hopkins in a serial
+edition of "The Return of the Native" by Thomas Hardy published in October
+1878.
+
+The `artwork/flask-restless.svg` and `docs/_static/flask-restless.png` are
+licensed under the [Flask Artwork License][10].
+
+[9]: http://creativecommons.org/licenses/by-sa/3.0
+[10]: http://flask.pocoo.org/docs/license/#flask-artwork-license
+
 ## Contact ##
 
 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
