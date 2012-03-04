@@ -68,7 +68,7 @@ setup(
     license='GNU AGPLv3+',
     long_description=__doc__,
     name='Flask-Restless',
-    platforms='ant',
+    platforms='any',
     packages=['flask_restless'],
     test_suite='tests',
     url='http://github.com/jfinkels/flask-restless',
