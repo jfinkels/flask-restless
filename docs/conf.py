@@ -43,7 +43,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Flask-Restless'
-copyright = u'2012, Jeffrey Finkelstein, Lincoln de Sousa'
+copyright = u'2012 Jeffrey Finkelstein'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -203,7 +203,7 @@ htmlhelp_basename = 'Flask-Restlessdoc'
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'Flask-Restless.tex', u'Flask-Restless Documentation',
-   u'Jeffrey Finkelstein, Lincoln de Sousa', 'manual'),
+   u'Jeffrey Finkelstein', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -249,7 +249,7 @@ latex_additional_files = ['flaskstyle.sty', 'logo.pdf']
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'flask-restless', u'Flask-Restless Documentation',
-     [u'Jeffrey Finkelstein', 'Lincoln de Sousa'], 1)
+     [u'Jeffrey Finkelstein'], 1)
 ]
 
 
