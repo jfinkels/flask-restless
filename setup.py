@@ -74,6 +74,6 @@ setup(
     packages=['flask_restless'],
     test_suite='tests',
     url='http://github.com/jfinkels/flask-restless',
-    version='0.3',
+    version='0.4-dev',
     zip_safe=False
 )
