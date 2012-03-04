@@ -99,11 +99,11 @@ Flask-Restless requires the following program and supporting library to build
 the documentation:
 
 * [Sphinx][6]
-* [sphinxcontrib.httpdomain][7]
+* [sphinxcontrib-httpdomain-withpatch][7]
 
 Using `pip` is probably the easiest way to install these:
 
-    pip install sphinx sphinxcontrib-httpdomain
+    pip install sphinx "sphinxcontrib-httpdomain-withpatch==1.1.6-patch2"
 
 The documentation is written for Sphinx in [reStructuredText][8] files in the
 `docs/` directory. Documentation for each class and function is provided in the

@@ -35,17 +35,46 @@ from .views import API
 
 
 # TODO add support for PUT method which just delegates to PATCH?
-# TODO use __tablname__ instead of uppercase class name?
+# TODO use __tablename__ instead of uppercase class name?
 class APIManager(object):
-    """TODO fill me in."""
+    """Provides a method for creating a public ReSTful JSOn API with respect to
+    a given :class:`~flask.Flask` application object.
+
+    The :class:`~flask.Flask` object can be specified in the constructor, or
+    after instantiation time by calling the :meth:`init_app` method. In any
+    case, the application object must be specified before calling the
+    :meth:`create_api` method.
+
+    """
 
     APINAME_FORMAT = '{}api'
+    """The format of the name of the API view for a given model.
+
+    This format string expects the name of a model to be provided when
+    formatting.
+
+    """
+
     BLUEPRINTNAME_FORMAT = '{}{}'
+    """The format of the name of the blueprint containing the API view for a
+    given model.
+
+    This format string expects the following to be provided when formatting:
+
+    1. name of the API view of a specific model
+    2. a number representing the number of times a blueprint with that name has
+       been registered.
+
+    """
 
     def __init__(self, app=None):
-        """TODO fill me in.
+        """Stores the specified :class:`flask.Flask` application object so that
+        this class can register blueprints on it later.
 
-        ``app`` is the :class:`flask.Flask` object containing the user's Flask
+        If `app` is ``None``, the user must call the :meth:`init_app` method
+        before calling the :meth:`create_api` method.
+
+        `app` is the :class:`flask.Flask` object containing the user's Flask
         application.
 
         """
@@ -80,6 +109,17 @@ class APIManager(object):
         """Stores the specified :class:`flask.Flask` application object on
         which API endpoints will be registered.
 
+        This is for use in the situation in which this class must be
+        instantiated before the :class:`~flask.Flask` application has been
+        created. For example::
+
+            apimanager = APIManager()
+
+            # later...
+
+            app = Flask(__name__)
+            apimanager.init_app(app)
+
         """
         self.app = app
 
@@ -100,13 +140,14 @@ class APIManager(object):
         wish to create a ReSTful API. Its behavior (for now) is undefined if
         called more than once.
 
-        ``model`` is the :class:`elixir.entity.Entity` class for which a
+        ``model`` is the :class:`flask.ext.restless.Entity` class for which a
         ReSTful interface will be created. Note this must be a class, not an
         instance of a class.
 
         ``methods`` specify the HTTP methods which will be made available on
         the ReSTful API for the specified model, subject to the following
         caveats:
+
         * If :http:method:`get` is in this list, the API will allow getting a
           single instance of the model, getting all instances of the model, and
           searching the model using search parameters.
@@ -118,6 +159,7 @@ class APIManager(object):
           of a single instance of the model per request.
         * If :http:method:`post` is in this list, the API will allow posting a
           new instance of the model per request.
+
         The default list of methods provides a read-only interface (that is,
         only :http:method:`get` requests are allowed).
 

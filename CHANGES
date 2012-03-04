@@ -1,0 +1,9 @@
+Changelog
+=========
+
+Here you can see the full list of changes between each Flask-Restless release.
+
+Version 0.3
+-----------
+
+- Initial release in Flask extension format.

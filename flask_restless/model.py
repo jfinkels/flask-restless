@@ -50,9 +50,12 @@ class Entity(EntityBase):
     :class:`datetime.date` and :class:`datetime.datetime` objects to strings in
     ISO 8601 format.
 
-    Second, this class provides some additional convenience functions,
-    including :func:`get_columns`, :func:`get_relations`, and
+    Second, this class provides some additional convenience functions for
+    internal code, including :func:`get_columns`, :func:`get_relations`, and
     :func:`get_or_create`.
+
+    Classes which will be exposed by the API *must* inherit from this class
+    instead of :class:`elixir.Entity`.
 
     """
     __metaclass__ = EntityMeta

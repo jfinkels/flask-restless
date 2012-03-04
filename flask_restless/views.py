@@ -205,6 +205,7 @@ class API(MethodView):
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
+        # TODO the functions should be applied to the result of the query...
         # If the query parameters specify that at least one function should be
         # executed, return the result of executing that function. If no
         # functions are specified, perform a search and return the instances
