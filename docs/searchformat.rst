@@ -107,4 +107,182 @@ functions will be returned instead of the list of matching instances:
 Examples
 --------
 
-To come...
+Consider a ``Person`` model available at the URL ``/api/person``, and suppose
+all of the following requests are :http:get:`/api/person` requests with query
+parameter ``q``.
+
+Attribute greater than a value
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If query parameter ``q`` has the value
+
+.. sourcecode:: javascript
+
+   {"filters": [{"name": "age", "op": "ge", "val": 10}]}
+
+(represented as a string), then the response will include only those ``Person``
+instances which have ``age`` attribute greater than or equal to 10.
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+
+   { "objects":
+     [
+       {"id": 1, "name": "Jeffrey", "age": 24},
+       {"id": 2, "name": "John", "age": 13},
+       {"id": 3, "name": "Mary", "age": 18}
+     ]
+   }
+
+Attribute between two values
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If query parameter ``q`` has the value
+
+.. sourcecode:: javascript
+
+   { "filters":
+     [
+       {"name": "age", "op": "ge", "val": 10},
+       {"name": "age", "op": "le", "val": 20}
+     ]
+   }
+
+(represented as a string), then the response will include only those
+``Person`` instances which have ``age`` attribute between 10 and 20,
+inclusive.
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+
+   { "objects":
+     [
+       {"id": 2, "name": "John", "age": 13},
+       {"id": 3, "name": "Mary", "age": 18}
+     ]
+   }
+
+Expecting a single result
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If query parameter ``q`` has the value
+
+.. sourcecode:: javascript
+
+   {
+     "single": true,
+     "filters":
+     [
+       {"name": "id", "op": "eq", "val": 1}
+     ]
+   }
+
+(represented as a string), then the response will the sole ``Person`` instance
+with ``id`` equal to 1.
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+
+   {"id": 1, "name": "Jeffrey", "age": 24}
+
+In the case that the search would return no results or more than one result, an
+error response is returned instead.
+
+.. sourcecode:: javascript
+
+   {
+     "single": true,
+     "filters":
+     [
+       {"name": "age", "op": "ge", "val": 10}
+     ]
+   }
+
+.. sourcecode:: http
+
+   HTTP/1.1 400 Bad Request
+
+   {"message": "Multiple results found"}
+
+.. sourcecode:: javascript
+
+   {
+     "single": true,
+     "filters":
+     [
+       {"name": "id", "op": "eq", "val": -1}
+     ]
+   }
+
+.. sourcecode:: http
+
+   HTTP/1.1 400 Bad Request
+
+   {"message": "No result found"}
+
+Comparing two attributes
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+If query parameter ``q`` has the value
+
+.. sourcecode:: javascript
+
+   {"filters": [{"name": "age", "op": "ge", "field": "height"}]}
+
+(represented as a string), then the response will include only those ``Person``
+instances which have ``age`` attribute greater than or equal to the value of
+the ``height`` attribute.
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+
+   { "objects":
+     [
+       {"id": 1, "name": "John", "age": 80, "height": 65},
+       {"id": 2, "name": "Mary", "age": 73, "height": 60}
+     ]
+   }
+
+Comparing attribute of a relation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If query parameter ``q`` has the value
+
+.. sourcecode:: javascript
+
+   { "filters":
+     [
+       {"name": "computers__manufacturer", "val": "Dell", "op": "any"}
+     ]
+   }
+
+(represented as a string), then the response will include only those ``Person``
+instances which are related to any ``Computer`` model which is manufactured by
+Apple.
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+
+   { "objects": [
+       {
+         "id": 1,
+         "name": "John",
+         "computers": [
+           { "id": 1, "manufacturer": "Dell", "model": "Inspiron 9300"},
+           { "id": 2, "manufacturer": "Apple", "model": "MacBook"}
+         ]
+       },
+       {
+         "id": 2,
+         "name": "Mary",
+         "computers": [
+           { "id": 3, "manufacturer": "Apple", "model": "iMac"}
+         ]
+       }
+     ]
+   }
