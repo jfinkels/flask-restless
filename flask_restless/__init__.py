@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-__version__ = '0.3-dev'
+__version__ = '0.3'
 """The current version of this extension.
 
 This should be the same as the version specified in the :file:`setup.py` file.
