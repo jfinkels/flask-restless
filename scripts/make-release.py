@@ -35,7 +35,7 @@ def parse_changelog():
                 if change_info:
                     break
 
-            match = re.search(r'released on (\w+\s+\d+,\w+\s+\d+)',
+            match = re.search(r'Released on (\w+\s+\d+,\s+\d+)',
                               change_info)
             if match is None:
                 continue
@@ -55,7 +55,7 @@ def bump_version(version):
 
 def parse_date(string):
     string = _date_clean_re.sub(r'\1', string)
-    return datetime.strptime(string, '%B %d %Y')
+    return datetime.strptime(string, '%B %d, %Y')
 
 
 def set_filename_version(filename, version_number, pattern):
