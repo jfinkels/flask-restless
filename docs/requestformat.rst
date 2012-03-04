@@ -3,6 +3,8 @@
 Format of requests and responses
 ================================
 
+Requests and responses are all in JSON format.
+
 Suppose we have the following models::
 
     from flask.ext.restless import Entity
