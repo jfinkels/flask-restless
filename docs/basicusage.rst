@@ -25,6 +25,18 @@ First, change your model classes to inherit from
         owner = ManyToOne('Person')
         purchase_time = Field(DateTime)
 
+.. warning::
+
+   Attributes of these entities must not have a name containing two
+   underscores. For example, this class definition is no good::
+
+       class Person(Entity):
+           __mysecretfield = Field(Unicode)
+
+   This restriction is necessary because the search feature (see
+   :ref:`searchformat`) uses double underscores as a separator. This may change
+   in the future.
+
 Second, create your :class:`flask.Flask` object and instantiate a
 :class:`flaskext.restless.APIManager` object with that :class:`~flask.Flask`::
 
