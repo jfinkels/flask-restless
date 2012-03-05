@@ -7,6 +7,7 @@ For the restless::
     from elixir import Date, DateTime, Field, Unicode
     from elixir import ManyToOne, OneToMany
     from elixir import create_all, metadata, setup_all
+    from sqlalchemy import create_engine
 
     # Entity classes must inherit from flaskext.restless.Entity. Other than
     # that, the definition of the model is exactly the same.
@@ -35,4 +36,4 @@ For the restless::
     # default (with the lowercase form of the model name). Allowed HTTP methods
     # can be specified as well.
     manager.create_api(Person, methods=['GET', 'PATCH', 'POST', 'DELETE'])
-    manager.create_api(Computer, method=['GET'])
+    manager.create_api(Computer, methods=['GET'])
