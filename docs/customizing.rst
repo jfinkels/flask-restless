@@ -18,9 +18,9 @@ This creates an endpoint at ``/api/person`` which responds to
 :http:method:`get`, :http:method:`post`, and :http:method:`delete` methods, but
 not to other ones like :http:method:`put` or :http:method:`patch`.
 
-The HTTP methods have the following semantics (assuming you have created an API
-for an entity named ``Person``). All endpoints which respond with data respond
-with serialized JSON strings.
+The recognized HTTP methods and their semantics are described below (assuming
+you have created an API for an entity ``Person``). All endpoints which respond
+with data respond with serialized JSON strings.
 
 .. http:get:: /api/person
 
@@ -56,8 +56,8 @@ with serialized JSON strings.
 .. http:patch:: /api/person?q=<searchjson>
 
    This is only available if the ``allow_patch_many`` keyword argument is set
-   to ``True`` when initializing the
-   :class:`~flask.ext.restless.manager.APIManager` object. For more
+   to ``True`` when calling the
+   :meth:`~flask.ext.restless.manager.APIManager.create_api` method. For more
    information, see :ref:`allowpatchmany`.
 
    Updates the attributes of all ``Person`` instances which match the search
@@ -92,6 +92,8 @@ method::
     apimanager.create_api(Person, collection_name='people')
 
 Then the API will be exposed at ``/api/people`` instead of ``/api/person``.
+
+.. _allowpatchmany:
 
 Enabling patching the result of a search
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
