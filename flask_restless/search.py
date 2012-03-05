@@ -307,25 +307,15 @@ class QueryBuilder(object):
         for f in search_params.filters:
             fname = f.fieldname
             val = f.argument
-
             # get the relationship from the field name, if it exists
-            # TODO document that field names must not contain "__"
             relation = None
             if '__' in fname:
                 relation, fname = fname.split('__')
-
-            # for the sake of brevity
-            makeop = QueryBuilder._create_operation
-            # We are going to compare a field with another one, so there's
-            # no reason to parse
+            # get the other field to which to compare, if it exists
             if f.otherfield:
-                otherfield = getattr(model, f.otherfield)
-                param = makeop(model, fname, f.operator, otherfield, relation)
-                operations.append(param)
-                continue
-
-            # Collecting the query
-            param = makeop(model, fname, f.operator, val, relation)
+                val = getattr(model, f.otherfield)
+            param = QueryBuilder._create_operation(model, fname, f.operator,
+                                                   val, relation)
             operations.append(param)
 
         return operations
