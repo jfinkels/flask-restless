@@ -29,7 +29,7 @@
 
 from datetime import date, datetime
 from elixir import EntityBase, EntityMeta, session
-from sqlalchemy.orm.properties import RelationshipProperty
+from sqlalchemy.orm.properties import RelationshipProperty as RelProperty
 
 
 ISO8601_DATE = "%Y-%m-%d"
@@ -61,6 +61,11 @@ class Entity(EntityBase):
     __metaclass__ = EntityMeta
 
     @classmethod
+    def get_column(cls, columnname):
+        """Returns the column of this entity with the specified name."""
+        return cls.get_columns()[columnname]
+
+    @classmethod
     def get_columns(cls):
         """Returns a dictionary-like object containing all the columns of this
         entity.
@@ -69,17 +74,22 @@ class Entity(EntityBase):
         return cls._sa_class_manager
 
     @classmethod
+    def get_related_model(cls, relationname):
+        """Gets the :class:`~elixir.Entity` class of the model to which `cls`
+        is related by the attribute whose name is `relationname`.
+
+        """
+        return cls.get_column(relationname).property.mapper.class_
+
+    @classmethod
     def get_relations(cls):
         """Returns a list of relation names of this model (as a list of
         strings).
 
         """
         cols = cls._sa_class_manager
-        relations = []
-        for key, val in cols.items():
-            if isinstance(val.property, RelationshipProperty):
-                relations.append(key)
-        return relations
+        isrelationship = lambda k: isinstance(cols[k].property, RelProperty)
+        return list(filter(isrelationship, cols))
 
     @classmethod
     def get_or_create(cls, **kwargs):

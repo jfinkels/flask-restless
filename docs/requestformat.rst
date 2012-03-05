@@ -137,6 +137,140 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       {"id": 1, "name": "Foobar", "age": 24}
 
+   To add an existing object to a one-to-many relationship, a request must take
+   the following form.
+
+   **Sample request**:
+
+   .. sourcecode:: http
+
+      PATCH /api/person/1 HTTP/1.1
+      Host: example.com
+
+      { "computers":
+        {
+          "add": [ {"id": 1} ]
+        }
+      }
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+
+      {
+        "id": 1,
+        "name": "Jeffrey",
+        "age": 24,
+        "computers": [ {"id": 1, "manufacturer": "Dell", "model": "Inspiron"} ]
+      }
+
+   To add a new object to a one-to-many relationship, a request must take the
+   following form.
+
+   **Sample request**:
+
+   .. sourcecode:: http
+
+      PATCH /api/person/1 HTTP/1.1
+      Host: example.com
+
+      { "computers":
+        {
+          "add": [ {"id": 1} ]
+        }
+      }
+
+   .. warning::
+
+      The response does not denote that a new instance has been created for the
+      ``Computer`` model.
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+
+      {
+        "id": 1,
+        "name": "Jeffrey",
+        "age": 24,
+        "computers": [ {"id": 1, "manufacturer": "Dell", "model": "Inspiron"} ]
+      }
+
+   To remove an existing object (without deleting that object from its own
+   database) from a one-to-many relationship, a request must take the following
+   form.
+
+   **Sample request**:
+
+   .. sourcecode:: http
+
+      PATCH /api/person/1 HTTP/1.1
+      Host: example.com
+
+      { "computers":
+        {
+          "remove": [ {"id": 2} ]
+        }
+      }
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+
+      {
+        "id": 1,
+        "name": "Jeffrey",
+        "age": 24,
+        "computers": [
+          {"id": 1, "manufacturer": "Dell", "model": "Inspiron 9300"},
+          {"id": 3, "manufacturer": "Apple", "model": "MacBook"}
+        ]
+      }
+
+   To remove an existing object from a one-to-many relationship and
+   additionally delete it from its own database, a request must take the
+   following form.
+
+   **Sample request**:
+
+   .. sourcecode:: http
+
+      PATCH /api/person/1 HTTP/1.1
+      Host: example.com
+
+      { "computers":
+        {
+          "remove": [ {"id": 2, "__delete__": true} ]
+        }
+      }
+
+   .. warning::
+
+      The response does not denote that the instance was deleted from its own
+      database.
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+
+      {
+        "id": 1,
+        "name": "Jeffrey",
+        "age": 24,
+        "computers": [
+          {"id": 1, "manufacturer": "Dell", "model": "Inspiron 9300"},
+          {"id": 3, "manufacturer": "Apple", "model": "MacBook"}
+        ]
+      }
+
 Error messages
 --------------
 

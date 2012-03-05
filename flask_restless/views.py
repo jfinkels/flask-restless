@@ -80,59 +80,106 @@ class API(MethodView):
         super(API, self).__init__(*args, **kw)
         self.model = model
 
+    def _add_to_relation(self, query, relationname, toadd=[]):
+        """Adds a new or existing related model to each model specified by
+        `query`.
+
+        `query` is a SQLAlchemy query instance that evaluates to all instances
+        of the model specified in the constructor of this class that should be
+        updated.
+
+        `relationname` is the name of a one-to-many relationship which exists
+        on each model specified in `query`.
+
+        `toadd` is a list of dictionaries, each representing the attributes of
+        an existing or new related model to add. If a dictionary contains the
+        key ``'id'``, that instance of the related model will be
+        added. Otherwise, the :classmethod:`~flask.ext.model.get_or_create`
+        class method will be used to get or create a model to add.
+
+        """
+        submodel = self.model.get_related_model(relationname)
+        for dictionary in toadd:
+            if 'id' in dictionary:
+                subinst = submodel.get_by(id=dictionary['id'])
+            else:
+                subinst = submodel.get_or_create(**dictionary)[0]
+            for instance in query:
+                getattr(instance, relationname).append(subinst)
+
+    def _remove_from_relation(self, query, relationname, toremove=[]):
+        """Removes a related model from each model specified by `query`.
+
+        `query` is a SQLAlchemy query instance that evaluates to all instances
+        of the model specified in the constructor of this class that should be
+        updated.
+
+        `relationname` is the name of a one-to-many relationship which exists
+        on each model specified in `query`.
+
+        `toremove` is a list of dictionaries, each representing the attributes
+        of an existing model to remove. If a dictionary contains the key
+        ``'id'``, that instance of the related model will be
+        removed. Otherwise, the instance to remove will be retrieved using the
+        other attributes specified in the dictionary.
+
+        If one of the dictionaries contains a mapping from ``'__delete__'`` to
+        ``True``, then the removed object will be deleted after being removed
+        from each instance of the model in the specified query.
+
+        """
+        submodel = self.model.get_related_model(relationname)
+        for dictionary in toremove:
+            remove = dictionary.pop('__delete__', False)
+            if 'id' in dictionary:
+                subinst = submodel.get_by(id=dictionary['id'])
+            else:
+                subinst = submodel.get_by(**dictionary)
+            for instance in query:
+                getattr(instance, relationname).remove(subinst)
+            if remove:
+                subinst.delete()
+
     # TODO change this to have more sensible arguments
-    # TODO document the __delete__ flag
     def _update_relations(self, query, params):
         """Adds or removes models which are related to the model specified in
         the constructor of this class.
 
-        ``query`` is a SQLAlchemy query instance that evaluates to all
-        instances of the model specified in the constructor of this class that
-        should be updated.
+        If one of the dictionaries specified in ``add`` or ``remove`` includes
+        an ``id`` key, the object with that ``id`` will be attempt to be added
+        or removed. Otherwise, an existing object with the specified attribute
+        values will be attempted to be added or removed. If adding, a new
+        object will be created if a matching object could not be found in the
+        database.
 
-        `params`
+        This method returns a :class:`frozenset` of strings representing the
+        names of relations which were modified.
 
-            A dictionary with two keys ``add`` and ``remove``. Both of them
-            contains a list of items that should be added or removed from
-            such a relation.
+        `query` is a SQLAlchemy query instance that evaluates to all instances
+        of the model specified in the constructor of this class that should be
+        updated.
+
+        `params` is a dictionary containing a mapping from name of the relation
+        to modify (as a string) to a second dictionary. The inner dictionary
+        contains at most two mappings, one with the key ``'add'`` and one with
+        the key ``'remove'``. Each of these is a mapping to a list of
+        dictionaries which represent the attributes of the object to add to or
+        remove from the relation.
+
+        If a dictionary in one of the ``'remove'`` lists contains a mapping
+        from ``'__delete__'`` to ``True``, then the removed object will be
+        deleted after being removed from each instance of the model in the
+        specified query.
+
         """
-        fields = []
-        cols = self.model.get_columns()
         relations = self.model.get_relations()
-        for col in set(relations).intersection(params.keys()):
-            submodel = cols[col].property.mapper.class_
-            from_request = params[col]
-
-            # Let's add new columns to the relation being managed.
-            for subparams in from_request.get('add', ()):
-                if 'id' in subparams:
-                    subinst = submodel.get_by(id=subparams.pop('id'))
-                else:
-                    vssubparams = subparams
-                    subinst = submodel.get_or_create(**vssubparams)[0]
-                for instance in query:
-                    getattr(instance, col).append(subinst)
-
-            # Now is the time to handle relations being removed from a field
-            # of the instance. We'll do nothing here if there's no id param
-            for subparams in from_request.get('remove', ()):
-                try:
-                    remove = subparams.pop('__delete__')
-                except KeyError:
-                    remove = False
-                if 'id' in subparams:
-                    subinst = submodel.get_by(id=subparams['id'])
-                else:
-                    vssubparams = subparams
-                    subinst = submodel.get_by(**vssubparams)
-                for instance in query:
-                    field = getattr(instance, col)
-                    field.remove(subinst)
-                if remove:
-                    subinst.delete()
-
-            fields.append(col)
-        return fields
+        tochange = frozenset(relations) & frozenset(params)
+        for columnname in tochange:
+            toadd = params[columnname].get('add', [])
+            toremove = params[columnname].get('remove', [])
+            self._add_to_relation(query, columnname, toadd=toadd)
+            self._remove_from_relation(query, columnname, toremove=toremove)
+        return tochange
 
     def _search(self):
         """Defines a generic search function for the database model.
@@ -162,13 +209,17 @@ class API(MethodView):
         If multiple objects meet the criteria of the search, the response has
         :http:status:`200` and content of the form::
 
-            {"objects": [{"name": "Mary"}, {"name": "Byron"}, ...]}
+        .. sourcecode:: javascript
+
+           {"objects": [{"name": "Mary"}, {"name": "Byron"}, ...]}
 
         If the result of the search is a single instance of the model, the JSON
         representation of that instance would be the top-level object in the
         content of the response::
 
-            {"name": "Mary", ...}
+        .. sourcecode:: javascript
+
+           {"name": "Mary", ...}
 
         For more information SQLAlchemy functions and operators for use in
         filters, see the `SQLAlchemy SQL expression tutorial
@@ -176,24 +227,26 @@ class API(MethodView):
 
         The general structure of request data as a JSON string is as follows::
 
-            {
-              "single": "True",
-              "order_by": [{"field": "age", "direction": "asc"}],
-              "limit": 2,
-              "offset": 1,
-              "filters":
-                [
-                  {"name": "name", "val": "%y%", "op": "like"},
-                  {"name": "age", "val": [18, 19, 20, 21], "op": "in"},
-                  {"name": "age", "op": "gt", "field": "height"},
-                  ...
-                ],
-              "functions":
-                [
-                  {"name": "sum", "field": "age"},
-                  ...
-                ]
-            }
+        .. sourcecode:: javascript
+
+           {
+             "single": "True",
+             "order_by": [{"field": "age", "direction": "asc"}],
+             "limit": 2,
+             "offset": 1,
+             "filters":
+               [
+                 {"name": "name", "val": "%y%", "op": "like"},
+                 {"name": "age", "val": [18, 19, 20, 21], "op": "in"},
+                 {"name": "age", "op": "gt", "field": "height"},
+                 ...
+               ],
+             "functions":
+               [
+                 {"name": "sum", "field": "age"},
+                 ...
+               ]
+           }
 
         For a complete description of all possible search parameters and
         responses, see :ref:`search`.
