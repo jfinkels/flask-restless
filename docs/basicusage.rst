@@ -64,16 +64,16 @@ but if you don't need it then just ignore it::
     manager.create_api(Computer, method=['GET'])
 
 By default, the API for ``Person``, in the above code samples, will be
-accessible at ``http://<host>:<port>/api/Person``::
+accessible at ``http://<host>:<port>/api/person`` (note the lowercase name of the model in the URL)::
 
     >>> import json
     >>> import requests  # python-requests is installable from PyPI...
     >>> newperson = {'name': u'Lincoln', 'age': 23}
-    >>> r = requests.post('/api/Person', data=json.dumps(newperson))
+    >>> r = requests.post('/api/person', data=json.dumps(newperson))
     >>> r.status_code, r.headers['content-type'], r.data
     (201, 'application/json', '{"id": 1}')
     >>> newid = json.loads(response.data)['id']
-    >>> r = requests.get('/api/Person/{}'.format(newid))
+    >>> r = requests.get('/api/person/{}'.format(newid))
     >>> r.status_code, r.headers['content-type']
     (200, 'application/json')
     >>> r.data

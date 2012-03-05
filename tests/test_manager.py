@@ -79,40 +79,61 @@ class APIManagerTest(unittest.TestCase):
                                 url_prefix='/readonly')
 
         # test that specified endpoints exist
-        response = self.app.post('/api/Person', data=dumps(dict(name='foo')))
+        response = self.app.post('/api/person', data=dumps(dict(name='foo')))
         self.assertEqual(response.status_code, 201)
         self.assertEqual(loads(response.data)['id'], 1)
-        response = self.app.get('/api/Person')
+        response = self.app.get('/api/person')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(loads(response.data)['objects']), 1)
         self.assertEqual(loads(response.data)['objects'][0]['id'], 1)
 
         # test that non-specified methods are not allowed
-        response = self.app.delete('/api/Person/1')
+        response = self.app.delete('/api/person/1')
         self.assertEqual(response.status_code, 405)
-        response = self.app.patch('/api/Person/1',
+        response = self.app.patch('/api/person/1',
                                   data=dumps(dict(name='bar')))
         self.assertEqual(response.status_code, 405)
 
         # test that specified endpoints exist
-        response = self.app.patch('/api2/Person/1',
+        response = self.app.patch('/api2/person/1',
                                   data=dumps(dict(name='bar')))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(loads(response.data)['id'], 1)
         self.assertEqual(loads(response.data)['name'], 'bar')
 
         # test that non-specified methods are not allowed
-        response = self.app.get('/api2/Person/1')
+        response = self.app.get('/api2/person/1')
         self.assertEqual(response.status_code, 405)
-        response = self.app.delete('/api2/Person/1')
+        response = self.app.delete('/api2/person/1')
         self.assertEqual(response.status_code, 405)
-        response = self.app.post('/api2/Person',
+        response = self.app.post('/api2/person',
                                  data=dumps(dict(name='baz')))
         self.assertEqual(response.status_code, 405)
 
         # test that the model is the same as before
-        response = self.app.get('/readonly/Person')
+        response = self.app.get('/readonly/person')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(loads(response.data)['objects']), 1)
         self.assertEqual(loads(response.data)['objects'][0]['id'], 1)
         self.assertEqual(loads(response.data)['objects'][0]['name'], 'bar')
+
+    def test_different_collection_name(self):
+        """Tests that providing a different collection name exposes the API at
+        the corresponding URL.
+
+        """
+        self.manager.create_api(Person, methods=['POST', 'GET'],
+                                collection_name='people')
+
+        response = self.app.post('/api/people', data=dumps(dict(name='foo')))
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(loads(response.data)['id'], 1)
+
+        response = self.app.get('/api/people')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(loads(response.data)['objects']), 1)
+        self.assertEqual(loads(response.data)['objects'][0]['id'], 1)
+
+        response = self.app.get('/api/people/1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data)['id'], 1)

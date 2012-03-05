@@ -79,23 +79,23 @@ class APITestCase(unittest.TestCase):
 
         """
         # Invalid JSON in request data should respond with error.
-        response = self.app.post('/api/Person', data='Invalid JSON string')
+        response = self.app.post('/api/person', data='Invalid JSON string')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(loads(response.data)['message'],
                          'Unable to decode data')
 
         # Now, let's test the validation stuff
-        # response = self.app.post('/api/Person', data=dumps({'name': u'Test',
+        # response = self.app.post('/api/person', data=dumps({'name': u'Test',
         #                                                      'age': 'oi'}))
         # assert loads(response.data)['message'] == 'Validation error'
         # assert loads(response.data)['error_list'].keys() == ['age']
 
-        response = self.app.post('/api/Person',
+        response = self.app.post('/api/person',
                                  data=dumps({'name': 'Lincoln', 'age': 23}))
         self.assertEqual(response.status_code, 201)
         self.assertIn('id', loads(response.data))
 
-        response = self.app.get('/api/Person/1')
+        response = self.app.get('/api/person/1')
         self.assertEqual(response.status_code, 200)
 
         deep = {'computers': []}
@@ -106,11 +106,11 @@ class APITestCase(unittest.TestCase):
         """Tests the creation of a model with a related field."""
         data = {'name': u'John', 'age': 2041,
                 'computers': [{'name': u'lixeiro', 'vendor': u'Lemote'}]}
-        response = self.app.post('/api/Person', data=dumps(data))
+        response = self.app.post('/api/person', data=dumps(data))
         self.assertEqual(response.status_code, 201)
         self.assertIn('id', loads(response.data))
 
-        response = self.app.get('/api/Person')
+        response = self.app.get('/api/person')
         self.assertEqual(len(loads(response.data)), 1)
 
     def test_delete(self):
@@ -119,7 +119,7 @@ class APITestCase(unittest.TestCase):
 
         """
         # Creating the person who's gonna be deleted
-        response = self.app.post('/api/Person',
+        response = self.app.post('/api/person',
                                  data=dumps({'name': 'Lincoln', 'age': 23}))
         self.assertEqual(response.status_code, 201)
         self.assertIn('id', loads(response.data))
@@ -127,11 +127,11 @@ class APITestCase(unittest.TestCase):
         # Making sure it has been created
         deep = {'computers': []}
         inst = Person.get_by(id=1).to_dict(deep)
-        response = self.app.get('/api/Person/1')
+        response = self.app.get('/api/person/1')
         self.assertEqual(loads(response.data), inst)
 
         # Deleting it
-        response = self.app.delete('/api/Person/1')
+        response = self.app.delete('/api/person/1')
         self.assertEqual(response.status_code, 204)
 
         # Making sure it has been deleted
@@ -145,7 +145,7 @@ class APITestCase(unittest.TestCase):
         since the :http:method:`delete` method is an idempotent method.
 
         """
-        response = self.app.delete('/api/Person/1')
+        response = self.app.delete('/api/person/1')
         self.assertEqual(response.status_code, 204)
 
     def test_patch_many(self):
@@ -154,26 +154,26 @@ class APITestCase(unittest.TestCase):
 
         """
         # Creating some people
-        self.app.post('/api/Person',
+        self.app.post('/api/person',
                       data=dumps({'name': 'Lincoln', 'age': 23}))
-        self.app.post('/api/Person',
+        self.app.post('/api/person',
                       data=dumps({'name': 'Lucy', 'age': 23}))
-        self.app.post('/api/Person',
+        self.app.post('/api/person',
                       data=dumps({'name': 'Mary', 'age': 25}))
 
         # Trying to pass invalid data to the update method
-        # resp = self.app.patch('/api/Person', data='Hello there')
+        # resp = self.app.patch('/api/person', data='Hello there')
         # assert loads(resp.data)['message'] == 'Unable to decode data'
 
         # Trying to pass valid JSON with invalid object to the API
-        # resp = self.app.patch('/api/Person', data=dumps({'age': 'Hello'}))
+        # resp = self.app.patch('/api/person', data=dumps({'age': 'Hello'}))
         # assert resp.status_code == 400
         # loaded = loads(resp.data)
         # assert loaded['message'] == 'Validation error'
         # assert loaded['error_list'] == [{'age': 'Please enter a number'}]
 
         # Passing invalid search fields to test the exceptions
-        # resp = self.app.patch('/api/Person', data=dumps({'age': 'Hello'}),
+        # resp = self.app.patch('/api/person', data=dumps({'age': 'Hello'}),
         #                     query_string=dict(name='age', op='gt', val='test'))
         # loaded = loads(resp.data)
         # assert loaded['message'] == 'Validation error'
@@ -183,10 +183,10 @@ class APITestCase(unittest.TestCase):
         day, month, year = 15, 9, 1986
         birth_date = date(year, month, day).strftime('%d/%m/%Y')  # iso8601
         form = {'birth_date': birth_date}
-        self.app.patch('/api/Person', data=dumps(form))
+        self.app.patch('/api/person', data=dumps(form))
 
         # Finally, testing if the change was made
-        response = self.app.get('/api/Person')
+        response = self.app.get('/api/person')
         loaded = loads(response.data)['objects']
         for i in loaded:
             self.assertEqual(i['birth_date'], ('%s-%s-%s' % (
@@ -197,28 +197,28 @@ class APITestCase(unittest.TestCase):
         :http:method:`patch` method.
 
         """
-        resp = self.app.post('/api/Person', data=dumps({'name': 'Lincoln',
+        resp = self.app.post('/api/person', data=dumps({'name': 'Lincoln',
                                                          'age': 10}))
         self.assertEqual(resp.status_code, 201)
         self.assertIn('id', loads(resp.data))
 
         # Trying to pass invalid data to the update method
-        resp = self.app.patch('/api/Person/1', data='Invalid JSON string')
+        resp = self.app.patch('/api/person/1', data='Invalid JSON string')
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(loads(resp.data)['message'], 'Unable to decode data')
 
         # Trying to pass valid JSON but an invalid value to the API
-        # resp = self.app.patch('/api/Person/1',
+        # resp = self.app.patch('/api/person/1',
         #                     data=dumps({'age': 'Hello there'}))
         # assert resp.status_code == 400
         # loaded = loads(resp.data)
         # assert loaded['message'] == 'Validation error'
         # assert loaded['error_list'] == [{'age': 'Please enter a number'}]
 
-        resp = self.app.patch('/api/Person/1', data=dumps({'age': 24}))
+        resp = self.app.patch('/api/person/1', data=dumps({'age': 24}))
         self.assertEqual(resp.status_code, 200)
 
-        resp = self.app.get('/api/Person/1')
+        resp = self.app.get('/api/person/1')
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['age'], 24)
 
@@ -228,18 +228,18 @@ class APITestCase(unittest.TestCase):
 
         """
         # Let's create a row as usual
-        response = self.app.post('/api/Person',
+        response = self.app.post('/api/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
         self.assertEqual(response.status_code, 201)
 
         data = {'computers':
                     {'add': [{'name': u'lixeiro', 'vendor': u'Lemote'}]}
                 }
-        response = self.app.patch('/api/Person/1', data=dumps(data))
+        response = self.app.patch('/api/person/1', data=dumps(data))
         self.assertEqual(response.status_code, 200)
 
         # Let's check it out
-        response = self.app.get('/api/Person/1')
+        response = self.app.get('/api/person/1')
         loaded = loads(response.data)
 
         self.assertEqual(len(loaded['computers']), 1)
@@ -268,7 +268,7 @@ class APITestCase(unittest.TestCase):
                 {'name': u'pidinti', 'vendor': u'HP'},
             ],
         }
-        self.app.post('/api/Person', data=dumps(data))
+        self.app.post('/api/person', data=dumps(data))
 
         # Data for the update
         update_data = {
@@ -276,12 +276,12 @@ class APITestCase(unittest.TestCase):
                 'remove': [{'name': u'pidinti'}],
             }
         }
-        resp = self.app.patch('/api/Person/1', data=dumps(update_data))
+        resp = self.app.patch('/api/person/1', data=dumps(update_data))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['id'], 1)
 
         # Let's check it out
-        response = self.app.get('/api/Person/1')
+        response = self.app.get('/api/person/1')
         loaded = loads(response.data)
         self.assertEqual(len(loaded['computers']), 1)
 
@@ -294,18 +294,18 @@ class APITestCase(unittest.TestCase):
         """
         # Creating all rows needed in our test
         person_data = {'name': u'Lincoln', 'age': 23}
-        resp = self.app.post('/api/Person', data=dumps(person_data))
+        resp = self.app.post('/api/person', data=dumps(person_data))
         self.assertEqual(resp.status_code, 201)
         comp_data = {'name': u'lixeiro', 'vendor': u'Lemote'}
-        resp = self.app.post('/api/Computer', data=dumps(comp_data))
+        resp = self.app.post('/api/computer', data=dumps(comp_data))
         self.assertEqual(resp.status_code, 201)
 
         # updating person to add the computer
         update_data = {'computers': {'add': [{'id': 1}]}}
-        self.app.patch('/api/Person/1', data=dumps(update_data))
+        self.app.patch('/api/person/1', data=dumps(update_data))
 
         # Making sure that everything worked properly
-        resp = self.app.get('/api/Person/1')
+        resp = self.app.get('/api/person/1')
         self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)
         self.assertEqual(len(loaded['computers']), 1)
@@ -319,17 +319,17 @@ class APITestCase(unittest.TestCase):
                 ],
             },
         }
-        resp = self.app.patch('/api/Person/1', data=dumps(update2_data))
+        resp = self.app.patch('/api/person/1', data=dumps(update2_data))
         self.assertEqual(resp.status_code, 200)
 
         # Testing to make sure it was removed from the related field
-        resp = self.app.get('/api/Person/1')
+        resp = self.app.get('/api/person/1')
         self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)
         self.assertEqual(len(loaded['computers']), 0)
 
         # Making sure it was removed from the database
-        resp = self.app.get('/api/Computer/1')
+        resp = self.app.get('/api/computer/1')
         self.assertEqual(resp.status_code, 404)
 
     def test_search(self):
@@ -337,11 +337,11 @@ class APITestCase(unittest.TestCase):
         # Trying to pass invalid params to the search method
         # TODO this is no longer a valid test, since the query is no longer
         # passed as JSON in body of the request
-        #resp = self.app.get('/api/Person', query_string='Test')
+        #resp = self.app.get('/api/person', query_string='Test')
         #assert resp.status_code == 400
         #assert loads(resp.data)['message'] == 'Unable to decode data'
 
-        create = lambda x: self.app.post('/api/Person', data=dumps(x))
+        create = lambda x: self.app.post('/api/person', data=dumps(x))
         create({'name': u'Lincoln', 'age': 23, 'other': 22})
         create({'name': u'Mary', 'age': 19, 'other': 19})
         create({'name': u'Lucy', 'age': 25, 'other': 20})
@@ -355,7 +355,7 @@ class APITestCase(unittest.TestCase):
         }
 
         # Let's search for users with that above filter
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)
         self.assertEqual(len(loaded['objects']), 3)  # Mary, Lucy and Katy
@@ -366,7 +366,7 @@ class APITestCase(unittest.TestCase):
             'functions': [{'name': 'sum', 'field': 'age'}]
         }
 
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 200)
         data = loads(resp.data)
         self.assertIn('sum__age', data)
@@ -379,13 +379,13 @@ class APITestCase(unittest.TestCase):
                 {'name': 'name', 'val': u'Lincoln', 'op': 'equals'}
             ],
         }
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['name'], u'Lincoln')
 
         # Looking for something that does not exist on the database
         search['filters'][0]['val'] = 'Sammy'
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['message'], 'No result found')
 
@@ -396,7 +396,7 @@ class APITestCase(unittest.TestCase):
                 {'name': 'age', 'val': 'It should not be a string', 'op': 'gt'}
             ]
         }
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 200)
         #assert loads(resp.data)['error_list'][0] == \
         #    {'age': 'Please enter a number'}
@@ -404,7 +404,7 @@ class APITestCase(unittest.TestCase):
 
         # Testing the order_by stuff
         search = {'order_by': [{'field': 'age', 'direction': 'asc'}]}
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)['objects']
         self.assertEqual(loaded[0][u'age'], 7)
@@ -419,7 +419,7 @@ class APITestCase(unittest.TestCase):
                 {'name': 'age', 'val': [7, 28], 'op': 'in'}
             ]
         }
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)['objects']
         self.assertEqual(loaded[0][u'age'], 7)
@@ -431,7 +431,7 @@ class APITestCase(unittest.TestCase):
                 'add': [{'name': u'lixeiro', 'vendor': u'Lenovo'}]
             }
         }
-        resp = self.app.patch('/api/Person/1', data=dumps(update))
+        resp = self.app.patch('/api/person/1', data=dumps(update))
         self.assertEqual(resp.status_code, 200)
 
         # TODO document this
@@ -443,7 +443,7 @@ class APITestCase(unittest.TestCase):
                  'op': 'any'}
             ]
         }
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['computers'][0]['name'], 'lixeiro')
 
@@ -459,7 +459,7 @@ class APITestCase(unittest.TestCase):
                 {'field': 'other'}
             ]
         }
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)['objects']
         self.assertEqual(len(loaded), 2)
@@ -473,21 +473,21 @@ class APITestCase(unittest.TestCase):
         """
         # test for bad field name
         search = {'functions': [{'name': 'sum', 'field': 'bogusfieldname'}]}
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 400)
         self.assertIn('message', loads(resp.data))
         self.assertIn('bogusfieldname', loads(resp.data)['message'])
 
         # test for bad function name
         search = {'functions': [{'name': 'bogusfuncname', 'field': 'age'}]}
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 400)
         self.assertIn('message', loads(resp.data))
         self.assertIn('bogusfuncname', loads(resp.data)['message'])
 
     def test_search2(self):
         """Testing more search functionality."""
-        create = lambda x: self.app.post('/api/Person', data=dumps(x))
+        create = lambda x: self.app.post('/api/person', data=dumps(x))
         create({'name': u'Fuxu', 'age': 32})
         create({'name': u'Everton', 'age': 33})
         create({'name': u'Lincoln', 'age': 24})
@@ -497,17 +497,17 @@ class APITestCase(unittest.TestCase):
             'single': True,
             'filters': [{'name': 'id', 'op': 'equal_to', 'val': 1}]
         }
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['name'], u'Fuxu')
 
         # Testing limit and offset
         search = {'limit': 1, 'offset': 1}
-        resp = self.app.search('/api/Person', dumps(search))
+        resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['objects'][0]['name'], u'Everton')
 
         # Testing multiple results when calling .one()
-        resp = self.app.search('/api/Person', dumps({'single': True}))
+        resp = self.app.search('/api/person', dumps({'single': True}))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['message'], 'Multiple results found')

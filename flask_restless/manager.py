@@ -123,16 +123,16 @@ class APIManager(object):
         """
         self.app = app
 
-    def create_api(self, model, methods=['GET'], url_prefix='/api'):
+    def create_api(self, model, methods=['GET'], url_prefix='/api',
+                   collection_name=None):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
         this class.
 
         The endpoints for the API for ``model`` will be available at
-        ``<url_prefix>/<modelname>``, where ``<url_prefix>`` is the last
-        parameter to this function and ``<modelname>`` is the lowercase string
-        representation of the model class, as accessed by
-        ``model.__name__``. (If any black magic was performed on
+        ``<url_prefix>/<collection_name>``. If `collection_name` is ``None``,
+        the lowercase name of the provided model class will be used instead, as
+        accessed by ``model.__name__``. (If any black magic was performed on
         ``model.__name__``, this will be reflected in the endpoint URL.)
 
         This function must be called at most once for each model for which you
@@ -168,21 +168,34 @@ class APIManager(object):
         The default list of methods provides a read-only interface (that is,
         only :http:method:`get` requests are allowed).
 
+        `collection_name` is the name of the collection specified by the given
+        model class to be used in the URL for the ReSTful API created. If this
+        is not specified, the lowercase name of the model will be used.
+
         ``url_prefix`` specifies the URL prefix at which this API will be
         accessible.
 
+        .. versionchanged:: 0.4
+
+           Force the model name in the URL to lowercase.
+
+        .. versionadded:: 0.4
+
+           Added the `collection_name` keyword argument.
+
         """
-        modelname = model.__name__
+        if collection_name is None:
+            collection_name = model.__name__.lower()
         methods = frozenset(methods)
         # sets of methods used for different types of endpoints
         no_instance_methods = methods & {'POST'}
         possibly_empty_instance_methods = methods & {'GET', 'PATCH'}
         instance_methods = methods & {'GET', 'PATCH', 'DELETE'}
         # the base URL of the endpoints on which requests will be made
-        collection_endpoint = '/{}'.format(modelname)
+        collection_endpoint = '/{}'.format(collection_name)
         instance_endpoint = collection_endpoint + '/<int:instid>'
         # the name of the API, for use in creating the view and the blueprint
-        apiname = APIManager.APINAME_FORMAT.format(modelname)
+        apiname = APIManager.APINAME_FORMAT.format(collection_name)
         # the view function for the API for this model
         api_view = API.as_view(apiname, model)
         # suffix an integer to apiname according to already existing blueprints

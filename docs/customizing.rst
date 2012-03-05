@@ -14,7 +14,7 @@ argument ``methods``::
 
     apimanager.create_api(Person, methods=['GET', 'POST', 'DELETE'])
 
-This creates an endpoint at ``/api/Person`` which responds to
+This creates an endpoint at ``/api/person`` which responds to
 :http:method:`get`, :http:method:`post`, and :http:method:`delete` methods, but
 not to other ones like :http:method:`put` or :http:method:`patch`.
 
@@ -22,38 +22,38 @@ The HTTP methods have the following semantics (assuming you have created an API
 for an entity named ``Person``). All endpoints which respond with data respond
 with serialized JSON strings.
 
-.. http:get:: /api/Person
+.. http:get:: /api/person
 
    Returns a list of all ``Person`` instances.
 
-.. http:get:: /api/Person/(int:id)
+.. http:get:: /api/person/(int:id)
 
    Returns a single ``Person`` instance with the given ``id``.
 
-.. http:get:: /api/Person?q=<searchjson>
+.. http:get:: /api/person?q=<searchjson>
 
    Returns a list of all ``Person`` instances which match the search query
    specified in the query parameter ``q``. For more information on searching,
    see :ref:`searchformat`.
 
-.. http:delete:: /api/Person/(int:id)
+.. http:delete:: /api/person/(int:id)
 
    Deletes the person with the given ``id`` and returns :http:statuscode:`204`.
 
-.. http:post:: /api/Person
+.. http:post:: /api/person
 
    Creates a new person in the database and returns its ``id``. The initial
    attributes of the ``Person`` are read as JSON from the body of the
    request. For information about the format of this request, see
    :ref:`requestformat`.
 
-.. http:patch:: /api/Person/(int:id)
+.. http:patch:: /api/person/(int:id)
 
    Updates the attributes of the ``Person`` with the given ``id``. The
    attributes are read as JSON from the body of the request. For information
    about the format of this request, see :ref:`requestformat`.
 
-.. http:patch:: /api/Person?q=<searchjson>
+.. http:patch:: /api/person?q=<searchjson>
 
    Updates the attributes of all ``Person`` instances which match the search
    query specified in the query parameter ``q``. The attributes are read as
@@ -61,10 +61,10 @@ with serialized JSON strings.
    :ref:`search`. For information about the format of this request, see
    :ref:`requestformat`.
   
-.. http:put:: /api/Person?q=<searchjson>
-.. http:put:: /api/Person/(int:id)
+.. http:put:: /api/person?q=<searchjson>
+.. http:put:: /api/person/(int:id)
 
-   Aliases for :http:patch:`/api/Person`.
+   Aliases for :http:patch:`/api/person`.
 
 API prefix
 ~~~~~~~~~~
@@ -74,4 +74,16 @@ argument::
 
     apimanager.create_api(Person, url_prefix='/api/v2')
 
-Then your API for ``Person`` will be available at ``/api/v2/Person``.
+Then your API for ``Person`` will be available at ``/api/v2/person``.
+
+Collection name
+~~~~~~~~~~~~~~~
+
+By default, the name of the collection in the API will be the lowercase name of
+the model. To provide a different name for the model, provide a string to the
+`collection_name` keyword argument of the :meth:`APIManager.create_api`
+method::
+
+    apimanager.create_api(Person, collection_name='people')
+
+Then the API will be exposed at ``/api/people`` instead of ``/api/person``.

@@ -32,6 +32,7 @@ For the restless::
     manager = flask.ext.restless.APIManager(app)
 
     # Create API endpoints, which will be available at /api/<modelname> by
-    # default. Allowed HTTP methods can be specified as well.
+    # default (with the lowercase form of the model name). Allowed HTTP methods
+    # can be specified as well.
     manager.create_api(Person, methods=['GET', 'PATCH', 'POST', 'DELETE'])
     manager.create_api(Computer, method=['GET'])
