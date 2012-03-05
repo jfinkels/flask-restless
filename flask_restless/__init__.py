@@ -14,6 +14,21 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+    flask.ext.restless
+    ~~~~~~~~~~~~~~~~~~
+
+    Flask-Restless is a `Flask <http://flask.pocoo.org>`_ extension which
+    facilitates the creation of ReSTful JSON APIs. It is compatible with models
+    which have been described using `Elixir <http://elixir.ematia.de>`_, a
+    layer on top of `SQLAlchemy <http://sqlalchemy.org>`_.
+
+    :copyright: 2011 by Lincoln de Sousa.
+    :copyright: 2012 Jeffrey Finkelstein.
+    :license: GNU Affero General Public License, version 3 or later.
+
+"""
+
 __version__ = '0.4-dev'
 """The current version of this extension.
 
