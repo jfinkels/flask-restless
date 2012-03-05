@@ -35,4 +35,4 @@ For the restless::
     # default (with the lowercase form of the model name). Allowed HTTP methods
     # can be specified as well.
     manager.create_api(Person, methods=['GET', 'PATCH', 'POST', 'DELETE'])
-    manager.create_api(Computer, method=['GET'])
+    manager.create_api(Computer, methods=['GET'])
