@@ -34,7 +34,6 @@ from flask import Blueprint
 from .views import API
 
 
-# TODO add support for PUT method which just delegates to PATCH?
 # TODO use __tablename__ instead of uppercase class name?
 class APIManager(object):
     """Provides a method for creating a public ReSTful JSOn API with respect to
@@ -200,8 +199,8 @@ class APIManager(object):
         methods = frozenset(methods)
         # sets of methods used for different types of endpoints
         no_instance_methods = methods & {'POST'}
-        possibly_empty_instance_methods = methods & {'GET', 'PATCH'}
-        instance_methods = methods & {'GET', 'PATCH', 'DELETE'}
+        possibly_empty_instance_methods = methods & {'GET', 'PATCH', 'PUT'}
+        instance_methods = methods & {'GET', 'PATCH', 'DELETE', 'PUT'}
         # the base URL of the endpoints on which requests will be made
         collection_endpoint = '/{}'.format(collection_name)
         instance_endpoint = collection_endpoint + '/<int:instid>'

@@ -157,6 +157,44 @@ class APITestCase(unittest.TestCase):
         response = self.app.patch('/api/person', data=dumps(dict(name='foo')))
         self.assertEqual(response.status_code, 405)
 
+    def test_put_same_as_patch(self):
+        """Tests that :http:method:`put` requests are the same as
+        :http:method:`patch` requests.
+
+        """
+        # recreate the api to allow patch many at /api/v2/person
+        self.manager.create_api(Person, methods=['GET', 'POST', 'PUT'],
+                                allow_patch_many=True, url_prefix='/api/v2')
+
+        # Creating some people
+        self.app.post('/api/v2/person',
+                      data=dumps({'name': 'Lincoln', 'age': 23}))
+        self.app.post('/api/v2/person',
+                      data=dumps({'name': 'Lucy', 'age': 23}))
+        self.app.post('/api/v2/person',
+                      data=dumps({'name': 'Mary', 'age': 25}))
+
+        # change a single entry
+        resp = self.app.put('/api/v2/person/1', data=dumps({'age': 24}))
+        self.assertEqual(resp.status_code, 200)
+
+        resp = self.app.get('/api/v2/person/1')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['age'], 24)
+
+        # Changing the birth date field of the entire collection
+        day, month, year = 15, 9, 1986
+        birth_date = date(year, month, day).strftime('%d/%m/%Y')  # iso8601
+        form = {'birth_date': birth_date}
+        self.app.put('/api/v2/person', data=dumps(form))
+
+        # Finally, testing if the change was made
+        response = self.app.get('/api/v2/person')
+        loaded = loads(response.data)['objects']
+        for i in loaded:
+            self.assertEqual(i['birth_date'], ('%s-%s-%s' % (
+                    year, str(month).zfill(2), str(day).zfill(2))))
+
     def test_patch_many(self):
         """Test for updating a collection of instances of the model using the
         :http:method:`patch` method.

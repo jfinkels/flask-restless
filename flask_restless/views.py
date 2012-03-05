@@ -62,8 +62,9 @@ def jsonify_status_code(status_code, *args, **kw):
 
 class API(MethodView):
     """Provides method-based dispatching for :http:request:`get`,
-    :http:request:`post`, :http:request:`patch`, and :http:request:`delete`
-    requests, for both collections of models and individual models.
+    :http:request:`post`, :http:request:`patch`, :http:request:`put`, and
+    :http:request:`delete` requests, for both collections of models and
+    individual models.
 
     """
 
@@ -475,3 +476,7 @@ class API(MethodView):
             return jsonify(num_modified=num_modified)
         else:
             return self.get(instid)
+
+    def put(self, instid):
+        """Alias for :meth:`patch`."""
+        return self.patch(instid)
