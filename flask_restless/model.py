@@ -30,6 +30,8 @@
 from datetime import date, datetime
 from elixir import EntityBase, EntityMeta, session
 from sqlalchemy.orm.properties import RelationshipProperty as RelProperty
+from sqlalchemy.types import Date
+from sqlalchemy.types import DateTime
 
 
 ISO8601_DATE = "%Y-%m-%d"
@@ -116,6 +118,17 @@ class Entity(EntityBase):
             session.add(instance)
             session.commit()
             return instance, True
+
+    @classmethod
+    def is_date_or_datetime(cls, fieldname):
+        """Returns ``True`` if and only if the field of this model with the
+        specified name corresponds to either a :class:`datetime.date` object or
+        a :class:`datetime.datetime` object.
+
+        """
+        fieldtype = getattr(cls, fieldname).property.columns[0].type
+        return isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime)
+
 
     def to_dict(self, deep=dict(), exclude=list()):
         """Returns a dictionary representation of this instance of the entity

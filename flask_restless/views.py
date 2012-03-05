@@ -152,6 +152,9 @@ class API(MethodView):
         object will be created if a matching object could not be found in the
         database.
 
+        This function does not commit the changes made to the database. The
+        calling function has that responsibility.
+
         This method returns a :class:`frozenset` of strings representing the
         names of relations which were modified.
 
@@ -180,6 +183,30 @@ class API(MethodView):
             self._add_to_relation(query, columnname, toadd=toadd)
             self._remove_from_relation(query, columnname, toremove=toremove)
         return tochange
+
+    def _strings_to_dates(self, dictionary):
+        """Returns a new dictionary with all the mappings of `dictionary` but
+        with date strings mapped to :class:`datetime.datetime` objects.
+
+        The keys of `dictionary` are names of fields in the model specified in
+        the constructor of this class. The values are values to set on these
+        fields. If a field name corresponds to a field in the model which is a
+        :class:`sqlalchemy.types.Date` or :class:`sqlalchemy.types.DateTime`,
+        then the returned dictionary will have the corresponding
+        :class:`datetime.datetime` Python object as the value of that mapping
+        in place of the string.
+
+        This function outputs a new dictionary; it does not modify the
+        argument.
+
+        """
+        result = {}
+        for fieldname, value in dictionary.iteritems():
+            if self.model.is_date_or_datetime(fieldname):
+                result[fieldname] = parse_datetime(value)
+            else:
+                result[fieldname] = value
+        return result
 
     def _search(self):
         """Defines a generic search function for the database model.
@@ -289,53 +316,6 @@ class API(MethodView):
         else:
             return jsonify(result.to_dict(deep))
 
-    # TODO should this exist?
-    def _patch_many(self):
-        """Updates each of the instances of the model which match the query
-        string.
-
-        The ``request.data`` field should be filled with a JSON string that
-        contains an object with two fields: query and form. The first one
-        should have an object that looks the same as the one passed to the
-        ``search`` method. The second field (form) should contain an object
-        with all fields that will be passed to the ``update()`` method.
-
-        """
-        # TODO this code is common to patch
-        try:
-            data = json.loads(request.data)
-        except (TypeError, ValueError, OverflowError):
-            return jsonify_status_code(400, message='Unable to decode data')
-        # build the query dictionary from the request query string
-        query = create_query(self.model, data)
-
-        # TODO this code is common to patch
-        if len(data) == 0:
-            return make_response(None, 204)
-
-        # TODO this code is common to patch
-        relations = set(self._update_relations(query, data))
-        field_list = set(data.keys()) ^ relations
-        originalparams = dict((field, data[field]) for field in field_list)
-
-        # Special case: if there are any dates, convert the string form of the
-        # date into an instance of the Python ``datetime`` object.
-        params = {}
-        for key, val in originalparams.iteritems():
-            fieldtype = getattr(self.model, key).property.columns[0].type
-            if isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime):
-                params[key] = parse_datetime(val)
-            else:
-                params[key] = val
-
-        # Let's update all instances present in the query
-        num_modified = 0
-        if params:
-            num_modified = query.update(params, False)
-        session.commit()
-
-        return jsonify(num_modified=num_modified)
-
     def get(self, instid):
         """Returns a JSON representation of an instance of model with the
         specified name.
@@ -443,44 +423,40 @@ class API(MethodView):
         be made in this case.
 
         """
-        # TODO this code is common to _patch_many
-        # if no instance is specified, try to patch many using a search
-        if instid is None:
-            return self._patch_many()
-
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
-        # TODO this code is common to _patch_many
         # If there is no data to update, just return HTTP 204 No Content.
         if len(data) == 0:
             return make_response(None, 204)
 
-        # TODO this code is common to _patch_many
-        relations = set(self._update_relations([self.model.get_by(id=instid)],
-                                               data))
-        field_list = set(data.keys()) ^ relations
-        originalparams = dict((field, data[field]) for field in field_list)
+        patchmany = instid is None
+        if patchmany:
+            # create a SQLALchemy Query from the request query parameter `q`
+            query = create_query(self.model, data)
+        else:
+            # create a SQLAlchemy Query which has exactly the specified row
+            query = self.model.query.filter_by(id=instid)
+            assert query.count() == 1, 'Multiple rows with same ID'
+
+        relations = self._update_relations(query, data)
+        field_list = frozenset(data) ^ relations
+        params = dict((field, data[field]) for field in field_list)
 
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
-        params = {}
-        for key, val in originalparams.iteritems():
-            fieldtype = getattr(self.model, key).property.columns[0].type
-            if isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime):
-                params[key] = parse_datetime(val)
-            else:
-                params[key] = val
+        params = self._strings_to_dates(params)
 
-        # Let's update field by field
-        # TODO can this be made the same as in _patch_many?
-        inst = self.model.get_by(id=instid)
-        for field in field_list:
-            setattr(inst, field, params[field])
+        # Let's update all instances present in the query
+        num_modified = 0
+        if params:
+            num_modified = query.update(params, False)
         session.commit()
 
-        # return the updated object
-        return self.get(instid)
+        if patchmany:
+            return jsonify(num_modified=num_modified)
+        else:
+            return self.get(instid)
