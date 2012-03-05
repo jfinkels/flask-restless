@@ -123,7 +123,6 @@ class APIManager(object):
         """
         self.app = app
 
-    # alternately: def add_api(modelname, readonly=True):
     def create_api(self, model, methods=['GET'], url_prefix='/api'):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
@@ -139,6 +138,12 @@ class APIManager(object):
         This function must be called at most once for each model for which you
         wish to create a ReSTful API. Its behavior (for now) is undefined if
         called more than once.
+
+        This function returns the :class:`flask.Blueprint` object which handles
+        the endpoints for the model. The returned :class:`~flask.Blueprint` has
+        already been registered with the :class:`~flask.Flask` application
+        object specified in the constructor of this class, so you do *not* need
+        to register it yourself.
 
         ``model`` is the :class:`flask.ext.restless.Entity` class for which a
         ReSTful interface will be created. Note this must be a class, not an
@@ -198,3 +203,4 @@ class APIManager(object):
                                view_func=api_view)
         # register the blueprint on the app
         self.app.register_blueprint(blueprint)
+        return blueprint

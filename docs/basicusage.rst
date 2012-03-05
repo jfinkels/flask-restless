@@ -48,11 +48,20 @@ Second, create your :class:`flask.Flask` object and instantiate a
 
 Third, create the API endpoints which will be accessible to web clients::
 
-    manager.create_api(Person, methods=['GET', 'PATCH', 'POST', 'DELETE'])
-    manager.create_api(Computer, method=['GET'])
+    person_blueprint = manager.create_api(Person, methods=['GET', 'PATCH',
+                                                           'POST', 'DELETE'])
+    computer_blueprint = manager.create_api(Computer, method=['GET'])
 
 Due to the design of Flask, these APIs must be created before your application
-handles any requests.
+handles any requests. The return value of
+:meth:`flask.ext.restless.APIManager.create_api` is the blueprint in which the
+endpoints for the specified database model live. The blueprint has already been
+registered on the :class:`~flask.Flask` application, so you do *not* need to
+register it yourself. It is provided so that you can examine its attributes,
+but if you don't need it then just ignore it::
+
+    manager.create_api(Person, methods=['GET', 'PATCH', 'POST', 'DELETE'])
+    manager.create_api(Computer, method=['GET'])
 
 By default, the API for ``Person``, in the above code samples, will be
 accessible at ``http://<host>:<port>/api/Person``::
