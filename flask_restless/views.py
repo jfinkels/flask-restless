@@ -91,7 +91,7 @@ class API(MethodView):
         self.model = model
         self.allow_patch_many = allow_patch_many
 
-    def _add_to_relation(self, query, relationname, toadd=[]):
+    def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
         `query`.
 
@@ -110,7 +110,7 @@ class API(MethodView):
 
         """
         submodel = self.model.get_related_model(relationname)
-        for dictionary in toadd:
+        for dictionary in toadd or []:
             if 'id' in dictionary:
                 subinst = submodel.get_by(id=dictionary['id'])
             else:
@@ -118,7 +118,7 @@ class API(MethodView):
             for instance in query:
                 getattr(instance, relationname).append(subinst)
 
-    def _remove_from_relation(self, query, relationname, toremove=[]):
+    def _remove_from_relation(self, query, relationname, toremove=None):
         """Removes a related model from each model specified by `query`.
 
         `query` is a SQLAlchemy query instance that evaluates to all instances
@@ -140,7 +140,7 @@ class API(MethodView):
 
         """
         submodel = self.model.get_related_model(relationname)
-        for dictionary in toremove:
+        for dictionary in toremove or []:
             remove = dictionary.pop('__delete__', False)
             if 'id' in dictionary:
                 subinst = submodel.get_by(id=dictionary['id'])

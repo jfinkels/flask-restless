@@ -90,8 +90,7 @@ class Entity(EntityBase):
 
         """
         cols = cls._sa_class_manager
-        isrelationship = lambda k: isinstance(cols[k].property, RelProperty)
-        return list(filter(isrelationship, cols))
+        return [k for k in cols if isinstance(cols[k].property, RelProperty)]
 
     @classmethod
     def get_or_create(cls, **kwargs):

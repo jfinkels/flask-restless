@@ -33,6 +33,9 @@ from flask import Blueprint
 
 from .views import API
 
+#: The set of methods which are allowed by default when creating an API
+READONLY_METHODS = frozenset(('GET', ))
+
 
 # TODO use __tablename__ instead of uppercase class name?
 class APIManager(object):
@@ -89,14 +92,16 @@ class APIManager(object):
         blueprint with that name, but that is not necessary.
 
         """
-        existing_names = filter(lambda s: s.startswith(basename),
-                                self.app.blueprints.iterkeys())
+        # blueprints is a dict whose keys are the names of the blueprints
+        blueprints = self.app.blueprints
+        existing = [name for name in blueprints if name.startswith(basename)]
         # if this is the first one...
-        if not list(existing_names):
+        if not existing:
             next_number = 0
         else:
-            existing_numbers = map(lambda n: int(n.partition(basename)[-1]),
-                                   existing_names)
+            # for brevity
+            b = basename
+            existing_numbers = [int(n.partition(b)[-1]) for n in existing]
             next_number = max(existing_numbers) + 1
         return APIManager.BLUEPRINTNAME_FORMAT.format(basename, next_number)
 
@@ -118,7 +123,7 @@ class APIManager(object):
         """
         self.app = app
 
-    def create_api(self, model, methods=['GET'], url_prefix='/api',
+    def create_api(self, model, methods=READONLY_METHODS, url_prefix='/api',
                    collection_name=None, allow_patch_many=False):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
@@ -160,7 +165,7 @@ class APIManager(object):
         * If :http:method:`post` is in this list, the API will allow posting a
           new instance of the model per request.
 
-        The default list of methods provides a read-only interface (that is,
+        The default set of methods provides a read-only interface (that is,
         only :http:method:`get` requests are allowed).
 
         `collection_name` is the name of the collection specified by the given

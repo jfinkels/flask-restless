@@ -177,7 +177,7 @@ class SearchParameters(object):
 
     """
 
-    def __init__(self, filters=[], limit=None, offset=None, order_by=[]):
+    def __init__(self, filters=None, limit=None, offset=None, order_by=None):
         """Instantiates this object with the specified attributes.
 
         `filters` is a list of :class:`Filter` objects, representing filters to
@@ -194,10 +194,10 @@ class SearchParameters(object):
         search.
 
         """
-        self.filters = filters
+        self.filters = filters or []
         self.limit = limit
         self.offset = offset
-        self.order_by = order_by
+        self.order_by = order_by or []
 
     def __repr__(self):
         """Returns a string representation of the search parameters."""
