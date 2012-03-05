@@ -27,6 +27,18 @@ from elixir import session
 from sqlalchemy.sql import func
 
 
+#: The mapping from operator name (as accepted by the search method) to a
+#: function which returns the SQLAlchemy expression corresponding to that
+#: operator.
+#:
+#: The function in each of the values takes three arguments. The first argument
+#: is the field object on which to apply the operator. The second argument is
+#: the second argument to the operator, should one exist. The third argument is
+#: the name of the field. All functions use the first argument, some use the
+#:  second, and few use the third.
+#:
+#: Some operations have multiple names. For example, the equality operation can
+#: be described by the strings ``'=='``, ``'eq'``, ``'equals'``, etc.
 OPERATORS = {
     '==': lambda f, a, fn: f == a,
     'eq': lambda f, a, fn: f == a,
@@ -59,20 +71,6 @@ OPERATORS = {
     'has': lambda f, a, fn: f.has(**{fn: a}),
     'any': lambda f, a, fn: f.any(**{fn: a})
 }
-"""The mapping from operator name (as accepted by the search method) to a
-function which returns the SQLAlchemy expression corresponding to that
-operator.
-
-The function in each of the values takes three arguments. The first argument is
-the field object on which to apply the operator. The second argument is the
-second argument to the operator, should one exist. The third argument is the
-name of the field. All functions use the first argument, some use the second,
-and few use the third.
-
-Some operations have multiple names. For example, the equality operation can be
-described by the strings ``'=='``, ``'eq'``, ``'equals'``, etc.
-
-"""
 
 
 class IllegalArgumentError(Exception):

@@ -29,12 +29,11 @@
 
 """
 
+#: The current version of this extension.
+#:
+#: This should be the same as the version specified in the :file:`setup.py`
+#: file.
 __version__ = '0.4-dev'
-"""The current version of this extension.
-
-This should be the same as the version specified in the :file:`setup.py` file.
-
-"""
 
 # make the following names available as part of the public API
 from .manager import APIManager

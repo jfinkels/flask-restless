@@ -34,11 +34,11 @@ from sqlalchemy.types import Date
 from sqlalchemy.types import DateTime
 
 
+#: The ISO 8601 string format for :class:`datetime.date` objects.
 ISO8601_DATE = "%Y-%m-%d"
-"""The ISO 8601 string format for :class:`datetime.date` objects."""
 
+#: The ISO 8601 string format for :class:`datetime.datetime` objects.
 ISO8601_DATETIME = "%Y-%m-%dT%H:%M:%S"
-"""The ISO 8601 string format for :class:`datetime.datetime` objects."""
 
 
 class Entity(EntityBase):
