@@ -42,8 +42,6 @@ from flask.views import MethodView
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.types import Date
-from sqlalchemy.types import DateTime
 
 from .search import create_query
 from .search import evaluate_functions
