@@ -61,7 +61,7 @@ register it yourself. It is provided so that you can examine its attributes,
 but if you don't need it then just ignore it::
 
     manager.create_api(Person, methods=['GET', 'PATCH', 'POST', 'DELETE'])
-    manager.create_api(Computer, method=['GET'])
+    manager.create_api(Computer, methods=['GET'])
 
 By default, the API for ``Person``, in the above code samples, will be
 accessible at ``http://<host>:<port>/api/person`` (note the lowercase name of the model in the URL)::
