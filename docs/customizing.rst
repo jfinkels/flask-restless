@@ -55,6 +55,11 @@ with serialized JSON strings.
 
 .. http:patch:: /api/person?q=<searchjson>
 
+   This is only available if the ``allow_patch_many`` keyword argument is set
+   to ``True`` when initializing the
+   :class:`~flask.ext.restless.manager.APIManager` object. For more
+   information, see :ref:`allowpatchmany`.
+
    Updates the attributes of all ``Person`` instances which match the search
    query specified in the query parameter ``q``. The attributes are read as
    JSON from the body of the request. For information about searching, see
@@ -87,3 +92,15 @@ method::
     apimanager.create_api(Person, collection_name='people')
 
 Then the API will be exposed at ``/api/people`` instead of ``/api/person``.
+
+Enabling patching the result of a search
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, a :http:patch:`/api/people` request (with or without a ``q`` query
+parameter) will cause a :http:statuscode:`405` response. By setting the
+``allow_patch_many`` keyword argument of the :meth:`APIManager.create_api`
+method to be ``True``, :http:patch:`/api/person` requests will patch the
+provided attributes on all of the instances of ``Person`` which match the
+provided search query (or all instances if no query parameter is provided)::
+
+    apimanager.create_api(Person, allow_patch_many=True)

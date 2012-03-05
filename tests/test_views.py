@@ -56,9 +56,10 @@ class APITestCase(unittest.TestCase):
         self.app = app.test_client()
 
         # setup the URLs for the Person and Computer API
-        manager = APIManager(app)
-        manager.create_api(Person, methods=['GET', 'PATCH', 'POST', 'DELETE'])
-        manager.create_api(Computer, methods=['GET', 'POST'])
+        self.manager = APIManager(app)
+        self.manager.create_api(Person, methods=['GET', 'PATCH', 'POST',
+                                                 'DELETE'])
+        self.manager.create_api(Computer, methods=['GET', 'POST'])
 
         # to facilitate searching
         self.app.search = lambda url, q: self.app.get(url + '?q={}'.format(q))
@@ -148,17 +149,29 @@ class APITestCase(unittest.TestCase):
         response = self.app.delete('/api/person/1')
         self.assertEqual(response.status_code, 204)
 
+    def test_disallow_patch_many(self):
+        """Tests that disallowing "patch many" requests responds with a
+        :http:statuscode:`405`.
+
+        """
+        response = self.app.patch('/api/person', data=dumps(dict(name='foo')))
+        self.assertEqual(response.status_code, 405)
+
     def test_patch_many(self):
         """Test for updating a collection of instances of the model using the
         :http:method:`patch` method.
 
         """
+        # recreate the api to allow patch many at /api/v2/person
+        self.manager.create_api(Person, methods=['GET', 'POST', 'PATCH'],
+                                allow_patch_many=True, url_prefix='/api/v2')
+
         # Creating some people
-        self.app.post('/api/person',
+        self.app.post('/api/v2/person',
                       data=dumps({'name': 'Lincoln', 'age': 23}))
-        self.app.post('/api/person',
+        self.app.post('/api/v2/person',
                       data=dumps({'name': 'Lucy', 'age': 23}))
-        self.app.post('/api/person',
+        self.app.post('/api/v2/person',
                       data=dumps({'name': 'Mary', 'age': 25}))
 
         # Trying to pass invalid data to the update method
@@ -183,10 +196,10 @@ class APITestCase(unittest.TestCase):
         day, month, year = 15, 9, 1986
         birth_date = date(year, month, day).strftime('%d/%m/%Y')  # iso8601
         form = {'birth_date': birth_date}
-        self.app.patch('/api/person', data=dumps(form))
+        self.app.patch('/api/v2/person', data=dumps(form))
 
         # Finally, testing if the change was made
-        response = self.app.get('/api/person')
+        response = self.app.get('/api/v2/person')
         loaded = loads(response.data)['objects']
         for i in loaded:
             self.assertEqual(i['birth_date'], ('%s-%s-%s' % (

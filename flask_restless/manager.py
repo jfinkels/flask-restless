@@ -124,7 +124,7 @@ class APIManager(object):
         self.app = app
 
     def create_api(self, model, methods=['GET'], url_prefix='/api',
-                   collection_name=None):
+                   collection_name=None, allow_patch_many=False):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
         this class.
@@ -175,9 +175,20 @@ class APIManager(object):
         ``url_prefix`` specifies the URL prefix at which this API will be
         accessible.
 
+        If `allow_patch_many` is ``True``, then requests to
+        :http:patch:`/api/<collection_name>?q=<searchjson>` will attempt to
+        patch the attributes on each of the instances of the model which match
+        the specified search query. This is ``False`` by default. For
+        information on the search query parameter ``q``, see
+        :ref:`searchformat`.
+
         .. versionchanged:: 0.4
 
            Force the model name in the URL to lowercase.
+
+        .. versionadded:: 0.4
+
+           Added the `allow_patch_many` keyword argument.
 
         .. versionadded:: 0.4
 
@@ -197,7 +208,7 @@ class APIManager(object):
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.APINAME_FORMAT.format(collection_name)
         # the view function for the API for this model
-        api_view = API.as_view(apiname, model)
+        api_view = API.as_view(apiname, model, allow_patch_many)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the
