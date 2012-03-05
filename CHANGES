@@ -8,7 +8,13 @@ Version 0.4
 
 Not released yet.
 
-No changes yet.
+- Added ``collection_name`` keyword argument to constructor of
+  :class:`~flask.ext.restless.manager.APIManager` to allow user provided names
+  in URLs.
+- Added ``allow_patch_many`` keyword argument to constructor of
+  :class:`~flask.ext.restless.manager.APIManager` to allow enabling or
+  disabling the PATCH many functionality.
+- Disable the PATCH many functionality by default.
 
 Version 0.3
 -----------
