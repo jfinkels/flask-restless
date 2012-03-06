@@ -8,6 +8,7 @@ Version 0.4
 
 Not released yet.
 
+- Added capturing of exceptions raised during field validation.
 - Fixed bug where we weren't allowing PUT requests in
   :meth:`~flask.ext.restless.manager.APIManager.create_api`.
 - Added ``collection_name`` keyword argument to constructor of

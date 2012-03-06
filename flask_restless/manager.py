@@ -124,7 +124,8 @@ class APIManager(object):
         self.app = app
 
     def create_api(self, model, methods=READONLY_METHODS, url_prefix='/api',
-                   collection_name=None, allow_patch_many=False):
+                   collection_name=None, allow_patch_many=False,
+                   validation_exceptions=()):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
         this class.
@@ -182,6 +183,11 @@ class APIManager(object):
         information on the search query parameter ``q``, see
         :ref:`searchformat`.
 
+        `validation_exceptions` is the tuple of possible exceptions raised by
+        validation of your database models. If this is specified, validation
+        errors will be captured and forwarded to the client in JSON format. For
+        more information on how to use validation, see :ref:`validation`.
+
         .. versionchanged:: 0.4
 
            Force the model name in the URL to lowercase.
@@ -193,6 +199,10 @@ class APIManager(object):
         .. versionadded:: 0.4
 
            Added the `collection_name` keyword argument.
+
+        .. versionadded:: 0.4
+
+           Added the `validation_exceptions` keyword argument.
 
         """
         if collection_name is None:
@@ -208,7 +218,8 @@ class APIManager(object):
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.APINAME_FORMAT.format(collection_name)
         # the view function for the API for this model
-        api_view = API.as_view(apiname, model, allow_patch_many)
+        api_view = API.as_view(apiname, model, allow_patch_many,
+                               validation_exceptions)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the

@@ -3,10 +3,12 @@
 Customizing the ReSTful interface
 =================================
 
+.. module:: flask_restless
+
 HTTP methods
 ~~~~~~~~~~~~
 
-By default, the :meth:`~flaskext.restless.APIManager.create_api` method creates
+By default, the :meth:`~flask_restless.APIManager.create_api` method creates
 a read-only interface; requests with HTTP methods other than :http:method:`GET`
 will cause a response with :http:statuscode:`405`. To explicitly specify which
 methods should be allowed for the endpoint, pass a list as the value of keyword
@@ -57,7 +59,7 @@ with data respond with serialized JSON strings.
 
    This is only available if the ``allow_patch_many`` keyword argument is set
    to ``True`` when calling the
-   :meth:`~flask.ext.restless.manager.APIManager.create_api` method. For more
+   :meth:`~flask_restless.manager.APIManager.create_api` method. For more
    information, see :ref:`allowpatchmany`.
 
    Updates the attributes of all ``Person`` instances which match the search
@@ -106,3 +108,37 @@ provided attributes on all of the instances of ``Person`` which match the
 provided search query (or all instances if no query parameter is provided)::
 
     apimanager.create_api(Person, allow_patch_many=True)
+
+.. _validation:
+
+Capturing validation errors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, no validation is performed by Flask-Restless; if you want
+validation, implement it yourself in your database models. However, by
+specifying a list of exceptions raised by your backend on validation errors,
+Flask-Restless will forward messages from raised exceptions to the client in an
+error response.
+
+For example, if your validation framework includes an exception called
+``ValidationError``, then call the :meth:`APIManager.create_api` method with
+the ``validation_errors`` keyword argument::
+
+    from cool_validation_framework import ValidationError
+    apimanager.create_api(Person, validation_errors=[ValidationError])
+
+Now when you make :http:method:`post` and :http:method:`patch` requests with
+invalid fields, the JSON response will look like this:
+
+.. sourcecode:: http
+
+   HTTP/1.1 400 Bad Request
+
+   { "validation_errors":
+       {
+         "age": "Must be an integer",
+       }
+   }
+
+Currently, Flask-Restless can only forward one exception at a time to the
+client.

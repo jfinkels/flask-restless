@@ -20,7 +20,6 @@ APIs for your database models.
    customizing
    searchformat
    requestformat
-   validation
 
 API reference
 -------------

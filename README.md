@@ -93,6 +93,12 @@ Python package). To run the test suite, run the command
 
     python setup.py test
 
+To test validation of Elixir models (which is not provided by Flask-Restless),
+install the [sqlalchemy-validation][sav] package. If it is not detected, these
+tests will be skipped.
+
+[sav]: http://code.google.com/p/sqlalchemy-validations/
+
 ## Building documentation ##
 
 Flask-Restless requires the following program and supporting library to build

@@ -68,7 +68,8 @@ class API(MethodView):
 
     """
 
-    def __init__(self, model, allow_patch_many=False, *args, **kw):
+    def __init__(self, model, allow_patch_many=False, validation_exceptions=(),
+                 *args, **kw):
         """Calls the constructor of the superclass and specifies the model for
         which this class provides a ReSTful API.
 
@@ -82,6 +83,17 @@ class API(MethodView):
         :meth:`~flask.ext.restless.manager.APIManager.create_api`; see the
         documentation there for more information.
 
+        `validation_exception` is the tuple of exceptions raised by backend
+        validation (if any exist). If exceptions are specified here, any
+        exceptions which are caught when writing to the database. Will be
+        returned to the client as a :http:statuscode:`400` response with a
+        message specifying the validation error which occurred. For more
+        information, see :ref:`validation`.
+
+        .. versionadded:: 0.4
+
+           Added the `validation_exceptions` keyword argument.
+
         .. versionadded:: 0.4
 
            Added the `allow_patch_many` keyword argument.
@@ -90,6 +102,7 @@ class API(MethodView):
         super(API, self).__init__(*args, **kw)
         self.model = model
         self.allow_patch_many = allow_patch_many
+        self.validation_exceptions = tuple(validation_exceptions) or ()
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
@@ -402,21 +415,25 @@ class API(MethodView):
         paramkeys = params.keys()
         props = set(colkeys).intersection(paramkeys).difference(relations)
 
-        # Instantiate the model with the parameters
-        instance = self.model(**dict([(i, params[i]) for i in props]))
+        try:
+            # Instantiate the model with the parameters
+            instance = self.model(**dict([(i, params[i]) for i in props]))
 
-        # Handling relations, a single level is allowed
-        for col in set(relations).intersection(paramkeys):
-            submodel = cols[col].property.mapper.class_
-            for subparams in params[col]:
-                subinst = submodel.get_or_create(**subparams)[0]
-                getattr(instance, col).append(subinst)
+            # Handling relations, a single level is allowed
+            for col in set(relations).intersection(paramkeys):
+                submodel = cols[col].property.mapper.class_
+                for subparams in params[col]:
+                    subinst = submodel.get_or_create(**subparams)[0]
+                    getattr(instance, col).append(subinst)
 
-        # add the created model to the session
-        session.add(instance)
-        session.commit()
+            # add the created model to the session
+            session.add(instance)
+            session.commit()
 
-        return jsonify_status_code(201, id=instance.id)
+            return jsonify_status_code(201, id=instance.id)
+        except self.validation_exceptions as exception:
+            session.rollback()
+            return jsonify_status_code(400, validation_errors=exception.errors)
 
     def patch(self, instid):
         """Updates the instance specified by ``instid`` of the named model, or
@@ -466,11 +483,15 @@ class API(MethodView):
         # date into an instance of the Python ``datetime`` object.
         params = self._strings_to_dates(params)
 
-        # Let's update all instances present in the query
-        num_modified = 0
-        if params:
-            num_modified = query.update(params, False)
-        session.commit()
+        try:
+            # Let's update all instances present in the query
+            num_modified = 0
+            if params:
+                num_modified = query.update(params, False)
+            session.commit()
+        except self.validation_exceptions as exception:
+            session.rollback()
+            return jsonify_status_code(400, validation_errors=exception.errors)
 
         if patchmany:
             return jsonify(num_modified=num_modified)
