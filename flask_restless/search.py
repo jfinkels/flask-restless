@@ -360,10 +360,10 @@ class QueryBuilder(object):
 
 
 def evaluate_functions(model, functions):
-    """Executes the each of the SQLAlchemy functions specified in
-    ``functions``, a list of dictionaries of the form described below, on the
-    given model and returns a dictionary mapping function name (slightly
-    modified, see below) to result of evaluation of that function.
+    """Executes each of the SQLAlchemy functions specified in ``functions``, a
+    list of dictionaries of the form described below, on the given model and
+    returns a dictionary mapping function name (slightly modified, see below)
+    to result of evaluation of that function.
 
     ``functions`` is a list of dictionaries of the form::
 
