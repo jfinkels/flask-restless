@@ -7,7 +7,8 @@ Clients can make :http:method:`get` requests on individual instances of a model
 (for example, :http:get:`/api/person/1`) and on collections of all instances of
 a model (:http:get:`/api/person`). To get all instances of a model which meet
 some criteria, clients can make :http:method:`get` requests with a query
-parameter specifying a search.
+parameter specifying a search. The search functionality in Flask-Restless is
+relatively simple, but should suffice for many cases.
 
 If the ``allow_patch_many`` keyword argument is set to ``True`` when calling
 the :meth:`APIManager.create_api` function, then :http:method:`patch` requests
