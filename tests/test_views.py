@@ -18,61 +18,19 @@
 from datetime import date
 from json import dumps
 from json import loads
-from tempfile import mkstemp
-import os
-import unittest
 
-from elixir import create_all
-from elixir import drop_all
-from elixir import session
-import flask
-from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 
-from flask.ext.restless import APIManager
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
-from .models import setup
+
+from .helpers import TestSupportPrefilled
+from .helpers import TestSupportWithManager
+from .helpers import TestSupportWithManagerPrefilled
 from .models import Computer
 from .models import Person
 
 
-class TestSupport(unittest.TestCase):
-    """Base class for tests in this module."""
-
-    def setUp(self):
-        """Creates the database and all necessary tables, and adds some initial
-        rows to the Person table.
-
-        """
-        # set up the database
-        self.db_fd, self.db_file = mkstemp()
-        setup(create_engine('sqlite:///%s' % self.db_file))
-        create_all()
-        session.commit()
-
-        # create some people in the database for testing
-        lincoln = Person(name=u'Lincoln', age=23, other=22)
-        mary = Person(name=u'Mary', age=19, other=19)
-        lucy = Person(name=u'Lucy', age=25, other=20)
-        katy = Person(name=u'Katy', age=7, other=10)
-        john = Person(name=u'John', age=28, other=10)
-        self.people = [lincoln, mary, lucy, katy, john]
-        for person in self.people:
-            session.add(person)
-        session.commit()
-
-    def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        drop_all()
-        session.commit()
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
-
-
-class FunctionEvaluationTest(TestSupport):
+class FunctionEvaluationTest(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.view._evaluate_functions`
     function.
 
@@ -116,7 +74,7 @@ class FunctionEvaluationTest(TestSupport):
             evaluate_functions(Person, functions)
 
 
-class FunctionAPITestCase(unittest.TestCase):
+class FunctionAPITestCase(TestSupportWithManagerPrefilled):
     """Unit tests for the :class:`flask_restless.views.FunctionAPI` class."""
 
     def setUp(self):
@@ -126,41 +84,8 @@ class FunctionAPITestCase(unittest.TestCase):
         :class:`testapp.Computer` models.
 
         """
-        # create the database
-        self.db_fd, self.db_file = mkstemp()
-        setup(create_engine('sqlite:///%s' % self.db_file))
-        create_all()
-
-        # create the Flask application
-        app = flask.Flask(__name__)
-        app.config['DEBUG'] = True
-        app.config['TESTING'] = True
-        self.app = app.test_client()
-
-        # create some people in the database for testing
-        lincoln = Person(name=u'Lincoln', age=23, other=22)
-        mary = Person(name=u'Mary', age=19, other=19)
-        lucy = Person(name=u'Lucy', age=25, other=20)
-        katy = Person(name=u'Katy', age=7, other=10)
-        john = Person(name=u'John', age=28, other=10)
-        self.people = [lincoln, mary, lucy, katy, john]
-        for person in self.people:
-            session.add(person)
-        session.commit()
-
-        # setup the URLs for the Person API
-        self.manager = APIManager(app)
+        super(FunctionAPITestCase, self).setUp()
         self.manager.create_api(Person, allow_functions=True)
-
-    def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        drop_all()
-        session.commit()
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
 
     def test_function_evaluation(self):
         """Test that the :http:get:`/api/eval/person` endpoint returns the
@@ -198,7 +123,7 @@ class FunctionAPITestCase(unittest.TestCase):
         self.assertIn('bogusfuncname', loads(resp.data)['message'])
 
 
-class APITestCase(unittest.TestCase):
+class APITestCase(TestSupportWithManager):
     """Unit tests for the :class:`flask_restless.views.API` class."""
 
     def setUp(self):
@@ -209,34 +134,15 @@ class APITestCase(unittest.TestCase):
 
         """
         # create the database
-        self.db_fd, self.db_file = mkstemp()
-        setup(create_engine('sqlite:///%s' % self.db_file))
-        create_all()
-
-        # create the Flask application
-        app = flask.Flask(__name__)
-        app.config['DEBUG'] = True
-        app.config['TESTING'] = True
-        self.app = app.test_client()
+        super(APITestCase, self).setUp()
 
         # setup the URLs for the Person and Computer API
-        self.manager = APIManager(app)
         self.manager.create_api(Person, methods=['GET', 'PATCH', 'POST',
                                                  'DELETE'])
         self.manager.create_api(Computer, methods=['GET', 'POST'])
 
         # to facilitate searching
         self.app.search = lambda url, q: self.app.get(url + '?q={}'.format(q))
-
-    def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        drop_all()
-        session.commit()
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
 
     def test_post(self):
         """Test for creating a new instance of the database model using the

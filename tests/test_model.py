@@ -16,22 +16,17 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.model` module."""
 from datetime import date, datetime
-import os
-from tempfile import mkstemp
-import unittest
 
-from elixir import create_all
 from elixir import session
-from elixir import drop_all
-from sqlalchemy import create_engine
 
 from flask.ext.restless.model import ISO8601_DATE
+
+from .helpers import TestSupport
 from .models import Computer
 from .models import Person
-from .models import setup
 
 
-class EntityTestCase(unittest.TestCase):
+class EntityTestCase(TestSupport):
     """Unit tests for the :class:`flask_restless.model.Entity` class."""
 
     def setUp(self):
@@ -39,22 +34,8 @@ class EntityTestCase(unittest.TestCase):
         up all the necessary tables.
 
         """
-        self.db_fd, self.db_file = mkstemp()
-        setup(create_engine('sqlite:///%s' % self.db_file))
-        create_all()
-        session.commit()
-
+        super(EntityTestCase, self).setUp()
         self.model = Person
-
-    def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        drop_all()
-        session.commit()
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
 
     def test_column_introspection(self):
         """Test for getting the names of columns as strings.

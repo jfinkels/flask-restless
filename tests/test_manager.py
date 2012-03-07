@@ -17,53 +17,19 @@
 """Unit tests for the :mod:`flask_restless.manager` module."""
 from json import dumps
 from json import loads
-import os
-from tempfile import mkstemp
-import unittest
 
-from elixir import create_all
-from elixir import drop_all
-from elixir import session
 from flask import Flask
-from sqlalchemy import create_engine
 
 from flask.ext.restless.manager import APIManager
-from .models import setup
+
+from .helpers import TestSupportWithManager
 from .models import Person
 
 
-class APIManagerTest(unittest.TestCase):
+class APIManagerTest(TestSupportWithManager):
     """Unit tests for the :class:`flask_restless.manager.APIManager` class.
 
     """
-
-    def setUp(self):
-        """Creates the database, :class:`~flask.Flask` object, and the
-        :class:`~flask_restless.manager.APIManager` for that application.
-
-        """
-        # set up the database
-        self.db_fd, self.db_file = mkstemp()
-        setup(create_engine('sqlite:///%s' % self.db_file))
-        create_all()
-        session.commit()
-        
-        # set up the application and API manager
-        app = Flask(__name__)
-        app.config['DEBUG'] = True
-        app.config['TESTING'] = True
-        self.app = app.test_client()
-        self.manager = APIManager(app)
-
-    def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        drop_all()
-        session.commit()
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
 
     def test_create_api(self):
         """Tests that the :meth:`flask_restless.manager.APIManager.create_api`

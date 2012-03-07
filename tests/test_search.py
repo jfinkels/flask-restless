@@ -15,62 +15,20 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.search` module."""
-import os
-from tempfile import mkstemp
-import unittest
-
-from elixir import create_all
-from elixir import drop_all
 from elixir import session
-from sqlalchemy import create_engine
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 
 from flask.ext.restless.search import create_query
 from flask.ext.restless.search import search
 from flask.ext.restless.search import SearchParameters
-from .models import setup
+
+from .helpers import TestSupportPrefilled
 from .models import Computer
 from .models import Person
 
 
-class TestSupport(unittest.TestCase):
-    """Base class for tests in this module."""
-
-    def setUp(self):
-        """Creates the database and all necessary tables, and adds some initial
-        rows to the Person table.
-
-        """
-        # set up the database
-        self.db_fd, self.db_file = mkstemp()
-        setup(create_engine('sqlite:///%s' % self.db_file))
-        create_all()
-        session.commit()
-
-        # create some people in the database for testing
-        lincoln = Person(name=u'Lincoln', age=23, other=22)
-        mary = Person(name=u'Mary', age=19, other=19)
-        lucy = Person(name=u'Lucy', age=25, other=20)
-        katy = Person(name=u'Katy', age=7, other=10)
-        john = Person(name=u'John', age=28, other=10)
-        self.people = [lincoln, mary, lucy, katy, john]
-        for person in self.people:
-            session.add(person)
-        session.commit()
-
-    def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        drop_all()
-        session.commit()
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
-
-
-class QueryCreationTest(TestSupport):
+class QueryCreationTest(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.search.create_query`
     function.
 
@@ -141,7 +99,7 @@ class QueryCreationTest(TestSupport):
         self.assertEqual(results[1].other, 19)
 
 
-class SearchTest(TestSupport):
+class SearchTest(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.search.search` function.
 
     The :func:`~flask_restless.search.search` function is a essentially a
