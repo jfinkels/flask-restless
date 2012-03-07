@@ -113,3 +113,13 @@ class APIManagerTest(TestSupportWithManager):
         response = self.app.get('/api/eval/person')
         self.assertNotEqual(response.status_code, 400)
         self.assertEqual(response.status_code, 200)
+
+    def test_disallow_functions(self):
+        """Tests that if the ``allow_functions`` keyword argument if ``False``,
+        no endpoint will be made available at :http:get:`/api/eval/...`.
+
+        """
+        self.manager.create_api(Person, allow_functions=False)
+        response = self.app.get('/api/eval/person')
+        self.assertNotEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 404)
