@@ -87,30 +87,6 @@ The operator strings recognized by the API incude:
 These correspond to SQLAlchemy column operators as defined `here
 <http://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.operators.ColumnOperators>`_.
 
-Evaluating functions
---------------------
-
-Instead of responding with the list of instances of the model which meet the
-specified search criteria, the client can instead request the result of
-evaluating a SQL function on some field of the model.
-
-If the following mapping appears in addition to the mappings specified in
-:ref:`queryformat` for the query parameter ``q``, then the result of evaluating
-functions will be returned instead of the list of matching instances:
-
-``functions``
-  A list of objects of the form::
-
-      {"name": <functionname>, "field":, <fieldname>}
-
-  where ``<functionname>`` is a string representing a SQL function to apply to
-  the results, and ``<fieldname>`` is the name of the field of the model on
-  which the function will be executed.
-
-  The function will be evaluated using SQLAlchemy's `func
-  <http://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.expression.func>`_
-  object.
-
 Examples
 --------
 

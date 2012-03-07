@@ -322,3 +322,44 @@ receive a response like this:
    HTTP/1.1 400 Bad Request
 
    {"message": "Unable to decode data"}
+
+.. _functionevaluation:
+
+Function evaluation
+-------------------
+
+If the ``allow_functions`` keyword argument is set to ``True`` when creating an
+API for a model using :meth:`flask_restless.APIManager.create_api`, then an
+endpoint will be made available for :http:get:`/api/eval/person` which responds
+to requests for evaluation of functions on all instances the model.
+
+**Sample request**:
+
+.. sourcecode:: http
+
+   GET /api/eval/person HTTP/1.1
+
+   { "functions":
+     [
+       {"name": "sum", "field": "age"},
+       {"name": "avg", "field": "height"}
+     ]
+   }
+
+The format of the response is
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+
+   {"sum__age": 100, "avg_height": 68}
+
+If no functions are specified in the request, the response will contain
+the empty JSON object, ``{}``.
+
+.. note::
+
+   The functions whose names are given in the request will be evaluated using
+   SQLAlchemy's `func
+   <http://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.expression.func>`_
+   object.

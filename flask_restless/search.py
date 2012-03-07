@@ -23,10 +23,6 @@
 
 """
 
-from elixir import session
-from sqlalchemy.sql import func
-
-
 #: The mapping from operator name (as accepted by the search method) to a
 #: function which returns the SQLAlchemy expression corresponding to that
 #: operator.
@@ -357,59 +353,6 @@ class QueryBuilder(object):
         if search_params.offset:
             query = query.offset(search_params.offset)
         return query
-
-
-def evaluate_functions(model, functions):
-    """Executes each of the SQLAlchemy functions specified in ``functions``, a
-    list of dictionaries of the form described below, on the given model and
-    returns a dictionary mapping function name (slightly modified, see below)
-    to result of evaluation of that function.
-
-    ``functions`` is a list of dictionaries of the form::
-
-        {'name': 'avg', 'field': 'amount'}
-
-    For example, if you want the sum and the average of the field named
-    "amount"::
-
-        >>> # assume instances of Person exist in the database...
-        >>> f1 = dict(name='sum', field='amount')
-        >>> f2 = dict(name='avg', field='amount')
-        >>> evaluate_functions(Person, [f1, f2])
-        {'avg__amount': 456, 'sum__amount': 123}
-
-    The return value is a dictionary mapping ``'<funcname>__<fieldname>'`` to
-    the result of evaluating that function on that field. If `model` is
-    ``None`` or `functions` is empty, this function returns the empty
-    dictionary.
-
-    If a field does not exist on a given model, :exc:`AttributeError` is
-    raised. If a function does not exist,
-    :exc:`sqlalchemy.exc.OperationalError` is raised.
-
-    """
-    if not model or not functions:
-        return {}
-    processed = []
-    funcnames = []
-    for f in functions:
-        # We retrieve the function by name from the SQLAlchemy ``func``
-        # module and the field by name from the model class.
-        #
-        # If the specified function doesn't exist, this raises
-        # OperationalError. If the specified field doesn't exist, this raises
-        # AttributeError.
-        funcobj = getattr(func, f['name'])
-        field = getattr(model, f['field'])
-        # Time to store things to be executed. The processed list stores
-        # functions that will be executed in the database and funcnames
-        # contains names of the entries that will be returned to the
-        # caller.
-        funcnames.append('{}__{}'.format(f['name'], f['field']))
-        processed.append(funcobj(field))
-    # evaluate all the functions at once and get an iterable of results
-    evaluated = session.query(*processed).one()
-    return dict(zip(funcnames, evaluated))
 
 
 def create_query(model, searchparams):

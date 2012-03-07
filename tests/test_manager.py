@@ -137,3 +137,13 @@ class APIManagerTest(unittest.TestCase):
         response = self.app.get('/api/people/1')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(loads(response.data)['id'], 1)
+
+    def test_allow_functions(self):
+        """Tests that the ``allow_functions`` keyword argument makes a
+        :http:get:`/api/eval/...` endpoint available.
+
+        """
+        self.manager.create_api(Person, allow_functions=True)
+        response = self.app.get('/api/eval/person')
+        self.assertNotEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 200)

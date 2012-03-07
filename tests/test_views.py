@@ -27,11 +27,175 @@ from elixir import drop_all
 from elixir import session
 import flask
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 
 from flask.ext.restless import APIManager
+from flask.ext.restless.views import _evaluate_functions as evaluate_functions
 from .models import setup
 from .models import Computer
 from .models import Person
+
+
+class TestSupport(unittest.TestCase):
+    """Base class for tests in this module."""
+
+    def setUp(self):
+        """Creates the database and all necessary tables, and adds some initial
+        rows to the Person table.
+
+        """
+        # set up the database
+        self.db_fd, self.db_file = mkstemp()
+        setup(create_engine('sqlite:///%s' % self.db_file))
+        create_all()
+        session.commit()
+
+        # create some people in the database for testing
+        lincoln = Person(name=u'Lincoln', age=23, other=22)
+        mary = Person(name=u'Mary', age=19, other=19)
+        lucy = Person(name=u'Lucy', age=25, other=20)
+        katy = Person(name=u'Katy', age=7, other=10)
+        john = Person(name=u'John', age=28, other=10)
+        self.people = [lincoln, mary, lucy, katy, john]
+        for person in self.people:
+            session.add(person)
+        session.commit()
+
+    def tearDown(self):
+        """Drops all tables from the temporary database and closes and unlink
+        the temporary file in which it lived.
+
+        """
+        drop_all()
+        session.commit()
+        os.close(self.db_fd)
+        os.unlink(self.db_file)
+
+
+class FunctionEvaluationTest(TestSupport):
+    """Unit tests for the :func:`flask_restless.view._evaluate_functions`
+    function.
+
+    """
+
+    def test_basic_evaluation(self):
+        """Tests for basic function evaluation."""
+        # test for no model
+        result = evaluate_functions(None, [])
+        self.assertEqual(result, {})
+
+        # test for no functions
+        result = evaluate_functions(Person, [])
+        self.assertEqual(result, {})
+
+        # test for summing ages
+        functions = [{'name': 'sum', 'field': 'age'}]
+        result = evaluate_functions(Person, functions)
+        self.assertIn('sum__age', result)
+        self.assertEqual(result['sum__age'], 102.0)
+
+        # test for multiple functions
+        functions = [{'name': 'sum', 'field': 'age'},
+                     {'name': 'avg', 'field': 'other'}]
+        result = evaluate_functions(Person, functions)
+        self.assertIn('sum__age', result)
+        self.assertEqual(result['sum__age'], 102.0)
+        self.assertIn('avg__other', result)
+        self.assertEqual(result['avg__other'], 16.2)
+
+    def test_poorly_defined_functions(self):
+        """Tests that poorly defined functions raise errors."""
+        # test for unknown field
+        functions = [{'name': 'sum', 'field': 'bogus'}]
+        with self.assertRaises(AttributeError):
+            evaluate_functions(Person, functions)
+
+        # test for unknown function
+        functions = [{'name': 'bogus', 'field': 'age'}]
+        with self.assertRaises(OperationalError):
+            evaluate_functions(Person, functions)
+
+
+class FunctionAPITestCase(unittest.TestCase):
+    """Unit tests for the :class:`flask_restless.views.FunctionAPI` class."""
+
+    def setUp(self):
+        """Creates the database, the :class:`~flask.Flask` object, the
+        :class:`~flask_restless.manager.APIManager` for that application, and
+        creates the ReSTful API endpoints for the :class:`testapp.Person` and
+        :class:`testapp.Computer` models.
+
+        """
+        # create the database
+        self.db_fd, self.db_file = mkstemp()
+        setup(create_engine('sqlite:///%s' % self.db_file))
+        create_all()
+
+        # create the Flask application
+        app = flask.Flask(__name__)
+        app.config['DEBUG'] = True
+        app.config['TESTING'] = True
+        self.app = app.test_client()
+
+        # create some people in the database for testing
+        lincoln = Person(name=u'Lincoln', age=23, other=22)
+        mary = Person(name=u'Mary', age=19, other=19)
+        lucy = Person(name=u'Lucy', age=25, other=20)
+        katy = Person(name=u'Katy', age=7, other=10)
+        john = Person(name=u'John', age=28, other=10)
+        self.people = [lincoln, mary, lucy, katy, john]
+        for person in self.people:
+            session.add(person)
+        session.commit()
+
+        # setup the URLs for the Person API
+        self.manager = APIManager(app)
+        self.manager.create_api(Person, allow_functions=True)
+
+    def tearDown(self):
+        """Drops all tables from the temporary database and closes and unlink
+        the temporary file in which it lived.
+
+        """
+        drop_all()
+        session.commit()
+        os.close(self.db_fd)
+        os.unlink(self.db_file)
+
+    def test_function_evaluation(self):
+        """Test that the :http:get:`/api/eval/person` endpoint returns the
+        result of evaluating functions.
+
+        """
+        functions = [{'name': 'sum', 'field': 'age'},
+                     {'name': 'avg', 'field': 'other'}]
+        response = self.app.get('/api/eval/person',
+                                data=dumps(dict(functions=functions)))
+        self.assertEqual(response.status_code, 200)
+        data = loads(response.data)
+        self.assertIn('sum__age', data)
+        self.assertEqual(data['sum__age'], 102.0)
+        self.assertIn('avg__other', data)
+        self.assertEqual(data['avg__other'], 16.2)
+
+    def test_poorly_defined_functions(self):
+        """Tests that poorly defined requests for function evaluations cause an
+        error message to be returned.
+
+        """
+        # test for bad field name
+        search = {'functions': [{'name': 'sum', 'field': 'bogusfieldname'}]}
+        resp = self.app.get('/api/eval/person', data=dumps(search))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('message', loads(resp.data))
+        self.assertIn('bogusfieldname', loads(resp.data)['message'])
+
+        # test for bad function name
+        search = {'functions': [{'name': 'bogusfuncname', 'field': 'age'}]}
+        resp = self.app.get('/api/eval/person', data=dumps(search))
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('message', loads(resp.data))
+        self.assertIn('bogusfuncname', loads(resp.data)['message'])
 
 
 class APITestCase(unittest.TestCase):
@@ -411,17 +575,17 @@ class APITestCase(unittest.TestCase):
         loaded = loads(resp.data)
         self.assertEqual(len(loaded['objects']), 3)  # Mary, Lucy and Katy
 
-        # Let's try something more complex, let's sum all age values
-        # available in our database
-        search = {
-            'functions': [{'name': 'sum', 'field': 'age'}]
-        }
+        # # Let's try something more complex, let's sum all age values
+        # # available in our database
+        # search = {
+        #     'functions': [{'name': 'sum', 'field': 'age'}]
+        # }
 
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        data = loads(resp.data)
-        self.assertIn('sum__age', data)
-        self.assertEqual(data['sum__age'], 102.0)
+        # resp = self.app.search('/api/person', dumps(search))
+        # self.assertEqual(resp.status_code, 200)
+        # data = loads(resp.data)
+        # self.assertIn('sum__age', data)
+        # self.assertEqual(data['sum__age'], 102.0)
 
         # Tests searching for a single row
         search = {
@@ -516,25 +680,6 @@ class APITestCase(unittest.TestCase):
         self.assertEqual(len(loaded), 2)
         self.assertEqual(loaded[0]['other'], 10)
         self.assertEqual(loaded[1]['other'], 19)
-
-    def test_poorly_defined_functions(self):
-        """Tests that poorly defined requests for function evaluations cause an
-        error message to be returned.
-
-        """
-        # test for bad field name
-        search = {'functions': [{'name': 'sum', 'field': 'bogusfieldname'}]}
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 400)
-        self.assertIn('message', loads(resp.data))
-        self.assertIn('bogusfieldname', loads(resp.data)['message'])
-
-        # test for bad function name
-        search = {'functions': [{'name': 'bogusfuncname', 'field': 'age'}]}
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 400)
-        self.assertIn('message', loads(resp.data))
-        self.assertIn('bogusfuncname', loads(resp.data)['message'])
 
     def test_search2(self):
         """Testing more search functionality."""

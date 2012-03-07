@@ -42,9 +42,9 @@ from flask.views import MethodView
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.sql import func
 
 from .search import create_query
-from .search import evaluate_functions
 from .search import search
 
 
@@ -60,11 +60,62 @@ def jsonify_status_code(status_code, *args, **kw):
     return response
 
 
-class API(MethodView):
-    """Provides method-based dispatching for :http:request:`get`,
-    :http:request:`post`, :http:request:`patch`, :http:request:`put`, and
-    :http:request:`delete` requests, for both collections of models and
-    individual models.
+def _evaluate_functions(model, functions):
+    """Executes each of the SQLAlchemy functions specified in ``functions``, a
+    list of dictionaries of the form described below, on the given model and
+    returns a dictionary mapping function name (slightly modified, see below)
+    to result of evaluation of that function.
+
+    ``functions`` is a list of dictionaries of the form::
+
+        {'name': 'avg', 'field': 'amount'}
+
+    For example, if you want the sum and the average of the field named
+    "amount"::
+
+        >>> # assume instances of Person exist in the database...
+        >>> f1 = dict(name='sum', field='amount')
+        >>> f2 = dict(name='avg', field='amount')
+        >>> evaluate_functions(Person, [f1, f2])
+        {'avg__amount': 456, 'sum__amount': 123}
+
+    The return value is a dictionary mapping ``'<funcname>__<fieldname>'`` to
+    the result of evaluating that function on that field. If `model` is
+    ``None`` or `functions` is empty, this function returns the empty
+    dictionary.
+
+    If a field does not exist on a given model, :exc:`AttributeError` is
+    raised. If a function does not exist,
+    :exc:`sqlalchemy.exc.OperationalError` is raised.
+
+    """
+    if not model or not functions:
+        return {}
+    processed = []
+    funcnames = []
+    for f in functions:
+        # We retrieve the function by name from the SQLAlchemy ``func``
+        # module and the field by name from the model class.
+        #
+        # If the specified function doesn't exist, this raises
+        # OperationalError. If the specified field doesn't exist, this raises
+        # AttributeError.
+        funcobj = getattr(func, f['name'])
+        field = getattr(model, f['field'])
+        # Time to store things to be executed. The processed list stores
+        # functions that will be executed in the database and funcnames
+        # contains names of the entries that will be returned to the
+        # caller.
+        funcnames.append('{}__{}'.format(f['name'], f['field']))
+        processed.append(funcobj(field))
+    # evaluate all the functions at once and get an iterable of results
+    evaluated = session.query(*processed).one()
+    return dict(zip(funcnames, evaluated))
+
+
+class ModelView(MethodView):
+    """Base class for :class:`flask.MethodView` classes which represent a view
+    of an Elixir model.
 
     """
 
@@ -76,8 +127,48 @@ class API(MethodView):
         model for which this instance of the class is an API.
 
         """
-        super(API, self).__init__(*args, **kw)
+        super(ModelView, self).__init__(*args, **kw)
         self.model = model
+
+
+class FunctionAPI(ModelView):
+    """Provides method-based dispatching for :http:method:`get` requests which
+    wish to apply SQL functions to all instances of a model.
+
+    .. versionadded:: 0.4
+
+    """
+
+    def get(self):
+        """Returns the result of evaluating the SQL functions specified in the
+        body of the request.
+
+        For a description of the request and response formats, see
+        :ref:`functionevaluation`.
+
+        """
+        if not request.data:
+            return jsonify()
+        try:
+            data = json.loads(request.data)
+        except (TypeError, ValueError, OverflowError):
+            return jsonify_status_code(400, message='Unable to decode data')
+        if 'functions' not in data:
+            return jsonify()
+        try:
+            result = _evaluate_functions(self.model, data['functions'])
+            return jsonify(result)
+        except (AttributeError, OperationalError) as exception:
+            return jsonify_status_code(400, message=exception.message)
+
+
+class API(ModelView):
+    """Provides method-based dispatching for :http:method:`get`,
+    :http:method:`post`, :http:method:`patch`, :http:method:`put`, and
+    :http:method:`delete` requests, for both collections of models and
+    individual models.
+
+    """
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
@@ -217,12 +308,12 @@ class API(MethodView):
         To search for entities meeting some criteria, the client makes a
         request to :http:get:`/api/<modelname>` with a query string containing
         the parameters of the search. The parameters of the search can involve
-        filters and/or functions. In a filter, the client specifies the name of
-        the field by which to filter, the operation to perform on the field,
-        and the value which is the argument to that operation. In a function,
-        the client specifies the name of a SQL function which is executed on
-        the search results; the result of executing the function is returned to
-        the client.
+        filters. In a filter, the client specifies the name of the field by
+        which to filter, the operation to perform on the field, and the value
+        which is the argument to that operation. In a function, the client
+        specifies the name of a SQL function which is executed on the search
+        results; the result of executing the function is returned to the
+        client.
 
         The parameters of the search must be provided in JSON form as the value
         of the ``q`` request query parameter. For example, in a database of
@@ -247,8 +338,8 @@ class API(MethodView):
 
            {"name": "Mary", ...}
 
-        For more information SQLAlchemy functions and operators for use in
-        filters, see the `SQLAlchemy SQL expression tutorial
+        For more information SQLAlchemy operators for use in filters, see the
+        `SQLAlchemy SQL expression tutorial
         <http://docs.sqlalchemy.org/en/latest/core/tutorial.html>`_.
 
         The general structure of request data as a JSON string is as follows::
@@ -266,16 +357,11 @@ class API(MethodView):
                  {"name": "age", "val": [18, 19, 20, 21], "op": "in"},
                  {"name": "age", "op": "gt", "field": "height"},
                  ...
-               ],
-             "functions":
-               [
-                 {"name": "sum", "field": "age"},
-                 ...
                ]
            }
 
         For a complete description of all possible search parameters and
-        responses, see :ref:`search`.
+        responses, see :ref:`searchformat`.
 
         """
         # try to get search query from the request query parameters
@@ -284,19 +370,7 @@ class API(MethodView):
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
-        # TODO the functions should be applied to the result of the query...
-        # If the query parameters specify that at least one function should be
-        # executed, return the result of executing that function. If no
-        # functions are specified, perform a search and return the instances
-        # which match that search.
-        if 'functions' in data:
-            try:
-                result = evaluate_functions(self.model, data['functions'])
-            except (AttributeError, OperationalError) as exception:
-                return jsonify_status_code(400, message=exception.message)
-            return jsonify(result)
-
-        # there were no functions specified, so perform a filtered search
+        # perform a filtered search
         try:
             result = search(self.model, data)
         except NoResultFound:

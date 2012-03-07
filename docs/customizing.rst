@@ -106,3 +106,14 @@ provided attributes on all of the instances of ``Person`` which match the
 provided search query (or all instances if no query parameter is provided)::
 
     apimanager.create_api(Person, allow_patch_many=True)
+
+Exposing evaluation of SQL function
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If the ``allow_functions`` keyword argument is set to ``True`` when creating an
+API for a model using :meth:`flask_restless.APIManager.create_api`, then an
+endpoint will be made available for :http:get:`/api/eval/person` which responds
+to requests for evaluation of functions on all instances the model.
+
+For information about the request and response formats for this endpoint, see
+:ref:`functionevaluation`.

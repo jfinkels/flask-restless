@@ -23,12 +23,10 @@ from elixir import create_all
 from elixir import drop_all
 from elixir import session
 from sqlalchemy import create_engine
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 
 from flask.ext.restless.search import create_query
-from flask.ext.restless.search import evaluate_functions
 from flask.ext.restless.search import search
 from flask.ext.restless.search import SearchParameters
 from .models import setup
@@ -141,50 +139,6 @@ class QueryCreationTest(TestSupport):
         results = query.all()
         self.assertEqual(results[0].other, 10)
         self.assertEqual(results[1].other, 19)
-
-
-class FunctionEvaluationTest(TestSupport):
-    """Unit tests for the :func:`flask_restless.search.evaluate_functions`
-    function.
-
-    """
-
-    def test_basic_evaluation(self):
-        """Tests for basic function evaluation."""
-        # test for no model
-        result = evaluate_functions(None, [])
-        self.assertEqual(result, {})
-
-        # test for no functions
-        result = evaluate_functions(Person, [])
-        self.assertEqual(result, {})
-
-        # test for summing ages
-        functions = [{'name': 'sum', 'field': 'age'}]
-        result = evaluate_functions(Person, functions)
-        self.assertIn('sum__age', result)
-        self.assertEqual(result['sum__age'], 102.0)
-
-        # test for multiple functions
-        functions = [{'name': 'sum', 'field': 'age'},
-                     {'name': 'avg', 'field': 'other'}]
-        result = evaluate_functions(Person, functions)
-        self.assertIn('sum__age', result)
-        self.assertEqual(result['sum__age'], 102.0)
-        self.assertIn('avg__other', result)
-        self.assertEqual(result['avg__other'], 16.2)
-
-    def test_poorly_defined_functions(self):
-        """Tests that poorly defined functions raise errors."""
-        # test for unknown field
-        functions = [{'name': 'sum', 'field': 'bogus'}]
-        with self.assertRaises(AttributeError):
-            evaluate_functions(Person, functions)
-
-        # test for unknown function
-        functions = [{'name': 'bogus', 'field': 'age'}]
-        with self.assertRaises(OperationalError):
-            evaluate_functions(Person, functions)
 
 
 class SearchTest(TestSupport):

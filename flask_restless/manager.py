@@ -32,6 +32,7 @@
 from flask import Blueprint
 
 from .views import API
+from .views import FunctionAPI
 
 #: The set of methods which are allowed by default when creating an API
 READONLY_METHODS = frozenset(('GET', ))
@@ -124,7 +125,8 @@ class APIManager(object):
         self.app = app
 
     def create_api(self, model, methods=READONLY_METHODS, url_prefix='/api',
-                   collection_name=None, allow_patch_many=False):
+                   collection_name=None, allow_patch_many=False,
+                   allow_functions=False):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
         this class.
@@ -182,6 +184,17 @@ class APIManager(object):
         information on the search query parameter ``q``, see
         :ref:`searchformat`.
 
+        If `allow_functions` is ``True``, then requests to
+        :http:get:`/api/eval/<collection_name>` will return the result of
+        evaluating SQL functions specified in the body of the request. For
+        information on the request format, see :ref:`functionevaluation`. This
+        if ``False`` by default. Warning: you must not create an API for a
+        model whose name is ``'eval'`` if you set this argument to ``True``.
+
+        .. versionadded:: 0.4
+
+           Added the `allow_functions` keyword argument.
+
         .. versionchanged:: 0.4
 
            Force the model name in the URL to lowercase.
@@ -228,6 +241,15 @@ class APIManager(object):
                                view_func=api_view)
         blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
                                view_func=api_view)
+        # if function evaluation is allowed, add an endpoint at /api/eval/...
+        # which responds only to GET requests and responds with the result of
+        # evaluating functions on all instances of the specified model
+        if allow_functions:
+            eval_api_name = apiname + 'eval'
+            eval_api_view = FunctionAPI.as_view(eval_api_name, model)
+            eval_endpoint = '/eval' + collection_endpoint
+            blueprint.add_url_rule(eval_endpoint, methods=['GET'],
+                                   view_func=eval_api_view)
         # register the blueprint on the app
         self.app.register_blueprint(blueprint)
         return blueprint
