@@ -200,7 +200,10 @@ class APIManager(object):
         methods = frozenset(methods)
         # sets of methods used for different types of endpoints
         no_instance_methods = methods & {'POST'}
-        possibly_empty_instance_methods = methods & {'GET', 'PATCH', 'PUT'}
+        if allow_patch_many:
+            possibly_empty_instance_methods = methods & {'GET', 'PATCH', 'PUT'}
+        else:
+            possibly_empty_instance_methods = methods & {'GET'}
         instance_methods = methods & {'GET', 'PATCH', 'DELETE', 'PUT'}
         # the base URL of the endpoints on which requests will be made
         collection_endpoint = '/{}'.format(collection_name)
@@ -208,7 +211,7 @@ class APIManager(object):
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.APINAME_FORMAT.format(collection_name)
         # the view function for the API for this model
-        api_view = API.as_view(apiname, model, allow_patch_many)
+        api_view = API.as_view(apiname, model)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the

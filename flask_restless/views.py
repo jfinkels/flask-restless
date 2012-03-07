@@ -68,28 +68,16 @@ class API(MethodView):
 
     """
 
-    def __init__(self, model, allow_patch_many=False, *args, **kw):
+    def __init__(self, model, *args, **kw):
         """Calls the constructor of the superclass and specifies the model for
         which this class provides a ReSTful API.
 
         ``model`` is the :class:`elixir.entity.Entity` class of the database
         model for which this instance of the class is an API.
 
-        The `allow_patch_many` keyword argument specifies whether
-        :http:method:`patch` requests can be made which update multiple
-        instances of the model, as specified in the search query parameter
-        ``q``. It is described in the documentation for the
-        :meth:`~flask.ext.restless.manager.APIManager.create_api`; see the
-        documentation there for more information.
-
-        .. versionadded:: 0.4
-
-           Added the `allow_patch_many` keyword argument.
-
         """
         super(API, self).__init__(*args, **kw)
         self.model = model
-        self.allow_patch_many = allow_patch_many
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
@@ -434,12 +422,6 @@ class API(MethodView):
         be made in this case.
 
         """
-        patchmany = instid is None
-
-        # if this was configured not to allow patching many, return HTTP 405
-        if patchmany and not self.allow_patch_many:
-            return make_response(None, 405)
-
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.data)
@@ -450,6 +432,7 @@ class API(MethodView):
         if len(data) == 0:
             return make_response(None, 204)
 
+        patchmany = instid is None
         if patchmany:
             # create a SQLALchemy Query from the query parameter `q`
             query = create_query(self.model, data)
