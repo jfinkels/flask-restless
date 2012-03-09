@@ -32,7 +32,30 @@ from flask.ext.restless import APIManager
 from .models import Person
 
 
-class TestSupport(unittest.TestCase):
+class BaseTest(unittest.TestCase):
+    """Base class for all test classes in Flask-Restless.
+
+    Provides backported assertion methods to simulate functionality of newer
+    version of Python when using older versions of Python.
+
+    Subclasses should use :meth:`assert_in` instead of :meth:`assertIn`,
+    because the former degrades gracefully in the absence of the latter.
+
+    """
+
+    def assert_in(self, element, iterable):
+        """Asserts that `element` is in `iterable`.
+
+        Should work on any version of Python after version 2.5.
+
+        """
+        if hasattr(self, 'assertIn'):
+            self.assertIn(element, iterable)
+        else:
+            self.assertTrue(element in iterable)
+
+
+class TestSupport(BaseTest):
     """Base class for tests which use a database."""
 
     def setUp(self):
