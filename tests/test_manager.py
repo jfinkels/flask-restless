@@ -22,6 +22,9 @@ from .helpers import TestSupportWithManager
 from .models import Person
 
 
+__all__ = ['APIManagerTest']
+
+
 class APIManagerTest(TestSupportWithManager):
     """Unit tests for the :class:`flask_restless.manager.APIManager` class.
 

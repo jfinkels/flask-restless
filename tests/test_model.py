@@ -26,6 +26,9 @@ from .models import Computer
 from .models import Person
 
 
+__all__ = ['EntityTestCase']
+
+
 class EntityTestCase(TestSupport):
     """Unit tests for the :class:`flask_restless.model.Entity` class."""
 
