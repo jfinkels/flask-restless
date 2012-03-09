@@ -8,6 +8,8 @@ Version 0.4
 
 Not released yet.
 
+- Allow users to specify which HTTP methods for a particular API will require
+  authentication and how that authentication will take place.
 - Created base classes for test cases.
 - Moved the ``evaluate_functions`` function out of the
   :mod:`flask_restless.search` module and corrected documentation about how

@@ -22,6 +22,7 @@ from json import loads
 from sqlalchemy.exc import OperationalError
 
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
+from flask.ext.restless.manager import IllegalArgumentError
 
 from .helpers import TestSupportPrefilled
 from .helpers import TestSupportWithManager
@@ -613,3 +614,49 @@ class APITestCase(TestSupportWithManager):
         resp = self.app.search('/api/person', dumps({'single': True}))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['message'], 'Multiple results found')
+
+    def test_authentication(self):
+        """Tests basic authentication using custom authentication functions."""
+        # must provide authentication function if authentication is required
+        # for some HTTP methods
+        with self.assertRaises(IllegalArgumentError):
+            self.manager.create_api(Person, methods=['GET', 'POST'],
+                                    authentication_required_for=['POST'],
+                                    authentication_function=None)
+
+        # test for authentication always failing
+        self.manager.create_api(Person, methods=['GET', 'POST'],
+                                url_prefix='/api/v2',
+                                authentication_required_for=['POST'],
+                                authentication_function=lambda: False)
+
+        # a slightly more complicated function; all odd calls are authenticated
+        class everyother(object):
+            """Stores the number of times this object has been called."""
+
+            def __init__(self):
+                """Initialize the number of calls to 0."""
+                self.count = 0
+
+            def __call__(self):
+                """Increment the call count and return its parity."""
+                self.count += 1
+                return self.count % 2
+
+        self.manager.create_api(Person, methods=['GET'], url_prefix='/api/v3',
+                                authentication_required_for=['GET'],
+                                authentication_function=everyother())
+
+        # requests which expect authentication always fails
+        for i in range(3):
+            response = self.app.get('/api/v2/person')
+            self.assertEqual(response.status_code, 200)
+            response = self.app.post('/api/v2/person')
+            self.assertEqual(response.status_code, 401)
+
+        # requests which fail on every odd request
+        for i in range(3):
+            response = self.app.get('/api/v3/person')
+            self.assertEqual(response.status_code, 200)
+            response = self.app.get('/api/v3/person')
+            self.assertEqual(response.status_code, 401)

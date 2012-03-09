@@ -4,6 +4,9 @@
 # temporary files
 *~
 
+# database files
+*.sqlite
+
 # virtualenv environments
 env*/
 
