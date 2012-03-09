@@ -117,3 +117,31 @@ to requests for evaluation of functions on all instances the model.
 
 For information about the request and response formats for this endpoint, see
 :ref:`functionevaluation`.
+
+.. _authentication:
+
+Requiring authentication for some methods
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+
+   The authentication system in Flask-Restless is relatively simple, but since
+   I suspect it is a common requirement for ReSTful APIs, suggestions,
+   comments, and pull requests are much appreciated. Please visit `our issue
+   tracker <https://github.com/jfinkels/flask-restless/issues>`_.
+
+If you want certain HTTP methods to require authentication, use the
+``authentication_required_for`` and ``authentication_function`` keyword
+arguments to the :meth:`flask_restless.APIManager.create_api` method. If you
+specify the former, you must also specify the latter.
+
+``authentication_required_for`` is the list of HTTP method names which will
+require authentication and ``authentication_function`` is a function with zero
+arguments which returns ``True`` if and only if the client making the request
+has been authenticated. This function can really be anything you like, but
+presumably it will have something to do with your authentication framework.
+
+For an example using `Flask-Login <packages.python.org/Flask-Login/>`_, see the
+:file:`examples/authentication` directory in the source distribution, or view
+it online at `GitHub
+<https://github.com/jfinkels/flask-restless/tree/master/examples/authentication>`_.

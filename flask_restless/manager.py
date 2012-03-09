@@ -38,6 +38,14 @@ from .views import FunctionAPI
 READONLY_METHODS = frozenset(('GET', ))
 
 
+class IllegalArgumentError(Exception):
+    """This exception is raised when a calling function has provided illegal
+    arguments to a function or method.
+
+    """
+    pass
+
+
 # TODO use __tablename__ instead of uppercase class name?
 class APIManager(object):
     """Provides a method for creating a public ReSTful JSOn API with respect to
@@ -126,7 +134,8 @@ class APIManager(object):
 
     def create_api(self, model, methods=READONLY_METHODS, url_prefix='/api',
                    collection_name=None, allow_patch_many=False,
-                   allow_functions=False):
+                   allow_functions=False, authentication_required_for=None,
+                   authentication_function=None):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
         this class.
@@ -191,6 +200,25 @@ class APIManager(object):
         if ``False`` by default. Warning: you must not create an API for a
         model whose name is ``'eval'`` if you set this argument to ``True``.
 
+        `authentication_required_for` is a list of HTTP method names (for
+        example, ``['POST', 'PATCH']``) for which authentication must be
+        required before clients can successfully make requests. If this keyword
+        argument is specified, `authentication_function` must also be
+        specified. For more information on requiring authentication, see
+        :ref:`authentication`.
+
+        `authentication_function` is a function which accepts no arguments and
+        returns ``True`` if and only if a client is authorized to make a
+        request on an endpoint.
+
+        .. versionadded:: 0.4
+
+           Added the `authentication_required_for` keyword argument.
+
+        .. versionadded:: 0.4
+
+           Added the `authentication_function` keyword argument.
+
         .. versionadded:: 0.4
 
            Added the `allow_functions` keyword argument.
@@ -208,6 +236,10 @@ class APIManager(object):
            Added the `collection_name` keyword argument.
 
         """
+        if authentication_required_for and not authentication_function:
+            msg = ('If authentication_required is specified, so must'
+                   ' authentication_function.')
+            raise IllegalArgumentError(msg)
         if collection_name is None:
             collection_name = model.__name__.lower()
         methods = frozenset(methods)
@@ -224,7 +256,8 @@ class APIManager(object):
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.APINAME_FORMAT.format(collection_name)
         # the view function for the API for this model
-        api_view = API.as_view(apiname, model)
+        api_view = API.as_view(apiname, model, authentication_required_for,
+                               authentication_function)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the

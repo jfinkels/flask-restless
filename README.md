@@ -32,6 +32,7 @@ information see the `COPYING` file.
 This is a partial listing of the contents of this package.
 
 * `doc/` - the Sphinx documentation for Flask-Restless
+* `examples/` - example applications of Flask-Restless
 * `COPYING` - the copyright license under which this program is distributed to
   you (the GNU Affero General Public License version 3)
 * `flaskext/restless` - the Python package containing the extension
