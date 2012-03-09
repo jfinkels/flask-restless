@@ -57,6 +57,8 @@ from .helpers import strings_to_dates
 from .helpers import to_dict
 from .helpers import unicode_keys_to_strings
 from .helpers import upper_keys
+from werkzeug.exceptions import BadRequest
+
 from .search import create_query
 from .search import search
 
@@ -355,6 +357,9 @@ class FunctionAPI(ModelView):
         :ref:`functionevaluation`.
 
         """
+        if 'q' not in request.args or not request.args.get('q'):
+            return jsonify(message='Empty query parameter'), 400
+        # if parsing JSON fails, return a 400 error in JSON format
         try:
             data = json.loads(str(request.args.get('q'))) or {}
         except (TypeError, ValueError, OverflowError) as exception:
@@ -362,7 +367,7 @@ class FunctionAPI(ModelView):
             return jsonify(message='Unable to decode data'), 400
         try:
             result = evaluate_functions(self.session, self.model,
-                                        data.get('functions'))
+                                        data.get('functions', []))
             if not result:
                 return jsonpify(), 204
             return jsonpify(result)
@@ -1079,8 +1084,8 @@ class API(ModelView):
 
         # try to read the parameters for the model from the body of the request
         try:
-            params = json.loads(request.data)
-        except (TypeError, ValueError, OverflowError) as exception:
+            params = request.json or {}
+        except BadRequest as exception:
             current_app.logger.exception(str(exception))
             return jsonify(message='Unable to decode data'), 400
 
@@ -1185,12 +1190,13 @@ class API(ModelView):
 
         # try to load the fields/values to update from the body of the request
         try:
-            data = json.loads(request.data)
-        except (TypeError, ValueError, OverflowError) as exception:
+            data = request.json or {}
+        except BadRequest as exception:
             # this also happens when request.data is empty
             current_app.logger.exception(str(exception))
             return jsonify(message='Unable to decode data'), 400
         # Check if the request is to patch many instances of the current model.
+
         patchmany = instid is None
         # Perform any necessary preprocessing.
         if patchmany:

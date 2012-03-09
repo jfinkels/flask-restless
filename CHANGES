@@ -90,6 +90,7 @@ Released on April 30, 2013.
 
 - #2: adds basic :http:method:`get` access to one level of relationship depth
   for models.
+- #17: use Flask's :attr:`flask.Request.json` to parse incoming JSON requests.
 - #113: interpret empty strings for date fields as ``None`` objects.
 - #115: use Python's built-in assert statements for testing
 - #128: allow disjunctions when filtering search queries.
