@@ -244,12 +244,14 @@ class APIManager(object):
             collection_name = model.__name__.lower()
         methods = frozenset(methods)
         # sets of methods used for different types of endpoints
-        no_instance_methods = methods & {'POST'}
+        no_instance_methods = methods & frozenset(('POST', ))
         if allow_patch_many:
-            possibly_empty_instance_methods = methods & {'GET', 'PATCH', 'PUT'}
+            possibly_empty_instance_methods = \
+                methods & frozenset(('GET', 'PATCH', 'PUT'))
         else:
-            possibly_empty_instance_methods = methods & {'GET'}
-        instance_methods = methods & {'GET', 'PATCH', 'DELETE', 'PUT'}
+            possibly_empty_instance_methods = methods & frozenset(('GET', ))
+        instance_methods = \
+            methods & frozenset(('GET', 'PATCH', 'DELETE', 'PUT'))
         # the base URL of the endpoints on which requests will be made
         collection_endpoint = '/{}'.format(collection_name)
         instance_endpoint = collection_endpoint + '/<int:instid>'
