@@ -30,6 +30,9 @@ from .models import Computer
 from .models import Person
 
 
+__all__ = ['QueryCreationTest', 'SearchTest']
+
+
 class QueryCreationTest(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.search.create_query`
     function.

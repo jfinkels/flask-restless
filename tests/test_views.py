@@ -32,6 +32,9 @@ from .models import Computer
 from .models import Person
 
 
+__all__ = ['FunctionEvaluationTest', 'FunctionAPITestCase', 'APITestCase']
+
+
 class FunctionEvaluationTest(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.view._evaluate_functions`
     function.
