@@ -53,7 +53,7 @@ files:
 
 ## Installing ##
 
-This application requires [Python 2.7][4].
+This application requires [Python 2.6][4] or [Python 2.7][4].
 
 This application requires the following libraries to be installed:
 

@@ -8,6 +8,7 @@ Version 0.4
 
 Not released yet.
 
+- Added Python 2.6 support.
 - Allow users to specify which HTTP methods for a particular API will require
   authentication and how that authentication will take place.
 - Created base classes for test cases.
