@@ -62,7 +62,7 @@ class APIManager(object):
     #:
     #: This format string expects the name of a model to be provided when
     #: formatting.
-    APINAME_FORMAT = '{}api'
+    APINAME_FORMAT = '{0}api'
 
     #: The format of the name of the blueprint containing the API view for a
     #: given model.
@@ -72,7 +72,7 @@ class APIManager(object):
     #: 1. name of the API view of a specific model
     #: 2. a number representing the number of times a blueprint with that name
     #:    has been registered.
-    BLUEPRINTNAME_FORMAT = '{}{}'
+    BLUEPRINTNAME_FORMAT = '{0}{1}'
 
     def __init__(self, app=None):
         """Stores the specified :class:`flask.Flask` application object so that
@@ -253,7 +253,7 @@ class APIManager(object):
         instance_methods = \
             methods & frozenset(('GET', 'PATCH', 'DELETE', 'PUT'))
         # the base URL of the endpoints on which requests will be made
-        collection_endpoint = '/{}'.format(collection_name)
+        collection_endpoint = '/{0}'.format(collection_name)
         instance_endpoint = collection_endpoint + '/<int:instid>'
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.APINAME_FORMAT.format(collection_name)

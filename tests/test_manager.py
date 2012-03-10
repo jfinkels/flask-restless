@@ -17,6 +17,7 @@
 """Unit tests for the :mod:`flask_restless.manager` module."""
 from json import dumps
 from json import loads
+from unittest import TestSuite
 
 from flask import Flask
 
@@ -123,3 +124,10 @@ class APIManagerTest(TestSupportWithManager):
         response = self.app.get('/api/eval/person')
         self.assertNotEqual(response.status_code, 200)
         self.assertEqual(response.status_code, 404)
+
+
+def load_tests(loader, standard_tests, pattern):
+    """Returns the test suite for this module."""
+    suite = TestSuite()
+    suite.addTest(loader.loadTestsFromTestCase(APIManagerTest))
+    return suite

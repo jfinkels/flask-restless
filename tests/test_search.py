@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.search` module."""
+from unittest import TestSuite
+
 from elixir import session
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
@@ -117,17 +119,23 @@ class SearchTest(TestSupportPrefilled):
         # tests getting multiple results
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'%y%', 'op': 'like'}]}
-        with self.assertRaises(MultipleResultsFound):
-            result = search(Person, d)
+        self.assertRaises(MultipleResultsFound, search, *(Person, d))
 
         # tests getting no results
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'bogusname', 'op': '=='}]}
-        with self.assertRaises(NoResultFound):
-            search(Person, d)
+        self.assertRaises(NoResultFound, search, *(Person, d))
 
         # tests getting exactly one result
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'Lincoln', 'op': '=='}]}
         result = search(Person, d)
         self.assertEqual(result.name, u'Lincoln')
+
+
+def load_tests(loader, standard_tests, pattern):
+    """Returns the test suite for this module."""
+    suite = TestSuite()
+    suite.addTest(loader.loadTestsFromTestCase(QueryCreationTest))
+    suite.addTest(loader.loadTestsFromTestCase(SearchTest))
+    return suite

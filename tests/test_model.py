@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.model` module."""
 from datetime import date, datetime
+from unittest import TestSuite
 
 from elixir import session
 
@@ -57,7 +58,7 @@ class EntityTestCase(TestSupport):
         person.birth_date = date(1986, 9, 15)
         session.commit()
         persondict = person.to_dict()
-        self.assertIn('birth_date', persondict)
+        self.assert_in('birth_date', persondict)
         self.assertEqual(persondict['birth_date'],
                          person.birth_date.strftime(ISO8601_DATE))
 
@@ -119,3 +120,10 @@ class EntityTestCase(TestSupport):
         self.assertFalse(created)
         self.assertEqual(second_instance.name, u'Lincoln')
         self.assertEqual(second_instance.age, 24)
+
+
+def load_tests(loader, standard_tests, pattern):
+    """Returns the test suite for this module."""
+    suite = TestSuite()
+    suite.addTest(loader.loadTestsFromTestCase(EntityTestCase))
+    return suite

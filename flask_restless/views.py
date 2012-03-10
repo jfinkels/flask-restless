@@ -106,7 +106,7 @@ def _evaluate_functions(model, functions):
         # functions that will be executed in the database and funcnames
         # contains names of the entries that will be returned to the
         # caller.
-        funcnames.append('{}__{}'.format(f['name'], f['field']))
+        funcnames.append('{0}__{1}'.format(f['name'], f['field']))
         processed.append(funcobj(field))
     # evaluate all the functions at once and get an iterable of results
     evaluated = session.query(*processed).one()

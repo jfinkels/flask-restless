@@ -70,7 +70,7 @@ setup(
     name='Flask-Restless',
     platforms='any',
     packages=['flask_restless'],
-    test_suite='tests',
+    test_suite='tests.suite',
     url='http://github.com/jfinkels/flask-restless',
     version='0.4-dev',
     zip_safe=False

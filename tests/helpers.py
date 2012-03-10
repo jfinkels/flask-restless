@@ -32,31 +32,16 @@ from flask.ext.restless import APIManager
 from .models import Person
 
 
-class BaseTest(unittest.TestCase):
-    """Base class for all test classes in Flask-Restless.
+class TestSupport(unittest.TestCase):
+    """Base class for tests which use a database.
 
-    Provides backported assertion methods to simulate functionality of newer
-    version of Python when using older versions of Python.
-
-    Subclasses should use :meth:`assert_in` instead of :meth:`assertIn`,
-    because the former degrades gracefully in the absence of the latter.
+    Provides :meth:`assert_in`, :meth:`assert_is_none`, and
+    :meth:`assert_is_not_none` methods, which are wrappers around the
+    corresponding :class:`unittest.TestCase` methods which provide backwards
+    compatibility for versions of Python less than 2.7. Subclasses should use
+    these lowercase methods instead of the camelcase ones.
 
     """
-
-    def assert_in(self, element, iterable):
-        """Asserts that `element` is in `iterable`.
-
-        Should work on any version of Python after version 2.5.
-
-        """
-        if hasattr(self, 'assertIn'):
-            self.assertIn(element, iterable)
-        else:
-            self.assertTrue(element in iterable)
-
-
-class TestSupport(BaseTest):
-    """Base class for tests which use a database."""
 
     def setUp(self):
         """Creates the database and all necessary tables.
@@ -79,6 +64,27 @@ class TestSupport(BaseTest):
         session.commit()
         os.close(self.db_fd)
         os.unlink(self.db_file)
+
+    def assert_in(self, obj, iterable):
+        """Asserts that `obj` is in `iterable`."""
+        if hasattr(self, 'assertIn'):
+            self.assertIn(obj, iterable)
+        else:
+            self.assertTrue(obj in iterable)
+
+    def assert_is_none(self, obj):
+        """Asserts that `obj` is ``None``."""
+        if hasattr(self, 'assertIsNone'):
+            self.assertIsNone(obj)
+        else:
+            self.assertTrue(obj is None)
+
+    def assert_is_not_none(self, obj):
+        """Asserts that `obj` is not ``None``."""
+        if hasattr(self, 'assertIsNotNone'):
+            self.assertIsNotNone(obj)
+        else:
+            self.assertTrue(obj is not None)
 
 
 class TestSupportWithManager(TestSupport):
