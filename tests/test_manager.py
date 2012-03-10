@@ -18,12 +18,11 @@
 from json import dumps
 from json import loads
 
-from flask import Flask
-
-from flask.ext.restless.manager import APIManager
-
 from .helpers import TestSupportWithManager
 from .models import Person
+
+
+__all__ = ['APIManagerTest']
 
 
 class APIManagerTest(TestSupportWithManager):
