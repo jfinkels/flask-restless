@@ -16,10 +16,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.views` module."""
 from datetime import date
-from json import dumps
-from json import loads
 from unittest import TestSuite
 
+from flask import json
 from sqlalchemy.exc import OperationalError
 
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
@@ -33,6 +32,10 @@ from .models import Person
 
 
 __all__ = ['FunctionEvaluationTest', 'FunctionAPITestCase', 'APITestCase']
+
+
+dumps = json.dumps
+loads = json.loads
 
 
 class FunctionEvaluationTest(TestSupportPrefilled):
@@ -147,7 +150,7 @@ class APITestCase(TestSupportWithManager):
         self.manager.create_api(Computer, methods=['GET', 'POST'])
 
         # to facilitate searching
-        self.app.search = lambda url, q: self.app.get(url + '?q={0}'.format(q))
+        self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
 
     def test_post(self):
         """Test for creating a new instance of the database model using the

@@ -30,11 +30,10 @@
 
 """
 
-import json
-
 from dateutil.parser import parse as parse_datetime
 from elixir import session
 from flask import abort
+from flask import json
 from flask import jsonify
 from flask import make_response
 from flask import request
@@ -106,7 +105,7 @@ def _evaluate_functions(model, functions):
         # functions that will be executed in the database and funcnames
         # contains names of the entries that will be returned to the
         # caller.
-        funcnames.append('{0}__{1}'.format(f['name'], f['field']))
+        funcnames.append('%s__%s' % (f['name'], f['field']))
         processed.append(funcobj(field))
     # evaluate all the functions at once and get an iterable of results
     evaluated = session.query(*processed).one()
@@ -158,7 +157,7 @@ class FunctionAPI(ModelView):
         try:
             result = _evaluate_functions(self.model, data['functions'])
             return jsonify(result)
-        except (AttributeError, OperationalError) as exception:
+        except (AttributeError, OperationalError), exception:
             return jsonify_status_code(400, message=exception.message)
 
 

@@ -14,7 +14,8 @@ installed if you use ``pip``):
 * `SQLAlchemy <http://sqlalchemy.org>`_
 * `python-dateutil <http://labix.org/python-dateutil>`_ version less than 2.0
 
-Flask-Restless requires Python 2.6 or Python 2.7.
+Flask-Restless requires Python version 2.5, 2.6 or 2.7. Python 3 support will
+come when Flask has it.
 
 Downloading Flask-Restless
 --------------------------

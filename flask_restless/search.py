@@ -64,9 +64,18 @@ OPERATORS = {
     'is_not_null': lambda f, a, fn: f != None,
     'desc': lambda f, a, fn: f.desc,
     'asc': lambda f, a, fn: f.asc,
-    'has': lambda f, a, fn: f.has(**{fn: a}),
-    'any': lambda f, a, fn: f.any(**{fn: a})
+    # HACK For Python 2.5, unicode dictionary keys are not allowed.
+    'has': lambda f, a, fn: f.has(**{str(fn): a}),
+    'any': lambda f, a, fn: f.any(**{str(fn): a})
 }
+
+
+def _unicode_keys_to_strings(dictionary):
+    """Returns a new dictionary with the same mappings as `dictionary`, but
+    with each of the keys coerced to a string (by calling :func:`str(key)`).
+
+    """
+    return dict((str(k), v) for k, v in dictionary.iteritems())
 
 
 class IllegalArgumentError(Exception):
@@ -233,7 +242,10 @@ class SearchParameters(object):
         from_dict = Filter.from_dictionary
         # may raise IllegalArgumentError
         filters = [from_dict(f) for f in dictionary.get('filters', [])]
-        order_by = [OrderBy(**o) for o in dictionary.get('order_by', [])]
+        # HACK In Python 2.5, unicode dictionary keys are not allowed.
+        order_by_list = dictionary.get('order_by', [])
+        order_by_list = (_unicode_keys_to_strings(o) for o in order_by_list)
+        order_by = [OrderBy(**o) for o in order_by_list]
         limit = dictionary.get('limit')
         offset = dictionary.get('offset')
         return SearchParameters(filters=filters, limit=limit, offset=offset,

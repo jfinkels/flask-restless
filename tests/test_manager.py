@@ -15,15 +15,19 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.manager` module."""
-from json import dumps
-from json import loads
 from unittest import TestSuite
+
+from flask import json
 
 from .helpers import TestSupportWithManager
 from .models import Person
 
 
 __all__ = ['APIManagerTest']
+
+
+dumps = json.dumps
+loads = json.loads
 
 
 class APIManagerTest(TestSupportWithManager):

@@ -39,6 +39,7 @@
 
     :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
     :license: GNU AGPLv3, see COPYING for more details
+
 """
 import unittest
 

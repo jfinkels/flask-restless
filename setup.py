@@ -31,6 +31,8 @@ For more information, check the World Wide Web!
   * `Source code repository <http://github.com/jfinkels/flask-restless>`_
 
 """
+from __future__ import with_statement
+
 from setuptools import setup
 
 
