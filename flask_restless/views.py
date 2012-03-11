@@ -86,7 +86,10 @@ def _evaluate_functions(model, functions):
 
     If a field does not exist on a given model, :exc:`AttributeError` is
     raised. If a function does not exist,
-    :exc:`sqlalchemy.exc.OperationalError` is raised.
+    :exc:`sqlalchemy.exc.OperationalError` is raised. The former exception will
+    have a ``field`` attribute which is the name of the field which does not
+    exist. The latter exception will have a ``function`` attribute which is the
+    name of the function with does not exist.
 
     """
     if not model or not functions:
@@ -94,22 +97,36 @@ def _evaluate_functions(model, functions):
     processed = []
     funcnames = []
     for f in functions:
+        funcname, fieldname = f['name'], f['field']
         # We retrieve the function by name from the SQLAlchemy ``func``
         # module and the field by name from the model class.
         #
-        # If the specified function doesn't exist, this raises
-        # OperationalError. If the specified field doesn't exist, this raises
-        # AttributeError.
-        funcobj = getattr(func, f['name'])
-        field = getattr(model, f['field'])
+        # If the specified field doesn't exist, this raises AttributeError.
+        funcobj = getattr(func, funcname)
+        try:
+            field = getattr(model, fieldname)
+        except AttributeError, exception:
+            exception.field = fieldname
+            raise exception
         # Time to store things to be executed. The processed list stores
         # functions that will be executed in the database and funcnames
         # contains names of the entries that will be returned to the
         # caller.
-        funcnames.append('%s__%s' % (f['name'], f['field']))
+        funcnames.append('%s__%s' % (funcname, fieldname))
         processed.append(funcobj(field))
-    # evaluate all the functions at once and get an iterable of results
-    evaluated = session.query(*processed).one()
+    # Evaluate all the functions at once and get an iterable of results.
+    #
+    # If any of the functions
+    try:
+        evaluated = session.query(*processed).one()
+    except OperationalError, exception:
+        # HACK original error message is of the form:
+        #
+        #    '(OperationalError) no such function: bogusfuncname'
+        original_error_msg = exception.args[0]
+        bad_function = original_error_msg[37:]
+        exception.function = bad_function
+        raise exception
     return dict(zip(funcnames, evaluated))
 
 
@@ -158,8 +175,12 @@ class FunctionAPI(ModelView):
         try:
             result = _evaluate_functions(self.model, data['functions'])
             return jsonify(result)
-        except (AttributeError, OperationalError), exception:
-            return jsonify_status_code(400, message=exception.message)
+        except AttributeError, exception:
+            message = 'No such field "%s"' % exception.field
+            return jsonify_status_code(400, message=message)
+        except OperationalError, exception:
+            message = 'No such function "%s"' % exception.function
+            return jsonify_status_code(400, message=message)
 
 
 class API(ModelView):
