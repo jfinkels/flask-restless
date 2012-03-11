@@ -26,7 +26,7 @@ top of `SQLAlchemy <http://sqlalchemy.org>`_.
 
 For more information, check the World Wide Web!
 
-  * `Homepage and documentation <http://packages.python.org/Flask-Restless>`_
+  * `Documentation <http://readthedocs.org/docs/flask-restless>`_
   * `PyPI listing <http://pypi.python.org/pypi/Flask-Restless>`_
   * `Source code repository <http://github.com/jfinkels/flask-restless>`_
 
