@@ -212,27 +212,21 @@ class APIManager(object):
         request on an endpoint.
 
         .. versionadded:: 0.4
-
            Added the `authentication_required_for` keyword argument.
 
         .. versionadded:: 0.4
-
            Added the `authentication_function` keyword argument.
 
         .. versionadded:: 0.4
-
            Added the `allow_functions` keyword argument.
 
         .. versionchanged:: 0.4
-
            Force the model name in the URL to lowercase.
 
         .. versionadded:: 0.4
-
            Added the `allow_patch_many` keyword argument.
 
         .. versionadded:: 0.4
-
            Added the `collection_name` keyword argument.
 
         """
