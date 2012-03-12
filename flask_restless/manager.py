@@ -3,19 +3,20 @@
 # Copyright (C) 2011 Lincoln de Sousa <lincoln@comum.org>
 # Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# This file is part of Flask-Restless.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# Flask-Restless is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """
     flaskext.restless.manager
     ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -32,9 +33,18 @@
 from flask import Blueprint
 
 from .views import API
+from .views import FunctionAPI
 
 #: The set of methods which are allowed by default when creating an API
 READONLY_METHODS = frozenset(('GET', ))
+
+
+class IllegalArgumentError(Exception):
+    """This exception is raised when a calling function has provided illegal
+    arguments to a function or method.
+
+    """
+    pass
 
 
 # TODO use __tablename__ instead of uppercase class name?
@@ -53,7 +63,7 @@ class APIManager(object):
     #:
     #: This format string expects the name of a model to be provided when
     #: formatting.
-    APINAME_FORMAT = '{}api'
+    APINAME_FORMAT = '%sapi'
 
     #: The format of the name of the blueprint containing the API view for a
     #: given model.
@@ -63,7 +73,7 @@ class APIManager(object):
     #: 1. name of the API view of a specific model
     #: 2. a number representing the number of times a blueprint with that name
     #:    has been registered.
-    BLUEPRINTNAME_FORMAT = '{}{}'
+    BLUEPRINTNAME_FORMAT = '%s%s'
 
     def __init__(self, app=None):
         """Stores the specified :class:`flask.Flask` application object so that
@@ -103,7 +113,7 @@ class APIManager(object):
             b = basename
             existing_numbers = [int(n.partition(b)[-1]) for n in existing]
             next_number = max(existing_numbers) + 1
-        return APIManager.BLUEPRINTNAME_FORMAT.format(basename, next_number)
+        return APIManager.BLUEPRINTNAME_FORMAT % (basename, next_number)
 
     def init_app(self, app):
         """Stores the specified :class:`flask.Flask` application object on
@@ -125,7 +135,8 @@ class APIManager(object):
 
     def create_api(self, model, methods=READONLY_METHODS, url_prefix='/api',
                    collection_name=None, allow_patch_many=False,
-                   validation_exceptions=()):
+                   allow_functions=False, authentication_required_for=None,
+                   authentication_function=None, validation_exceptions=None):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
         this class.
@@ -188,38 +199,70 @@ class APIManager(object):
         errors will be captured and forwarded to the client in JSON format. For
         more information on how to use validation, see :ref:`validation`.
 
-        .. versionchanged:: 0.4
+        If `allow_functions` is ``True``, then requests to
+        :http:get:`/api/eval/<collection_name>` will return the result of
+        evaluating SQL functions specified in the body of the request. For
+        information on the request format, see :ref:`functionevaluation`. This
+        if ``False`` by default. Warning: you must not create an API for a
+        model whose name is ``'eval'`` if you set this argument to ``True``.
 
+        `authentication_required_for` is a list of HTTP method names (for
+        example, ``['POST', 'PATCH']``) for which authentication must be
+        required before clients can successfully make requests. If this keyword
+        argument is specified, `authentication_function` must also be
+        specified. For more information on requiring authentication, see
+        :ref:`authentication`.
+
+        `authentication_function` is a function which accepts no arguments and
+        returns ``True`` if and only if a client is authorized to make a
+        request on an endpoint.
+
+        .. versionadded:: 0.4
+           Added the `validation_exceptions` keyword argument.
+
+        .. versionadded:: 0.4
+           Added the `authentication_required_for` keyword argument.
+
+        .. versionadded:: 0.4
+           Added the `authentication_function` keyword argument.
+
+        .. versionadded:: 0.4
+           Added the `allow_functions` keyword argument.
+
+        .. versionchanged:: 0.4
            Force the model name in the URL to lowercase.
 
         .. versionadded:: 0.4
-
            Added the `allow_patch_many` keyword argument.
 
         .. versionadded:: 0.4
-
            Added the `collection_name` keyword argument.
 
-        .. versionadded:: 0.4
-
-           Added the `validation_exceptions` keyword argument.
-
         """
+        if authentication_required_for and not authentication_function:
+            msg = ('If authentication_required is specified, so must'
+                   ' authentication_function.')
+            raise IllegalArgumentError(msg)
         if collection_name is None:
             collection_name = model.__name__.lower()
         methods = frozenset(methods)
         # sets of methods used for different types of endpoints
-        no_instance_methods = methods & {'POST'}
-        possibly_empty_instance_methods = methods & {'GET', 'PATCH', 'PUT'}
-        instance_methods = methods & {'GET', 'PATCH', 'DELETE', 'PUT'}
+        no_instance_methods = methods & frozenset(('POST', ))
+        if allow_patch_many:
+            possibly_empty_instance_methods = \
+                methods & frozenset(('GET', 'PATCH', 'PUT'))
+        else:
+            possibly_empty_instance_methods = methods & frozenset(('GET', ))
+        instance_methods = \
+            methods & frozenset(('GET', 'PATCH', 'DELETE', 'PUT'))
         # the base URL of the endpoints on which requests will be made
-        collection_endpoint = '/{}'.format(collection_name)
+        collection_endpoint = '/%s' % collection_name
         instance_endpoint = collection_endpoint + '/<int:instid>'
         # the name of the API, for use in creating the view and the blueprint
-        apiname = APIManager.APINAME_FORMAT.format(collection_name)
+        apiname = APIManager.APINAME_FORMAT % collection_name
         # the view function for the API for this model
-        api_view = API.as_view(apiname, model, allow_patch_many,
-                               validation_exceptions)
+        api_view = API.as_view(apiname, model, authentication_required_for,
+                               authentication_function, validation_exceptions)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the
@@ -236,6 +279,15 @@ class APIManager(object):
                                view_func=api_view)
         blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
                                view_func=api_view)
+        # if function evaluation is allowed, add an endpoint at /api/eval/...
+        # which responds only to GET requests and responds with the result of
+        # evaluating functions on all instances of the specified model
+        if allow_functions:
+            eval_api_name = apiname + 'eval'
+            eval_api_view = FunctionAPI.as_view(eval_api_name, model)
+            eval_endpoint = '/eval' + collection_endpoint
+            blueprint.add_url_rule(eval_endpoint, methods=['GET'],
+                                   view_func=eval_api_view)
         # register the blueprint on the app
         self.app.register_blueprint(blueprint)
         return blueprint

@@ -7,7 +7,8 @@ Clients can make :http:method:`get` requests on individual instances of a model
 (for example, :http:get:`/api/person/1`) and on collections of all instances of
 a model (:http:get:`/api/person`). To get all instances of a model which meet
 some criteria, clients can make :http:method:`get` requests with a query
-parameter specifying a search.
+parameter specifying a search. The search functionality in Flask-Restless is
+relatively simple, but should suffice for many cases.
 
 If the ``allow_patch_many`` keyword argument is set to ``True`` when calling
 the :meth:`APIManager.create_api` function, then :http:method:`patch` requests
@@ -85,30 +86,6 @@ The operator strings recognized by the API incude:
 
 These correspond to SQLAlchemy column operators as defined `here
 <http://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.operators.ColumnOperators>`_.
-
-Evaluating functions
---------------------
-
-Instead of responding with the list of instances of the model which meet the
-specified search criteria, the client can instead request the result of
-evaluating a SQL function on some field of the model.
-
-If the following mapping appears in addition to the mappings specified in
-:ref:`queryformat` for the query parameter ``q``, then the result of evaluating
-functions will be returned instead of the list of matching instances:
-
-``functions``
-  A list of objects of the form::
-
-      {"name": <functionname>, "field":, <fieldname>}
-
-  where ``<functionname>`` is a string representing a SQL function to apply to
-  the results, and ``<fieldname>`` is the name of the field of the model on
-  which the function will be executed.
-
-  The function will be evaluated using SQLAlchemy's `func
-  <http://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.expression.func>`_
-  object.
 
 Examples
 --------

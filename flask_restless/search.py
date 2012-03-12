@@ -3,18 +3,20 @@
 # Copyright (C) 2011 Lincoln de Sousa <lincoln@comum.org>
 # Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# This file is part of Flask-Restless.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# Flask-Restless is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Provides querying, searching, and function evaluation on Elixir models.
 
 :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
@@ -22,10 +24,6 @@
 :license: GNU AGPLv3, see COPYING for more details
 
 """
-
-from elixir import session
-from sqlalchemy.sql import func
-
 
 #: The mapping from operator name (as accepted by the search method) to a
 #: function which returns the SQLAlchemy expression corresponding to that
@@ -68,9 +66,18 @@ OPERATORS = {
     'is_not_null': lambda f, a, fn: f != None,
     'desc': lambda f, a, fn: f.desc,
     'asc': lambda f, a, fn: f.asc,
-    'has': lambda f, a, fn: f.has(**{fn: a}),
-    'any': lambda f, a, fn: f.any(**{fn: a})
+    # HACK For Python 2.5, unicode dictionary keys are not allowed.
+    'has': lambda f, a, fn: f.has(**{str(fn): a}),
+    'any': lambda f, a, fn: f.any(**{str(fn): a})
 }
+
+
+def _unicode_keys_to_strings(dictionary):
+    """Returns a new dictionary with the same mappings as `dictionary`, but
+    with each of the keys coerced to a string (by calling :func:`str(key)`).
+
+    """
+    return dict((str(k), v) for k, v in dictionary.iteritems())
 
 
 class IllegalArgumentError(Exception):
@@ -237,7 +244,10 @@ class SearchParameters(object):
         from_dict = Filter.from_dictionary
         # may raise IllegalArgumentError
         filters = [from_dict(f) for f in dictionary.get('filters', [])]
-        order_by = [OrderBy(**o) for o in dictionary.get('order_by', [])]
+        # HACK In Python 2.5, unicode dictionary keys are not allowed.
+        order_by_list = dictionary.get('order_by', [])
+        order_by_list = (_unicode_keys_to_strings(o) for o in order_by_list)
+        order_by = [OrderBy(**o) for o in order_by_list]
         limit = dictionary.get('limit')
         offset = dictionary.get('offset')
         return SearchParameters(filters=filters, limit=limit, offset=offset,
@@ -357,59 +367,6 @@ class QueryBuilder(object):
         if search_params.offset:
             query = query.offset(search_params.offset)
         return query
-
-
-def evaluate_functions(model, functions):
-    """Executes the each of the SQLAlchemy functions specified in
-    ``functions``, a list of dictionaries of the form described below, on the
-    given model and returns a dictionary mapping function name (slightly
-    modified, see below) to result of evaluation of that function.
-
-    ``functions`` is a list of dictionaries of the form::
-
-        {'name': 'avg', 'field': 'amount'}
-
-    For example, if you want the sum and the average of the field named
-    "amount"::
-
-        >>> # assume instances of Person exist in the database...
-        >>> f1 = dict(name='sum', field='amount')
-        >>> f2 = dict(name='avg', field='amount')
-        >>> evaluate_functions(Person, [f1, f2])
-        {'avg__amount': 456, 'sum__amount': 123}
-
-    The return value is a dictionary mapping ``'<funcname>__<fieldname>'`` to
-    the result of evaluating that function on that field. If `model` is
-    ``None`` or `functions` is empty, this function returns the empty
-    dictionary.
-
-    If a field does not exist on a given model, :exc:`AttributeError` is
-    raised. If a function does not exist,
-    :exc:`sqlalchemy.exc.OperationalError` is raised.
-
-    """
-    if not model or not functions:
-        return {}
-    processed = []
-    funcnames = []
-    for f in functions:
-        # We retrieve the function by name from the SQLAlchemy ``func``
-        # module and the field by name from the model class.
-        #
-        # If the specified function doesn't exist, this raises
-        # OperationalError. If the specified field doesn't exist, this raises
-        # AttributeError.
-        funcobj = getattr(func, f['name'])
-        field = getattr(model, f['field'])
-        # Time to store things to be executed. The processed list stores
-        # functions that will be executed in the database and funcnames
-        # contains names of the entries that will be returned to the
-        # caller.
-        funcnames.append('{}__{}'.format(f['name'], f['field']))
-        processed.append(funcobj(field))
-    # evaluate all the functions at once and get an iterable of results
-    evaluated = session.query(*processed).one()
-    return dict(zip(funcnames, evaluated))
 
 
 def create_query(model, searchparams):

@@ -3,18 +3,20 @@
 # Copyright (C) 2011 Lincoln de Sousa <lincoln@comum.org>
 # Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# This file is part of Flask-Restless.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# Flask-Restless is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """
 Flask-Restless
 ~~~~~~~~~~~~~~
@@ -26,11 +28,13 @@ top of `SQLAlchemy <http://sqlalchemy.org>`_.
 
 For more information, check the World Wide Web!
 
-  * `Homepage and documentation <http://packages.python.org/Flask-Restless>`_
+  * `Documentation <http://readthedocs.org/docs/flask-restless>`_
   * `PyPI listing <http://pypi.python.org/pypi/Flask-Restless>`_
   * `Source code repository <http://github.com/jfinkels/flask-restless>`_
 
 """
+from __future__ import with_statement
+
 from setuptools import setup
 
 
@@ -70,7 +74,7 @@ setup(
     name='Flask-Restless',
     platforms='any',
     packages=['flask_restless'],
-    test_suite='tests',
+    test_suite='tests.suite',
     url='http://github.com/jfinkels/flask-restless',
     version='0.4-dev',
     zip_safe=False

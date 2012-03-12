@@ -3,19 +3,20 @@
 # Copyright (C) 2011 Lincoln de Sousa <lincoln@comum.org>
 # Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# This file is part of Flask-Restless.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# Flask-Restless is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
+# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """
     flaskext.restless.views
     ~~~~~~~~~~~~~~~~~~~~~~~
@@ -30,11 +31,10 @@
 
 """
 
-import json
-
 from dateutil.parser import parse as parse_datetime
 from elixir import session
 from flask import abort
+from flask import json
 from flask import jsonify
 from flask import make_response
 from flask import request
@@ -42,9 +42,9 @@ from flask.views import MethodView
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.sql import func
 
 from .search import create_query
-from .search import evaluate_functions
 from .search import search
 
 
@@ -60,30 +60,159 @@ def jsonify_status_code(status_code, *args, **kw):
     return response
 
 
-class API(MethodView):
-    """Provides method-based dispatching for :http:request:`get`,
-    :http:request:`post`, :http:request:`patch`, :http:request:`put`, and
-    :http:request:`delete` requests, for both collections of models and
-    individual models.
+def _evaluate_functions(model, functions):
+    """Executes each of the SQLAlchemy functions specified in ``functions``, a
+    list of dictionaries of the form described below, on the given model and
+    returns a dictionary mapping function name (slightly modified, see below)
+    to result of evaluation of that function.
+
+    ``functions`` is a list of dictionaries of the form::
+
+        {'name': 'avg', 'field': 'amount'}
+
+    For example, if you want the sum and the average of the field named
+    "amount"::
+
+        >>> # assume instances of Person exist in the database...
+        >>> f1 = dict(name='sum', field='amount')
+        >>> f2 = dict(name='avg', field='amount')
+        >>> evaluate_functions(Person, [f1, f2])
+        {'avg__amount': 456, 'sum__amount': 123}
+
+    The return value is a dictionary mapping ``'<funcname>__<fieldname>'`` to
+    the result of evaluating that function on that field. If `model` is
+    ``None`` or `functions` is empty, this function returns the empty
+    dictionary.
+
+    If a field does not exist on a given model, :exc:`AttributeError` is
+    raised. If a function does not exist,
+    :exc:`sqlalchemy.exc.OperationalError` is raised. The former exception will
+    have a ``field`` attribute which is the name of the field which does not
+    exist. The latter exception will have a ``function`` attribute which is the
+    name of the function with does not exist.
+
+    """
+    if not model or not functions:
+        return {}
+    processed = []
+    funcnames = []
+    for f in functions:
+        funcname, fieldname = f['name'], f['field']
+        # We retrieve the function by name from the SQLAlchemy ``func``
+        # module and the field by name from the model class.
+        #
+        # If the specified field doesn't exist, this raises AttributeError.
+        funcobj = getattr(func, funcname)
+        try:
+            field = getattr(model, fieldname)
+        except AttributeError, exception:
+            exception.field = fieldname
+            raise exception
+        # Time to store things to be executed. The processed list stores
+        # functions that will be executed in the database and funcnames
+        # contains names of the entries that will be returned to the
+        # caller.
+        funcnames.append('%s__%s' % (funcname, fieldname))
+        processed.append(funcobj(field))
+    # Evaluate all the functions at once and get an iterable of results.
+    #
+    # If any of the functions
+    try:
+        evaluated = session.query(*processed).one()
+    except OperationalError, exception:
+        # HACK original error message is of the form:
+        #
+        #    '(OperationalError) no such function: bogusfuncname'
+        original_error_msg = exception.args[0]
+        bad_function = original_error_msg[37:]
+        exception.function = bad_function
+        raise exception
+    return dict(zip(funcnames, evaluated))
+
+
+class ModelView(MethodView):
+    """Base class for :class:`flask.MethodView` classes which represent a view
+    of an Elixir model.
 
     """
 
-    def __init__(self, model, allow_patch_many=False, validation_exceptions=(),
-                 *args, **kw):
+    def __init__(self, model, *args, **kw):
         """Calls the constructor of the superclass and specifies the model for
         which this class provides a ReSTful API.
 
         ``model`` is the :class:`elixir.entity.Entity` class of the database
         model for which this instance of the class is an API.
 
-        The `allow_patch_many` keyword argument specifies whether
-        :http:method:`patch` requests can be made which update multiple
-        instances of the model, as specified in the search query parameter
-        ``q``. It is described in the documentation for the
-        :meth:`~flask.ext.restless.manager.APIManager.create_api`; see the
-        documentation there for more information.
+        """
+        super(ModelView, self).__init__(*args, **kw)
+        self.model = model
 
-        `validation_exception` is the tuple of exceptions raised by backend
+
+class FunctionAPI(ModelView):
+    """Provides method-based dispatching for :http:method:`get` requests which
+    wish to apply SQL functions to all instances of a model.
+
+    .. versionadded:: 0.4
+
+    """
+
+    def get(self):
+        """Returns the result of evaluating the SQL functions specified in the
+        body of the request.
+
+        For a description of the request and response formats, see
+        :ref:`functionevaluation`.
+
+        """
+        if not request.data:
+            return jsonify()
+        try:
+            data = json.loads(request.data)
+        except (TypeError, ValueError, OverflowError):
+            return jsonify_status_code(400, message='Unable to decode data')
+        if 'functions' not in data:
+            return jsonify()
+        try:
+            result = _evaluate_functions(self.model, data['functions'])
+            return jsonify(result)
+        except AttributeError, exception:
+            message = 'No such field "%s"' % exception.field
+            return jsonify_status_code(400, message=message)
+        except OperationalError, exception:
+            message = 'No such function "%s"' % exception.function
+            return jsonify_status_code(400, message=message)
+
+
+class API(ModelView):
+    """Provides method-based dispatching for :http:method:`get`,
+    :http:method:`post`, :http:method:`patch`, :http:method:`put`, and
+    :http:method:`delete` requests, for both collections of models and
+    individual models.
+
+    """
+
+    def __init__(self, model, authentication_required_for=None,
+                 authentication_function=None, validation_exceptions=None,
+                 *args, **kw):
+        """Instantiates this view with the specified attributes.
+
+        `model` is the :class:`flask_restless.Entity` class of the database
+        model for which this instance of the class is an API.
+
+        `authentication_required_for` is a list of HTTP method names (for
+        example, ``['POST', 'PATCH']``) for which authentication must be
+        required before clients can successfully make requests. If this keyword
+        argument is specified, `authentication_function` must also be
+        specified.
+
+        `authentication_function` is a function which accepts no arguments and
+        returns ``True`` if and only if a client is authorized to make a
+        request on an endpoint.
+
+        Pre-condition (callers must satisfy): if `authentication_required_for`
+        is specified, so must `authentication_function`.
+
+        `validation_exceptions` is the tuple of exceptions raised by backend
         validation (if any exist). If exceptions are specified here, any
         exceptions which are caught when writing to the database. Will be
         returned to the client as a :http:statuscode:`400` response with a
@@ -91,17 +220,21 @@ class API(MethodView):
         information, see :ref:`validation`.
 
         .. versionadded:: 0.4
-
            Added the `validation_exceptions` keyword argument.
 
         .. versionadded:: 0.4
+           Added the `authentication_required_for` keyword argument.
 
-           Added the `allow_patch_many` keyword argument.
+        .. versionadded:: 0.4
+           Added the `authentication_function` keyword argument.
 
         """
-        super(API, self).__init__(*args, **kw)
-        self.model = model
-        self.allow_patch_many = allow_patch_many
+        super(API, self).__init__(model, *args, **kw)
+        self.authentication_required_for = authentication_required_for or ()
+        self.authentication_function = authentication_function
+        # convert HTTP method names to uppercase
+        self.authentication_required_for = \
+            frozenset([m.upper() for m in self.authentication_required_for])
         self.validation_exceptions = tuple(validation_exceptions) or ()
 
     def _add_to_relation(self, query, relationname, toadd=None):
@@ -242,12 +375,12 @@ class API(MethodView):
         To search for entities meeting some criteria, the client makes a
         request to :http:get:`/api/<modelname>` with a query string containing
         the parameters of the search. The parameters of the search can involve
-        filters and/or functions. In a filter, the client specifies the name of
-        the field by which to filter, the operation to perform on the field,
-        and the value which is the argument to that operation. In a function,
-        the client specifies the name of a SQL function which is executed on
-        the search results; the result of executing the function is returned to
-        the client.
+        filters. In a filter, the client specifies the name of the field by
+        which to filter, the operation to perform on the field, and the value
+        which is the argument to that operation. In a function, the client
+        specifies the name of a SQL function which is executed on the search
+        results; the result of executing the function is returned to the
+        client.
 
         The parameters of the search must be provided in JSON form as the value
         of the ``q`` request query parameter. For example, in a database of
@@ -272,8 +405,8 @@ class API(MethodView):
 
            {"name": "Mary", ...}
 
-        For more information SQLAlchemy functions and operators for use in
-        filters, see the `SQLAlchemy SQL expression tutorial
+        For more information SQLAlchemy operators for use in filters, see the
+        `SQLAlchemy SQL expression tutorial
         <http://docs.sqlalchemy.org/en/latest/core/tutorial.html>`_.
 
         The general structure of request data as a JSON string is as follows::
@@ -291,16 +424,11 @@ class API(MethodView):
                  {"name": "age", "val": [18, 19, 20, 21], "op": "in"},
                  {"name": "age", "op": "gt", "field": "height"},
                  ...
-               ],
-             "functions":
-               [
-                 {"name": "sum", "field": "age"},
-                 ...
                ]
            }
 
         For a complete description of all possible search parameters and
-        responses, see :ref:`search`.
+        responses, see :ref:`searchformat`.
 
         """
         # try to get search query from the request query parameters
@@ -309,19 +437,7 @@ class API(MethodView):
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
-        # TODO the functions should be applied to the result of the query...
-        # If the query parameters specify that at least one function should be
-        # executed, return the result of executing that function. If no
-        # functions are specified, perform a search and return the instances
-        # which match that search.
-        if 'functions' in data:
-            try:
-                result = evaluate_functions(self.model, data['functions'])
-            except (AttributeError, OperationalError) as exception:
-                return jsonify_status_code(400, message=exception.message)
-            return jsonify(result)
-
-        # there were no functions specified, so perform a filtered search
+        # perform a filtered search
         try:
             result = search(self.model, data)
         except NoResultFound:
@@ -340,6 +456,18 @@ class API(MethodView):
         else:
             return jsonify(result.to_dict(deep))
 
+
+    def _check_authentication(self):
+        """If the specified HTTP method requires authentication (see the
+        constructor), this function aborts with :http:statuscode:`401` unless a
+        current user is authorized with respect to the authentication function
+        specified in the constructor of this class.
+
+        """
+        if (request.method in self.authentication_required_for
+            and not self.authentication_function()):
+            abort(401)
+
     def get(self, instid):
         """Returns a JSON representation of an instance of model with the
         specified name.
@@ -356,6 +484,7 @@ class API(MethodView):
         :http:status:`404`.
 
         """
+        self._check_authentication()
         if instid is None:
             return self._search()
         inst = self.model.get_by(id=instid)
@@ -374,6 +503,7 @@ class API(MethodView):
         whether an object was deleted.
 
         """
+        self._check_authentication()
         inst = self.model.get_by(id=instid)
         if inst is not None:
             inst.delete()
@@ -400,6 +530,7 @@ class API(MethodView):
         single level of relationship data.
 
         """
+        self._check_authentication()
         # try to read the parameters for the model from the body of the request
         try:
             params = json.loads(request.data)
@@ -431,7 +562,7 @@ class API(MethodView):
             session.commit()
 
             return jsonify_status_code(201, id=instance.id)
-        except self.validation_exceptions as exception:
+        except self.validation_exceptions, exception:
             session.rollback()
             return jsonify_status_code(400, validation_errors=exception.errors)
 
@@ -451,12 +582,7 @@ class API(MethodView):
         be made in this case.
 
         """
-        patchmany = instid is None
-
-        # if this was configured not to allow patching many, return HTTP 405
-        if patchmany and not self.allow_patch_many:
-            return make_response(None, 405)
-
+        self._check_authentication()
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.data)
@@ -467,6 +593,7 @@ class API(MethodView):
         if len(data) == 0:
             return make_response(None, 204)
 
+        patchmany = instid is None
         if patchmany:
             # create a SQLALchemy Query from the query parameter `q`
             query = create_query(self.model, data)
@@ -489,7 +616,7 @@ class API(MethodView):
             if params:
                 num_modified = query.update(params, False)
             session.commit()
-        except self.validation_exceptions as exception:
+        except self.validation_exceptions, exception:
             session.rollback()
             return jsonify_status_code(400, validation_errors=exception.errors)
 

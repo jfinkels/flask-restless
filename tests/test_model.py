@@ -2,36 +2,37 @@
 #
 # Copyright (C) 2011 Lincoln de Sousa <lincoln@comum.org>
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# This file is part of Flask-Restless.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# Flask-Restless is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.model` module."""
 from datetime import date, datetime
-import os
-from tempfile import mkstemp
-import unittest
+from unittest import TestSuite
 
-from elixir import create_all
 from elixir import session
-from elixir import drop_all
-from sqlalchemy import create_engine
 
 from flask.ext.restless.model import ISO8601_DATE
+
+from .helpers import TestSupport
 from .models import Computer
 from .models import Person
-from .models import setup
 
 
-class EntityTestCase(unittest.TestCase):
+__all__ = ['EntityTestCase']
+
+
+class EntityTestCase(TestSupport):
     """Unit tests for the :class:`flask_restless.model.Entity` class."""
 
     def setUp(self):
@@ -39,22 +40,8 @@ class EntityTestCase(unittest.TestCase):
         up all the necessary tables.
 
         """
-        self.db_fd, self.db_file = mkstemp()
-        setup(create_engine('sqlite:///%s' % self.db_file))
-        create_all()
-        session.commit()
-
+        super(EntityTestCase, self).setUp()
         self.model = Person
-
-    def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        drop_all()
-        session.commit()
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
 
     def test_column_introspection(self):
         """Test for getting the names of columns as strings.
@@ -76,7 +63,7 @@ class EntityTestCase(unittest.TestCase):
         person.birth_date = date(1986, 9, 15)
         session.commit()
         persondict = person.to_dict()
-        self.assertIn('birth_date', persondict)
+        self.assert_in('birth_date', persondict)
         self.assertEqual(persondict['birth_date'],
                          person.birth_date.strftime(ISO8601_DATE))
 
@@ -138,3 +125,10 @@ class EntityTestCase(unittest.TestCase):
         self.assertFalse(created)
         self.assertEqual(second_instance.name, u'Lincoln')
         self.assertEqual(second_instance.age, 24)
+
+
+def load_tests(loader, standard_tests, pattern):
+    """Returns the test suite for this module."""
+    suite = TestSuite()
+    suite.addTest(loader.loadTestsFromTestCase(EntityTestCase))
+    return suite

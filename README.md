@@ -12,7 +12,7 @@ extension, and building of documentation.
 
 For more information, check the World Wide Web!
 
-  * [Homepage and documentation](http://packages.python.org/Flask-Restless)
+  * [Documentation](http://readthedocs.org/docs/flask-restless)
   * [Python Package Index listing](http://pypi.python.org/pypi/Flask-Restless)
   * [Source code repository](http://github.com/jfinkels/flask-restless)
 
@@ -32,6 +32,7 @@ information see the `COPYING` file.
 This is a partial listing of the contents of this package.
 
 * `doc/` - the Sphinx documentation for Flask-Restless
+* `examples/` - example applications of Flask-Restless
 * `COPYING` - the copyright license under which this program is distributed to
   you (the GNU Affero General Public License version 3)
 * `flaskext/restless` - the Python package containing the extension
@@ -52,7 +53,7 @@ files:
 
 ## Installing ##
 
-This application requires [Python 2.7][4].
+This application requires [Python][4] version 2.5, 2.6, or 2.7.
 
 This application requires the following libraries to be installed:
 

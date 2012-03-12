@@ -1,0 +1,16 @@
+<!doctype html>
+<html>
+<head><title>Login</title></head>
+<body>
+<form action="{{ url_for('login') }}" method="post">
+  {{ form.csrf }}
+  <table class="centered">
+    <tbody>
+      <tr><td>{{ form.username.label }}</td><td>{{ form.username }}</td></tr>
+      <tr><td>{{ form.password.label }}</td><td>{{ form.password }}</td></tr>
+      <tr><td></td><td>{{ form.submit }}</td></tr>
+    </tbody>
+  </table>
+</form>
+</body>
+</html>

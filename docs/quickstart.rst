@@ -37,3 +37,6 @@ For the restless::
     # can be specified as well.
     manager.create_api(Person, methods=['GET', 'PATCH', 'POST', 'DELETE'])
     manager.create_api(Computer, methods=['GET'])
+
+    # start the flask loop
+    app.run()

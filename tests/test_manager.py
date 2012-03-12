@@ -1,69 +1,41 @@
 # -*- coding: utf-8; Mode: Python -*-
 #
-# Copyright 2012 Jeffrey Finkelstein <jefrey.finkelstein@gmail.com>
+# Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# This file is part of Flask-Restless.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# Flask-Restless is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.manager` module."""
-from json import dumps
-from json import loads
-import os
-from tempfile import mkstemp
-import unittest
+from unittest import TestSuite
 
-from elixir import create_all
-from elixir import drop_all
-from elixir import session
-from flask import Flask
-from sqlalchemy import create_engine
+from flask import json
 
-from flask.ext.restless.manager import APIManager
-from .models import setup
+from .helpers import TestSupportWithManager
 from .models import Person
 
 
-class APIManagerTest(unittest.TestCase):
+__all__ = ['APIManagerTest']
+
+
+dumps = json.dumps
+loads = json.loads
+
+
+class APIManagerTest(TestSupportWithManager):
     """Unit tests for the :class:`flask_restless.manager.APIManager` class.
 
     """
-
-    def setUp(self):
-        """Creates the database, :class:`~flask.Flask` object, and the
-        :class:`~flask_restless.manager.APIManager` for that application.
-
-        """
-        # set up the database
-        self.db_fd, self.db_file = mkstemp()
-        setup(create_engine('sqlite:///%s' % self.db_file))
-        create_all()
-        session.commit()
-        
-        # set up the application and API manager
-        app = Flask(__name__)
-        app.config['DEBUG'] = True
-        app.config['TESTING'] = True
-        self.app = app.test_client()
-        self.manager = APIManager(app)
-
-    def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        drop_all()
-        session.commit()
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
 
     def test_create_api(self):
         """Tests that the :meth:`flask_restless.manager.APIManager.create_api`
@@ -137,3 +109,30 @@ class APIManagerTest(unittest.TestCase):
         response = self.app.get('/api/people/1')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(loads(response.data)['id'], 1)
+
+    def test_allow_functions(self):
+        """Tests that the ``allow_functions`` keyword argument makes a
+        :http:get:`/api/eval/...` endpoint available.
+
+        """
+        self.manager.create_api(Person, allow_functions=True)
+        response = self.app.get('/api/eval/person')
+        self.assertNotEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 200)
+
+    def test_disallow_functions(self):
+        """Tests that if the ``allow_functions`` keyword argument if ``False``,
+        no endpoint will be made available at :http:get:`/api/eval/...`.
+
+        """
+        self.manager.create_api(Person, allow_functions=False)
+        response = self.app.get('/api/eval/person')
+        self.assertNotEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 404)
+
+
+def load_tests(loader, standard_tests, pattern):
+    """Returns the test suite for this module."""
+    suite = TestSuite()
+    suite.addTest(loader.loadTestsFromTestCase(APIManagerTest))
+    return suite

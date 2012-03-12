@@ -6,13 +6,16 @@ Install with ``pip`` (hopefully in a virtual environment provided by
 
     pip install Flask-Restless
 
-``Flask-Restless`` has the following dependencies (which will be automatically
+Flask-Restless has the following dependencies (which will be automatically
 installed if you use ``pip``):
 
 * `Flask <http://flask.pocoo.org>`_ version 0.7 or greater
 * `Elixir <http://elixir.ematia.de>`_
 * `SQLAlchemy <http://sqlalchemy.org>`_
 * `python-dateutil <http://labix.org/python-dateutil>`_ version less than 2.0
+
+Flask-Restless requires Python version 2.5, 2.6 or 2.7. Python 3 support will
+come when Flask has it.
 
 Downloading Flask-Restless
 --------------------------

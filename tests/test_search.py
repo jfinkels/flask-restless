@@ -2,77 +2,40 @@
 #
 # Copyright 2012 Jeffrey Finkelstein <jefrey.finkelstein@gmail.com>
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# This file is part of Flask-Restless.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# Flask-Restless is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.search` module."""
-import os
-from tempfile import mkstemp
-import unittest
+from unittest import TestSuite
 
-from elixir import create_all
-from elixir import drop_all
 from elixir import session
-from sqlalchemy import create_engine
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 
 from flask.ext.restless.search import create_query
-from flask.ext.restless.search import evaluate_functions
 from flask.ext.restless.search import search
 from flask.ext.restless.search import SearchParameters
-from .models import setup
+
+from .helpers import TestSupportPrefilled
 from .models import Computer
 from .models import Person
 
 
-class TestSupport(unittest.TestCase):
-    """Base class for tests in this module."""
-
-    def setUp(self):
-        """Creates the database and all necessary tables, and adds some initial
-        rows to the Person table.
-
-        """
-        # set up the database
-        self.db_fd, self.db_file = mkstemp()
-        setup(create_engine('sqlite:///%s' % self.db_file))
-        create_all()
-        session.commit()
-
-        # create some people in the database for testing
-        lincoln = Person(name=u'Lincoln', age=23, other=22)
-        mary = Person(name=u'Mary', age=19, other=19)
-        lucy = Person(name=u'Lucy', age=25, other=20)
-        katy = Person(name=u'Katy', age=7, other=10)
-        john = Person(name=u'John', age=28, other=10)
-        self.people = [lincoln, mary, lucy, katy, john]
-        for person in self.people:
-            session.add(person)
-        session.commit()
-
-    def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        drop_all()
-        session.commit()
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
+__all__ = ['QueryCreationTest', 'SearchTest']
 
 
-class QueryCreationTest(TestSupport):
+class QueryCreationTest(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.search.create_query`
     function.
 
@@ -143,51 +106,7 @@ class QueryCreationTest(TestSupport):
         self.assertEqual(results[1].other, 19)
 
 
-class FunctionEvaluationTest(TestSupport):
-    """Unit tests for the :func:`flask_restless.search.evaluate_functions`
-    function.
-
-    """
-
-    def test_basic_evaluation(self):
-        """Tests for basic function evaluation."""
-        # test for no model
-        result = evaluate_functions(None, [])
-        self.assertEqual(result, {})
-
-        # test for no functions
-        result = evaluate_functions(Person, [])
-        self.assertEqual(result, {})
-
-        # test for summing ages
-        functions = [{'name': 'sum', 'field': 'age'}]
-        result = evaluate_functions(Person, functions)
-        self.assertIn('sum__age', result)
-        self.assertEqual(result['sum__age'], 102.0)
-
-        # test for multiple functions
-        functions = [{'name': 'sum', 'field': 'age'},
-                     {'name': 'avg', 'field': 'other'}]
-        result = evaluate_functions(Person, functions)
-        self.assertIn('sum__age', result)
-        self.assertEqual(result['sum__age'], 102.0)
-        self.assertIn('avg__other', result)
-        self.assertEqual(result['avg__other'], 16.2)
-
-    def test_poorly_defined_functions(self):
-        """Tests that poorly defined functions raise errors."""
-        # test for unknown field
-        functions = [{'name': 'sum', 'field': 'bogus'}]
-        with self.assertRaises(AttributeError):
-            evaluate_functions(Person, functions)
-
-        # test for unknown function
-        functions = [{'name': 'bogus', 'field': 'age'}]
-        with self.assertRaises(OperationalError):
-            evaluate_functions(Person, functions)
-
-
-class SearchTest(TestSupport):
+class SearchTest(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.search.search` function.
 
     The :func:`~flask_restless.search.search` function is a essentially a
@@ -205,17 +124,23 @@ class SearchTest(TestSupport):
         # tests getting multiple results
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'%y%', 'op': 'like'}]}
-        with self.assertRaises(MultipleResultsFound):
-            result = search(Person, d)
+        self.assertRaises(MultipleResultsFound, search, *(Person, d))
 
         # tests getting no results
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'bogusname', 'op': '=='}]}
-        with self.assertRaises(NoResultFound):
-            search(Person, d)
+        self.assertRaises(NoResultFound, search, *(Person, d))
 
         # tests getting exactly one result
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'Lincoln', 'op': '=='}]}
         result = search(Person, d)
         self.assertEqual(result.name, u'Lincoln')
+
+
+def load_tests(loader, standard_tests, pattern):
+    """Returns the test suite for this module."""
+    suite = TestSuite()
+    suite.addTest(loader.loadTestsFromTestCase(QueryCreationTest))
+    suite.addTest(loader.loadTestsFromTestCase(SearchTest))
+    return suite

@@ -17,26 +17,25 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """
-    flask.ext.restless
-    ~~~~~~~~~~~~~~~~~~
+    Flask-Restless unit test runner
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Flask-Restless is a `Flask <http://flask.pocoo.org>`_ extension which
-    facilitates the creation of ReSTful JSON APIs. It is compatible with models
-    which have been described using `Elixir <http://elixir.ematia.de>`_, a
-    layer on top of `SQLAlchemy <http://sqlalchemy.org>`_.
+    Runs all unit tests in this package.
 
-    :copyright: 2011 by Lincoln de Sousa.
-    :copyright: 2012 Jeffrey Finkelstein.
-    :license: GNU Affero General Public License, version 3 or later.
+    If you have Python 2.7, run this from the command-line like this::
 
+        python -m tests
+
+    If you have Python 2.6 or earlier, run this from the command-line like
+    this::
+
+        python -m tests.__main__
+
+    :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
+    :license: GNU AGPLv3, see COPYING for more details
 """
+import unittest
 
-#: The current version of this extension.
-#:
-#: This should be the same as the version specified in the :file:`setup.py`
-#: file.
-__version__ = '0.4-dev'
+from . import suite
 
-# make the following names available as part of the public API
-from .manager import APIManager
-from .model import Entity
+unittest.main(defaultTest='suite')

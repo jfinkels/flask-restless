@@ -1,19 +1,21 @@
 # -*- coding: utf-8; Mode: Python -*-
 #
-# Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
+# Copyright 2012 Jeffrey Finkelstein <jefrey.finkelstein@gmail.com>
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# This file is part of Flask-Restless.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# Flask-Restless is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for SQLAlchemy models which have some validation functionality
 and therefore raise validation errors when requests are made to write to the
 database.
@@ -22,46 +24,29 @@ Validation is not provided by Flask-Restless itself, but it must capture
 validation errors and return them to the client.
 
 """
-from json import dumps
-from json import loads
-import os
-import re
-from tempfile import mkstemp
-import unittest
+from unittest import TestSuite
+from unittest import skipUnless
 
-from elixir import create_all
-from elixir import drop_all
-from elixir import Field
-from elixir import Integer
-from elixir import metadata
-from elixir import session
-from elixir import setup_all
-from elixir import Unicode
-from flask import Flask
-from sqlalchemy import create_engine
+from flask import json
 
 # for the sqlalchemy_elixir_validations package on pypi.python.org
 try:
-    from elixir_validations import validates_format_of
-    from elixir_validations import validates_numericality_of
-    from elixir_validations import validates_presence_of
-    from elixir_validations import validates_range_of
-    from elixir_validations import validates_uniqueness_of
     from elixir_validations import ValidationException
+    from .validation_models.sqlalchemy_elixir_validations import Test
     has_elixir_validations = True
 except:
     has_elixir_validations = False
 
-from flask.ext.restless import APIManager
-from flask.ext.restless import Entity
+from .helpers import TestSupportWithManager
 
-#: A regular expression for email addresses.
-EMAIL_REGEX = re.compile("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^"
-                         "_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a"
-                         "-z0-9](?:[a-z0-9-]*[a-z0-9])")
+__all__ = ['ValidationTestCase']
 
 
-class ValidationTestCase(unittest.TestCase):
+dumps = json.dumps
+loads = json.loads
+
+
+class ValidationTestCase(TestSupportWithManager):
     """Base class for tests which expect validation errors.
 
     Each subclass which inherits from this base class should override
@@ -81,32 +66,8 @@ class ValidationTestCase(unittest.TestCase):
         validation on their fields.
 
         """
-        # create the database
-        self.db_fd, self.db_file = mkstemp()
-        metadata.bind = create_engine('sqlite:///{}'.format(self.db_file))
-        metadata.bind.echo = False
-        setup_all()
-        create_all()
-
-        # create the Flask application
-        app = Flask(__name__)
-        app.config['DEBUG'] = True
-        app.config['TESTING'] = True
-        self.app = app.test_client()
-
-        # setup the URLs for the Person and Computer API
-        self.manager = APIManager(app)
+        super(ValidationTestCase, self).setUp()
         self.create_apis()
-
-    def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        drop_all()
-        session.commit()
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
 
     def create_apis(self):
         """Subclasses must override this method and use it to register APIs for
@@ -118,7 +79,7 @@ class ValidationTestCase(unittest.TestCase):
         pass
 
 
-@unittest.skipUnless(has_elixir_validations, 'elixir_validations not found.')
+@skipUnless(has_elixir_validations, 'elixir_validations not found.')
 class SQLAlchemyElixirValidationsTestCase(ValidationTestCase):
     """Tests for validation errors raised by the
     ``sqlalchemy_elixir_validations`` package. For more information about this
@@ -127,22 +88,9 @@ class SQLAlchemyElixirValidationsTestCase(ValidationTestCase):
 
     """
 
-    # create the validated class
-    # NOTE: don't name this `Person`, as in models.Person
-    class Test(Entity):
-        name = Field(Unicode(30), nullable=False, index=True)
-        email = Field(Unicode, nullable=False)
-        age = Field(Integer, nullable=False)
-
-        validates_uniqueness_of('name')
-        validates_presence_of('name', 'email')
-        validates_format_of('email', EMAIL_REGEX)
-        validates_numericality_of('age', integer_only=True)
-        validates_range_of('age', 0, 150)
-
     def create_apis(self):
         """Create APIs for the validated models."""
-        self.manager.create_api(self.Test, methods=['GET', 'POST', 'PATCH'],
+        self.manager.create_api(Test, methods=['GET', 'POST', 'PATCH'],
                                 validation_exceptions=[ValidationException])
 
     def test_presence_validations(self):
@@ -357,3 +305,12 @@ class SQLAlchemyElixirValidationsTestCase(ValidationTestCase):
         data = loads(response.data)
         if 'validation_errors' in data and 'age' in data['validation_errors']:
             self.assertNotIn('range', errors['age'].lower())
+
+
+def load_tests(loader, standard_tests, pattern):
+    """Returns the test suite for this module."""
+    suite = TestSuite()
+    # for brevity...
+    saev = SQLAlchemyElixirValidationsTestCase
+    suite.addTest(loader.loadTestsFromTestCase(saev))
+    return suite

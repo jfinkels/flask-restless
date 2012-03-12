@@ -2,39 +2,138 @@
 #
 # Copyright (C) 2011 Lincoln de Sousa <lincoln@comum.org>
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Affero General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# This file is part of Flask-Restless.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Affero General Public License for more details.
+# Flask-Restless is free software: you can redistribute it and/or modify it
+# under the terms of the GNU Affero General Public License as published by the
+# Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.views` module."""
 from datetime import date
-from json import dumps
-from json import loads
-from tempfile import mkstemp
-import os
-import unittest
+from unittest import TestSuite
 
-from elixir import create_all
-from elixir import drop_all
-from elixir import session
-import flask
-from sqlalchemy import create_engine
+from flask import json
+from sqlalchemy.exc import OperationalError
 
-from flask.ext.restless import APIManager
-from .models import setup
+from flask.ext.restless.views import _evaluate_functions as evaluate_functions
+from flask.ext.restless.manager import IllegalArgumentError
+
+from .helpers import TestSupportPrefilled
+from .helpers import TestSupportWithManager
+from .helpers import TestSupportWithManagerPrefilled
 from .models import Computer
 from .models import Person
 
 
-class APITestCase(unittest.TestCase):
+__all__ = ['FunctionEvaluationTest', 'FunctionAPITestCase', 'APITestCase']
+
+
+dumps = json.dumps
+loads = json.loads
+
+
+class FunctionEvaluationTest(TestSupportPrefilled):
+    """Unit tests for the :func:`flask_restless.view._evaluate_functions`
+    function.
+
+    """
+
+    def test_basic_evaluation(self):
+        """Tests for basic function evaluation."""
+        # test for no model
+        result = evaluate_functions(None, [])
+        self.assertEqual(result, {})
+
+        # test for no functions
+        result = evaluate_functions(Person, [])
+        self.assertEqual(result, {})
+
+        # test for summing ages
+        functions = [{'name': 'sum', 'field': 'age'}]
+        result = evaluate_functions(Person, functions)
+        self.assert_in('sum__age', result)
+        self.assertEqual(result['sum__age'], 102.0)
+
+        # test for multiple functions
+        functions = [{'name': 'sum', 'field': 'age'},
+                     {'name': 'avg', 'field': 'other'}]
+        result = evaluate_functions(Person, functions)
+        self.assert_in('sum__age', result)
+        self.assertEqual(result['sum__age'], 102.0)
+        self.assert_in('avg__other', result)
+        self.assertEqual(result['avg__other'], 16.2)
+
+    def test_poorly_defined_functions(self):
+        """Tests that poorly defined functions raise errors."""
+        # test for unknown field
+        functions = [{'name': 'sum', 'field': 'bogus'}]
+        self.assertRaises(AttributeError, evaluate_functions,
+                          *(Person, functions))
+
+        # test for unknown function
+        functions = [{'name': 'bogus', 'field': 'age'}]
+        self.assertRaises(OperationalError, evaluate_functions,
+                          *(Person, functions))
+
+
+class FunctionAPITestCase(TestSupportWithManagerPrefilled):
+    """Unit tests for the :class:`flask_restless.views.FunctionAPI` class."""
+
+    def setUp(self):
+        """Creates the database, the :class:`~flask.Flask` object, the
+        :class:`~flask_restless.manager.APIManager` for that application, and
+        creates the ReSTful API endpoints for the :class:`testapp.Person` and
+        :class:`testapp.Computer` models.
+
+        """
+        super(FunctionAPITestCase, self).setUp()
+        self.manager.create_api(Person, allow_functions=True)
+
+    def test_function_evaluation(self):
+        """Test that the :http:get:`/api/eval/person` endpoint returns the
+        result of evaluating functions.
+
+        """
+        functions = [{'name': 'sum', 'field': 'age'},
+                     {'name': 'avg', 'field': 'other'}]
+        response = self.app.get('/api/eval/person',
+                                data=dumps(dict(functions=functions)))
+        self.assertEqual(response.status_code, 200)
+        data = loads(response.data)
+        self.assert_in('sum__age', data)
+        self.assertEqual(data['sum__age'], 102.0)
+        self.assert_in('avg__other', data)
+        self.assertEqual(data['avg__other'], 16.2)
+
+    def test_poorly_defined_functions(self):
+        """Tests that poorly defined requests for function evaluations cause an
+        error message to be returned.
+
+        """
+        # test for bad field name
+        search = {'functions': [{'name': 'sum', 'field': 'bogusfieldname'}]}
+        resp = self.app.get('/api/eval/person', data=dumps(search))
+        self.assertEqual(resp.status_code, 400)
+        self.assert_in('message', loads(resp.data))
+        self.assert_in('bogusfieldname', loads(resp.data)['message'])
+
+        # test for bad function name
+        search = {'functions': [{'name': 'bogusfuncname', 'field': 'age'}]}
+        resp = self.app.get('/api/eval/person', data=dumps(search))
+        self.assertEqual(resp.status_code, 400)
+        self.assert_in('message', loads(resp.data))
+        self.assert_in('bogusfuncname', loads(resp.data)['message'])
+
+
+class APITestCase(TestSupportWithManager):
     """Unit tests for the :class:`flask_restless.views.API` class."""
 
     def setUp(self):
@@ -45,34 +144,15 @@ class APITestCase(unittest.TestCase):
 
         """
         # create the database
-        self.db_fd, self.db_file = mkstemp()
-        setup(create_engine('sqlite:///%s' % self.db_file))
-        create_all()
-
-        # create the Flask application
-        app = flask.Flask(__name__)
-        app.config['DEBUG'] = True
-        app.config['TESTING'] = True
-        self.app = app.test_client()
+        super(APITestCase, self).setUp()
 
         # setup the URLs for the Person and Computer API
-        self.manager = APIManager(app)
         self.manager.create_api(Person, methods=['GET', 'PATCH', 'POST',
                                                  'DELETE'])
         self.manager.create_api(Computer, methods=['GET', 'POST'])
 
         # to facilitate searching
-        self.app.search = lambda url, q: self.app.get(url + '?q={}'.format(q))
-
-    def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        drop_all()
-        session.commit()
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
+        self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
 
     def test_post(self):
         """Test for creating a new instance of the database model using the
@@ -94,7 +174,7 @@ class APITestCase(unittest.TestCase):
         response = self.app.post('/api/person',
                                  data=dumps({'name': 'Lincoln', 'age': 23}))
         self.assertEqual(response.status_code, 201)
-        self.assertIn('id', loads(response.data))
+        self.assert_in('id', loads(response.data))
 
         response = self.app.get('/api/person/1')
         self.assertEqual(response.status_code, 200)
@@ -109,7 +189,7 @@ class APITestCase(unittest.TestCase):
                 'computers': [{'name': u'lixeiro', 'vendor': u'Lemote'}]}
         response = self.app.post('/api/person', data=dumps(data))
         self.assertEqual(response.status_code, 201)
-        self.assertIn('id', loads(response.data))
+        self.assert_in('id', loads(response.data))
 
         response = self.app.get('/api/person')
         self.assertEqual(len(loads(response.data)), 1)
@@ -123,7 +203,7 @@ class APITestCase(unittest.TestCase):
         response = self.app.post('/api/person',
                                  data=dumps({'name': 'Lincoln', 'age': 23}))
         self.assertEqual(response.status_code, 201)
-        self.assertIn('id', loads(response.data))
+        self.assert_in('id', loads(response.data))
 
         # Making sure it has been created
         deep = {'computers': []}
@@ -136,7 +216,7 @@ class APITestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 204)
 
         # Making sure it has been deleted
-        self.assertIsNone(Person.get_by(id=1))
+        self.assert_is_none(Person.get_by(id=1))
 
     def test_delete_absent_instance(self):
         """Test that deleting an instance of the model which does not exist
@@ -251,7 +331,7 @@ class APITestCase(unittest.TestCase):
         resp = self.app.post('/api/person', data=dumps({'name': 'Lincoln',
                                                          'age': 10}))
         self.assertEqual(resp.status_code, 201)
-        self.assertIn('id', loads(resp.data))
+        self.assert_in('id', loads(resp.data))
 
         # Trying to pass invalid data to the update method
         resp = self.app.patch('/api/person/1', data='Invalid JSON string')
@@ -301,7 +381,7 @@ class APITestCase(unittest.TestCase):
 
         # test that this new computer was added to the database as well
         computer = Computer.get_by(id=1)
-        self.assertIsNotNone(computer)
+        self.assert_is_not_none(computer)
         self.assertEqual(data['computers']['add'][0]['name'], computer.name)
         self.assertEqual(data['computers']['add'][0]['vendor'],
                          computer.vendor)
@@ -411,17 +491,17 @@ class APITestCase(unittest.TestCase):
         loaded = loads(resp.data)
         self.assertEqual(len(loaded['objects']), 3)  # Mary, Lucy and Katy
 
-        # Let's try something more complex, let's sum all age values
-        # available in our database
-        search = {
-            'functions': [{'name': 'sum', 'field': 'age'}]
-        }
+        # # Let's try something more complex, let's sum all age values
+        # # available in our database
+        # search = {
+        #     'functions': [{'name': 'sum', 'field': 'age'}]
+        # }
 
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        data = loads(resp.data)
-        self.assertIn('sum__age', data)
-        self.assertEqual(data['sum__age'], 102.0)
+        # resp = self.app.search('/api/person', dumps(search))
+        # self.assertEqual(resp.status_code, 200)
+        # data = loads(resp.data)
+        # self.assertIn('sum__age', data)
+        # self.assertEqual(data['sum__age'], 102.0)
 
         # Tests searching for a single row
         search = {
@@ -517,25 +597,6 @@ class APITestCase(unittest.TestCase):
         self.assertEqual(loaded[0]['other'], 10)
         self.assertEqual(loaded[1]['other'], 19)
 
-    def test_poorly_defined_functions(self):
-        """Tests that poorly defined requests for function evaluations cause an
-        error message to be returned.
-
-        """
-        # test for bad field name
-        search = {'functions': [{'name': 'sum', 'field': 'bogusfieldname'}]}
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 400)
-        self.assertIn('message', loads(resp.data))
-        self.assertIn('bogusfieldname', loads(resp.data)['message'])
-
-        # test for bad function name
-        search = {'functions': [{'name': 'bogusfuncname', 'field': 'age'}]}
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 400)
-        self.assertIn('message', loads(resp.data))
-        self.assertIn('bogusfuncname', loads(resp.data)['message'])
-
     def test_search2(self):
         """Testing more search functionality."""
         create = lambda x: self.app.post('/api/person', data=dumps(x))
@@ -562,3 +623,58 @@ class APITestCase(unittest.TestCase):
         resp = self.app.search('/api/person', dumps({'single': True}))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['message'], 'Multiple results found')
+
+    def test_authentication(self):
+        """Tests basic authentication using custom authentication functions."""
+        # must provide authentication function if authentication is required
+        # for some HTTP methods
+        self.assertRaises(IllegalArgumentError, self.manager.create_api,
+                          *(Person, ),
+                          **dict(methods=['GET', 'POST'],
+                                 authentication_required_for=['POST']))
+
+        # test for authentication always failing
+        self.manager.create_api(Person, methods=['GET', 'POST'],
+                                url_prefix='/api/v2',
+                                authentication_required_for=['POST'],
+                                authentication_function=lambda: False)
+
+        # a slightly more complicated function; all odd calls are authenticated
+        class everyother(object):
+            """Stores the number of times this object has been called."""
+
+            def __init__(self):
+                """Initialize the number of calls to 0."""
+                self.count = 0
+
+            def __call__(self):
+                """Increment the call count and return its parity."""
+                self.count += 1
+                return self.count % 2
+
+        self.manager.create_api(Person, methods=['GET'], url_prefix='/api/v3',
+                                authentication_required_for=['GET'],
+                                authentication_function=everyother())
+
+        # requests which expect authentication always fails
+        for i in range(3):
+            response = self.app.get('/api/v2/person')
+            self.assertEqual(response.status_code, 200)
+            response = self.app.post('/api/v2/person')
+            self.assertEqual(response.status_code, 401)
+
+        # requests which fail on every odd request
+        for i in range(3):
+            response = self.app.get('/api/v3/person')
+            self.assertEqual(response.status_code, 200)
+            response = self.app.get('/api/v3/person')
+            self.assertEqual(response.status_code, 401)
+
+
+def load_tests(loader, standard_tests, pattern):
+    """Returns the test suite for this module."""
+    suite = TestSuite()
+    suite.addTest(loader.loadTestsFromTestCase(FunctionAPITestCase))
+    suite.addTest(loader.loadTestsFromTestCase(FunctionEvaluationTest))
+    suite.addTest(loader.loadTestsFromTestCase(APITestCase))
+    return suite
