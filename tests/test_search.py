@@ -17,7 +17,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.search` module."""
-from unittest import TestSuite
+from __future__ import with_statement
+
+from unittest2 import TestSuite
 
 from elixir import session
 from sqlalchemy.orm.exc import MultipleResultsFound
@@ -124,12 +126,14 @@ class SearchTest(TestSupportPrefilled):
         # tests getting multiple results
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'%y%', 'op': 'like'}]}
-        self.assertRaises(MultipleResultsFound, search, *(Person, d))
+        with self.assertRaises(MultipleResultsFound):
+            search(Person, d)
 
         # tests getting no results
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'bogusname', 'op': '=='}]}
-        self.assertRaises(NoResultFound, search, *(Person, d))
+        with self.assertRaises(NoResultFound):
+            search(Person, d)
 
         # tests getting exactly one result
         d = {'single': True,

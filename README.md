@@ -89,10 +89,16 @@ view the version at the project's
 
 ## Testing ##
 
+Running the unit tests require the [unittest2][ut2] package, which backports
+the functionality of the built-in `unittest` package from Python version 2.7 to
+earlier versions.
+
 The Python unit tests are contained in the `tests/` directory (which is a
 Python package). To run the test suite, run the command
 
     python setup.py test
+
+[ut2]: http://pypi.python.org/pypi/unittest2
 
 ## Building documentation ##
 
