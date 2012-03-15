@@ -293,7 +293,8 @@ class APITestCase(TestSupportWithManager):
                       data=dumps({'name': 'Mary', 'age': 25}))
 
         # Trying to pass invalid data to the update method
-        resp = self.app.patch('/api/person', data='Hello there')
+        resp = self.app.patch('/api/v2/person', data='Hello there')
+        self.assertEqual(resp.status_code, 400)
         self.assertEqual(loads(resp.data)['message'], 'Unable to decode data')
 
         # Changing the birth date field of the entire collection
