@@ -293,22 +293,8 @@ class APITestCase(TestSupportWithManager):
                       data=dumps({'name': 'Mary', 'age': 25}))
 
         # Trying to pass invalid data to the update method
-        # resp = self.app.patch('/api/person', data='Hello there')
-        # assert loads(resp.data)['message'] == 'Unable to decode data'
-
-        # Trying to pass valid JSON with invalid object to the API
-        # resp = self.app.patch('/api/person', data=dumps({'age': 'Hello'}))
-        # assert resp.status_code == 400
-        # loaded = loads(resp.data)
-        # assert loaded['message'] == 'Validation error'
-        # assert loaded['error_list'] == [{'age': 'Please enter a number'}]
-
-        # Passing invalid search fields to test the exceptions
-        # resp = self.app.patch('/api/person', data=dumps({'age': 'Hello'}),
-        #                     query_string=dict(name='age', op='gt', val='test'))
-        # loaded = loads(resp.data)
-        # assert loaded['message'] == 'Validation error'
-        # assert loaded['error_list'] == [{'age': 'Please enter a number'}]
+        resp = self.app.patch('/api/person', data='Hello there')
+        self.assertEqual(loads(resp.data)['message'], 'Unable to decode data')
 
         # Changing the birth date field of the entire collection
         day, month, year = 15, 9, 1986
@@ -337,14 +323,6 @@ class APITestCase(TestSupportWithManager):
         resp = self.app.patch('/api/person/1', data='Invalid JSON string')
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(loads(resp.data)['message'], 'Unable to decode data')
-
-        # Trying to pass valid JSON but an invalid value to the API
-        # resp = self.app.patch('/api/person/1',
-        #                     data=dumps({'age': 'Hello there'}))
-        # assert resp.status_code == 400
-        # loaded = loads(resp.data)
-        # assert loaded['message'] == 'Validation error'
-        # assert loaded['error_list'] == [{'age': 'Please enter a number'}]
 
         resp = self.app.patch('/api/person/1', data=dumps({'age': 24}))
         self.assertEqual(resp.status_code, 200)
@@ -466,11 +444,9 @@ class APITestCase(TestSupportWithManager):
     def test_search(self):
         """Tests basic search using the :http:method:`get` method."""
         # Trying to pass invalid params to the search method
-        # TODO this is no longer a valid test, since the query is no longer
-        # passed as JSON in body of the request
-        #resp = self.app.get('/api/person', query_string='Test')
-        #assert resp.status_code == 400
-        #assert loads(resp.data)['message'] == 'Unable to decode data'
+        resp = self.app.get('/api/person?q=Test')
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(loads(resp.data)['message'], 'Unable to decode data')
 
         create = lambda x: self.app.post('/api/person', data=dumps(x))
         create({'name': u'Lincoln', 'age': 23, 'other': 22})
@@ -490,18 +466,6 @@ class APITestCase(TestSupportWithManager):
         self.assertEqual(resp.status_code, 200)
         loaded = loads(resp.data)
         self.assertEqual(len(loaded['objects']), 3)  # Mary, Lucy and Katy
-
-        # # Let's try something more complex, let's sum all age values
-        # # available in our database
-        # search = {
-        #     'functions': [{'name': 'sum', 'field': 'age'}]
-        # }
-
-        # resp = self.app.search('/api/person', dumps(search))
-        # self.assertEqual(resp.status_code, 200)
-        # data = loads(resp.data)
-        # self.assertIn('sum__age', data)
-        # self.assertEqual(data['sum__age'], 102.0)
 
         # Tests searching for a single row
         search = {
@@ -581,7 +545,6 @@ class APITestCase(TestSupportWithManager):
         # Testing the comparation for two fields. We want to compare
         # `age' and `other' fields. If the first one is lower than or
         # equals to the second one, we want the object
-        # TODO what is this? document it.
         search = {
             'filters': [
                 {'name': 'age', 'op': 'lte', 'field': 'other'}
