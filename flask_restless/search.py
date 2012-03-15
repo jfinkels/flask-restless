@@ -301,9 +301,8 @@ class QueryBuilder(object):
         field = getattr(model, relation or fieldname)
         return OPERATORS.get(operator)(field, argument, fieldname)
 
-    # TODO rename this to _create_filters
     @staticmethod
-    def _extract_operators(model, search_params):
+    def _create_filters(model, search_params):
         """Returns the list of operations on ``model`` specified in the
         :attr:`filters` attribute on the ``search_params`` object.
 
@@ -311,7 +310,7 @@ class QueryBuilder(object):
         class whose fields represent the parameters of the search.
 
         """
-        operations = []
+        filters = []
         for f in search_params.filters:
             fname = f.fieldname
             val = f.argument
@@ -324,9 +323,8 @@ class QueryBuilder(object):
                 val = getattr(model, f.otherfield)
             param = QueryBuilder._create_operation(model, fname, f.operator,
                                                    val, relation)
-            operations.append(param)
-
-        return operations
+            filters.append(param)
+        return filters
 
     @staticmethod
     def create_query(model, search_params):
@@ -351,9 +349,9 @@ class QueryBuilder(object):
         """
         # Adding field filters
         query = model.query
-        operations = QueryBuilder._extract_operators(model, search_params)
-        for i in operations:
-            query = query.filter(i)
+        filters = QueryBuilder._create_filters(model, search_params)
+        for f in filters:
+            query = query.filter(f)
 
         # Order the search
         for val in search_params.order_by:
