@@ -34,8 +34,8 @@
     :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
     :license: GNU AGPLv3, see COPYING for more details
 """
-import unittest
+import unittest2
 
 from . import suite
 
-unittest.main(defaultTest='suite')
+unittest2.main(defaultTest='suite')

@@ -43,7 +43,8 @@
     :license: GNU AGPLv3, see COPYING for more details
 
 """
-import unittest
+from unittest2 import TestSuite
+from unittest2 import defaultTestLoader
 
 from . import test_manager
 from . import test_model
@@ -53,8 +54,8 @@ from . import test_views
 
 def suite():
     """Returns the test suite for this module."""
-    result = unittest.TestSuite()
-    loader = unittest.defaultTestLoader
+    result = TestSuite()
+    loader = defaultTestLoader
     result.addTest(loader.loadTestsFromModule(test_manager))
     result.addTest(loader.loadTestsFromModule(test_model))
     result.addTest(loader.loadTestsFromModule(test_search))

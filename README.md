@@ -89,6 +89,10 @@ For information on how to use this extension, build the documentation here or
 
 ## Testing ##
 
+Running the unit tests require the [unittest2][ut2] package, which backports
+the functionality of the built-in `unittest` package from Python version 2.7 to
+earlier versions.
+
 The Python unit tests are contained in the `tests/` directory (which is a
 Python package). To run the test suite, run the command
 
@@ -99,6 +103,7 @@ install the [sqlalchemy-validation][sav] package. If it is not detected, these
 tests will be skipped.
 
 [sav]: http://code.google.com/p/sqlalchemy-validations/
+[ut2]: http://pypi.python.org/pypi/unittest2
 
 ## Building documentation ##
 

@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.manager` module."""
-from unittest import TestSuite
+from unittest2 import TestSuite
 
 from flask import json
 

@@ -18,7 +18,7 @@
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.model` module."""
 from datetime import date, datetime
-from unittest import TestSuite
+from unittest2 import TestSuite
 
 from elixir import session
 
@@ -63,7 +63,7 @@ class EntityTestCase(TestSupport):
         person.birth_date = date(1986, 9, 15)
         session.commit()
         persondict = person.to_dict()
-        self.assert_in('birth_date', persondict)
+        self.assertIn('birth_date', persondict)
         self.assertEqual(persondict['birth_date'],
                          person.birth_date.strftime(ISO8601_DATE))
 

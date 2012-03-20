@@ -17,8 +17,10 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.views` module."""
+from __future__ import with_statement
+
 from datetime import date
-from unittest import TestSuite
+from unittest2 import TestSuite
 
 from flask import json
 from sqlalchemy.exc import OperationalError
@@ -59,29 +61,29 @@ class FunctionEvaluationTest(TestSupportPrefilled):
         # test for summing ages
         functions = [{'name': 'sum', 'field': 'age'}]
         result = evaluate_functions(Person, functions)
-        self.assert_in('sum__age', result)
+        self.assertIn('sum__age', result)
         self.assertEqual(result['sum__age'], 102.0)
 
         # test for multiple functions
         functions = [{'name': 'sum', 'field': 'age'},
                      {'name': 'avg', 'field': 'other'}]
         result = evaluate_functions(Person, functions)
-        self.assert_in('sum__age', result)
+        self.assertIn('sum__age', result)
         self.assertEqual(result['sum__age'], 102.0)
-        self.assert_in('avg__other', result)
+        self.assertIn('avg__other', result)
         self.assertEqual(result['avg__other'], 16.2)
 
     def test_poorly_defined_functions(self):
         """Tests that poorly defined functions raise errors."""
         # test for unknown field
         functions = [{'name': 'sum', 'field': 'bogus'}]
-        self.assertRaises(AttributeError, evaluate_functions,
-                          *(Person, functions))
+        with self.assertRaises(AttributeError):
+            evaluate_functions(Person, functions)
 
         # test for unknown function
         functions = [{'name': 'bogus', 'field': 'age'}]
-        self.assertRaises(OperationalError, evaluate_functions,
-                          *(Person, functions))
+        with self.assertRaises(OperationalError):
+            evaluate_functions(Person, functions)
 
 
 class FunctionAPITestCase(TestSupportWithManagerPrefilled):
@@ -108,9 +110,9 @@ class FunctionAPITestCase(TestSupportWithManagerPrefilled):
                                 data=dumps(dict(functions=functions)))
         self.assertEqual(response.status_code, 200)
         data = loads(response.data)
-        self.assert_in('sum__age', data)
+        self.assertIn('sum__age', data)
         self.assertEqual(data['sum__age'], 102.0)
-        self.assert_in('avg__other', data)
+        self.assertIn('avg__other', data)
         self.assertEqual(data['avg__other'], 16.2)
 
     def test_poorly_defined_functions(self):
@@ -122,15 +124,15 @@ class FunctionAPITestCase(TestSupportWithManagerPrefilled):
         search = {'functions': [{'name': 'sum', 'field': 'bogusfieldname'}]}
         resp = self.app.get('/api/eval/person', data=dumps(search))
         self.assertEqual(resp.status_code, 400)
-        self.assert_in('message', loads(resp.data))
-        self.assert_in('bogusfieldname', loads(resp.data)['message'])
+        self.assertIn('message', loads(resp.data))
+        self.assertIn('bogusfieldname', loads(resp.data)['message'])
 
         # test for bad function name
         search = {'functions': [{'name': 'bogusfuncname', 'field': 'age'}]}
         resp = self.app.get('/api/eval/person', data=dumps(search))
         self.assertEqual(resp.status_code, 400)
-        self.assert_in('message', loads(resp.data))
-        self.assert_in('bogusfuncname', loads(resp.data)['message'])
+        self.assertIn('message', loads(resp.data))
+        self.assertIn('bogusfuncname', loads(resp.data)['message'])
 
 
 class APITestCase(TestSupportWithManager):
@@ -174,7 +176,7 @@ class APITestCase(TestSupportWithManager):
         response = self.app.post('/api/person',
                                  data=dumps({'name': 'Lincoln', 'age': 23}))
         self.assertEqual(response.status_code, 201)
-        self.assert_in('id', loads(response.data))
+        self.assertIn('id', loads(response.data))
 
         response = self.app.get('/api/person/1')
         self.assertEqual(response.status_code, 200)
@@ -189,7 +191,7 @@ class APITestCase(TestSupportWithManager):
                 'computers': [{'name': u'lixeiro', 'vendor': u'Lemote'}]}
         response = self.app.post('/api/person', data=dumps(data))
         self.assertEqual(response.status_code, 201)
-        self.assert_in('id', loads(response.data))
+        self.assertIn('id', loads(response.data))
 
         response = self.app.get('/api/person')
         self.assertEqual(len(loads(response.data)), 1)
@@ -203,7 +205,7 @@ class APITestCase(TestSupportWithManager):
         response = self.app.post('/api/person',
                                  data=dumps({'name': 'Lincoln', 'age': 23}))
         self.assertEqual(response.status_code, 201)
-        self.assert_in('id', loads(response.data))
+        self.assertIn('id', loads(response.data))
 
         # Making sure it has been created
         deep = {'computers': []}
@@ -216,7 +218,7 @@ class APITestCase(TestSupportWithManager):
         self.assertEqual(response.status_code, 204)
 
         # Making sure it has been deleted
-        self.assert_is_none(Person.get_by(id=1))
+        self.assertIsNone(Person.get_by(id=1))
 
     def test_delete_absent_instance(self):
         """Test that deleting an instance of the model which does not exist
@@ -318,7 +320,7 @@ class APITestCase(TestSupportWithManager):
         resp = self.app.post('/api/person', data=dumps({'name': 'Lincoln',
                                                          'age': 10}))
         self.assertEqual(resp.status_code, 201)
-        self.assert_in('id', loads(resp.data))
+        self.assertIn('id', loads(resp.data))
 
         # Trying to pass invalid data to the update method
         resp = self.app.patch('/api/person/1', data='Invalid JSON string')
@@ -360,7 +362,7 @@ class APITestCase(TestSupportWithManager):
 
         # test that this new computer was added to the database as well
         computer = Computer.get_by(id=1)
-        self.assert_is_not_none(computer)
+        self.assertIsNotNone(computer)
         self.assertEqual(data['computers']['add'][0]['name'], computer.name)
         self.assertEqual(data['computers']['add'][0]['vendor'],
                          computer.vendor)
@@ -592,10 +594,9 @@ class APITestCase(TestSupportWithManager):
         """Tests basic authentication using custom authentication functions."""
         # must provide authentication function if authentication is required
         # for some HTTP methods
-        self.assertRaises(IllegalArgumentError, self.manager.create_api,
-                          *(Person, ),
-                          **dict(methods=['GET', 'POST'],
-                                 authentication_required_for=['POST']))
+        with self.assertRaises(IllegalArgumentError):
+            self.manager.create_api(Person, methods=['GET', 'POST'],
+                                    authentication_required_for=['POST'])
 
         # test for authentication always failing
         self.manager.create_api(Person, methods=['GET', 'POST'],
