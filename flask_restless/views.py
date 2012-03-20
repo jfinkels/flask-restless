@@ -96,8 +96,8 @@ def _evaluate_functions(model, functions):
         return {}
     processed = []
     funcnames = []
-    for f in functions:
-        funcname, fieldname = f['name'], f['field']
+    for function in functions:
+        funcname, fieldname = function['name'], function['field']
         # We retrieve the function by name from the SQLAlchemy ``func``
         # module and the field by name from the model class.
         #

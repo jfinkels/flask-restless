@@ -311,17 +311,17 @@ class QueryBuilder(object):
 
         """
         filters = []
-        for f in search_params.filters:
-            fname = f.fieldname
-            val = f.argument
+        for filt in search_params.filters:
+            fname = filt.fieldname
+            val = filt.argument
             # get the relationship from the field name, if it exists
             relation = None
             if '__' in fname:
                 relation, fname = fname.split('__')
             # get the other field to which to compare, if it exists
-            if f.otherfield:
-                val = getattr(model, f.otherfield)
-            param = QueryBuilder._create_operation(model, fname, f.operator,
+            if filt.otherfield:
+                val = getattr(model, filt.otherfield)
+            param = QueryBuilder._create_operation(model, fname, filt.operator,
                                                    val, relation)
             filters.append(param)
         return filters
@@ -350,8 +350,8 @@ class QueryBuilder(object):
         # Adding field filters
         query = model.query
         filters = QueryBuilder._create_filters(model, search_params)
-        for f in filters:
-            query = query.filter(f)
+        for filt in filters:
+            query = query.filter(filt)
 
         # Order the search
         for val in search_params.order_by:
