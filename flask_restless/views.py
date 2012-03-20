@@ -96,8 +96,8 @@ def _evaluate_functions(model, functions):
         return {}
     processed = []
     funcnames = []
-    for f in functions:
-        funcname, fieldname = f['name'], f['field']
+    for function in functions:
+        funcname, fieldname = function['name'], function['field']
         # We retrieve the function by name from the SQLAlchemy ``func``
         # module and the field by name from the model class.
         #
@@ -218,7 +218,6 @@ class API(ModelView):
         # convert HTTP method names to uppercase
         self.authentication_required_for = \
             frozenset([m.upper() for m in self.authentication_required_for])
-
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
@@ -438,7 +437,6 @@ class API(ModelView):
             return jsonify(objects=result)
         else:
             return jsonify(result.to_dict(deep))
-
 
     def _check_authentication(self):
         """If the specified HTTP method requires authentication (see the

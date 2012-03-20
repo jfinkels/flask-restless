@@ -3,8 +3,8 @@
 ## Introduction ##
 
 This is Flask-Restless, a [Flask][1] extension which facilitates the creation
-of ReSTful APIs. It is compatible with models which have been described using
-[Elixir][2], a layer on top of [SQLAlchemy][3].
+of ReSTful JSON APIs. It is compatible with models which have been described
+using [Elixir][2], a layer on top of [SQLAlchemy][3].
 
 This document contains some brief instructions concerning installation of
 requirements, installation of this extension, configuration and usage of this
@@ -31,16 +31,17 @@ information see the `COPYING` file.
 
 This is a partial listing of the contents of this package.
 
-* `doc/` - the Sphinx documentation for Flask-Restless
-* `examples/` - example applications of Flask-Restless
 * `COPYING` - the copyright license under which this program is distributed to
   you (the GNU Affero General Public License version 3)
-* `flaskext/restless` - the Python package containing the extension
+* `docs/` - the Sphinx documentation for Flask-Restless
+* `examples/` - example applications of Flask-Restless
+* `flask_restless/` - the Python package containing the extension
 * `README.md` - this file
 * `setup.py` - Python setuptools configuration file for packaging this
   extension
+* `tests/` - unit tests for Flask-Restless
 
-The `flaskext/restless` directory is a Python package containing the following
+The `flask_restless` directory is a Python package containing the following
 files:
 
 * `views.py` - the view class which implements the ReSTful API
@@ -84,8 +85,7 @@ This package can be built, installed, etc. as a Python egg using the provided
 ## How to use ##
 
 For information on how to use this extension, build the documentation here or
-view the version at the project's
-[homepage](http://packages.python.org/Flask-Restless).
+[view it on the Web](http://readthedocs.org/docs/flask-restless).
 
 ## Testing ##
 

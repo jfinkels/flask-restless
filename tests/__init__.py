@@ -53,9 +53,10 @@ from . import test_views
 
 def suite():
     """Returns the test suite for this module."""
-    suite = TestSuite()
-    suite.addTest(defaultTestLoader.loadTestsFromModule(test_manager))
-    suite.addTest(defaultTestLoader.loadTestsFromModule(test_model))
-    suite.addTest(defaultTestLoader.loadTestsFromModule(test_search))
-    suite.addTest(defaultTestLoader.loadTestsFromModule(test_views))
-    return suite
+    result = TestSuite()
+    loader = defaultTestLoader
+    result.addTest(loader.loadTestsFromModule(test_manager))
+    result.addTest(loader.loadTestsFromModule(test_model))
+    result.addTest(loader.loadTestsFromModule(test_search))
+    result.addTest(loader.loadTestsFromModule(test_views))
+    return result

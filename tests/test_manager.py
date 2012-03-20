@@ -44,7 +44,6 @@ class APIManagerTest(TestSupportWithManager):
 
         """
         # create three different APIs for the same model
-        # TODO note in documentation that only
         self.manager.create_api(Person, methods=['GET', 'POST'])
         self.manager.create_api(Person, methods=['PATCH'], url_prefix='/api2')
         self.manager.create_api(Person, methods=['GET'],

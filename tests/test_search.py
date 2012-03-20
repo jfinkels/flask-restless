@@ -1,6 +1,6 @@
 # -*- coding: utf-8; Mode: Python -*-
 #
-# Copyright 2012 Jeffrey Finkelstein <jefrey.finkelstein@gmail.com>
+# Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
 #
 # This file is part of Flask-Restless.
 #
