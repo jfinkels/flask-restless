@@ -235,7 +235,7 @@ class API(ModelView):
         # convert HTTP method names to uppercase
         self.authentication_required_for = \
             frozenset([m.upper() for m in self.authentication_required_for])
-        self.validation_exceptions = tuple(validation_exceptions) or ()
+        self.validation_exceptions = tuple(validation_exceptions or ())
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
