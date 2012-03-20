@@ -24,8 +24,8 @@ Validation is not provided by Flask-Restless itself, but it must capture
 validation errors and return them to the client.
 
 """
-from unittest import TestSuite
-from unittest import skipUnless
+from unittest2 import TestSuite
+from unittest2 import skipUnless
 
 from flask import json
 
@@ -79,8 +79,7 @@ class ValidationTestCase(TestSupportWithManager):
         pass
 
 
-@skipUnless(has_elixir_validations, 'elixir_validations not found.')
-class SQLAlchemyElixirValidationsTestCase(ValidationTestCase):
+class SAETest(ValidationTestCase):
     """Tests for validation errors raised by the
     ``sqlalchemy_elixir_validations`` package. For more information about this
     package, see `its PyPI page
@@ -306,11 +305,14 @@ class SQLAlchemyElixirValidationsTestCase(ValidationTestCase):
         if 'validation_errors' in data and 'age' in data['validation_errors']:
             self.assertNotIn('range', errors['age'].lower())
 
+# skipUnless should be used as a decorator, but Python 2.5 doesn't have
+# decorators.
+SAETest = skipUnless(has_elixir_validations,
+                     'elixir_validations not found.')(SAETest)
+
 
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
     suite = TestSuite()
-    # for brevity...
-    saev = SQLAlchemyElixirValidationsTestCase
-    suite.addTest(loader.loadTestsFromTestCase(saev))
+    suite.addTest(loader.loadTestsFromTestCase(SAETest))
     return suite
