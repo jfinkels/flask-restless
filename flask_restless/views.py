@@ -219,7 +219,6 @@ class API(ModelView):
         self.authentication_required_for = \
             frozenset([m.upper() for m in self.authentication_required_for])
 
-
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
         `query`.
@@ -438,7 +437,6 @@ class API(ModelView):
             return jsonify(objects=result)
         else:
             return jsonify(result.to_dict(deep))
-
 
     def _check_authentication(self):
         """If the specified HTTP method requires authentication (see the
