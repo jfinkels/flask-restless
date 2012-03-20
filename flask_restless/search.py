@@ -301,9 +301,8 @@ class QueryBuilder(object):
         field = getattr(model, relation or fieldname)
         return OPERATORS.get(operator)(field, argument, fieldname)
 
-    # TODO rename this to _create_filters
     @staticmethod
-    def _extract_operators(model, search_params):
+    def _create_filters(model, search_params):
         """Returns the list of operations on ``model`` specified in the
         :attr:`filters` attribute on the ``search_params`` object.
 
@@ -311,22 +310,21 @@ class QueryBuilder(object):
         class whose fields represent the parameters of the search.
 
         """
-        operations = []
-        for f in search_params.filters:
-            fname = f.fieldname
-            val = f.argument
+        filters = []
+        for filt in search_params.filters:
+            fname = filt.fieldname
+            val = filt.argument
             # get the relationship from the field name, if it exists
             relation = None
             if '__' in fname:
                 relation, fname = fname.split('__')
             # get the other field to which to compare, if it exists
-            if f.otherfield:
-                val = getattr(model, f.otherfield)
-            param = QueryBuilder._create_operation(model, fname, f.operator,
+            if filt.otherfield:
+                val = getattr(model, filt.otherfield)
+            param = QueryBuilder._create_operation(model, fname, filt.operator,
                                                    val, relation)
-            operations.append(param)
-
-        return operations
+            filters.append(param)
+        return filters
 
     @staticmethod
     def create_query(model, search_params):
@@ -351,9 +349,9 @@ class QueryBuilder(object):
         """
         # Adding field filters
         query = model.query
-        operations = QueryBuilder._extract_operators(model, search_params)
-        for i in operations:
-            query = query.filter(i)
+        filters = QueryBuilder._create_filters(model, search_params)
+        for filt in filters:
+            query = query.filter(filt)
 
         # Order the search
         for val in search_params.order_by:

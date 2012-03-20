@@ -129,8 +129,7 @@ class Entity(EntityBase):
         fieldtype = getattr(cls, fieldname).property.columns[0].type
         return isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime)
 
-
-    def to_dict(self, deep=dict(), exclude=list()):
+    def to_dict(self, deep=None, exclude=None):
         """Returns a dictionary representation of this instance of the entity
         with any :class:`datetime.date` or :class:`datetime.datetime` objects
         formatted as a string in ISO 8601 format.
@@ -150,11 +149,11 @@ class Entity(EntityBase):
             {'mydate': '2012-02-27', 'id': None,
              'mydatetime': '2012-02-27T15:59:43'}
 
-        The ``deep`` dictionary and ``exclude`` list are passed directly to the
+        The `deep` dictionary and `exclude` list are passed directly to the
         :meth:`elixir.entity.Entity.to_dict` method.
 
         """
-        data = super(Entity, self).to_dict(deep, exclude)
+        data = super(Entity, self).to_dict(deep or {}, exclude or [])
 
         for key, value in data.items():
             if isinstance(value, date):

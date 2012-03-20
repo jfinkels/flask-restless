@@ -53,11 +53,11 @@ from . import test_views
 
 def suite():
     """Returns the test suite for this module."""
-    suite = unittest.TestSuite()
+    result = unittest.TestSuite()
     loader = unittest.defaultTestLoader
-    suite.addTest(loader.loadTestsFromModule(test_manager))
-    suite.addTest(loader.loadTestsFromModule(test_model))
-    suite.addTest(loader.loadTestsFromModule(test_search))
-    suite.addTest(loader.loadTestsFromModule(test_validation))
-    suite.addTest(loader.loadTestsFromModule(test_views))
-    return suite
+    result.addTest(loader.loadTestsFromModule(test_manager))
+    result.addTest(loader.loadTestsFromModule(test_model))
+    result.addTest(loader.loadTestsFromModule(test_search))
+    result.addTest(loader.loadTestsFromModule(test_validation))
+    result.addTest(loader.loadTestsFromModule(test_views))
+    return result
