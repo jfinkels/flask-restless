@@ -160,7 +160,8 @@ class Entity(EntityBase):
         #
         # Use data.items() here instead of data.iteritems() because the former
         # returns a copy of the list and we are modifying the original list
-        # in-place.
+        # in-place. Note that in Python 3, data.items() returns a view of the
+        # dictionary, but this should allow modifying while iterating.
         for key, value in data.items():
             # Objects of type date satisfy both the first condition and the
             # second condition (since date is a subclass of datetime).
