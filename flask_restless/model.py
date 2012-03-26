@@ -154,10 +154,20 @@ class Entity(EntityBase):
 
         """
         data = super(Entity, self).to_dict(deep or {}, exclude or [])
-
+        # Iterate over each pair of the returned dictionary and convert date or
+        # datetime objects to their ISO 8601 string representations. Do not
+        # modify any other objects.
+        #
+        # Use data.items() here instead of data.iteritems() because the former
+        # returns a copy of the list and we are modifying the original list
+        # in-place.
         for key, value in data.items():
+            # Objects of type date satisfy both the first condition and the
+            # second condition (since date is a subclass of datetime).
+            # Therefore, we use if/elif to make sure at most one of these lines
+            # is executed.
             if isinstance(value, date):
                 data[key] = value.strftime(ISO8601_DATE)
-            if isinstance(value, datetime):
+            elif isinstance(value, datetime):
                 data[key] = value.strftime(ISO8601_DATETIME)
         return data
