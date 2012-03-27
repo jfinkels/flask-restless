@@ -110,7 +110,12 @@ the documentation:
 * [Sphinx][6]
 * [sphinxcontrib-httpdomain-withpatch][7]
 
-Using `pip` is probably the easiest way to install these:
+These requirements are also listed in the `requirements-doc.txt` file. Using
+`pip` is probably the easiest way to install these:
+
+    pip install -r requirements-doc.txt
+
+or
 
     pip install sphinx "sphinxcontrib-httpdomain-withpatch==1.1.6-patch2"
 
