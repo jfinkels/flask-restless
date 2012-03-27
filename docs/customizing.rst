@@ -1,15 +1,17 @@
 .. _customizing:
 
+.. currentmodule:: flask.ext.restless
+
 Customizing the ReSTful interface
 =================================
 
 HTTP methods
 ~~~~~~~~~~~~
 
-By default, the :meth:`~flaskext.restless.APIManager.create_api` method creates
-a read-only interface; requests with HTTP methods other than :http:method:`GET`
-will cause a response with :http:statuscode:`405`. To explicitly specify which
-methods should be allowed for the endpoint, pass a list as the value of keyword
+By default, the :meth:`APIManager.create_api` method creates a read-only
+interface; requests with HTTP methods other than :http:method:`GET` will cause
+a response with :http:statuscode:`405`. To explicitly specify which methods
+should be allowed for the endpoint, pass a list as the value of keyword
 argument ``methods``::
 
     apimanager.create_api(Person, methods=['GET', 'POST', 'DELETE'])
@@ -56,8 +58,7 @@ with data respond with serialized JSON strings.
 .. http:patch:: /api/person?q=<searchjson>
 
    This is only available if the ``allow_patch_many`` keyword argument is set
-   to ``True`` when calling the
-   :meth:`~flask.ext.restless.manager.APIManager.create_api` method. For more
+   to ``True`` when calling the :meth:`~APIManager.create_api` method. For more
    information, see :ref:`allowpatchmany`.
 
    Updates the attributes of all ``Person`` instances which match the search
@@ -111,9 +112,9 @@ Exposing evaluation of SQL function
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If the ``allow_functions`` keyword argument is set to ``True`` when creating an
-API for a model using :meth:`flask_restless.APIManager.create_api`, then an
-endpoint will be made available for :http:get:`/api/eval/person` which responds
-to requests for evaluation of functions on all instances the model.
+API for a model using :meth:`APIManager.create_api`, then an endpoint will be
+made available for :http:get:`/api/eval/person` which responds to requests for
+evaluation of functions on all instances the model.
 
 For information about the request and response formats for this endpoint, see
 :ref:`functionevaluation`.
@@ -132,8 +133,8 @@ Requiring authentication for some methods
 
 If you want certain HTTP methods to require authentication, use the
 ``authentication_required_for`` and ``authentication_function`` keyword
-arguments to the :meth:`flask_restless.APIManager.create_api` method. If you
-specify the former, you must also specify the latter.
+arguments to the :meth:`APIManager.create_api` method. If you specify the
+former, you must also specify the latter.
 
 ``authentication_required_for`` is the list of HTTP method names which will
 require authentication and ``authentication_function`` is a function with zero

@@ -1,5 +1,7 @@
 .. _requestformat:
 
+.. currentmodule:: flask.ext.restless
+
 Format of requests and responses
 ================================
 
@@ -331,9 +333,9 @@ Function evaluation
 -------------------
 
 If the ``allow_functions`` keyword argument is set to ``True`` when creating an
-API for a model using :meth:`flask_restless.APIManager.create_api`, then an
-endpoint will be made available for :http:get:`/api/eval/person` which responds
-to requests for evaluation of functions on all instances the model.
+API for a model using :meth:`APIManager.create_api`, then an endpoint will be
+made available for :http:get:`/api/eval/person` which responds to requests for
+evaluation of functions on all instances the model.
 
 **Sample request**:
 
