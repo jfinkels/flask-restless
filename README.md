@@ -16,6 +16,8 @@ For more information, check the World Wide Web!
   * [Python Package Index listing](http://pypi.python.org/pypi/Flask-Restless)
   * [Source code repository](http://github.com/jfinkels/flask-restless)
 
+[![Build status](https://secure.travis-ci.org/jfinkels/flask-restless.png)](http://travis-ci.org/jfinkels/flask-restless)
+
 [1]: http://flask.pocoo.org
 [2]: http://elixir.ematia.de
 [3]: http://sqlalchemy.org
@@ -113,7 +115,12 @@ the documentation:
 * [Sphinx][6]
 * [sphinxcontrib-httpdomain-withpatch][7]
 
-Using `pip` is probably the easiest way to install these:
+These requirements are also listed in the `requirements-doc.txt` file. Using
+`pip` is probably the easiest way to install these:
+
+    pip install -r requirements-doc.txt
+
+or
 
     pip install sphinx "sphinxcontrib-httpdomain-withpatch==1.1.6-patch2"
 

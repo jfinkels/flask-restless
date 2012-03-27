@@ -1,8 +1,11 @@
-Installing Flask-Restless
-=========================
+Downloading and installing Flask-Restless
+=========================================
 
-Install with ``pip`` (hopefully in a virtual environment provided by
-``virtualenv``)::
+Flask-Restless can be downloaded from `its page on the Python Package Index
+<http://pypi.python.org/pypi/Flask-Restless>`_. The development version can be
+downloaded from `its page at GitHub
+<http://github.com/jfinkels/flask-restless>`_. However, it is better to install
+with ``pip`` (hopefully in a virtual environment provided by ``virtualenv``)::
 
     pip install Flask-Restless
 
@@ -16,11 +19,3 @@ installed if you use ``pip``):
 
 Flask-Restless requires Python version 2.5, 2.6 or 2.7. Python 3 support will
 come when Flask has it.
-
-Downloading Flask-Restless
---------------------------
-
-Flask-Restless can be downloaded from `its page on the Python Package Index
-<http://pypi.python.org/pypi/Flask-Restless>`_. The development version can be
-downloaded from `its page at GitHub
-<http://github.com/jfinkels/flask-restless>`_.
