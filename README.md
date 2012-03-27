@@ -16,6 +16,8 @@ For more information, check the World Wide Web!
   * [Python Package Index listing](http://pypi.python.org/pypi/Flask-Restless)
   * [Source code repository](http://github.com/jfinkels/flask-restless)
 
+[![Build status](https://secure.travis-ci.org/jfinkels/flask-restless.png)](http://travis-ci.org/jfinkels/flask-restless)
+
 [1]: http://flask.pocoo.org
 [2]: http://elixir.ematia.de
 [3]: http://sqlalchemy.org
