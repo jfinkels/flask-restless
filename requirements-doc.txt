@@ -1,4 +1,7 @@
-# recursively require all the normal packages required by the code
+# Recursively require all the normal packages required by the code. These are
+# required for Sphinx autodoc documentation generation to work (since it has to
+# load up the modules containing the automatically documented classes, methods,
+# etc.).
 -r requirements.txt
 
 # plus...
