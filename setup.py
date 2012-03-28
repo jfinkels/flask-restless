@@ -18,23 +18,24 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """
-Flask-Restless
-~~~~~~~~~~~~~~
+    Flask-Restless
+    ~~~~~~~~~~~~~~
 
-Flask-Restless is a `Flask <http://flask.pocoo.org>`_ extension which
-facilitates the creation of ReSTful JSON APIs. It is compatible with models
-which have been described using `Elixir <http://elixir.ematia.de>`_, a layer on
-top of `SQLAlchemy <http://sqlalchemy.org>`_.
+    Flask-Restless is a `Flask <http://flask.pocoo.org>`_ extension which
+    facilitates the creation of ReSTful JSON APIs. It is compatible with models
+    which have been described using `Elixir <http://elixir.ematia.de>`_, a
+    layer on top of `SQLAlchemy <http://sqlalchemy.org>`_.
 
-For more information, check the World Wide Web!
+    For more information, check the World Wide Web!
 
-  * `Documentation <http://readthedocs.org/docs/flask-restless>`_
-  * `PyPI listing <http://pypi.python.org/pypi/Flask-Restless>`_
-  * `Source code repository <http://github.com/jfinkels/flask-restless>`_
+      * `Documentation <http://readthedocs.org/docs/flask-restless>`_
+      * `PyPI listing <http://pypi.python.org/pypi/Flask-Restless>`_
+      * `Source code repository <http://github.com/jfinkels/flask-restless>`_
 
 """
 from __future__ import with_statement
 
+from setuptools import Command
 from setuptools import setup
 
 
@@ -48,6 +49,48 @@ def from_requirements_file(filename='requirements.txt'):
     with open(filename, 'r') as f:
         requirements = f.read()
     return requirements.split()
+
+
+class run_coverage(Command):
+    """Runs ``coverage``, the Python code coverage tool to generate a test
+    coverage report.
+
+    This command requires that `coverage.py
+    <http://nedbatchelder.com/code/coverage>`_ is installed. This can be done
+    by doing, for example::
+
+        pip install coverage
+
+    """
+
+    #: A brief description of the command.
+    description = "Generate a test coverage report."
+
+    #: Options which can be provided by the user.
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        """Runs coverage.py on the test suite then generates an HTML report,
+        both in a subprocess.
+
+        """
+        import subprocess
+        try:
+            subprocess.call(['coverage', 'run', '--source=flask_restless',
+                             '--branch', 'run-tests.py'])
+            subprocess.call(['coverage', 'html'])
+        except OSError:
+            import sys
+            print('coverage.py not found.'
+                  ' Install it with "pip install coverage".')
+            sys.exit(-1)
+        print('HTML coverage report generated at "htmlcov/".')
 
 
 setup(
@@ -64,6 +107,7 @@ setup(
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
+    cmdclass={'coverage': run_coverage},
     description='A Flask extension for easy ReSTful API generation',
     download_url='http://pypi.python.org/pypi/Flask-Restless',
     install_requires=from_requirements_file(),

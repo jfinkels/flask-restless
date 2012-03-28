@@ -18,12 +18,22 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """
-    flaskext.restless.views
-    ~~~~~~~~~~~~~~~~~~~~~~~
+    flask.ext.restless.views
+    ~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Provides :class:`API`, a subclass of :class:`flask.MethodView` which
-    provides generic endpoints for HTTP requests for information about a given
-    model from the database.
+    Provides the following view classes, subclasses of
+    :class:`flask.MethodView` which provide generic endpoints for interacting
+    with an entity of the database:
+
+    :class:`flask.ext.restless.views.API`
+      Provides the endpoints for each of the basic HTTP methods. This is the
+      main class used by the
+      :meth:`flask.ext.restless.manager.APIManager.create_api` method to create
+      endpoints.
+
+    :class:`flask.ext.restless.views.FunctionAPI`
+      Provides a :http:method:`get` endpoint which returns the result of
+      evaluating some function on the entire collection of a given model.
 
     :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
     :copyright:2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
@@ -36,7 +46,6 @@ from elixir import session
 from flask import abort
 from flask import json
 from flask import jsonify
-from flask import make_response
 from flask import request
 from flask.views import MethodView
 from sqlalchemy.exc import OperationalError
@@ -164,16 +173,14 @@ class FunctionAPI(ModelView):
         :ref:`functionevaluation`.
 
         """
-        if not request.data:
-            return jsonify()
         try:
             data = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
-        if 'functions' not in data:
-            return jsonify()
         try:
-            result = _evaluate_functions(self.model, data['functions'])
+            result = _evaluate_functions(self.model, data.get('functions'))
+            if not result:
+                return jsonify_status_code(204)
             return jsonify(result)
         except AttributeError, exception:
             message = 'No such field "%s"' % exception.field
@@ -507,7 +514,7 @@ class API(ModelView):
         if inst is not None:
             inst.delete()
             session.commit()
-        return make_response(None, 204)
+        return jsonify_status_code(204)
 
     def post(self):
         """Creates a new instance of a given model based on request data.
@@ -582,15 +589,13 @@ class API(ModelView):
 
         """
         self._check_authentication()
+
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
+            # this also happens when request.data is empty
             return jsonify_status_code(400, message='Unable to decode data')
-
-        # If there is no data to update, just return HTTP 204 No Content.
-        if len(data) == 0:
-            return make_response(None, 204)
 
         patchmany = instid is None
         if patchmany:

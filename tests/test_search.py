@@ -20,12 +20,15 @@
 from __future__ import with_statement
 
 from unittest2 import TestSuite
+from unittest2 import TestCase
 
 from elixir import session
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 
 from flask.ext.restless.search import create_query
+from flask.ext.restless.search import Filter
+from flask.ext.restless.search import IllegalArgumentError
 from flask.ext.restless.search import search
 from flask.ext.restless.search import SearchParameters
 
@@ -34,7 +37,21 @@ from .models import Computer
 from .models import Person
 
 
-__all__ = ['QueryCreationTest', 'SearchTest']
+__all__ = ['FilterTest', 'QueryCreationTest', 'SearchTest']
+
+
+class FilterTest(TestCase):
+    """Unit tests for the :class:`flask.ext.restless.search.Filter` class."""
+
+    def test_init_bad_arguments(self):
+        """Tests that providing bad initial arguments to the constructor raises
+        an :exc:`flask.ext.restless.search.IllegalArgumentError`.
+
+        """
+        with self.assertRaises(IllegalArgumentError):
+            Filter('x', 'y', argument='z', otherfield='a')
+        with self.assertRaises(IllegalArgumentError):
+            Filter('x', 'y')
 
 
 class QueryCreationTest(TestSupportPrefilled):
@@ -145,6 +162,7 @@ class SearchTest(TestSupportPrefilled):
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
     suite = TestSuite()
+    suite.addTest(loader.loadTestsFromTestCase(FilterTest))
     suite.addTest(loader.loadTestsFromTestCase(QueryCreationTest))
     suite.addTest(loader.loadTestsFromTestCase(SearchTest))
     return suite

@@ -44,6 +44,7 @@ class Person(Entity):
     computers = OneToMany('Computer')
     birth_date = Field(Date)
 
+
 def setup(uri):
     metadata.bind = uri
     metadata.bind.echo = False

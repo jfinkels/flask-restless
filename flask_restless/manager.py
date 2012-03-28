@@ -18,11 +18,12 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """
-    flaskext.restless.manager
-    ~~~~~~~~~~~~~~~~~~~~~~~~~
+    flask.ext.restless.manager
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Provides :class:`APIManager`, the class which users of this extension will
-    utilize to create ReSTful APIs for their database models.
+    Provides :class:`flask.ext.restless.manager.APIManager`, the class which
+    users of Flask-Restless must instantiate to create ReSTful APIs for their
+    database models.
 
     :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
     :copyright:2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
