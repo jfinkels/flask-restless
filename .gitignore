@@ -1,5 +1,5 @@
 *.pyc
-/tests/.coverage
+*.coverage
 
 # temporary files
 *~
