@@ -19,7 +19,10 @@
 """Unit tests for the :mod:`flask_restless.manager` module."""
 from unittest2 import TestSuite
 
+from flask import Flask
 from flask import json
+
+from flask.ext.restless import APIManager
 
 from .helpers import TestSupportWithManager
 from .models import Person
@@ -36,6 +39,28 @@ class APIManagerTest(TestSupportWithManager):
     """Unit tests for the :class:`flask_restless.manager.APIManager` class.
 
     """
+
+    def test_init_app(self):
+        """Tests for initializing the Flask application after instantiating the
+        :class:`flask.ext.restless.APIManager` object.
+
+        """
+        # create the Flask application and a test client
+        app = Flask(__name__)
+        app.config['DEBUG'] = True
+        app.config['TESTING'] = True
+        client = app.test_client()
+
+        # create the API manager and initialize the Flask application
+        manager = APIManager()
+        manager.init_app(app)
+
+        # create an API
+        manager.create_api(Person)
+
+        # make a request on the API
+        response = client.get('/api/person')
+        self.assertEqual(response.status_code, 200)
 
     def test_create_api(self):
         """Tests that the :meth:`flask_restless.manager.APIManager.create_api`
