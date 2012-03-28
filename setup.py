@@ -83,7 +83,7 @@ class run_coverage(Command):
         import subprocess
         try:
             subprocess.call(['coverage', 'run', '--source=flask_restless',
-                             'run-tests.py'])
+                             '--branch', 'run-tests.py'])
             subprocess.call(['coverage', 'html'])
         except OSError:
             import sys
