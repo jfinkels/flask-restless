@@ -174,16 +174,14 @@ class FunctionAPI(ModelView):
         :ref:`functionevaluation`.
 
         """
-        if not request.data:
-            return jsonify()
         try:
             data = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
-        if 'functions' not in data:
-            return jsonify()
         try:
-            result = _evaluate_functions(self.model, data['functions'])
+            result = _evaluate_functions(self.model, data.get('functions'))
+            if not result:
+                return make_response(None, 204)
             return jsonify(result)
         except AttributeError, exception:
             message = 'No such field "%s"' % exception.field

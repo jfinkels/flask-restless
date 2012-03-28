@@ -115,6 +115,22 @@ class FunctionAPITestCase(TestSupportWithManagerPrefilled):
         self.assertIn('avg__other', data)
         self.assertEqual(data['avg__other'], 16.2)
 
+    def test_no_functions(self):
+        """Tests that if no functions are defined, an empty response is
+        returned.
+
+        """
+        # no data is invalid JSON
+        response = self.app.get('/api/eval/person')
+        self.assertEqual(response.status_code, 400)
+        # so is the empty string
+        response = self.app.get('/api/eval/person', data='')
+        self.assertEqual(response.status_code, 400)
+
+        # if we provide no functions, then we expect an empty response
+        response = self.app.get('/api/eval/person', data=dumps(dict()))
+        self.assertEqual(response.status_code, 204)
+
     def test_poorly_defined_functions(self):
         """Tests that poorly defined requests for function evaluations cause an
         error message to be returned.

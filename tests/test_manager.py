@@ -140,9 +140,9 @@ class APIManagerTest(TestSupportWithManager):
 
         """
         self.manager.create_api(Person, allow_functions=True)
-        response = self.app.get('/api/eval/person')
+        response = self.app.get('/api/eval/person', data=dumps(dict()))
         self.assertNotEqual(response.status_code, 400)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 204)
 
     def test_disallow_functions(self):
         """Tests that if the ``allow_functions`` keyword argument if ``False``,
