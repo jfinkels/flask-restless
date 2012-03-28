@@ -1,5 +1,8 @@
 *.pyc
+
+# coverage files
 *.coverage
+htmlcov
 
 # temporary files
 *~
