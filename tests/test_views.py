@@ -277,6 +277,18 @@ class APITestCase(TestSupportWithManager):
             self.assertEqual(i['birth_date'], ('%s-%s-%s' % (
                     year, str(month).zfill(2), str(day).zfill(2))))
 
+    def test_patch_empty(self):
+        """Test for making a :http:method:`patch` request with no data."""
+        response = self.app.post('/api/person', data=dumps(dict(name='foo')))
+        self.assertEqual(response.status_code, 201)
+        personid = loads(response.data)['id']
+        # here we really send no data
+        response = self.app.patch('/api/person/' + str(personid))
+        self.assertEqual(response.status_code, 400)
+        # here we send the empty string (which is not valid JSON)
+        response = self.app.patch('/api/person/' + str(personid), data='')
+        self.assertEqual(response.status_code, 400)
+
     def test_patch_many(self):
         """Test for updating a collection of instances of the model using the
         :http:method:`patch` method.

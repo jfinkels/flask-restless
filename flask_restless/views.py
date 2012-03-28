@@ -570,15 +570,13 @@ class API(ModelView):
 
         """
         self._check_authentication()
+
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
+            # this also happens when request.data is empty
             return jsonify_status_code(400, message='Unable to decode data')
-
-        # If there is no data to update, just return HTTP 204 No Content.
-        if len(data) == 0:
-            return make_response(None, 204)
 
         patchmany = instid is None
         if patchmany:
