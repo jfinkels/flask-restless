@@ -18,19 +18,19 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """
-Flask-Restless
-~~~~~~~~~~~~~~
+    Flask-Restless
+    ~~~~~~~~~~~~~~
 
-Flask-Restless is a `Flask <http://flask.pocoo.org>`_ extension which
-facilitates the creation of ReSTful JSON APIs. It is compatible with models
-which have been described using `Elixir <http://elixir.ematia.de>`_, a layer on
-top of `SQLAlchemy <http://sqlalchemy.org>`_.
+    Flask-Restless is a `Flask <http://flask.pocoo.org>`_ extension which
+    facilitates the creation of ReSTful JSON APIs. It is compatible with models
+    which have been described using `Elixir <http://elixir.ematia.de>`_, a layer on
+    top of `SQLAlchemy <http://sqlalchemy.org>`_.
 
-For more information, check the World Wide Web!
+    For more information, check the World Wide Web!
 
-  * `Documentation <http://readthedocs.org/docs/flask-restless>`_
-  * `PyPI listing <http://pypi.python.org/pypi/Flask-Restless>`_
-  * `Source code repository <http://github.com/jfinkels/flask-restless>`_
+      * `Documentation <http://readthedocs.org/docs/flask-restless>`_
+      * `PyPI listing <http://pypi.python.org/pypi/Flask-Restless>`_
+      * `Source code repository <http://github.com/jfinkels/flask-restless>`_
 
 """
 from __future__ import with_statement
