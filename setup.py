@@ -23,8 +23,8 @@
 
     Flask-Restless is a `Flask <http://flask.pocoo.org>`_ extension which
     facilitates the creation of ReSTful JSON APIs. It is compatible with models
-    which have been described using `Elixir <http://elixir.ematia.de>`_, a layer on
-    top of `SQLAlchemy <http://sqlalchemy.org>`_.
+    which have been described using `Elixir <http://elixir.ematia.de>`_, a
+    layer on top of `SQLAlchemy <http://sqlalchemy.org>`_.
 
     For more information, check the World Wide Web!
 
@@ -82,7 +82,8 @@ class run_coverage(Command):
         """
         import subprocess
         try:
-            subprocess.call(['coverage', 'run', '--source=flask_restless', 'run-tests.py'])
+            subprocess.call(['coverage', 'run', '--source=flask_restless',
+                             'run-tests.py'])
             subprocess.call(['coverage', 'html'])
         except OSError:
             import sys
