@@ -17,7 +17,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.model` module."""
-from datetime import date, datetime
+from datetime import date
+from datetime import datetime
 from unittest2 import TestSuite
 
 from elixir import session
@@ -66,6 +67,19 @@ class EntityTestCase(TestSupport):
         self.assertIn('birth_date', persondict)
         self.assertEqual(persondict['birth_date'],
                          person.birth_date.strftime(ISO8601_DATE))
+
+    def test_datetime_serialization(self):
+        """Tests that datetime objects in the database are correctly serialized
+        in the :meth:`flask_restless.model.Entity.to_dict` method.
+
+        """
+        computer = Computer()
+        computer.buy_date = datetime.now()
+        session.commit()
+        computerdict = computer.to_dict()
+        self.assertIn('buy_date', computerdict)
+        self.assertEqual(computerdict['buy_date'],
+                         computer.buy_date.strftime(ISO8601_DATE))
 
     def test_to_dict(self):
         """Test for serializing attributes of an instance of the model by the
