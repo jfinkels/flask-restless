@@ -46,7 +46,6 @@ from elixir import session
 from flask import abort
 from flask import json
 from flask import jsonify
-from flask import make_response
 from flask import request
 from flask.views import MethodView
 from sqlalchemy.exc import OperationalError
@@ -181,7 +180,7 @@ class FunctionAPI(ModelView):
         try:
             result = _evaluate_functions(self.model, data.get('functions'))
             if not result:
-                return make_response(None, 204)
+                return jsonify_status_code(204)
             return jsonify(result)
         except AttributeError, exception:
             message = 'No such field "%s"' % exception.field
@@ -497,7 +496,7 @@ class API(ModelView):
         if inst is not None:
             inst.delete()
             session.commit()
-        return make_response(None, 204)
+        return jsonify_status_code(204)
 
     def post(self):
         """Creates a new instance of a given model based on request data.
