@@ -24,6 +24,7 @@ from unittest2 import TestSuite
 from elixir import session
 
 from flask.ext.restless.model import ISO8601_DATE
+from flask.ext.restless.model import ISO8601_DATETIME
 
 from .helpers import TestSupport
 from .models import Computer
@@ -79,7 +80,7 @@ class EntityTestCase(TestSupport):
         computerdict = computer.to_dict()
         self.assertIn('buy_date', computerdict)
         self.assertEqual(computerdict['buy_date'],
-                         computer.buy_date.strftime(ISO8601_DATE))
+                         computer.buy_date.strftime(ISO8601_DATETIME))
 
     def test_to_dict(self):
         """Test for serializing attributes of an instance of the model by the
