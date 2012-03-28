@@ -18,12 +18,22 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """
-    flaskext.restless.views
-    ~~~~~~~~~~~~~~~~~~~~~~~
+    flask.ext.restless.views
+    ~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Provides :class:`API`, a subclass of :class:`flask.MethodView` which
-    provides generic endpoints for HTTP requests for information about a given
-    model from the database.
+    Provides the following view classes, subclasses of
+    :class:`flask.MethodView` which provide generic endpoints for interacting
+    with an entity of the database:
+
+    :class:`flask.ext.restless.views.API`
+      Provides the endpoints for each of the basic HTTP methods. This is the
+      main class used by the
+      :meth:`flask.ext.restless.manager.APIManager.create_api` method to create
+      endpoints.
+
+    :class:`flask.ext.restless.views.FunctionAPI`
+      Provides a :http:method:`get` endpoint which returns the result of
+      evaluating some function on the entire collection of a given model.
 
     :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
     :copyright:2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>

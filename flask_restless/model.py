@@ -17,11 +17,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """
-    flaskext.restless.model
-    ~~~~~~~~~~~~~~~~~~~~~~~
+    flask.ext.restless.model
+    ~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Provides a base class to be used by models that are going to be
-    exposed by the ReSTful API.
+    Provides a base classes for models which will be exposed by the
+    :meth:`flask.ext.restless.manager.APIManager.create_api` method.
+
+    Users of Flask-Restless must create their models as subclasses of
+    :class:`flask.ext.restless.model.Entity` instead of :class:`elixir.Entity`.
 
     :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
     :license: GNU AGPLv3, see COPYING for more details

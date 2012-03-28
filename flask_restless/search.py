@@ -17,11 +17,19 @@
 #
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
-"""Provides querying, searching, and function evaluation on Elixir models.
+"""
+    flask.ext.restless.search
+    ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
-:copyright:2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-:license: GNU AGPLv3, see COPYING for more details
+    Provides querying, searching, and function evaluation on Elixir models.
+
+    The most important functions in this module are the :func:`create_query`
+    and :func:`search` functions, which create a SQLAlchemy query object and
+    execute that query on a given model, respectively.
+
+    :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
+    :copyright:2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
+    :license: GNU AGPLv3, see COPYING for more details
 
 """
 
