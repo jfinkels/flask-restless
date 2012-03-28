@@ -132,7 +132,7 @@ These requirements are also listed in the `requirements-doc.txt` file. Using
 
 or
 
-    pip install sphinx "sphinxcontrib-httpdomain-withpatch==1.1.6-patch2"
+    pip install sphinx "sphinxcontrib-httpdomain>=1.1.7"
 
 The documentation is written for Sphinx in [reStructuredText][8] files in the
 `docs/` directory. Documentation for each class and function is provided in the
