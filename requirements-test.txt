@@ -1,0 +1,5 @@
+# Recursively require all the normal packages required by the code.
+-r requirements.txt
+
+# plus...
+unittest2

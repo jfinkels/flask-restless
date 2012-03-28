@@ -91,14 +91,29 @@ For information on how to use this extension, build the documentation here or
 
 ## Testing ##
 
-Running the unit tests require the [unittest2][ut2] package, which backports
+Running the unit tests requires the [unittest2][ut2] package, which backports
 the functionality of the built-in `unittest` package from Python version 2.7 to
-earlier versions.
+earlier versions. This requirement is also listed in the
+`requirements-test.txt` file.
+
+Using `pip` is probably the easiest way to install this:
+
+    pip install -r requirements-test.txt
+
+or
+
+    pip install unittest2
 
 The Python unit tests are contained in the `tests/` directory (which is a
 Python package). To run the test suite, run the command
 
     python setup.py test
+
+You can also run the unit tests in a less verbose way by doing
+
+    ./run-tests.py
+
+This is a Python module which, when executed, simply runs all unit tests.
 
 [ut2]: http://pypi.python.org/pypi/unittest2
 
