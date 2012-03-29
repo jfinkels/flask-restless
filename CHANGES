@@ -6,7 +6,7 @@ Here you can see the full list of changes between each Flask-Restless release.
 Version 0.4
 -----------
 
-Not released yet.
+Released on March 29, 2012.
 
 - Added Python 2.5 and Python 2.6 support.
 - Allow users to specify which HTTP methods for a particular API will require
