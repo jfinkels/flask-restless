@@ -436,7 +436,7 @@ class API(ModelView):
 
         # create a placeholder for relations of the returned models
         relations = self.model.get_relations()
-        deep = dict(zip(relations, [{}] * len(relations)))
+        deep = dict((r, {}) for r in relations)
 
         # for security purposes, don't transmit list as top-level JSON
         if isinstance(result, list):
@@ -479,7 +479,7 @@ class API(ModelView):
         if inst is None:
             abort(404)
         relations = self.model.get_relations()
-        deep = dict(zip(relations, [{} for n in range(len(relations))]))
+        deep = dict((r, {}) for r in relations)
         return jsonify(inst.to_dict(deep))
 
     def delete(self, instid):
