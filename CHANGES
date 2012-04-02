@@ -8,6 +8,9 @@ Version 0.5
 
 Not yet released.
 
+- Replaced Elixir with Flask-SQLAlchemy. Flask-Restless now only supports
+  Flask-SQLAlchemy.
+
 Version 0.4
 -----------
 
