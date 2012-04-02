@@ -3,10 +3,23 @@ Changelog
 
 Here you can see the full list of changes between each Flask-Restless release.
 
+.. note::
+
+   As of version 0.5, Flask-Restless only supports Flask-SQLAlchemy
+   models. Before that, it supported only Elixir models.
+
+Version 0.5
+-----------
+
+Not yet released.
+
+- Replaced Elixir with Flask-SQLAlchemy. Flask-Restless now only supports
+  Flask-SQLAlchemy.
+
 Version 0.4
 -----------
 
-Not released yet.
+Released on March 29, 2012.
 
 - Added capturing of exceptions raised during field validation.
 - Added Python 2.5 and Python 2.6 support.

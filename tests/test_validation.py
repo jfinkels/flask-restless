@@ -37,7 +37,7 @@ try:
 except:
     has_elixir_validations = False
 
-from .helpers import TestSupportWithManager
+from .helpers import TestSupport
 
 __all__ = ['ValidationTestCase']
 
@@ -46,7 +46,7 @@ dumps = json.dumps
 loads = json.loads
 
 
-class ValidationTestCase(TestSupportWithManager):
+class ValidationTestCase(TestSupport):
     """Base class for tests which expect validation errors.
 
     Each subclass which inherits from this base class should override

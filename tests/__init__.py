@@ -47,7 +47,6 @@ from unittest2 import TestSuite
 from unittest2 import defaultTestLoader
 
 from . import test_manager
-from . import test_model
 from . import test_search
 from . import test_validation
 from . import test_views
@@ -57,7 +56,6 @@ def suite():
     result = TestSuite()
     loader = defaultTestLoader
     result.addTest(loader.loadTestsFromModule(test_manager))
-    result.addTest(loader.loadTestsFromModule(test_model))
     result.addTest(loader.loadTestsFromModule(test_search))
     result.addTest(loader.loadTestsFromModule(test_validation))
     result.addTest(loader.loadTestsFromModule(test_views))

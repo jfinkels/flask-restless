@@ -76,18 +76,36 @@ class APIManager(object):
     #:    has been registered.
     BLUEPRINTNAME_FORMAT = '%s%s'
 
-    def __init__(self, app=None):
-        """Stores the specified :class:`flask.Flask` application object so that
-        this class can register blueprints on it later.
+    def __init__(self, app=None, flask_sqlalchemy_db=None):
+        """Stores the specified :class:`flask.Flask` application object on
+        which API endpoints will be registered and the
+        :class:`flask.ext.sqlalchemy.SQLAlchemy` object which contains the
+        models which will be exposed.
 
-        If `app` is ``None``, the user must call the :meth:`init_app` method
-        before calling the :meth:`create_api` method.
+        If either `app` or `flask_sqlalchemy_db` is ``None``, the user must
+        call the :meth:`init_app` method before calling the :meth:`create_api`
+        method.
 
         `app` is the :class:`flask.Flask` object containing the user's Flask
         application.
 
+        `flask_sqlalchemy_db` is the :class:`flask.ext.sqlalchemy.SQLAlchemy`
+        object with which `app` has been registered and which contains the
+        database models for which API endpoints will be created.
+
+        For example::
+
+            import flask
+            import flask.ext.restless
+            import flask.ext.sqlalchemy
+
+            app = flask.Flask(__name__)
+            db = flask.ext.sqlalchemy.SQLALchemy(app)
+            apimanager = flask.ext.restless.APIManager(app, db)
+
         """
         self.app = app
+        self.db = flask_sqlalchemy_db
 
     def _next_blueprint_name(self, basename):
         """Returns the next name for a blueprint with the specified base name.
@@ -116,23 +134,31 @@ class APIManager(object):
             next_number = max(existing_numbers) + 1
         return APIManager.BLUEPRINTNAME_FORMAT % (basename, next_number)
 
-    def init_app(self, app):
+    def init_app(self, app, flask_sqlalchemy_db):
         """Stores the specified :class:`flask.Flask` application object on
-        which API endpoints will be registered.
+        which API endpoints will be registered and the
+        :class:`flask.ext.sqlalchemy.SQLAlchemy` object which contains the
+        models which will be exposed.
 
         This is for use in the situation in which this class must be
         instantiated before the :class:`~flask.Flask` application has been
         created. For example::
 
-            apimanager = APIManager()
+            import flask
+            import flask.ext.restless
+            import flask.ext.sqlalchemy
+
+            apimanager = flask.ext.restless.APIManager()
 
             # later...
 
-            app = Flask(__name__)
-            apimanager.init_app(app)
+            app = flask.Flask(__name__)
+            db = flask.ext.sqlalchemy.SQLALchemy(app)
+            apimanager.init_app(app, db)
 
         """
         self.app = app
+        self.db = flask_sqlalchemy_db
 
     def create_api(self, model, methods=READONLY_METHODS, url_prefix='/api',
                    collection_name=None, allow_patch_many=False,
@@ -158,13 +184,12 @@ class APIManager(object):
         object specified in the constructor of this class, so you do *not* need
         to register it yourself.
 
-        ``model`` is the :class:`flask.ext.restless.Entity` class for which a
+        `model` is the :class:`flask.ext.restless.Entity` class for which a
         ReSTful interface will be created. Note this must be a class, not an
         instance of a class.
 
-        ``methods`` specify the HTTP methods which will be made available on
-        the ReSTful API for the specified model, subject to the following
-        caveats:
+        `methods` specify the HTTP methods which will be made available on the
+        ReSTful API for the specified model, subject to the following caveats:
 
         * If :http:method:`get` is in this list, the API will allow getting a
           single instance of the model, getting all instances of the model, and
@@ -185,8 +210,7 @@ class APIManager(object):
         model class to be used in the URL for the ReSTful API created. If this
         is not specified, the lowercase name of the model will be used.
 
-        ``url_prefix`` specifies the URL prefix at which this API will be
-        accessible.
+        `url_prefix` the URL prefix at which this API will be accessible.
 
         If `allow_patch_many` is ``True``, then requests to
         :http:patch:`/api/<collection_name>?q=<searchjson>` will attempt to
@@ -245,7 +269,7 @@ class APIManager(object):
                    ' authentication_function.')
             raise IllegalArgumentError(msg)
         if collection_name is None:
-            collection_name = model.__name__.lower()
+            collection_name = model.__tablename__
         methods = frozenset(methods)
         # sets of methods used for different types of endpoints
         no_instance_methods = methods & frozenset(('POST', ))
@@ -262,7 +286,8 @@ class APIManager(object):
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.APINAME_FORMAT % collection_name
         # the view function for the API for this model
-        api_view = API.as_view(apiname, model, authentication_required_for,
+        api_view = API.as_view(apiname, self.db.session, model,
+                               authentication_required_for,
                                authentication_function, validation_exceptions)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
@@ -285,7 +310,8 @@ class APIManager(object):
         # evaluating functions on all instances of the specified model
         if allow_functions:
             eval_api_name = apiname + 'eval'
-            eval_api_view = FunctionAPI.as_view(eval_api_name, model)
+            eval_api_view = FunctionAPI.as_view(eval_api_name, self.db.session,
+                                                model)
             eval_endpoint = '/eval' + collection_endpoint
             blueprint.add_url_rule(eval_endpoint, methods=['GET'],
                                    view_func=eval_api_view)

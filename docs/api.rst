@@ -6,8 +6,6 @@ API
 This part of the documentation documents all the public classes and functions
 in Flask-Restless.
 
-.. autoclass:: Entity
-
 .. autoclass:: APIManager
 
    .. automethod:: init_app

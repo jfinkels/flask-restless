@@ -21,7 +21,7 @@
     flask.ext.restless.search
     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Provides querying, searching, and function evaluation on Elixir models.
+    Provides querying, searching, and function evaluation on SQLAlchemy models.
 
     The most important functions in this module are the :func:`create_query`
     and :func:`search` functions, which create a SQLAlchemy query object and
@@ -282,26 +282,25 @@ class QueryBuilder(object):
         are given by the keys of :data:`OPERATORS`. For more information on
         recognized search operators, see :ref:`search`.
 
-        If ``relation`` is not ``None``, the returned search parameter will
-        correspond to a search on the field named ``fieldname`` on the entity
-        related to ``model`` whose name, as a string, is ``relation``.
+        If `relation` is not ``None``, the returned search parameter will
+        correspond to a search on the field named `fieldname` on the entity
+        related to `model` whose name, as a string, is `relation`.
 
-        ``model`` is an instance of a :class:`elixir.entity.Entity` being
+        `model` is an instance of a SQLAlchemy declarative model being
         searched.
 
-        ``fieldname`` is the name of the field of ``model`` to which the
-        operation will be applied as part of the search. If ``relation`` is
-        specified, the operation will be applied to the field with name
-        ``fieldname`` on the entity related to ``model`` whose name, as a
-        string, is ``relation``.
+        `fieldname` is the name of the field of `model` to which the operation
+        will be applied as part of the search. If `relation` is specified, the
+        operation will be applied to the field with name `fieldname` on the
+        entity related to `model` whose name, as a string, is `relation`.
 
-        ``operation`` is a string representating the operation which will be
+        `operation` is a string representating the operation which will be
          executed between the field and the argument received. For example,
          ``'gt'``, ``'lt'``, ``'like'``, ``'in'`` etc.
 
-        ``argument`` is the argument to which to apply the ``operator``.
+        `argument` is the argument to which to apply the `operator`.
 
-        ``relation`` is the name of the relationship attribute of ``model`` to
+        `relation` is the name of the relationship attribute of `model` to
         which the operation will be applied as part of the search, or ``None``
         if this function should not use a related entity in the search.
 
@@ -335,17 +334,16 @@ class QueryBuilder(object):
         return filters
 
     @staticmethod
-    def create_query(model, search_params):
+    def create_query(session, model, search_params):
         """Builds an SQLAlchemy query instance based on the search parameters
         present in ``search_params``, an instance of :class:`SearchParameters`.
 
         This method returns a SQLAlchemy query in which all matched instances
         meet the requirements specified in ``search_params``.
 
-        ``model`` is an :class:`elixir.entity.Entity` on which to create a
-        query.
+        `model` is SQLAlchemy declarative model on which to create a query.
 
-        ``search_params`` is an instance of :class:`SearchParameters` which
+        `search_params` is an instance of :class:`SearchParameters` which
         specify the filters, order, limit, offset, etc. of the query.
 
         Building the query proceeds in this order:
@@ -356,7 +354,7 @@ class QueryBuilder(object):
 
         """
         # Adding field filters
-        query = model.query
+        query = session.query(model)
         filters = QueryBuilder._create_filters(model, search_params)
         for filt in filters:
             query = query.filter(filt)
@@ -375,18 +373,18 @@ class QueryBuilder(object):
         return query
 
 
-def create_query(model, searchparams):
-    """Returns a SQLAlchemy query object on the given ``model`` where the
-    search for the query is defined by ``searchparams``.
+def create_query(session, model, searchparams):
+    """Returns a SQLAlchemy query object on the given `model` where the search
+    for the query is defined by `searchparams`.
 
-    The returned query matches the set of all instances of ``model`` which meet
-    the parameters of the search given by ``searchparams``. For more
-    information on search parameters, see :ref:`search`.
+    The returned query matches the set of all instances of `model` which meet
+    the parameters of the search given by `searchparams`. For more information
+    on search parameters, see :ref:`search`.
 
-    ``model`` is a :class:`elixir.Entity` representing the database model to
-    query.
+    `model` is a SQLAlchemy declarative model representing the database model
+    to query.
 
-    ``searchparams`` is either a dictionary (as parsed from a JSON request from
+    `searchparams` is either a dictionary (as parsed from a JSON request from
     the client, for example) or a :class:`SearchParameters` instance defining
     the parameters of the query (as returned by
     :func:`SearchParameters.from_dictionary`, for example).
@@ -394,10 +392,10 @@ def create_query(model, searchparams):
     """
     if isinstance(searchparams, dict):
         searchparams = SearchParameters.from_dictionary(searchparams)
-    return QueryBuilder.create_query(model, searchparams)
+    return QueryBuilder.create_query(session, model, searchparams)
 
 
-def search(model, search_params):
+def search(session, model, search_params):
     """Performs the search specified by the given parameters on the model
     specified in the constructor of this class.
 
@@ -413,10 +411,10 @@ def search(model, search_params):
     results are found and :exc:`sqlalchemy.orm.exc.MultipleResultsFound` if
     multiple results are found.
 
-    ``model`` is a :class:`elixir.Entity` representing the database model to
-    query.
+    `model` is a SQLAlchemy declarative model class representing the database
+    model to query.
 
-    ``search_params`` is a dictionary containing all available search
+    `search_params` is a dictionary containing all available search
     parameters. For more information on available search parameters, see
     :ref:`search`. Implementation note: this dictionary will be converted to a
     :class:`SearchParameters` object when the :func:`create_query` function is
@@ -427,7 +425,7 @@ def search(model, search_params):
     # corresponding value is anything except those values which evaluate to
     # False (False, 0, the empty string, the empty list, etc.).
     is_single = search_params.get('single')
-    query = create_query(model, search_params)
+    query = create_query(session, model, search_params)
     if is_single:
         # may raise NoResultFound or MultipleResultsFound
         return query.one()

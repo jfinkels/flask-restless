@@ -23,8 +23,8 @@
 
     Flask-Restless is a `Flask <http://flask.pocoo.org>`_ extension which
     facilitates the creation of ReSTful JSON APIs. It is compatible with models
-    which have been described using `Elixir <http://elixir.ematia.de>`_, a
-    layer on top of `SQLAlchemy <http://sqlalchemy.org>`_.
+    which have been defined using `FLask-SQLAlchemy
+    <http://packages.python.org/Flask-SQLAlchemy>`_.
 
     For more information, check the World Wide Web!
 
@@ -121,6 +121,6 @@ setup(
     test_suite='tests.suite',
     tests_require=['unittest2'],
     url='http://github.com/jfinkels/flask-restless',
-    version='0.4-dev',
+    version='0.5-dev',
     zip_safe=False
 )

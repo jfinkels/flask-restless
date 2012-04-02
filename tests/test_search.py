@@ -22,7 +22,6 @@ from __future__ import with_statement
 from unittest2 import TestSuite
 from unittest2 import TestCase
 
-from elixir import session
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -31,10 +30,9 @@ from flask.ext.restless.search import Filter
 from flask.ext.restless.search import IllegalArgumentError
 from flask.ext.restless.search import search
 from flask.ext.restless.search import SearchParameters
+from flask.ext.restless.views import _get_by
 
 from .helpers import TestSupportPrefilled
-from .models import Computer
-from .models import Person
 
 
 __all__ = ['FilterTest', 'QueryCreationTest', 'SearchTest']
@@ -62,7 +60,7 @@ class QueryCreationTest(TestSupportPrefilled):
 
     def test_empty_search(self):
         """Tests that a query with no search parameters returns everything."""
-        query = create_query(Person, {})
+        query = create_query(self.db.session, self.Person, {})
         self.assertEqual(query.all(), self.people)
 
     def test_dict_same_as_search_params(self):
@@ -73,52 +71,52 @@ class QueryCreationTest(TestSupportPrefilled):
         """
         d = {'filters': [{'name': 'name', 'val': u'%y%', 'op': 'like'}]}
         s = SearchParameters.from_dictionary(d)
-        query_d = create_query(Person, d)
-        query_s = create_query(Person, s)
+        query_d = create_query(self.db.session, self.Person, d)
+        query_s = create_query(self.db.session, self.Person, s)
         self.assertEqual(query_d.all(), query_s.all())
 
     def test_basic_query(self):
         """Tests for basic query correctness."""
         d = {'filters': [{'name': 'name', 'val': u'%y%', 'op': 'like'}]}
-        query = create_query(Person, d)
+        query = create_query(self.db.session, self.Person, d)
         self.assertEqual(query.count(), 3)  # Mary, Lucy and Katy
 
         d = {'filters': [{'name': 'name', 'val': u'Lincoln', 'op': 'equals'}]}
-        query = create_query(Person, d)
+        query = create_query(self.db.session, self.Person, d)
         self.assertEqual(query.count(), 1)
         self.assertEqual(query.one().name, 'Lincoln')
 
         d = {'filters': [{'name': 'name', 'val': u'Bogus', 'op': 'equals'}]}
-        query = create_query(Person, d)
+        query = create_query(self.db.session, self.Person, d)
         self.assertEqual(query.count(), 0)
 
         d = {'order_by': [{'field': 'age', 'direction': 'asc'}]}
-        query = create_query(Person, d)
+        query = create_query(self.db.session, self.Person, d)
         ages = [p.age for p in query]
         self.assertEqual(ages, [7, 19, 23, 25, 28])
 
         d = {'filters': [{'name': 'age', 'val': [7, 28], 'op': 'in'}]}
-        query = create_query(Person, d)
+        query = create_query(self.db.session, self.Person, d)
         ages = [p.age for p in query]
         self.assertEqual(ages, [7, 28])
 
     def test_query_related_field(self):
         """Test for making a query with respect to a related field."""
         # add a computer to person 1
-        computer = Computer(name=u'turing', vendor=u'Dell')
-        p1 = Person.get_by(id=1)
+        computer = self.Computer(name=u'turing', vendor=u'Dell')
+        p1 = _get_by(self.db.session, self.Person, id=1)
         p1.computers.append(computer)
-        session.commit()
+        self.db.session.commit()
 
         d = {'filters': [{'name': 'computers__name', 'val': u'turing',
                           'op': 'any'}]}
-        query = create_query(Person, d)
+        query = create_query(self.db.session, self.Person, d)
         self.assertEqual(query.count(), 1)
         self.assertEqual(query.one().computers[0].name, 'turing')
 
         d = {'filters': [{'name': 'age', 'op': 'lte', 'field': 'other'}],
             'order_by': [{'field': 'other'}]}
-        query = create_query(Person, d)
+        query = create_query(self.db.session, self.Person, d)
         self.assertEqual(query.count(), 2)
         results = query.all()
         self.assertEqual(results[0].other, 10)
@@ -144,18 +142,18 @@ class SearchTest(TestSupportPrefilled):
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'%y%', 'op': 'like'}]}
         with self.assertRaises(MultipleResultsFound):
-            search(Person, d)
+            search(self.db.session, self.Person, d)
 
         # tests getting no results
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'bogusname', 'op': '=='}]}
         with self.assertRaises(NoResultFound):
-            search(Person, d)
+            search(self.db.session, self.Person, d)
 
         # tests getting exactly one result
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'Lincoln', 'op': '=='}]}
-        result = search(Person, d)
+        result = search(self.db.session, self.Person, d)
         self.assertEqual(result.name, u'Lincoln')
 
 
