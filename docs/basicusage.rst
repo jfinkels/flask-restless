@@ -19,7 +19,7 @@ restrictions on models:
    :class:`flask.ext.sqlalchemy.SQLAlchemy.Model` supplies such a method, so
    you don't need to declare a new one).
 
-.. sourcecode::
+.. sourcecode:: python
 
    import flask
    import flask.ext.sqlalchemy
