@@ -244,7 +244,7 @@ class APIManager(object):
                    ' authentication_function.')
             raise IllegalArgumentError(msg)
         if collection_name is None:
-            collection_name = model.__name__.lower()
+            collection_name = model.__tablename__
         methods = frozenset(methods)
         # sets of methods used for different types of endpoints
         no_instance_methods = methods & frozenset(('POST', ))

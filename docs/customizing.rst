@@ -14,7 +14,7 @@ a response with :http:statuscode:`405`. To explicitly specify which methods
 should be allowed for the endpoint, pass a list as the value of keyword
 argument ``methods``::
 
-    apimanager.create_api(Person, methods=['GET', 'POST', 'DELETE'])
+    apimanager.create_api(session, Person, methods=['GET', 'POST', 'DELETE'])
 
 This creates an endpoint at ``/api/person`` which responds to
 :http:method:`get`, :http:method:`post`, and :http:method:`delete` methods, but
@@ -55,22 +55,21 @@ with data respond with serialized JSON strings.
    attributes are read as JSON from the body of the request. For information
    about the format of this request, see :ref:`requestformat`.
 
-.. http:patch:: /api/person?q=<searchjson>
+.. http:patch:: /api/person
 
    This is only available if the ``allow_patch_many`` keyword argument is set
    to ``True`` when calling the :meth:`~APIManager.create_api` method. For more
    information, see :ref:`allowpatchmany`.
 
-   Updates the attributes of all ``Person`` instances which match the search
-   query specified in the query parameter ``q``. The attributes are read as
-   JSON from the body of the request. For information about searching, see
-   :ref:`search`. For information about the format of this request, see
-   :ref:`requestformat`.
+   Updates the attributes of all ``Person`` instances. The attributes are read
+   as JSON from the body of the request. For information about the format of
+   this request, see :ref:`requestformat`.
   
-.. http:put:: /api/person?q=<searchjson>
+.. http:put:: /api/person
 .. http:put:: /api/person/(int:id)
 
-   Aliases for :http:patch:`/api/person`.
+   Aliases for :http:patch:`/api/person` and
+   :http:patch:`/api/person/(int:id)`.
 
 API prefix
 ~~~~~~~~~~
@@ -78,7 +77,7 @@ API prefix
 To create an API at a different prefix, use the ``url_prefix`` keyword
 argument::
 
-    apimanager.create_api(Person, url_prefix='/api/v2')
+    apimanager.create_api(session, Person, url_prefix='/api/v2')
 
 Then your API for ``Person`` will be available at ``/api/v2/person``.
 
@@ -90,23 +89,22 @@ the model. To provide a different name for the model, provide a string to the
 `collection_name` keyword argument of the :meth:`APIManager.create_api`
 method::
 
-    apimanager.create_api(Person, collection_name='people')
+    apimanager.create_api(session, Person, collection_name='people')
 
 Then the API will be exposed at ``/api/people`` instead of ``/api/person``.
 
 .. _allowpatchmany:
 
-Enabling patching the result of a search
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Enable patching all instances
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default, a :http:patch:`/api/people` request (with or without a ``q`` query
-parameter) will cause a :http:statuscode:`405` response. By setting the
-``allow_patch_many`` keyword argument of the :meth:`APIManager.create_api`
-method to be ``True``, :http:patch:`/api/person` requests will patch the
-provided attributes on all of the instances of ``Person`` which match the
-provided search query (or all instances if no query parameter is provided)::
+By default, a :http:patch:`/api/person` request (note the missing ID) will
+cause a :http:statuscode:`405` response. By setting the ``allow_patch_many``
+keyword argument of the :meth:`APIManager.create_api` method to be ``True``,
+:http:patch:`/api/person` requests will patch the provided attributes on all
+instances of ``Person``::
 
-    apimanager.create_api(Person, allow_patch_many=True)
+    apimanager.create_api(session, Person, allow_patch_many=True)
 
 Exposing evaluation of SQL function
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

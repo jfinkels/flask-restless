@@ -296,8 +296,8 @@ class ModelView(MethodView):
         `session` is the SQLAlchemy session in which all database transactions
         will be performed.
 
-        `model` is the :class:`elixir.entity.Entity` class of the database
-        model for which this instance of the class is an API.
+        `model` is the SQLALchemy declarative model class of the database model
+        for which this instance of the class is an API.
 
         """
         super(ModelView, self).__init__(*args, **kw)
@@ -626,10 +626,8 @@ class API(ModelView):
         the specified model.
 
         If ``instid`` is an integer, this method returns the instance of the
-        model with that identifying integer. (Implementation note: the
-        underlying implementation uses the :func:`elixir.entity.Entity.get_by`
-        method.) If no such instance exists, this method responds with
-        :http:status:`404`.
+        model with that identifying integer. If no such instance exists, this
+        method responds with :http:status:`404`.
 
         """
         self._check_authentication()

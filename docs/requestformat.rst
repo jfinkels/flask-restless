@@ -11,20 +11,29 @@ mimetype and/or content type.
 
 Suppose we have the following models::
 
-    from flask.ext.restless import Entity
-    from elixir import Date, DateTime, Field, Unicode
-    from elixir import ManyToOne, OneToMany
+    from sqlalchemy import Column, ForeignKey
+    from sqlalchemy import Date, DateTime, Integer, Unicode
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship, backref
 
-    class Person(Entity):
-        name = Field(Unicode, unique=True)
-        birth_date = Field(Date)
-        computers = OneToMany('Computer')
+    Base = declarative_base()
 
-    class Computer(flask.ext.restless.Entity):
-        name = Field(Unicode, unique=True)
-        vendor = Field(Unicode)
-        owner = ManyToOne('Person')
-        purchase_time = Field(DateTime)
+    class Person(Base):
+        __tablename__ = 'person'
+        id = Column(Integer, primary_key=True)
+        name = Column(Unicode, unique=True)
+        birth_date = Column(Date)
+        computers = relationship('Computer', backref=backref('owner',
+                                                             lazy='dynamic'))
+
+    class Computer(Base):
+        __tablename__ = 'computer'
+        id = Column(Integer, primary_key=True)
+        name = Column(Unicode, unique=True)
+        vendor = Column(Unicode)
+        owner_id = Column(Integer, ForeignKey('person.id'))
+        purchase_time = Column(DateTime)
+
 
 Also suppose we have registered an API for these models at ``/api/person`` and
 ``/api/computer``, respectively.

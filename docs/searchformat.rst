@@ -12,12 +12,6 @@ some criteria, clients can make :http:method:`get` requests with a query
 parameter specifying a search. The search functionality in Flask-Restless is
 relatively simple, but should suffice for many cases.
 
-If the ``allow_patch_many`` keyword argument is set to ``True`` when calling
-the :meth:`APIManager.create_api` function, then :http:method:`patch` requests
-will accept search queries as well. In this case, every instance of the model
-which meets the criteria of the search will be patched. For more information,
-see :ref:`allowpatchmany`.
-
 .. _queryformat:
 
 Query format
