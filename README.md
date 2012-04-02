@@ -64,6 +64,7 @@ This application requires the following libraries to be installed:
 * [Elixir][2]
 * [SQLAlchemy][3]
 * [python-dateutil][5] version less than 2.0
+* [simplejson][sj]
 
 These requirements are also listed in the `requirements.txt` file. Using `pip`
 is probably the easiest way to install these:
@@ -72,10 +73,14 @@ is probably the easiest way to install these:
 
 or
 
-    pip install Flask Elixir SQLAlchemy python-dateutil
+    pip install Flask Elixir SQLAlchemy python-dateutil simplejson
+
+Technical note: simplejson is only required if you are using Python 2.5. The
+built-in json module will suffice in later Python versions.
 
 [4]: http://www.python.org/
 [5]: http://labix.org/python-dateutil
+[sj]: http://pypi.python.org/pypi/simplejson
 
 ## Building as a Python egg ##
 
