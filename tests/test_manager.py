@@ -21,11 +21,11 @@ from unittest2 import TestSuite
 
 from flask import Flask
 from flask import json
+from flask.ext.sqlalchemy import SQLAlchemy
 
 from flask.ext.restless import APIManager
 
-from .helpers import TestSupportWithManager
-from .models._sqlalchemy import Person
+from .helpers import TestSupport
 
 
 __all__ = ['APIManagerTest']
@@ -35,7 +35,7 @@ dumps = json.dumps
 loads = json.loads
 
 
-class APIManagerTest(TestSupportWithManager):
+class APIManagerTest(TestSupport):
     """Unit tests for the :class:`flask_restless.manager.APIManager` class.
 
     """
@@ -45,21 +45,15 @@ class APIManagerTest(TestSupportWithManager):
         :class:`flask.ext.restless.APIManager` object.
 
         """
-        # create the Flask application and a test client
-        app = Flask(__name__)
-        app.config['DEBUG'] = True
-        app.config['TESTING'] = True
-        client = app.test_client()
-
-        # create the API manager and initialize the Flask application
-        manager = APIManager()
-        manager.init_app(app)
+        # initialize the Flask application
+        self.manager.init_app(self.flaskapp, self.db)
 
         # create an API
-        manager.create_api(self.session, Person)
+        self.manager.create_api(self.Person)
 
         # make a request on the API
-        response = client.get('/api/person')
+        #client = app.test_client()
+        response = self.app.get('/api/person')
         self.assertEqual(response.status_code, 200)
 
     def test_create_api(self):
@@ -69,10 +63,10 @@ class APIManagerTest(TestSupportWithManager):
 
         """
         # create three different APIs for the same model
-        self.manager.create_api(self.session, Person, methods=['GET', 'POST'])
-        self.manager.create_api(self.session, Person, methods=['PATCH'],
+        self.manager.create_api(self.Person, methods=['GET', 'POST'])
+        self.manager.create_api(self.Person, methods=['PATCH'],
                                 url_prefix='/api2')
-        self.manager.create_api(self.session, Person, methods=['GET'],
+        self.manager.create_api(self.Person, methods=['GET'],
                                 url_prefix='/readonly')
 
         # test that specified endpoints exist
@@ -119,7 +113,7 @@ class APIManagerTest(TestSupportWithManager):
         the corresponding URL.
 
         """
-        self.manager.create_api(self.session, Person, methods=['POST', 'GET'],
+        self.manager.create_api(self.Person, methods=['POST', 'GET'],
                                 collection_name='people')
 
         response = self.app.post('/api/people', data=dumps(dict(name='foo')))
@@ -140,7 +134,7 @@ class APIManagerTest(TestSupportWithManager):
         :http:get:`/api/eval/...` endpoint available.
 
         """
-        self.manager.create_api(self.session, Person, allow_functions=True)
+        self.manager.create_api(self.Person, allow_functions=True)
         response = self.app.get('/api/eval/person', data=dumps(dict()))
         self.assertNotEqual(response.status_code, 400)
         self.assertEqual(response.status_code, 204)
@@ -150,7 +144,7 @@ class APIManagerTest(TestSupportWithManager):
         no endpoint will be made available at :http:get:`/api/eval/...`.
 
         """
-        self.manager.create_api(self.session, Person, allow_functions=False)
+        self.manager.create_api(self.Person, allow_functions=False)
         response = self.app.get('/api/eval/person')
         self.assertNotEqual(response.status_code, 200)
         self.assertEqual(response.status_code, 404)

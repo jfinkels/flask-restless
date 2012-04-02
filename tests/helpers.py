@@ -22,46 +22,12 @@ import tempfile
 from unittest2 import TestCase
 
 from flask import Flask
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from flask.ext.sqlalchemy import SQLAlchemy
 
 from flask.ext.restless import APIManager
 
-from .models._sqlalchemy import Base
-from .models._sqlalchemy import Person
-
 
 class TestSupport(TestCase):
-    """Base class for tests which use a database."""
-
-    def setUp(self):
-        """Creates the database and all necessary tables.
-
-        """
-        # set up the database
-        self.db_fd, self.db_file = tempfile.mkstemp()
-        # create the database engine as a SQLite database file
-        self.engine = create_engine('sqlite:///%s' % self.db_file)
-        # create all the tables required for the models
-        Base.metadata.create_all(self.engine)
-        # create the session in which all transactions will be made
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
-
-    def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        # drop all tables
-        Base.metadata.drop_all(self.engine)
-        #self.session.commit()
-        # close and unlink the file
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
-
-
-class TestSupportWithManager(TestSupport):
     """Base class for tests which use a database and have an
     :class:`flask_restless.APIManager` with a :class:`flask.Flask` app object.
 
@@ -73,20 +39,63 @@ class TestSupportWithManager(TestSupport):
 
     def setUp(self):
         """Creates the database, the Flask application, and the APIManager."""
-        # create the database
-        super(TestSupportWithManager, self).setUp()
+
+        # create a temporary file for the database
+        self.db_fd, self.db_file = tempfile.mkstemp()
 
         # create the Flask application
         app = Flask(__name__)
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///%s' % self.db_file
+        self.flaskapp = app
+
+        # initialize Flask-SQLAlchemy and Flask-Restless
+        self.db = SQLAlchemy(app)
+        self.manager = APIManager(app, self.db)
+
+        # for the sake of brevity...
+        db = self.db
+
+        # declare the models
+        class Computer(db.Model):
+            id = db.Column(db.Integer, primary_key=True)
+            name = db.Column(db.Unicode, unique=True)
+            vendor = db.Column(db.Unicode)
+            buy_date = db.Column(db.DateTime)
+            owner_id = db.Column(db.Integer, db.ForeignKey('person.id'))
+
+        class Person(db.Model):
+            id = db.Column(db.Integer, primary_key=True)
+            name = db.Column(db.Unicode, unique=True)
+            age = db.Column(db.Float)
+            other = db.Column(db.Float)
+            birth_date = db.Column(db.Date)
+            computers = db.relationship('Computer',
+                                        backref=db.backref('owner',
+                                                           lazy='dynamic'))
+        self.Person = Person
+        self.Computer = Computer
+
+        # create all the tables required for the models
+        self.db.create_all()
+
+        # create the test client
         self.app = app.test_client()
 
-        # setup the URLs for the Person API
-        self.manager = APIManager(app)
+    def tearDown(self):
+        """Drops all tables from the temporary database and closes and unlink
+        the temporary file in which it lived.
+
+        """
+        # drop all tables
+        self.db.drop_all()
+        # close and unlink the file
+        os.close(self.db_fd)
+        os.unlink(self.db_file)
 
 
-class TestSupportWithManagerPrefilled(TestSupport):
+class TestSupportPrefilled(TestSupport):
     """Base class for tests which use a database and have an
     :class:`flask_restless.APIManager` with a :class:`flask.Flask` app object.
 
@@ -102,46 +111,13 @@ class TestSupportWithManagerPrefilled(TestSupport):
     def setUp(self):
         """Creates the database, the Flask application, and the APIManager."""
         # create the database
-        super(TestSupportWithManagerPrefilled, self).setUp()
-
-        # create the Flask application
-        app = Flask(__name__)
-        app.config['DEBUG'] = True
-        app.config['TESTING'] = True
-        self.app = app.test_client()
-
-        # setup the URLs for the Person API
-        self.manager = APIManager(app)
-
-        # create some people in the database for testing
-        lincoln = Person(name=u'Lincoln', age=23, other=22)
-        mary = Person(name=u'Mary', age=19, other=19)
-        lucy = Person(name=u'Lucy', age=25, other=20)
-        katy = Person(name=u'Katy', age=7, other=10)
-        john = Person(name=u'John', age=28, other=10)
-        self.people = [lincoln, mary, lucy, katy, john]
-        self.session.add_all(self.people)
-        self.session.commit()
-
-
-class TestSupportPrefilled(TestSupport):
-    """Base class for tests which require a database pre-filled with some
-    initial instances of the :class:`models.Person` class.
-
-    """
-
-    def setUp(self):
-        """Adds some initial people to the database after creating and
-        initializing it.
-
-        """
         super(TestSupportPrefilled, self).setUp()
         # create some people in the database for testing
-        lincoln = Person(name=u'Lincoln', age=23, other=22)
-        mary = Person(name=u'Mary', age=19, other=19)
-        lucy = Person(name=u'Lucy', age=25, other=20)
-        katy = Person(name=u'Katy', age=7, other=10)
-        john = Person(name=u'John', age=28, other=10)
+        lincoln = self.Person(name=u'Lincoln', age=23, other=22)
+        mary = self.Person(name=u'Mary', age=19, other=19)
+        lucy = self.Person(name=u'Lucy', age=25, other=20)
+        katy = self.Person(name=u'Katy', age=7, other=10)
+        john = self.Person(name=u'John', age=28, other=10)
         self.people = [lincoln, mary, lucy, katy, john]
-        self.session.add_all(self.people)
-        self.session.commit()
+        self.db.session.add_all(self.people)
+        self.db.session.commit()

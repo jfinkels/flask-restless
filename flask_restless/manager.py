@@ -76,18 +76,36 @@ class APIManager(object):
     #:    has been registered.
     BLUEPRINTNAME_FORMAT = '%s%s'
 
-    def __init__(self, app=None):
-        """Stores the specified :class:`flask.Flask` application object so that
-        this class can register blueprints on it later.
+    def __init__(self, app=None, flask_sqlalchemy_db=None):
+        """Stores the specified :class:`flask.Flask` application object on
+        which API endpoints will be registered and the
+        :class:`flask.ext.sqlalchemy.SQLAlchemy` object which contains the
+        models which will be exposed.
 
-        If `app` is ``None``, the user must call the :meth:`init_app` method
-        before calling the :meth:`create_api` method.
+        If either `app` or `flask_sqlalchemy_db` is ``None``, the user must
+        call the :meth:`init_app` method before calling the :meth:`create_api`
+        method.
 
         `app` is the :class:`flask.Flask` object containing the user's Flask
         application.
 
+        `flask_sqlalchemy_db` is the :class:`flask.ext.sqlalchemy.SQLAlchemy`
+        object with which `app` has been registered and which contains the
+        database models for which API endpoints will be created.
+
+        For example::
+
+            import flask
+            import flask.ext.restless
+            import flask.ext.sqlalchemy
+
+            app = flask.Flask(__name__)
+            db = flask.ext.sqlalchemy.SQLALchemy(app)
+            apimanager = flask.ext.restless.APIManager(app, db)
+
         """
         self.app = app
+        self.db = flask_sqlalchemy_db
 
     def _next_blueprint_name(self, basename):
         """Returns the next name for a blueprint with the specified base name.
@@ -116,28 +134,35 @@ class APIManager(object):
             next_number = max(existing_numbers) + 1
         return APIManager.BLUEPRINTNAME_FORMAT % (basename, next_number)
 
-    def init_app(self, app):
+    def init_app(self, app, flask_sqlalchemy_db):
         """Stores the specified :class:`flask.Flask` application object on
-        which API endpoints will be registered.
+        which API endpoints will be registered and the
+        :class:`flask.ext.sqlalchemy.SQLAlchemy` object which contains the
+        models which will be exposed.
 
         This is for use in the situation in which this class must be
         instantiated before the :class:`~flask.Flask` application has been
         created. For example::
 
-            apimanager = APIManager()
+            import flask
+            import flask.ext.restless
+            import flask.ext.sqlalchemy
+
+            apimanager = flask.ext.restless.APIManager()
 
             # later...
 
-            app = Flask(__name__)
-            apimanager.init_app(app)
+            app = flask.Flask(__name__)
+            db = flask.ext.sqlalchemy.SQLALchemy(app)
+            apimanager.init_app(app, db)
 
         """
         self.app = app
+        self.db = flask_sqlalchemy_db
 
-    def create_api(self, session, model, methods=READONLY_METHODS,
-                   url_prefix='/api', collection_name=None,
-                   allow_patch_many=False, allow_functions=False,
-                   authentication_required_for=None,
+    def create_api(self, model, methods=READONLY_METHODS, url_prefix='/api',
+                   collection_name=None, allow_patch_many=False,
+                   allow_functions=False, authentication_required_for=None,
                    authentication_function=None):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
@@ -158,11 +183,6 @@ class APIManager(object):
         already been registered with the :class:`~flask.Flask` application
         object specified in the constructor of this class, so you do *not* need
         to register it yourself.
-
-        `session` is the SQLAlchemy session in which all database transactions
-        will be performed. If you are using Flask-SQLAlchemy, this should be
-        ``db.session``, where ``db`` is your
-        :class:`flask.ext.sqlalchemy.SQLAlchemy` object.
 
         `model` is the :class:`flask.ext.restless.Entity` class for which a
         ReSTful interface will be created. Note this must be a class, not an
@@ -217,9 +237,6 @@ class APIManager(object):
         returns ``True`` if and only if a client is authorized to make a
         request on an endpoint.
 
-        .. versionadded:: 0.5
-           Added the `session` argument.
-
         .. versionadded:: 0.4
            Added the `authentication_required_for` keyword argument.
 
@@ -261,7 +278,7 @@ class APIManager(object):
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.APINAME_FORMAT % collection_name
         # the view function for the API for this model
-        api_view = API.as_view(apiname, session, model,
+        api_view = API.as_view(apiname, self.db.session, model,
                                authentication_required_for,
                                authentication_function)
         # suffix an integer to apiname according to already existing blueprints
@@ -285,7 +302,8 @@ class APIManager(object):
         # evaluating functions on all instances of the specified model
         if allow_functions:
             eval_api_name = apiname + 'eval'
-            eval_api_view = FunctionAPI.as_view(eval_api_name, session, model)
+            eval_api_view = FunctionAPI.as_view(eval_api_name, self.db.session,
+                                                model)
             eval_endpoint = '/eval' + collection_endpoint
             blueprint.add_url_rule(eval_endpoint, methods=['GET'],
                                    view_func=eval_api_view)
