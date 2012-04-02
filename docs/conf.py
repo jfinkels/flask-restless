@@ -256,7 +256,10 @@ man_pages = [
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'python': ('http://docs.python.org/', None),
                        'flask': ('http://flask.pocoo.org/docs', None),
-                       'sqlalchemy': ('http://sqlalchemy.org/docs', None)}
+                       'sqlalchemy': ('http://sqlalchemy.org/docs', None),
+                       'flasksqlalchemy':
+                           ('http://packages.python.org/Flask-SQLAlchemy',
+                            None)}
 
 # fall back if theme is not there
 try:
