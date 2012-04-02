@@ -1,6 +1,7 @@
 # -*- coding: utf-8; Mode: Python -*-
 #
 # Copyright (C) 2011 Lincoln de Sousa <lincoln@comum.org>
+# Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
 #
 # This file is part of Flask-Restless.
 #
@@ -20,26 +21,131 @@
 from __future__ import with_statement
 
 from datetime import date
+from datetime import datetime
 from unittest2 import TestSuite
 
 from flask import json
 from sqlalchemy.exc import OperationalError
 
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
+from flask.ext.restless.views import _get_by
+from flask.ext.restless.views import _get_columns
+from flask.ext.restless.views import _get_or_create
+from flask.ext.restless.views import _get_relations
+from flask.ext.restless.views import _to_dict
 from flask.ext.restless.manager import IllegalArgumentError
 
+from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
 from .helpers import TestSupportWithManager
 from .helpers import TestSupportWithManagerPrefilled
-from .models import Computer
-from .models import Person
+from .models._sqlalchemy import Computer
+from .models._sqlalchemy import Person
 
 
-__all__ = ['FunctionEvaluationTest', 'FunctionAPITestCase', 'APITestCase']
+__all__ = ['ModelTestCase', 'FunctionEvaluationTest', 'FunctionAPITestCase',
+           'APITestCase']
 
 
 dumps = json.dumps
 loads = json.loads
+
+
+class ModelTestCase(TestSupport):
+    """Provides tests for helper functions which operate on models."""
+
+    def setUp(self):
+        """Creates a SQLite database in a temporary file and creates and sets
+        up all the necessary tables.
+
+        """
+        super(ModelTestCase, self).setUp()
+        self.model = Person
+
+    def test_column_introspection(self):
+        """Test for getting the names of columns as strings."""
+        columns = _get_columns(self.model)
+        self.assertEqual(sorted(columns.keys()), sorted(['age', 'birth_date',
+                                                         'computers', 'id',
+                                                         'name', 'other']))
+        relations = _get_relations(self.model)
+        self.assertEqual(relations, ['computers'])
+
+    def test_date_serialization(self):
+        """Tests that date objects in the database are correctly serialized in
+        the :meth:`flask_restless.model.Entity.to_dict` method.
+
+        """
+        person = self.model()
+        person.birth_date = date(1986, 9, 15)
+        self.session.commit()
+        d = _to_dict(person)
+        self.assertIn('birth_date', d)
+        self.assertEqual(d['birth_date'], person.birth_date.isoformat())
+
+    def test_datetime_serialization(self):
+        """Tests that datetime objects in the database are correctly serialized
+        in the :meth:`flask_restless.model.Entity.to_dict` method.
+
+        """
+        computer = Computer()
+        computer.buy_date = datetime.now()
+        self.session.commit()
+        d = _to_dict(computer)
+        self.assertIn('buy_date', d)
+        self.assertEqual(d['buy_date'], computer.buy_date.isoformat())
+
+    def test_to_dict(self):
+        """Test for serializing attributes of an instance of the model by the
+        :meth:`flask_restless.model.Entity.to_dict` method.
+
+        """
+        me = self.model(name=u'Lincoln', age=24, birth_date=date(1986, 9, 15))
+        self.session.commit()
+
+        me_dict = _to_dict(me)
+        expectedfields = sorted(['birth_date', 'age', 'id', 'name', 'other'])
+        self.assertEqual(sorted(me_dict), expectedfields)
+        self.assertEqual(me_dict['name'], u'Lincoln')
+        self.assertEqual(me_dict['age'], 24)
+        self.assertEqual(me_dict['birth_date'], me.birth_date.isoformat())
+
+    def test_to_dict_deep(self):
+        """Tests that fields corresponding to related model instances are
+        correctly serialized by the
+        :meth:`flask_restless.model.Entity.to_dict` method.
+
+        """
+        now = datetime.now()
+        someone = self.model(name=u'John', age=25)
+        computer = Computer(name=u'lixeiro', vendor=u'Lemote', buy_date=now)
+        someone.computers.append(computer)
+        self.session.commit()
+
+        deep = {'computers': []}
+        computers = _to_dict(someone, deep)['computers']
+        self.assertEqual(len(computers), 1)
+        self.assertEqual(computers[0]['name'], u'lixeiro')
+        self.assertEqual(computers[0]['vendor'], u'Lemote')
+        self.assertEqual(computers[0]['buy_date'], now.isoformat())
+        self.assertEqual(computers[0]['owner_id'], someone.id)
+
+    def test_get_or_create(self):
+        """Test for :meth:`flask_restless.model.Entity.get_or_create()`."""
+        # Here we're sure that we have a fresh table with no rows, so
+        # let's create the first one:
+        instance, created = _get_or_create(self.session, Person,
+                                           name=u'Lincoln', age=24)
+        self.assertTrue(created)
+        self.assertEqual(instance.name, u'Lincoln')
+        self.assertEqual(instance.age, 24)
+
+        # Now that we have a row, let's try to get it again
+        second_instance, created = _get_or_create(self.session, Person,
+                                                  name=u'Lincoln')
+        self.assertFalse(created)
+        self.assertEqual(second_instance.name, u'Lincoln')
+        self.assertEqual(second_instance.age, 24)
 
 
 class FunctionEvaluationTest(TestSupportPrefilled):
@@ -51,23 +157,23 @@ class FunctionEvaluationTest(TestSupportPrefilled):
     def test_basic_evaluation(self):
         """Tests for basic function evaluation."""
         # test for no model
-        result = evaluate_functions(None, [])
+        result = evaluate_functions(self.session, None, [])
         self.assertEqual(result, {})
 
         # test for no functions
-        result = evaluate_functions(Person, [])
+        result = evaluate_functions(self.session, Person, [])
         self.assertEqual(result, {})
 
         # test for summing ages
         functions = [{'name': 'sum', 'field': 'age'}]
-        result = evaluate_functions(Person, functions)
+        result = evaluate_functions(self.session, Person, functions)
         self.assertIn('sum__age', result)
         self.assertEqual(result['sum__age'], 102.0)
 
         # test for multiple functions
         functions = [{'name': 'sum', 'field': 'age'},
                      {'name': 'avg', 'field': 'other'}]
-        result = evaluate_functions(Person, functions)
+        result = evaluate_functions(self.session, Person, functions)
         self.assertIn('sum__age', result)
         self.assertEqual(result['sum__age'], 102.0)
         self.assertIn('avg__other', result)
@@ -78,12 +184,12 @@ class FunctionEvaluationTest(TestSupportPrefilled):
         # test for unknown field
         functions = [{'name': 'sum', 'field': 'bogus'}]
         with self.assertRaises(AttributeError):
-            evaluate_functions(Person, functions)
+            evaluate_functions(self.session, Person, functions)
 
         # test for unknown function
         functions = [{'name': 'bogus', 'field': 'age'}]
         with self.assertRaises(OperationalError):
-            evaluate_functions(Person, functions)
+            evaluate_functions(self.session, Person, functions)
 
 
 class FunctionAPITestCase(TestSupportWithManagerPrefilled):
@@ -97,7 +203,7 @@ class FunctionAPITestCase(TestSupportWithManagerPrefilled):
 
         """
         super(FunctionAPITestCase, self).setUp()
-        self.manager.create_api(Person, allow_functions=True)
+        self.manager.create_api(self.session, Person, allow_functions=True)
 
     def test_function_evaluation(self):
         """Test that the :http:get:`/api/eval/person` endpoint returns the
@@ -165,9 +271,10 @@ class APITestCase(TestSupportWithManager):
         super(APITestCase, self).setUp()
 
         # setup the URLs for the Person and Computer API
-        self.manager.create_api(Person, methods=['GET', 'PATCH', 'POST',
-                                                 'DELETE'])
-        self.manager.create_api(Computer, methods=['GET', 'POST'])
+        self.manager.create_api(self.session, Person,
+                                methods=['GET', 'PATCH', 'POST', 'DELETE'])
+        self.manager.create_api(self.session, Computer,
+                                methods=['GET', 'POST'])
 
         # to facilitate searching
         self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
@@ -198,7 +305,7 @@ class APITestCase(TestSupportWithManager):
         self.assertEqual(response.status_code, 200)
 
         deep = {'computers': []}
-        inst = Person.get_by(id=1).to_dict(deep)
+        inst = _to_dict(_get_by(self.session, Person, id=1), deep)
         self.assertEqual(loads(response.data), inst)
 
     def test_post_with_submodels(self):
@@ -225,7 +332,7 @@ class APITestCase(TestSupportWithManager):
 
         # Making sure it has been created
         deep = {'computers': []}
-        inst = Person.get_by(id=1).to_dict(deep)
+        inst = _to_dict(_get_by(self.session, Person, id=1), deep)
         response = self.app.get('/api/person/1')
         self.assertEqual(loads(response.data), inst)
 
@@ -234,7 +341,7 @@ class APITestCase(TestSupportWithManager):
         self.assertEqual(response.status_code, 204)
 
         # Making sure it has been deleted
-        self.assertIsNone(Person.get_by(id=1))
+        self.assertIsNone(_get_by(self.session, Person, id=1))
 
     def test_delete_absent_instance(self):
         """Test that deleting an instance of the model which does not exist
@@ -261,7 +368,8 @@ class APITestCase(TestSupportWithManager):
 
         """
         # recreate the api to allow patch many at /api/v2/person
-        self.manager.create_api(Person, methods=['GET', 'POST', 'PUT'],
+        self.manager.create_api(self.session, Person,
+                                methods=['GET', 'POST', 'PUT'],
                                 allow_patch_many=True, url_prefix='/api/v2')
 
         # Creating some people
@@ -311,7 +419,8 @@ class APITestCase(TestSupportWithManager):
 
         """
         # recreate the api to allow patch many at /api/v2/person
-        self.manager.create_api(Person, methods=['GET', 'POST', 'PATCH'],
+        self.manager.create_api(self.session,
+                                Person, methods=['GET', 'POST', 'PATCH'],
                                 allow_patch_many=True, url_prefix='/api/v2')
 
         # Creating some people
@@ -389,7 +498,7 @@ class APITestCase(TestSupportWithManager):
                          data['computers']['add'][0]['vendor'])
 
         # test that this new computer was added to the database as well
-        computer = Computer.get_by(id=1)
+        computer = _get_by(self.session, Computer, id=1)
         self.assertIsNotNone(computer)
         self.assertEqual(data['computers']['add'][0]['name'], computer.name)
         self.assertEqual(data['computers']['add'][0]['vendor'],
@@ -623,11 +732,13 @@ class APITestCase(TestSupportWithManager):
         # must provide authentication function if authentication is required
         # for some HTTP methods
         with self.assertRaises(IllegalArgumentError):
-            self.manager.create_api(Person, methods=['GET', 'POST'],
+            self.manager.create_api(self.session, Person,
+                                    methods=['GET', 'POST'],
                                     authentication_required_for=['POST'])
 
         # test for authentication always failing
-        self.manager.create_api(Person, methods=['GET', 'POST'],
+        self.manager.create_api(self.session, Person,
+                                methods=['GET', 'POST'],
                                 url_prefix='/api/v2',
                                 authentication_required_for=['POST'],
                                 authentication_function=lambda: False)
@@ -645,7 +756,8 @@ class APITestCase(TestSupportWithManager):
                 self.count += 1
                 return self.count % 2
 
-        self.manager.create_api(Person, methods=['GET'], url_prefix='/api/v3',
+        self.manager.create_api(self.session, Person,
+                                methods=['GET'], url_prefix='/api/v3',
                                 authentication_required_for=['GET'],
                                 authentication_function=everyother())
 
@@ -667,6 +779,7 @@ class APITestCase(TestSupportWithManager):
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
     suite = TestSuite()
+    suite.addTest(loader.loadTestsFromTestCase(ModelTestCase))
     suite.addTest(loader.loadTestsFromTestCase(FunctionAPITestCase))
     suite.addTest(loader.loadTestsFromTestCase(FunctionEvaluationTest))
     suite.addTest(loader.loadTestsFromTestCase(APITestCase))

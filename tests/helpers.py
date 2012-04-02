@@ -21,17 +21,14 @@ import os
 import tempfile
 from unittest2 import TestCase
 
-from elixir import create_all
-from elixir import drop_all
-from elixir import metadata
-from elixir import session
-from elixir import setup_all
 from flask import Flask
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from flask.ext.restless import APIManager
 
-from .models import Person
+from .models._sqlalchemy import Base
+from .models._sqlalchemy import Person
 
 
 class TestSupport(TestCase):
@@ -43,19 +40,23 @@ class TestSupport(TestCase):
         """
         # set up the database
         self.db_fd, self.db_file = tempfile.mkstemp()
-        metadata.bind = create_engine('sqlite:///%s' % self.db_file)
-        metadata.bind.echo = False
-        setup_all()
-        create_all()
-        session.commit()
+        # create the database engine as a SQLite database file
+        self.engine = create_engine('sqlite:///%s' % self.db_file)
+        # create all the tables required for the models
+        Base.metadata.create_all(self.engine)
+        # create the session in which all transactions will be made
+        Session = sessionmaker(bind=self.engine)
+        self.session = Session()
 
     def tearDown(self):
         """Drops all tables from the temporary database and closes and unlink
         the temporary file in which it lived.
 
         """
-        drop_all()
-        session.commit()
+        # drop all tables
+        Base.metadata.drop_all(self.engine)
+        #self.session.commit()
+        # close and unlink the file
         os.close(self.db_fd)
         os.unlink(self.db_file)
 
@@ -119,9 +120,8 @@ class TestSupportWithManagerPrefilled(TestSupport):
         katy = Person(name=u'Katy', age=7, other=10)
         john = Person(name=u'John', age=28, other=10)
         self.people = [lincoln, mary, lucy, katy, john]
-        for person in self.people:
-            session.add(person)
-        session.commit()
+        self.session.add_all(self.people)
+        self.session.commit()
 
 
 class TestSupportPrefilled(TestSupport):
@@ -143,6 +143,5 @@ class TestSupportPrefilled(TestSupport):
         katy = Person(name=u'Katy', age=7, other=10)
         john = Person(name=u'John', age=28, other=10)
         self.people = [lincoln, mary, lucy, katy, john]
-        for person in self.people:
-            session.add(person)
-        session.commit()
+        self.session.add_all(self.people)
+        self.session.commit()

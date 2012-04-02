@@ -39,4 +39,3 @@ __version__ = '0.5-dev'
 
 # make the following names available as part of the public API
 from .manager import APIManager
-from .model import Entity

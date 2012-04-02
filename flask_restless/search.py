@@ -335,7 +335,7 @@ class QueryBuilder(object):
         return filters
 
     @staticmethod
-    def create_query(model, search_params):
+    def create_query(session, model, search_params):
         """Builds an SQLAlchemy query instance based on the search parameters
         present in ``search_params``, an instance of :class:`SearchParameters`.
 
@@ -356,7 +356,7 @@ class QueryBuilder(object):
 
         """
         # Adding field filters
-        query = model.query
+        query = session.query(model)
         filters = QueryBuilder._create_filters(model, search_params)
         for filt in filters:
             query = query.filter(filt)
@@ -375,7 +375,7 @@ class QueryBuilder(object):
         return query
 
 
-def create_query(model, searchparams):
+def create_query(session, model, searchparams):
     """Returns a SQLAlchemy query object on the given ``model`` where the
     search for the query is defined by ``searchparams``.
 
@@ -394,10 +394,10 @@ def create_query(model, searchparams):
     """
     if isinstance(searchparams, dict):
         searchparams = SearchParameters.from_dictionary(searchparams)
-    return QueryBuilder.create_query(model, searchparams)
+    return QueryBuilder.create_query(session, model, searchparams)
 
 
-def search(model, search_params):
+def search(session, model, search_params):
     """Performs the search specified by the given parameters on the model
     specified in the constructor of this class.
 
@@ -427,7 +427,7 @@ def search(model, search_params):
     # corresponding value is anything except those values which evaluate to
     # False (False, 0, the empty string, the empty list, etc.).
     is_single = search_params.get('single')
-    query = create_query(model, search_params)
+    query = create_query(session, model, search_params)
     if is_single:
         # may raise NoResultFound or MultipleResultsFound
         return query.one()

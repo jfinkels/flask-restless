@@ -1,5 +1,0 @@
-When writing tests, use the following replacement methods for backward compatibility:
-
-* ``self.assert_in`` instead of ``self.assertIn``
-* ``self.assert_is_none`` instead of ``self.assertIsNone``
-* ``self.assert_is_not_none`` instead of ``self.assertIsNotNone``

@@ -25,7 +25,7 @@ from flask import json
 from flask.ext.restless import APIManager
 
 from .helpers import TestSupportWithManager
-from .models import Person
+from .models._sqlalchemy import Person
 
 
 __all__ = ['APIManagerTest']
@@ -56,7 +56,7 @@ class APIManagerTest(TestSupportWithManager):
         manager.init_app(app)
 
         # create an API
-        manager.create_api(Person)
+        manager.create_api(self.session, Person)
 
         # make a request on the API
         response = client.get('/api/person')
@@ -69,9 +69,10 @@ class APIManagerTest(TestSupportWithManager):
 
         """
         # create three different APIs for the same model
-        self.manager.create_api(Person, methods=['GET', 'POST'])
-        self.manager.create_api(Person, methods=['PATCH'], url_prefix='/api2')
-        self.manager.create_api(Person, methods=['GET'],
+        self.manager.create_api(self.session, Person, methods=['GET', 'POST'])
+        self.manager.create_api(self.session, Person, methods=['PATCH'],
+                                url_prefix='/api2')
+        self.manager.create_api(self.session, Person, methods=['GET'],
                                 url_prefix='/readonly')
 
         # test that specified endpoints exist
@@ -118,7 +119,7 @@ class APIManagerTest(TestSupportWithManager):
         the corresponding URL.
 
         """
-        self.manager.create_api(Person, methods=['POST', 'GET'],
+        self.manager.create_api(self.session, Person, methods=['POST', 'GET'],
                                 collection_name='people')
 
         response = self.app.post('/api/people', data=dumps(dict(name='foo')))
@@ -139,7 +140,7 @@ class APIManagerTest(TestSupportWithManager):
         :http:get:`/api/eval/...` endpoint available.
 
         """
-        self.manager.create_api(Person, allow_functions=True)
+        self.manager.create_api(self.session, Person, allow_functions=True)
         response = self.app.get('/api/eval/person', data=dumps(dict()))
         self.assertNotEqual(response.status_code, 400)
         self.assertEqual(response.status_code, 204)
@@ -149,7 +150,7 @@ class APIManagerTest(TestSupportWithManager):
         no endpoint will be made available at :http:get:`/api/eval/...`.
 
         """
-        self.manager.create_api(Person, allow_functions=False)
+        self.manager.create_api(self.session, Person, allow_functions=False)
         response = self.app.get('/api/eval/person')
         self.assertNotEqual(response.status_code, 200)
         self.assertEqual(response.status_code, 404)

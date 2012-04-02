@@ -134,9 +134,10 @@ class APIManager(object):
         """
         self.app = app
 
-    def create_api(self, model, methods=READONLY_METHODS, url_prefix='/api',
-                   collection_name=None, allow_patch_many=False,
-                   allow_functions=False, authentication_required_for=None,
+    def create_api(self, session, model, methods=READONLY_METHODS,
+                   url_prefix='/api', collection_name=None,
+                   allow_patch_many=False, allow_functions=False,
+                   authentication_required_for=None,
                    authentication_function=None):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
@@ -158,13 +159,17 @@ class APIManager(object):
         object specified in the constructor of this class, so you do *not* need
         to register it yourself.
 
-        ``model`` is the :class:`flask.ext.restless.Entity` class for which a
+        `session` is the SQLAlchemy session in which all database transactions
+        will be performed. If you are using Flask-SQLAlchemy, this should be
+        ``db.session``, where ``db`` is your
+        :class:`flask.ext.sqlalchemy.SQLAlchemy` object.
+
+        `model` is the :class:`flask.ext.restless.Entity` class for which a
         ReSTful interface will be created. Note this must be a class, not an
         instance of a class.
 
-        ``methods`` specify the HTTP methods which will be made available on
-        the ReSTful API for the specified model, subject to the following
-        caveats:
+        `methods` specify the HTTP methods which will be made available on the
+        ReSTful API for the specified model, subject to the following caveats:
 
         * If :http:method:`get` is in this list, the API will allow getting a
           single instance of the model, getting all instances of the model, and
@@ -185,8 +190,7 @@ class APIManager(object):
         model class to be used in the URL for the ReSTful API created. If this
         is not specified, the lowercase name of the model will be used.
 
-        ``url_prefix`` specifies the URL prefix at which this API will be
-        accessible.
+        `url_prefix` the URL prefix at which this API will be accessible.
 
         If `allow_patch_many` is ``True``, then requests to
         :http:patch:`/api/<collection_name>?q=<searchjson>` will attempt to
@@ -212,6 +216,9 @@ class APIManager(object):
         `authentication_function` is a function which accepts no arguments and
         returns ``True`` if and only if a client is authorized to make a
         request on an endpoint.
+
+        .. versionadded:: 0.5
+           Added the `session` argument.
 
         .. versionadded:: 0.4
            Added the `authentication_required_for` keyword argument.
@@ -254,7 +261,8 @@ class APIManager(object):
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.APINAME_FORMAT % collection_name
         # the view function for the API for this model
-        api_view = API.as_view(apiname, model, authentication_required_for,
+        api_view = API.as_view(apiname, session, model,
+                               authentication_required_for,
                                authentication_function)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
@@ -277,7 +285,7 @@ class APIManager(object):
         # evaluating functions on all instances of the specified model
         if allow_functions:
             eval_api_name = apiname + 'eval'
-            eval_api_view = FunctionAPI.as_view(eval_api_name, model)
+            eval_api_view = FunctionAPI.as_view(eval_api_name, session, model)
             eval_endpoint = '/eval' + collection_endpoint
             blueprint.add_url_rule(eval_endpoint, methods=['GET'],
                                    view_func=eval_api_view)
