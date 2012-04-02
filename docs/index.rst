@@ -2,14 +2,11 @@ Flask-Restless
 ==============
 
 **Flask-Restless** provides simple generation of ReSTful APIs for database
-models defined using SQLAlchemy. The generated APIs send and receive messages
-in JSON format.
+models defined using Flask-SQLAlchemy. The generated APIs send and receive
+messages in JSON format.
 
 User's guide
 ------------
-
-Documentation on how to use the Flask-Restless extension to create ReSTful JSON
-APIs for your SQLAlchemy models.
 
 .. toctree::
    :maxdepth: 2

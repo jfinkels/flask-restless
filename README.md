@@ -3,8 +3,8 @@
 ## Introduction ##
 
 This is Flask-Restless, a [Flask][1] extension which facilitates the creation
-of ReSTful JSON APIs. It is compatible with models which have been described
-using [Elixir][2], a layer on top of [SQLAlchemy][3].
+of ReSTful JSON APIs. It is compatible with models which have been defined
+using [Flask-SQLAlchemy][2].
 
 This document contains some brief instructions concerning installation of
 requirements, installation of this extension, configuration and usage of this
@@ -19,8 +19,7 @@ For more information, check the World Wide Web!
 [![Build status](https://secure.travis-ci.org/jfinkels/flask-restless.png)](http://travis-ci.org/jfinkels/flask-restless)
 
 [1]: http://flask.pocoo.org
-[2]: http://elixir.ematia.de
-[3]: http://sqlalchemy.org
+[2]: http://packages.python.org/Flask.SQLAlchemy
 
 ## Copyright license ##
 
@@ -49,8 +48,6 @@ files:
 * `views.py` - the view class which implements the ReSTful API
 * `manager.py` - the main class which end users will utilize to create ReSTful
   APIs for their database models
-* `model.py` - the base class to use for models for which ReSTful APIs will be
-  created
 * `search.py` - functions and classes which facilitate searching the database
   on requests which require a search
 
@@ -61,8 +58,7 @@ This application requires [Python][4] version 2.5, 2.6, or 2.7.
 This application requires the following libraries to be installed:
 
 * [Flask][1] version 0.7 or greater
-* [Elixir][2]
-* [SQLAlchemy][3]
+* [Flask-SQLAlchemy][2]
 * [python-dateutil][5] version less than 2.0
 * [simplejson][sj]
 
@@ -73,7 +69,7 @@ is probably the easiest way to install these:
 
 or
 
-    pip install Flask Elixir SQLAlchemy python-dateutil simplejson
+    pip install Flask Flask-SQLAlchemy python-dateutil simplejson
 
 Technical note: simplejson is only required if you are using Python 2.5. The
 built-in json module will suffice in later Python versions.
@@ -128,7 +124,7 @@ Flask-Restless requires the following program and supporting library to build
 the documentation:
 
 * [Sphinx][6]
-* [sphinxcontrib-httpdomain-withpatch][7]
+* [sphinxcontrib-httpdomain][7], version 1.1.7 or greater
 
 These requirements are also listed in the `requirements-doc.txt` file. Using
 `pip` is probably the easiest way to install these:
