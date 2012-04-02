@@ -13,6 +13,7 @@ Version 0.5
 
 Not yet released.
 
+- Added capturing of exceptions raised during field validation.
 - Replaced Elixir with Flask-SQLAlchemy. Flask-Restless now only supports
   Flask-SQLAlchemy.
 
@@ -21,7 +22,6 @@ Version 0.4
 
 Released on March 29, 2012.
 
-- Added capturing of exceptions raised during field validation.
 - Added Python 2.5 and Python 2.6 support.
 - Allow users to specify which HTTP methods for a particular API will require
   authentication and how that authentication will take place.
