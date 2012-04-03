@@ -35,7 +35,7 @@ from flask.ext.restless.views import _get_by
 from .helpers import TestSupportPrefilled
 
 
-__all__ = ['FilterTest', 'QueryCreationTest', 'SearchTest']
+__all__ = ['FilterTest', 'OperatorsTest', 'QueryCreationTest', 'SearchTest']
 
 
 class FilterTest(TestCase):
@@ -123,6 +123,41 @@ class QueryCreationTest(TestSupportPrefilled):
         self.assertEqual(results[1].other, 19)
 
 
+class OperatorsTest(TestSupportPrefilled):
+    """Tests for each of the query operators defined in
+    :data:`flask_restless.search.OPERATORS`.
+
+    """
+    def test_operators(self):
+        for op in '==', 'eq', 'equals', 'equal_to':
+            d = dict(filters=[dict(name='name', op=op, val='Lincoln')])
+            result = search(self.db.session, self.Person, d)
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0].name, 'Lincoln')
+        for op in '!=', 'ne', 'neq', 'not_equal_to', 'does_not_equal':
+            d = dict(filters=[dict(name='name', op=op, val='Lincoln')])
+            result = search(self.db.session, self.Person, d)
+            self.assertEqual(len(result), len(self.people) - 1)
+            self.assertNotIn('Lincoln', (p.name for p in result))
+        for op in '>', 'gt':
+            pass
+        for op in '<', 'lt':
+            pass
+        for op in '>=', 'ge', 'gte', 'geq':
+            pass
+        for op in '<=', 'le', 'lte', 'leq':
+            pass
+        #like
+        #in
+        #not_in
+        #is_null
+        #is_not_null
+        #desc
+        #asc
+        #has
+        #any
+
+
 class SearchTest(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.search.search` function.
 
@@ -161,6 +196,7 @@ def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
     suite = TestSuite()
     suite.addTest(loader.loadTestsFromTestCase(FilterTest))
+    suite.addTest(loader.loadTestsFromTestCase(OperatorsTest))
     suite.addTest(loader.loadTestsFromTestCase(QueryCreationTest))
     suite.addTest(loader.loadTestsFromTestCase(SearchTest))
     return suite
