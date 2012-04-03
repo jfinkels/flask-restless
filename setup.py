@@ -35,20 +35,15 @@
 """
 from __future__ import with_statement
 
+import sys
 from setuptools import Command
 from setuptools import setup
 
-
-def from_requirements_file(filename='requirements.txt'):
-    """Returns a list of required Python packages from the file whose path is
-    given by `filename`.
-
-    By default, `filename` is the conventional :file:`requirements.txt` file.
-
-    """
-    with open(filename, 'r') as f:
-        requirements = f.read()
-    return requirements.split()
+#: The installation requirements for Flask-Restless. ``simplejson`` is only
+#: required on Python version 2.5.
+requirements = ['flask>=0.7', 'flask-sqlalchemy', 'python-dateutil<2.0']
+if sys.version_info < (2, 6):
+    requirements.append('simplejson')
 
 
 class run_coverage(Command):
@@ -70,9 +65,11 @@ class run_coverage(Command):
     user_options = []
 
     def initialize_options(self):
+        """Intentionally unimplemented."""
         pass
 
     def finalize_options(self):
+        """Intentionally unimplemented."""
         pass
 
     def run(self):
@@ -86,7 +83,6 @@ class run_coverage(Command):
                              '--branch', 'run-tests.py'])
             subprocess.call(['coverage', 'html'])
         except OSError:
-            import sys
             print('coverage.py not found.'
                   ' Install it with "pip install coverage".')
             sys.exit(-1)
@@ -110,7 +106,7 @@ setup(
     cmdclass={'coverage': run_coverage},
     description='A Flask extension for easy ReSTful API generation',
     download_url='http://pypi.python.org/pypi/Flask-Restless',
-    install_requires=from_requirements_file(),
+    install_requires=requirements,
     include_package_data=True,
     keywords=['ReST', 'API', 'Flask', 'Elixir'],
     license='GNU AGPLv3+',
