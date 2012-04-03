@@ -116,12 +116,23 @@ You can also run the unit tests in a less verbose way by doing
 
 This is a Python module which, when executed, simply runs all unit tests.
 
-To test validation of Elixir models (which is not provided by Flask-Restless),
-install the [sqlalchemy-validation][sav] package. If it is not detected, these
-tests will be skipped.
+[ut2]: http://pypi.python.org/pypi/unittest2
+
+### Testing validation ###
+
+Validation is not provided directly by Flask-Restless, but it does provide a
+way for users to indicate exceptions to catch. If you wish to test validation
+of SQLAlchemy models more extensively, you may install one or more of the
+following Python libraries:
+
+* [sqlalchemy-validation][sav]
+* [SAValidation][sav2]
+
+The test suite will automatically skip tests for those libraries which are not
+installed.
 
 [sav]: http://code.google.com/p/sqlalchemy-validations/
-[ut2]: http://pypi.python.org/pypi/unittest2
+[sav2]: http://pypi.python.org/pypi/SAValidation
 
 ## Building documentation ##
 

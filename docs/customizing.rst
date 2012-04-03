@@ -124,6 +124,14 @@ the ``validation_errors`` keyword argument::
     from cool_validation_framework import ValidationError
     apimanager.create_api(Person, validation_errors=[ValidationError])
 
+.. note::
+
+   Currently, Flask-Restless expects that an instance of a specified validation
+   error will have a ``errors`` attribute, which is a dictionary mapping field
+   name to error description (note: one error per field). If you have a better,
+   more general solution to this problem, please visit `our issue tracker
+   <https://github.com/jfinkels/flask-restless/issues>`_.
+
 Now when you make :http:method:`post` and :http:method:`patch` requests with
 invalid fields, the JSON response will look like this:
 
