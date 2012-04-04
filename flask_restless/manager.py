@@ -271,7 +271,8 @@ class APIManager(object):
             raise IllegalArgumentError(msg)
         if collection_name is None:
             collection_name = model.__tablename__
-        methods = frozenset(methods)
+        # convert all method names to upper case
+        methods = frozenset((m.upper() for m in methods))
         # sets of methods used for different types of endpoints
         no_instance_methods = methods & frozenset(('POST', ))
         if allow_patch_many:

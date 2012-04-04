@@ -198,6 +198,75 @@ class APIManagerTest(TestSupport):
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
             self.assertNotIn(column, loads(response.data))
 
+    def test_different_urls(self):
+        """Tests that establishing different URL endpoints for the same model
+        affect the same database table.
+
+        """
+        methods = frozenset(('get', 'patch', 'post', 'delete'))
+        # create a separate endpoint for each HTTP method
+        for method in methods:
+            url = '/%s' % method
+            self.manager.create_api(self.Person, methods=[method.upper()],
+                                    url_prefix=url)
+
+        # test for correct requests
+        response = self.app.get('/get/person')
+        self.assertEqual(response.status_code, 200)
+        response = self.app.post('/post/person', data=dumps(dict(name='Test')))
+        self.assertEqual(response.status_code, 201)
+        response = self.app.patch('/patch/person/1',
+                                  data=dumps(dict(name='foo')))
+        self.assertEqual(response.status_code, 200)
+        response = self.app.delete('/delete/person/1')
+        self.assertEqual(response.status_code, 204)
+
+        # test for incorrect requests
+        response = self.app.get('/post/person')
+        self.assertEqual(response.status_code, 405)
+        response = self.app.get('/patch/person/1')
+        self.assertEqual(response.status_code, 405)
+        response = self.app.get('/delete/person/1')
+        self.assertEqual(response.status_code, 405)
+
+        response = self.app.post('/get/person')
+        self.assertEqual(response.status_code, 405)
+        response = self.app.post('/patch/person/1')
+        self.assertEqual(response.status_code, 405)
+        response = self.app.post('/delete/person/1')
+        self.assertEqual(response.status_code, 405)
+
+        response = self.app.patch('/get/person')
+        self.assertEqual(response.status_code, 405)
+        response = self.app.patch('/post/person')
+        self.assertEqual(response.status_code, 405)
+        response = self.app.patch('/delete/person/1')
+        self.assertEqual(response.status_code, 405)
+
+        response = self.app.delete('/get/person')
+        self.assertEqual(response.status_code, 405)
+        response = self.app.delete('/post/person')
+        self.assertEqual(response.status_code, 405)
+        response = self.app.delete('/patch/person/1')
+        self.assertEqual(response.status_code, 405)
+
+        # test that the same model is updated on all URLs
+        response = self.app.post('/post/person', data=dumps(dict(name='Test')))
+        self.assertEqual(response.status_code, 201)
+        response = self.app.get('/get/person/1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data)['name'], 'Test')
+        response = self.app.patch('/patch/person/1',
+                                  data=dumps(dict(name='Foo')))
+        self.assertEqual(response.status_code, 200)
+        response = self.app.get('/get/person/1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data)['name'], 'Foo')
+        response = self.app.delete('/delete/person/1')
+        self.assertEqual(response.status_code, 204)
+        response = self.app.get('/get/person/1')
+        self.assertEqual(response.status_code, 404)
+
 
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
