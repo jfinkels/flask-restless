@@ -88,19 +88,6 @@ def _is_date_field(model, fieldname):
     return isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime)
 
 
-def _get_by(session, model, **kw):
-    """Gets the first row when filtering `model` by the given keyword arguments
-    in the specified `session`.
-
-    For example::
-
-        >>> _get_by(session, Person, name='Jeffrey')
-        Person(id=1, name='Jeffrey')
-
-    """
-    return session.query(model).filter_by(**kw).first()
-
-
 def _get_or_create(session, model, **kwargs):
     """Returns the first instance of the specified model filtered by the
     keyword arguments, or creates a new instance of the model and returns that.
@@ -122,7 +109,8 @@ def _get_or_create(session, model, **kwargs):
     :func:`sqlalchemy.orm.query.Query.filter_by` function.
 
     """
-    instance = _get_by(session, model, **kwargs)
+    # TODO document that this uses the .first() function
+    instance = model.query.filter_by(**kwargs).first()
     if instance:
         return instance, False
     else:
@@ -444,7 +432,7 @@ class API(ModelView):
         submodel = _get_related_model(self.model, relationname)
         for dictionary in toadd or []:
             if 'id' in dictionary:
-                subinst = _get_by(self.session, submodel, id=dictionary['id'])
+                subinst = submodel.query.get(dictionary['id'])
             else:
                 subinst = _get_or_create(self.session, submodel,
                                          **dictionary)[0]
@@ -479,9 +467,10 @@ class API(ModelView):
         for dictionary in toremove or []:
             remove = dictionary.pop('__delete__', False)
             if 'id' in dictionary:
-                subinst = _get_by(self.session, submodel, id=dictionary['id'])
+                subinst = submodel.query.get(dictionary['id'])
             else:
-                subinst = _get_by(self.session, submodel, **dictionary)
+                # TODO document that we use .first() here
+                subinst = submodel.query.filter_by(**dictionary).first()
             for instance in query:
                 getattr(instance, relationname).remove(subinst)
             if remove:
@@ -677,7 +666,7 @@ class API(ModelView):
         self._check_authentication()
         if instid is None:
             return self._search()
-        inst = _get_by(self.session, self.model, id=instid)
+        inst = self.model.query.get(instid)
         if inst is None:
             abort(404)
         relations = _get_relations(self.model)
@@ -695,7 +684,7 @@ class API(ModelView):
 
         """
         self._check_authentication()
-        inst = _get_by(self.session, self.model, id=instid)
+        inst = self.model.query.get(instid)
         if inst is not None:
             self.session.delete(inst)
             self.session.commit()

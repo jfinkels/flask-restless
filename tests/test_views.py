@@ -28,7 +28,6 @@ from flask import json
 from sqlalchemy.exc import OperationalError
 
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
-from flask.ext.restless.views import _get_by
 from flask.ext.restless.views import _get_columns
 from flask.ext.restless.views import _get_or_create
 from flask.ext.restless.views import _get_relations
@@ -291,7 +290,7 @@ class APITestCase(TestSupport):
         self.assertEqual(response.status_code, 200)
 
         deep = {'computers': []}
-        inst = _to_dict(_get_by(self.db.session, self.Person, id=1), deep)
+        inst = _to_dict(self.Person.query.get(1), deep)
         self.assertEqual(loads(response.data), inst)
 
     def test_post_with_submodels(self):
@@ -318,7 +317,7 @@ class APITestCase(TestSupport):
 
         # Making sure it has been created
         deep = {'computers': []}
-        inst = _to_dict(_get_by(self.db.session, self.Person, id=1), deep)
+        inst = _to_dict(self.Person.query.get(1), deep)
         response = self.app.get('/api/person/1')
         self.assertEqual(loads(response.data), inst)
 
@@ -327,7 +326,7 @@ class APITestCase(TestSupport):
         self.assertEqual(response.status_code, 204)
 
         # Making sure it has been deleted
-        self.assertIsNone(_get_by(self.db.session, self.Person, id=1))
+        self.assertIsNone(self.Person.query.get(1))
 
     def test_delete_absent_instance(self):
         """Test that deleting an instance of the model which does not exist
@@ -482,7 +481,7 @@ class APITestCase(TestSupport):
                          data['computers']['add'][0]['vendor'])
 
         # test that this new computer was added to the database as well
-        computer = _get_by(self.db.session, self.Computer, id=1)
+        computer = self.Computer.query.get(1)
         self.assertIsNotNone(computer)
         self.assertEqual(data['computers']['add'][0]['name'], computer.name)
         self.assertEqual(data['computers']['add'][0]['vendor'],
