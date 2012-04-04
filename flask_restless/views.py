@@ -202,6 +202,29 @@ def _to_dict(instance, deep=None, exclude=None):
     return result
 
 
+def _include_keys(dictionary, keys):
+    """Returns a new dictionary containing only the mappings from `dictionary`
+    with keys as specified in `keys`.
+
+    """
+    return dict((k, v) for k, v in dictionary.items() if k in keys)
+
+
+def _to_dict_include(instance, deep=None, exclude=None, include=None):
+    """Returns the dictionary representation of `instance` as returned by
+    :func:`_to_dict`, but only with the fields specified by `include` (if it is
+    not ``None``).
+
+    If `include` is ``None``, all keys will be included. If it is an iterable
+    of strings, only those keys will be included in the returned dictionary.
+
+    """
+    result = _to_dict(instance, deep, exclude)
+    if include is None:
+        return result
+    return _include_keys(result, include)
+
+
 def _evaluate_functions(session, model, functions):
     """Executes each of the SQLAlchemy functions specified in ``functions``, a
     list of dictionaries of the form described below, on the given model and
@@ -348,7 +371,8 @@ class API(ModelView):
     """
 
     def __init__(self, session, model, authentication_required_for=None,
-                 authentication_function=None, *args, **kw):
+                 authentication_function=None, include_columns=None, *args,
+                 **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -371,6 +395,21 @@ class API(ModelView):
         Pre-condition (callers must satisfy): if `authentication_required_for`
         is specified, so must `authentication_function`.
 
+        `include_columns` is a list of strings which name the columns of
+        `model` which will be included in the JSON representation of that model
+        provided in response to :http:method:`get` requests. Only the named
+        columns will be included. If this list includes a string which does not
+        name a column in `model`, it will be ignored.
+
+        .. versionadded:: 0.5
+           Added the `include_columns` keyword argument.
+
+        .. versionadded:: 0.4
+           Added the `authentication_required_for` keyword argument.
+
+        .. versionadded:: 0.4
+           Added the `authentication_function` keyword argument.
+
         """
         super(API, self).__init__(session, model, *args, **kw)
         self.authentication_required_for = authentication_required_for or ()
@@ -378,6 +417,7 @@ class API(ModelView):
         # convert HTTP method names to uppercase
         self.authentication_required_for = \
             frozenset([m.upper() for m in self.authentication_required_for])
+        self.include_columns = include_columns
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
@@ -601,9 +641,13 @@ class API(ModelView):
 
         # for security purposes, don't transmit list as top-level JSON
         if isinstance(result, list):
-            return jsonify(objects=[_to_dict(x) for x in result])
+            objects = [_to_dict_include(x, include=self.include_columns)
+                       for x in result]
+            return jsonify(objects=objects)
         else:
-            return jsonify(_to_dict(result, deep))
+            result = _to_dict_include(result, deep,
+                                      include=self.include_columns)
+            return jsonify(result)
 
     def _check_authentication(self):
         """If the specified HTTP method requires authentication (see the
@@ -638,7 +682,8 @@ class API(ModelView):
             abort(404)
         relations = _get_relations(self.model)
         deep = dict((r, {}) for r in relations)
-        return jsonify(_to_dict(inst, deep))
+        result = _to_dict_include(inst, deep, include=self.include_columns)
+        return jsonify(result)
 
     def delete(self, instid):
         """Removes the specified instance of the model with the specified name

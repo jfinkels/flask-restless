@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Unit tests for the :mod:`flask_restless.manager` module."""
+import datetime
 from unittest2 import TestSuite
 
 from flask import Flask
@@ -24,6 +25,7 @@ from flask import json
 from flask.ext.sqlalchemy import SQLAlchemy
 
 from flask.ext.restless import APIManager
+from flask.ext.restless.views import _get_columns
 
 from .helpers import TestSupport
 
@@ -148,6 +150,53 @@ class APIManagerTest(TestSupport):
         response = self.app.get('/api/eval/person')
         self.assertNotEqual(response.status_code, 200)
         self.assertEqual(response.status_code, 404)
+
+    def test_include_columns(self):
+        """Tests that the `include_columns` argument specifies which columns to
+        return in the JSON representation of instances of the model.
+
+        """
+        all_columns = _get_columns(self.Person)
+        # allow all
+        self.manager.create_api(self.Person, include_columns=None,
+                                url_prefix='/all')
+        self.manager.create_api(self.Person, include_columns=all_columns,
+                                url_prefix='/all2')
+        # allow some
+        self.manager.create_api(self.Person, include_columns=('name', 'age'),
+                                url_prefix='/some')
+        # allow none
+        self.manager.create_api(self.Person, include_columns=(),
+                                url_prefix='/none')
+
+        # create a test person
+        self.manager.create_api(self.Person, methods=['POST'],
+                                url_prefix='/add')
+        d = dict(name=u'Test', age=10, other=20,
+                 birth_date=datetime.date(1999, 12, 31).isoformat())
+        response = self.app.post('/add/person', data=dumps(d))
+        self.assertEqual(response.status_code, 201)
+        personid = loads(response.data)['id']
+
+        # get all
+        response = self.app.get('/all/person/%s' % personid)
+        for column in 'name', 'age', 'other', 'birth_date', 'computers':
+            self.assertIn(column, loads(response.data))
+        response = self.app.get('/all2/person/%s' % personid)
+        for column in 'name', 'age', 'other', 'birth_date', 'computers':
+            self.assertIn(column, loads(response.data))
+
+        # get some
+        response = self.app.get('/some/person/%s' % personid)
+        for column in 'name', 'age':
+            self.assertIn(column, loads(response.data))
+        for column in 'other', 'birth_date', 'computers':
+            self.assertNotIn(column, loads(response.data))
+
+        # get none
+        response = self.app.get('/none/person/%s' % personid)
+        for column in 'name', 'age', 'other', 'birth_date', 'computers':
+            self.assertNotIn(column, loads(response.data))
 
 
 def load_tests(loader, standard_tests, pattern):

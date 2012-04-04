@@ -119,6 +119,35 @@ For information about the request and response formats for this endpoint, see
 
 .. _authentication:
 
+Specifying which columns are provided in responses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, all columns of your model will be exposed by the API. If the
+``include_columns`` keyword argument is an iterable of strings, *only* columns
+with those names (that is, the strings represent the names of attributes of the
+model which are ``Column`` objects) will be provided in JSON responses for
+:http:method:`get` requests.
+
+For example, if your model is defined like this::
+
+    class Person(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.Unicode, unique=True)
+        birth_date = db.Column(db.Date)
+        computers = db.relationship('Computer')
+
+and you want your JSON responses to include only the values of the ``name`` and
+``birth_date`` columns, create your API with the following arguments::
+
+    apimanager.create_api(Person, include_columns=['name', 'birth_date'])
+
+Now requests like :http:get:`/api/person/1` will return JSON objects which look
+like this:
+
+.. sourcecode:: javascript
+
+   {"name": "Jeffrey", "birth_date": "1999-12-31"}
+
 Requiring authentication for some methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
