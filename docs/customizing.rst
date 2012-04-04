@@ -14,7 +14,7 @@ a response with :http:statuscode:`405`. To explicitly specify which methods
 should be allowed for the endpoint, pass a list as the value of keyword
 argument ``methods``::
 
-    apimanager.create_api(session, Person, methods=['GET', 'POST', 'DELETE'])
+    apimanager.create_api(Person, methods=['GET', 'POST', 'DELETE'])
 
 This creates an endpoint at ``/api/person`` which responds to
 :http:method:`get`, :http:method:`post`, and :http:method:`delete` methods, but
@@ -77,7 +77,7 @@ API prefix
 To create an API at a different prefix, use the ``url_prefix`` keyword
 argument::
 
-    apimanager.create_api(session, Person, url_prefix='/api/v2')
+    apimanager.create_api(Person, url_prefix='/api/v2')
 
 Then your API for ``Person`` will be available at ``/api/v2/person``.
 
@@ -89,7 +89,7 @@ the model. To provide a different name for the model, provide a string to the
 `collection_name` keyword argument of the :meth:`APIManager.create_api`
 method::
 
-    apimanager.create_api(session, Person, collection_name='people')
+    apimanager.create_api(Person, collection_name='people')
 
 Then the API will be exposed at ``/api/people`` instead of ``/api/person``.
 
@@ -104,7 +104,7 @@ keyword argument of the :meth:`APIManager.create_api` method to be ``True``,
 :http:patch:`/api/person` requests will patch the provided attributes on all
 instances of ``Person``::
 
-    apimanager.create_api(session, Person, allow_patch_many=True)
+    apimanager.create_api(Person, allow_patch_many=True)
 
 Exposing evaluation of SQL functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
