@@ -106,8 +106,8 @@ instances of ``Person``::
 
     apimanager.create_api(session, Person, allow_patch_many=True)
 
-Exposing evaluation of SQL function
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Exposing evaluation of SQL functions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If the ``allow_functions`` keyword argument is set to ``True`` when creating an
 API for a model using :meth:`APIManager.create_api`, then an endpoint will be
