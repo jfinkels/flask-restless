@@ -37,8 +37,7 @@ db.create_all()
 manager = flask.ext.restless.APIManager(app, db)
 
 # Create API endpoints, which will be available at /api/<tablename> by
-# default. Allowed HTTP methods can be specified as well. We create a different
-# session for each API, but you could use the same session.
+# default. Allowed HTTP methods can be specified as well.
 manager.create_api(Person, methods=['GET', 'POST', 'DELETE'])
 manager.create_api(Computer, methods=['GET'])
 

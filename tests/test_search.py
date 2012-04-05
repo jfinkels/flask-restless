@@ -29,7 +29,6 @@ from flask.ext.restless.search import create_query
 from flask.ext.restless.search import Filter
 from flask.ext.restless.search import search
 from flask.ext.restless.search import SearchParameters
-from flask.ext.restless.views import _get_by
 
 from .helpers import TestSupportPrefilled
 
@@ -89,7 +88,7 @@ class QueryCreationTest(TestSupportPrefilled):
         """Test for making a query with respect to a related field."""
         # add a computer to person 1
         computer = self.Computer(name=u'turing', vendor=u'Dell')
-        p1 = _get_by(self.db.session, self.Person, id=1)
+        p1 = self.Person.query.get(1)
         p1.computers.append(computer)
         self.db.session.commit()
 

@@ -88,19 +88,6 @@ def _is_date_field(model, fieldname):
     return isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime)
 
 
-def _get_by(session, model, **kw):
-    """Gets the first row when filtering `model` by the given keyword arguments
-    in the specified `session`.
-
-    For example::
-
-        >>> _get_by(session, Person, name='Jeffrey')
-        Person(id=1, name='Jeffrey')
-
-    """
-    return session.query(model).filter_by(**kw).first()
-
-
 def _get_or_create(session, model, **kwargs):
     """Returns the first instance of the specified model filtered by the
     keyword arguments, or creates a new instance of the model and returns that.
@@ -122,7 +109,8 @@ def _get_or_create(session, model, **kwargs):
     :func:`sqlalchemy.orm.query.Query.filter_by` function.
 
     """
-    instance = _get_by(session, model, **kwargs)
+    # TODO document that this uses the .first() function
+    instance = model.query.filter_by(**kwargs).first()
     if instance:
         return instance, False
     else:
@@ -200,6 +188,29 @@ def _to_dict(instance, deep=None, exclude=None):
         else:
             result[relation] = _to_dict(relatedvalue, rdeep, newexclude)
     return result
+
+
+def _include_keys(dictionary, keys):
+    """Returns a new dictionary containing only the mappings from `dictionary`
+    with keys as specified in `keys`.
+
+    """
+    return dict((k, v) for k, v in dictionary.items() if k in keys)
+
+
+def _to_dict_include(instance, deep=None, exclude=None, include=None):
+    """Returns the dictionary representation of `instance` as returned by
+    :func:`_to_dict`, but only with the fields specified by `include` (if it is
+    not ``None``).
+
+    If `include` is ``None``, all keys will be included. If it is an iterable
+    of strings, only those keys will be included in the returned dictionary.
+
+    """
+    result = _to_dict(instance, deep, exclude)
+    if include is None:
+        return result
+    return _include_keys(result, include)
 
 
 def _evaluate_functions(session, model, functions):
@@ -348,7 +359,8 @@ class API(ModelView):
     """
 
     def __init__(self, session, model, authentication_required_for=None,
-                 authentication_function=None, *args, **kw):
+                 authentication_function=None, include_columns=None, *args,
+                 **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -371,6 +383,21 @@ class API(ModelView):
         Pre-condition (callers must satisfy): if `authentication_required_for`
         is specified, so must `authentication_function`.
 
+        `include_columns` is a list of strings which name the columns of
+        `model` which will be included in the JSON representation of that model
+        provided in response to :http:method:`get` requests. Only the named
+        columns will be included. If this list includes a string which does not
+        name a column in `model`, it will be ignored.
+
+        .. versionadded:: 0.5
+           Added the `include_columns` keyword argument.
+
+        .. versionadded:: 0.4
+           Added the `authentication_required_for` keyword argument.
+
+        .. versionadded:: 0.4
+           Added the `authentication_function` keyword argument.
+
         """
         super(API, self).__init__(session, model, *args, **kw)
         self.authentication_required_for = authentication_required_for or ()
@@ -378,6 +405,7 @@ class API(ModelView):
         # convert HTTP method names to uppercase
         self.authentication_required_for = \
             frozenset([m.upper() for m in self.authentication_required_for])
+        self.include_columns = include_columns
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
@@ -404,7 +432,7 @@ class API(ModelView):
         submodel = _get_related_model(self.model, relationname)
         for dictionary in toadd or []:
             if 'id' in dictionary:
-                subinst = _get_by(self.session, submodel, id=dictionary['id'])
+                subinst = submodel.query.get(dictionary['id'])
             else:
                 subinst = _get_or_create(self.session, submodel,
                                          **dictionary)[0]
@@ -439,9 +467,10 @@ class API(ModelView):
         for dictionary in toremove or []:
             remove = dictionary.pop('__delete__', False)
             if 'id' in dictionary:
-                subinst = _get_by(self.session, submodel, id=dictionary['id'])
+                subinst = submodel.query.get(dictionary['id'])
             else:
-                subinst = _get_by(self.session, submodel, **dictionary)
+                # TODO document that we use .first() here
+                subinst = submodel.query.filter_by(**dictionary).first()
             for instance in query:
                 getattr(instance, relationname).remove(subinst)
             if remove:
@@ -604,9 +633,13 @@ class API(ModelView):
 
         # for security purposes, don't transmit list as top-level JSON
         if isinstance(result, list):
-            return jsonify(objects=[_to_dict(x) for x in result])
+            objects = [_to_dict_include(x, include=self.include_columns)
+                       for x in result]
+            return jsonify(objects=objects)
         else:
-            return jsonify(_to_dict(result, deep))
+            result = _to_dict_include(result, deep,
+                                      include=self.include_columns)
+            return jsonify(result)
 
     def _check_authentication(self):
         """If the specified HTTP method requires authentication (see the
@@ -636,12 +669,13 @@ class API(ModelView):
         self._check_authentication()
         if instid is None:
             return self._search()
-        inst = _get_by(self.session, self.model, id=instid)
+        inst = self.model.query.get(instid)
         if inst is None:
             abort(404)
         relations = _get_relations(self.model)
         deep = dict((r, {}) for r in relations)
-        return jsonify(_to_dict(inst, deep))
+        result = _to_dict_include(inst, deep, include=self.include_columns)
+        return jsonify(result)
 
     def delete(self, instid):
         """Removes the specified instance of the model with the specified name
@@ -653,7 +687,7 @@ class API(ModelView):
 
         """
         self._check_authentication()
-        inst = _get_by(self.session, self.model, id=instid)
+        inst = self.model.query.get(instid)
         if inst is not None:
             self.session.delete(inst)
             self.session.commit()
