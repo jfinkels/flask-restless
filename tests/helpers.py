@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """Helper functions for unit tests in this package."""
+import datetime
 import os
 import tempfile
 from unittest2 import TestCase
@@ -113,7 +114,8 @@ class TestSupportPrefilled(TestSupport):
         # create the database
         super(TestSupportPrefilled, self).setUp()
         # create some people in the database for testing
-        lincoln = self.Person(name=u'Lincoln', age=23, other=22)
+        lincoln = self.Person(name=u'Lincoln', age=23, other=22,
+                              birth_date=datetime.date(1900, 1, 2))
         mary = self.Person(name=u'Mary', age=19, other=19)
         lucy = self.Person(name=u'Lucy', age=25, other=20)
         katy = self.Person(name=u'Katy', age=7, other=10)

@@ -594,6 +594,9 @@ class API(ModelView):
             return jsonify(message='No result found')
         except MultipleResultsFound:
             return jsonify(message='Multiple results found')
+        except:
+            return jsonify_status_code(400,
+                                       message='Unable to construct query')
 
         # create a placeholder for the relations of the returned models
         relations = _get_relations(self.model)
@@ -740,8 +743,12 @@ class API(ModelView):
 
         patchmany = instid is None
         if patchmany:
-            # create a SQLALchemy Query from the query parameter `q`
-            query = create_query(self.session, self.model, data)
+            try:
+                # create a SQLALchemy Query from the query parameter `q`
+                query = create_query(self.session, self.model, data)
+            except:
+                return jsonify_status_code(400,
+                                           message='Unable to construct query')
         else:
             # create a SQLAlchemy Query which has exactly the specified row
             query = self.session.query(self.model).filter_by(id=instid)

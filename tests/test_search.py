@@ -27,7 +27,6 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from flask.ext.restless.search import create_query
 from flask.ext.restless.search import Filter
-from flask.ext.restless.search import IllegalArgumentError
 from flask.ext.restless.search import search
 from flask.ext.restless.search import SearchParameters
 from flask.ext.restless.views import _get_by
@@ -35,21 +34,7 @@ from flask.ext.restless.views import _get_by
 from .helpers import TestSupportPrefilled
 
 
-__all__ = ['FilterTest', 'OperatorsTest', 'QueryCreationTest', 'SearchTest']
-
-
-class FilterTest(TestCase):
-    """Unit tests for the :class:`flask.ext.restless.search.Filter` class."""
-
-    def test_init_bad_arguments(self):
-        """Tests that providing bad initial arguments to the constructor raises
-        an :exc:`flask.ext.restless.search.IllegalArgumentError`.
-
-        """
-        with self.assertRaises(IllegalArgumentError):
-            Filter('x', 'y', argument='z', otherfield='a')
-        with self.assertRaises(IllegalArgumentError):
-            Filter('x', 'y')
+__all__ = ['OperatorsTest', 'QueryCreationTest', 'SearchTest']
 
 
 class QueryCreationTest(TestSupportPrefilled):
@@ -128,6 +113,7 @@ class OperatorsTest(TestSupportPrefilled):
     :data:`flask_restless.search.OPERATORS`.
 
     """
+
     def test_operators(self):
         for op in '==', 'eq', 'equals', 'equal_to':
             d = dict(filters=[dict(name='name', op=op, val='Lincoln')])
@@ -140,22 +126,40 @@ class OperatorsTest(TestSupportPrefilled):
             self.assertEqual(len(result), len(self.people) - 1)
             self.assertNotIn('Lincoln', (p.name for p in result))
         for op in '>', 'gt':
-            pass
+            d = dict(filters=[dict(name='age', op=op, val=20)])
+            result = search(self.db.session, self.Person, d)
+            self.assertEqual(len(result), 3)
         for op in '<', 'lt':
-            pass
+            d = dict(filters=[dict(name='age', op=op, val=20)])
+            result = search(self.db.session, self.Person, d)
+            self.assertEqual(len(result), 2)
         for op in '>=', 'ge', 'gte', 'geq':
-            pass
+            d = dict(filters=[dict(name='age', op=op, val=23)])
+            result = search(self.db.session, self.Person, d)
+            self.assertEqual(len(result), 3)
         for op in '<=', 'le', 'lte', 'leq':
-            pass
-        #like
-        #in
-        #not_in
-        #is_null
-        #is_not_null
-        #desc
-        #asc
-        #has
-        #any
+            d = dict(filters=[dict(name='age', op=op, val=23)])
+            result = search(self.db.session, self.Person, d)
+            self.assertEqual(len(result), 3)
+        d = dict(filters=[dict(name='name', op='like', val='%y%')])
+        result = search(self.db.session, self.Person, d)
+        self.assertEqual(len(result), 3)
+        d = dict(filters=[dict(name='age', op='in', val=[19, 21, 23])])
+        result = search(self.db.session, self.Person, d)
+        self.assertEqual(len(result), 2)
+        d = dict(filters=[dict(name='age', op='not_in', val=[19, 21, 23])])
+        result = search(self.db.session, self.Person, d)
+        self.assertEqual(len(result), 3)
+        d = dict(filters=[dict(name='birth_date', op='is_null')])
+        result = search(self.db.session, self.Person, d)
+        self.assertEqual(len(result), 4)
+        d = dict(filters=[dict(name='birth_date', op='is_not_null')])
+        result = search(self.db.session, self.Person, d)
+        self.assertEqual(len(result), 1)
+        # desc
+        # asc
+        # has
+        # any
 
 
 class SearchTest(TestSupportPrefilled):
@@ -195,7 +199,6 @@ class SearchTest(TestSupportPrefilled):
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
     suite = TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(FilterTest))
     suite.addTest(loader.loadTestsFromTestCase(OperatorsTest))
     suite.addTest(loader.loadTestsFromTestCase(QueryCreationTest))
     suite.addTest(loader.loadTestsFromTestCase(SearchTest))
