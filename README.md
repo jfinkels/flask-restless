@@ -60,7 +60,7 @@ This application requires the following libraries to be installed:
 * [Flask][1] version 0.7 or greater
 * [Flask-SQLAlchemy][2]
 * [python-dateutil][5] version less than 2.0
-* [simplejson][sj]
+* [simplejson][sj] only in Python 2.5
 
 These requirements are also listed in the `requirements.txt` file. Using `pip`
 is probably the easiest way to install these:

@@ -163,7 +163,8 @@ class APIManager(object):
     def create_api(self, model, methods=READONLY_METHODS, url_prefix='/api',
                    collection_name=None, allow_patch_many=False,
                    allow_functions=False, authentication_required_for=None,
-                   authentication_function=None, validation_exceptions=None):
+                   authentication_function=None, include_columns=None,
+                   validation_exceptions=None):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
         this class.
@@ -242,6 +243,15 @@ class APIManager(object):
         returns ``True`` if and only if a client is authorized to make a
         request on an endpoint.
 
+        `include_columns` is a list of strings which name the columns of
+        `model` which will be included in the JSON representation of that model
+        provided in response to :http:method:`get` requests. Only the named
+        columns will be included. If this list includes a string which does not
+        name a column in `model`, it will be ignored.
+
+        .. versionadded:: 0.5
+           Added the `include_columns` keyword argument.
+
         .. versionadded:: 0.4
            Added the `validation_exceptions` keyword argument.
 
@@ -270,7 +280,8 @@ class APIManager(object):
             raise IllegalArgumentError(msg)
         if collection_name is None:
             collection_name = model.__tablename__
-        methods = frozenset(methods)
+        # convert all method names to upper case
+        methods = frozenset((m.upper() for m in methods))
         # sets of methods used for different types of endpoints
         no_instance_methods = methods & frozenset(('POST', ))
         if allow_patch_many:
@@ -288,7 +299,8 @@ class APIManager(object):
         # the view function for the API for this model
         api_view = API.as_view(apiname, self.db.session, model,
                                authentication_required_for,
-                               authentication_function, validation_exceptions)
+                               authentication_function, include_columns,
+                               validation_exceptions)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the
