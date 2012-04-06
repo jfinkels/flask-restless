@@ -13,6 +13,7 @@ Version 0.5
 
 Not yet released.
 
+- Added capturing of exceptions raised during field validation.
 - Added :file:`examples/separate_endpoints.py`, showing how to create separate
   API endpoints for a single model.
 - Added `include_columns` keyword argument to

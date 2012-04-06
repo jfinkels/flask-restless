@@ -163,7 +163,8 @@ class APIManager(object):
     def create_api(self, model, methods=READONLY_METHODS, url_prefix='/api',
                    collection_name=None, allow_patch_many=False,
                    allow_functions=False, authentication_required_for=None,
-                   authentication_function=None, include_columns=None):
+                   authentication_function=None, include_columns=None,
+                   validation_exceptions=None):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
         this class.
@@ -219,6 +220,11 @@ class APIManager(object):
         information on the search query parameter ``q``, see
         :ref:`searchformat`.
 
+        `validation_exceptions` is the tuple of possible exceptions raised by
+        validation of your database models. If this is specified, validation
+        errors will be captured and forwarded to the client in JSON format. For
+        more information on how to use validation, see :ref:`validation`.
+
         If `allow_functions` is ``True``, then requests to
         :http:get:`/api/eval/<collection_name>` will return the result of
         evaluating SQL functions specified in the body of the request. For
@@ -245,6 +251,9 @@ class APIManager(object):
 
         .. versionadded:: 0.5
            Added the `include_columns` keyword argument.
+
+        .. versionadded:: 0.5
+           Added the `validation_exceptions` keyword argument.
 
         .. versionadded:: 0.4
            Added the `authentication_required_for` keyword argument.
@@ -290,7 +299,8 @@ class APIManager(object):
         # the view function for the API for this model
         api_view = API.as_view(apiname, self.db.session, model,
                                authentication_required_for,
-                               authentication_function, include_columns)
+                               authentication_function, include_columns,
+                               validation_exceptions)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the

@@ -359,8 +359,8 @@ class API(ModelView):
     """
 
     def __init__(self, session, model, authentication_required_for=None,
-                 authentication_function=None, include_columns=None, *args,
-                 **kw):
+                 authentication_function=None, include_columns=None,
+                 validation_exceptions=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -383,6 +383,13 @@ class API(ModelView):
         Pre-condition (callers must satisfy): if `authentication_required_for`
         is specified, so must `authentication_function`.
 
+        `validation_exceptions` is the tuple of exceptions raised by backend
+        validation (if any exist). If exceptions are specified here, any
+        exceptions which are caught when writing to the database. Will be
+        returned to the client as a :http:statuscode:`400` response with a
+        message specifying the validation error which occurred. For more
+        information, see :ref:`validation`.
+
         `include_columns` is a list of strings which name the columns of
         `model` which will be included in the JSON representation of that model
         provided in response to :http:method:`get` requests. Only the named
@@ -391,6 +398,9 @@ class API(ModelView):
 
         .. versionadded:: 0.5
            Added the `include_columns` keyword argument.
+
+        .. versionadded:: 0.5
+           Added the `validation_exceptions` keyword argument.
 
         .. versionadded:: 0.4
            Added the `authentication_required_for` keyword argument.
@@ -406,6 +416,7 @@ class API(ModelView):
         self.authentication_required_for = \
             frozenset([m.upper() for m in self.authentication_required_for])
         self.include_columns = include_columns
+        self.validation_exceptions = tuple(validation_exceptions or ())
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
@@ -519,6 +530,51 @@ class API(ModelView):
             self._add_to_relation(query, columnname, toadd=toadd)
             self._remove_from_relation(query, columnname, toremove=toremove)
         return tochange
+
+    def _handle_validation_exception(self, exception):
+        """Rolls back the session, extracts validation error messages, and
+        returns a :func:`flask.jsonify` response with :http:statuscode:`400`
+        containing the extracted validation error messages.
+
+        Again, *this method calls
+        :meth:`sqlalchemy.orm.session.Session.rollback`*.
+
+        """
+        self.session.rollback()
+        errors = self._extract_error_messages(exception) or \
+            'Could not determine specific validation errors'
+        return jsonify_status_code(400, validation_errors=errors)
+
+    def _extract_error_messages(self, exception):
+        """Tries to extract a dictionary mapping field name to validation error
+        messages from `exception`, which is a validation exception as provided
+        in the ``validation_exceptions`` keyword argument in the constructor of
+        this class.
+
+        Since the type of the exception is provided by the user in the
+        constructor of this class, we don't know for sure where the validation
+        error messages live inside `exception`. Therefore this method simply
+        attempts to access a few likely attributes and returns the first one it
+        finds (or ``None`` if no error messages dictionary can be extracted).
+
+        """
+        # 'errors' comes from sqlalchemy_elixir_validations
+        if hasattr(exception, 'errors'):
+            return exception.errors
+        # 'message' comes from savalidation
+        if hasattr(exception, 'message'):
+            # TODO this works only if there is one validation error
+            left, right = exception.message.rsplit(':', 1)
+            try:
+                left_bracket = left.rindex('[')
+                right_bracket = right.rindex(']')
+            except ValueError:
+                # could not parse the string; we're not trying too hard here...
+                return None
+            msg = right[:right_bracket].strip(' "')
+            fieldname = left[left_bracket + 1:].strip()
+            return {fieldname: msg}
+        return None
 
     def _strings_to_dates(self, dictionary):
         """Returns a new dictionary with all the mappings of `dictionary` but
@@ -730,22 +786,25 @@ class API(ModelView):
         # date into an instance of the Python ``datetime`` object.
         params = self._strings_to_dates(params)
 
-        # Instantiate the model with the parameters
-        instance = self.model(**dict([(i, params[i]) for i in props]))
+        try:
+            # Instantiate the model with the parameters
+            instance = self.model(**dict([(i, params[i]) for i in props]))
 
-        # Handling relations, a single level is allowed
-        for col in set(relations).intersection(paramkeys):
-            submodel = cols[col].property.mapper.class_
-            for subparams in params[col]:
-                subinst = _get_or_create(self.session, submodel,
-                                         **subparams)[0]
-                getattr(instance, col).append(subinst)
+            # Handling relations, a single level is allowed
+            for col in set(relations).intersection(paramkeys):
+                submodel = cols[col].property.mapper.class_
+                for subparams in params[col]:
+                    subinst = _get_or_create(self.session, submodel,
+                                             **subparams)[0]
+                    getattr(instance, col).append(subinst)
 
-        # add the created model to the session
-        self.session.add(instance)
-        self.session.commit()
+            # add the created model to the session
+            self.session.add(instance)
+            self.session.commit()
 
-        return jsonify_status_code(201, id=instance.id)
+            return jsonify_status_code(201, id=instance.id)
+        except self.validation_exceptions, exception:
+            return self._handle_validation_exception(exception)
 
     def patch(self, instid):
         """Updates the instance specified by ``instid`` of the named model, or
@@ -789,11 +848,14 @@ class API(ModelView):
         # date into an instance of the Python ``datetime`` object.
         params = self._strings_to_dates(params)
 
-        # Let's update all instances present in the query
-        num_modified = 0
-        if params:
-            num_modified = query.update(params, False)
-        self.session.commit()
+        try:
+            # Let's update all instances present in the query
+            num_modified = 0
+            if params:
+                num_modified = query.update(params, False)
+            self.session.commit()
+        except self.validation_exceptions, exception:
+            return self._handle_validation_exception(exception)
 
         if patchmany:
             return jsonify(num_modified=num_modified)

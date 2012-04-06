@@ -17,7 +17,6 @@ User's guide
    customizing
    searchformat
    requestformat
-   validation
 
 API reference
 -------------

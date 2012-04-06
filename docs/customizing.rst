@@ -106,6 +106,48 @@ instances of ``Person``::
 
     apimanager.create_api(Person, allow_patch_many=True)
 
+.. _validation:
+
+Capturing validation errors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, no validation is performed by Flask-Restless; if you want
+validation, implement it yourself in your database models. However, by
+specifying a list of exceptions raised by your backend on validation errors,
+Flask-Restless will forward messages from raised exceptions to the client in an
+error response.
+
+For example, if your validation framework includes an exception called
+``ValidationError``, then call the :meth:`APIManager.create_api` method with
+the ``validation_errors`` keyword argument::
+
+    from cool_validation_framework import ValidationError
+    apimanager.create_api(Person, validation_errors=[ValidationError])
+
+.. note::
+
+   Currently, Flask-Restless expects that an instance of a specified validation
+   error will have a ``errors`` attribute, which is a dictionary mapping field
+   name to error description (note: one error per field). If you have a better,
+   more general solution to this problem, please visit `our issue tracker
+   <https://github.com/jfinkels/flask-restless/issues>`_.
+
+Now when you make :http:method:`post` and :http:method:`patch` requests with
+invalid fields, the JSON response will look like this:
+
+.. sourcecode:: http
+
+   HTTP/1.1 400 Bad Request
+
+   { "validation_errors":
+       {
+         "age": "Must be an integer",
+       }
+   }
+
+Currently, Flask-Restless can only forward one exception at a time to the
+client.
+
 Exposing evaluation of SQL functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
