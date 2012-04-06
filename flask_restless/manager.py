@@ -252,7 +252,7 @@ class APIManager(object):
         .. versionadded:: 0.5
            Added the `include_columns` keyword argument.
 
-        .. versionadded:: 0.4
+        .. versionadded:: 0.5
            Added the `validation_exceptions` keyword argument.
 
         .. versionadded:: 0.4
