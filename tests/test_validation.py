@@ -31,28 +31,17 @@ from unittest2 import skipUnless
 
 from flask import json
 
-# for the sqlalchemy_elixir_validations package on pypi.python.org
-try:
-    from sqlalchemy_validations import validates_format_of
-    from sqlalchemy_validations import validates_numericality_of
-    from sqlalchemy_validations import validates_presence_of
-    from sqlalchemy_validations import validates_range_of
-    from sqlalchemy_validations import validates_uniqueness_of
-    from sqlalchemy_validations import ValidationException
-    has_sqlalchemy_elixir_validations = True
-except:
-    has_sqlalchemy_elixir_validations = False
-
 # for SAValidation package on pypi.python.org
 try:
-    from savalidation import ValidationError
+    import savalidation as _sav
+    import savalidation.validators as sav
     has_savalidation = True
 except:
     has_savalidation = False
 
 from .helpers import TestSupport
 
-__all__ = ['SAETest', 'SAVTest', 'SimpleValidationTest']
+__all__ = ['SAVTest', 'SimpleValidationTest']
 
 #: A regular expression for email addresses.
 EMAIL_REGEX = re.compile("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^"
@@ -63,40 +52,7 @@ dumps = json.dumps
 loads = json.loads
 
 
-class ValidationTestCase(TestSupport):
-    """Base class for tests which expect validation errors.
-
-    Each subclass which inherits from this base class should override
-    :meth:`_create_apis` to create API endpoints for models which have some
-    validation on their fields.
-
-    """
-
-    def setUp(self):
-        """Creates the database, the :class:`~flask.Flask` object, the
-        :class:`~flask_restless.manager.APIManager` for that application, and
-        creates the ReSTful API endpoints for the :class:`testapp.Person` and
-        :class:`testapp.Computer` models.
-
-        Each subclass which inherits from this base class should override
-        :meth:`create_apis` to create API endpoints for models which have some
-        validation on their fields.
-
-        """
-        super(ValidationTestCase, self).setUp()
-        self.create_apis()
-
-    def create_apis(self):
-        """Subclasses must override this method and use it to register APIs for
-        their models.
-
-        The implementation here does nothing.
-
-        """
-        pass
-
-
-class SimpleValidationTest(ValidationTestCase):
+class SimpleValidationTest(TestSupport):
     """Tests for validation errors raised by the SQLAlchemy's simple built-in
     validation.
 
@@ -105,9 +61,9 @@ class SimpleValidationTest(ValidationTestCase):
 
     """
 
-    def create_apis(self):
+    def setUp(self):
         """Create APIs for the validated models."""
-
+        super(SimpleValidationTest, self).setUp()
         # for the sake of brevity...
         db = self.db
 
@@ -152,6 +108,7 @@ class SimpleValidationTest(ValidationTestCase):
                                 validation_exceptions=[CoolValidationError])
 
     def test_validations(self):
+        """Test SQLAlchemy's built-in simple validations."""
         # test posting a person with a badly formatted email field
         person = dict(name='Jeffrey', email='bogus!!!email', age=1)
         response = self.app.post('/api/test', data=dumps(person))
@@ -187,117 +144,34 @@ class SimpleValidationTest(ValidationTestCase):
             self.assertNotIn('format', errors['email'].lower())
 
 
-class SAETest(ValidationTestCase):
-    """Tests for validation errors raised by the
-    ``sqlalchemy_elixir_validations`` package. For more information about this
-    package, see `its PyPI page
-    <http://pypi.python.org/pypi/sqlalchemy_elixir_validations>`_.
+class SAVTest(TestSupport):
+    """Tests for validation errors raised by the ``savalidation`` package. For
+    more information about this package, see `its PyPI page
+    <http://pypi.python.org/pypi/SAValidation>`_.
 
     """
 
-    def create_apis(self):
+    def setUp(self):
         """Create APIs for the validated models."""
-
+        super(SAVTest, self).setUp()
         # for the sake of brevity...
         db = self.db
 
-        # create the validated class
-        # NOTE: don't name this `Person`, as in models.Person
-        class Test(db.Model):
-            name = db.Column(db.Unicode(30), nullable=False, index=True)
-            email = db.Column(db.Unicode, nullable=False)
-            age = db.Column(db.Integer, nullable=False)
+        class Test(db.Model, _sav.ValidationMixin):
+            __tablename__ = 'test'
+            id = db.Column(db.Integer, primary_key=True)
+            name = db.Column(db.Unicode(30))
+            email = db.Column(db.Unicode)
+            age = db.Column(db.Integer)
 
-            validates_uniqueness_of('name')
-            validates_presence_of('name', 'email')
-            validates_format_of('email', EMAIL_REGEX)
-            validates_numericality_of('age', integer_only=True)
-            validates_range_of('age', 0, 150)
+            sav.validates_presence_of('name', 'email')
+            sav.validates_email('email')
 
+        db.create_all()
+
+        exceptions = [_sav.ValidationError]
         self.manager.create_api(Test, methods=['GET', 'POST', 'PATCH'],
-                                validation_exceptions=[ValidationException])
-
-    def test_presence_validations(self):
-        """Tests that errors from validators which check for presence are
-        correctly captured and returned to the client.
-
-        """
-        # missing required name field
-        person = dict(email='example@example.com')
-        response = self.app.post('/api/test', data=dumps(person))
-        self.assertEqual(response.status_code, 400)
-        data = loads(response.data)
-        self.assertIn('validation_errors', data)
-        errors = data['validation_errors']
-        self.assertIn('name', errors)
-        self.assertIn('presence', errors['name'].lower())
-
-        # missing required email field
-        person = dict(name='Jeffrey')
-        response = self.app.post('/api/test', data=dumps(person))
-        self.assertEqual(response.status_code, 400)
-        data = loads(response.data)
-        self.assertIn('validation_errors', data)
-        errors = data['validation_errors']
-        self.assertIn('email', errors)
-        self.assertIn('presence', errors['email'].lower())
-
-        # everything required is now provided
-        person = dict(name='Jeffrey', email='example@example.com', age=24)
-        response = self.app.post('/api/test', data=dumps(person))
-        self.assertEqual(response.status_code, 201)
-        personid = loads(response.data)['id']
-
-        # check that the provided field values are in there
-        response = self.app.get('/api/test/' + str(personid))
-        self.assertEqual(response.status_code, 200)
-        data = loads(response.data)
-        self.assertEqual(data['name'], 'Jeffrey')
-        self.assertEqual(data['email'], 'example@example.com')
-
-    def test_uniqueness_validations(self):
-        """Tests that errors from validators which check for uniqueness are
-        correctly captured and returned to the client.
-
-        """
-        # create a person
-        person = dict(name='Jeffrey', email='example@example.com', age=24)
-        response = self.app.post('/api/test', data=dumps(person))
-        self.assertEqual(response.status_code, 201)
-
-        # test posting a person with the same name field
-        person = dict(name='Jeffrey', email='foo@example.com', age=1)
-        response = self.app.post('/api/test', data=dumps(person))
-        self.assertEqual(response.status_code, 400)
-        data = loads(response.data)
-        self.assertIn('validation_errors', data)
-        errors = data['validation_errors']
-        self.assertIn('name', errors)
-        self.assertIn('unique', errors['name'].lower())
-
-        # post a new person with different fields should be fine
-        person = dict(name='John', email='foo@example.com', age=1)
-        response = self.app.post('/api/test', data=dumps(person))
-        self.assertEqual(response.status_code, 201)
-        personid = loads(response.data)['id']
-
-        # test patching a person to with non unique field data
-        person = dict(name='Jeffrey')
-        response = self.app.patch('/api/test/' + str(personid),
-                                  data=dumps(person))
-        self.assertIn('validation_errors', data)
-        errors = data['validation_errors']
-        self.assertIn('name', errors)
-        self.assertIn('unique', errors['name'].lower())
-
-        # patching a person with unique fields should be fine
-        person = dict(name='John', email='foo@example.com', age=1)
-        response = self.app.patch('/api/test/' + str(personid),
-                                  data=dumps(person))
-        self.assertIn('validation_errors', data)
-        data = loads(response.data)
-        if 'validation_errors' in data and 'name' in data['validation_errors']:
-            self.assertNotIn('unique', errors['name'].lower())
+                                validation_exceptions=exceptions)
 
     def test_format_validations(self):
         """Tests that errors from validators which check if fields match a
@@ -313,7 +187,7 @@ class SAETest(ValidationTestCase):
         self.assertIn('validation_errors', data)
         errors = data['validation_errors']
         self.assertIn('email', errors)
-        self.assertIn('format', errors['email'].lower())
+        self.assertIn('email address', errors['email'].lower())
 
         # posting a new person with valid email format should be fine
         person = dict(name='John', email='foo@example.com', age=1)
@@ -328,7 +202,7 @@ class SAETest(ValidationTestCase):
         self.assertIn('validation_errors', data)
         errors = data['validation_errors']
         self.assertIn('email', errors)
-        self.assertIn('format', errors['email'].lower())
+        self.assertIn('email address', errors['email'].lower())
 
         # patching a person with correctly formatted fields should be fine
         person = dict(email='foo@example.com')
@@ -337,114 +211,49 @@ class SAETest(ValidationTestCase):
         data = loads(response.data)
         if 'validation_errors' in data and \
                 'email' in data['validation_errors']:
-            self.assertNotIn('format', errors['email'].lower())
+            self.assertNotIn('email address', errors['email'].lower())
 
-    def test_numericality_validations(self):
-        """Tests that errors from validators which check numericality of fields
-        are correctly captured and returned to the client.
+    def test_presence_validations(self):
+        """Tests that errors from validators which check for presence are
+        correctly captured and returned to the client.
 
         """
-        # test posting a person with a non-numeric age
-        person = dict(name='Jeffrey', email='example@example.com', age='bogus')
+        # missing required name field
+        person = dict(email='example@example.com')
         response = self.app.post('/api/test', data=dumps(person))
         self.assertEqual(response.status_code, 400)
         data = loads(response.data)
         self.assertIn('validation_errors', data)
         errors = data['validation_errors']
-        self.assertIn('age', errors)
-        self.assertIn('numeric', errors['age'].lower())
+        self.assertIn('name', errors)
+        self.assertIn('enter a value', errors['name'].lower())
 
-        # posting a new person with numeric age should be fine
-        person = dict(name='Jeffrey', email='example@example.com', age=1)
+        # missing required email field
+        person = dict(name='Jeffrey')
+        response = self.app.post('/api/test', data=dumps(person))
+        self.assertEqual(response.status_code, 400)
+        data = loads(response.data)
+        self.assertIn('validation_errors', data)
+        errors = data['validation_errors']
+        self.assertIn('email', errors)
+        self.assertIn('enter a value', errors['email'].lower())
+
+        # everything required is now provided
+        person = dict(name='Jeffrey', email='example@example.com', age=24)
         response = self.app.post('/api/test', data=dumps(person))
         self.assertEqual(response.status_code, 201)
         personid = loads(response.data)['id']
 
-        # test patching a person to with a non-numeric age
-        response = self.app.patch('/api/test/' + str(personid),
-                                  data=dumps(dict(age='bogus')))
-        self.assertIn('validation_errors', data)
-        errors = data['validation_errors']
-        self.assertIn('age', errors)
-        self.assertIn('numeric', errors['age'].lower())
-
-        # patching a person with numeric age
-        person = dict(age=100)
-        response = self.app.patch('/api/test/' + str(personid),
-                                  data=dumps(person))
+        # check that the provided field values are in there
+        response = self.app.get('/api/test/' + str(personid))
+        self.assertEqual(response.status_code, 200)
         data = loads(response.data)
-        if 'validation_errors' in data and 'age' in data['validation_errors']:
-            self.assertNotIn('numberic', errors['age'].lower())
-
-    def test_range_validations(self):
-        """Tests that errors from validators which check that value of fields
-        are between a given range are correctly captured and returned to the
-        client.
-
-        """
-        # test posting a person with a crazy age
-        person = dict(name='Jeffrey', email='example@example.com', age=-100)
-        response = self.app.post('/api/test', data=dumps(person))
-        self.assertEqual(response.status_code, 400)
-        data = loads(response.data)
-        self.assertIn('validation_errors', data)
-        errors = data['validation_errors']
-        self.assertIn('age', errors)
-        self.assertIn('range', errors['age'].lower())
-
-        person = dict(name='Jeffrey', email='example@example.com', age=999)
-        response = self.app.post('/api/test', data=dumps(person))
-        self.assertEqual(response.status_code, 400)
-        data = loads(response.data)
-        self.assertIn('validation_errors', data)
-        errors = data['validation_errors']
-        self.assertIn('age', errors)
-        self.assertIn('range', errors['age'].lower())
-
-        # posting a new person with non-crazy age should be fine
-        person = dict(name='Jeffrey', email='example@example.com', age=50)
-        response = self.app.post('/api/test', data=dumps(person))
-        self.assertEqual(response.status_code, 201)
-        personid = loads(response.data)['id']
-
-        # test patching a person to with a crazy age
-        response = self.app.patch('/api/test/' + str(personid),
-                                  data=dumps(dict(age=-1000)))
-        self.assertIn('validation_errors', data)
-        errors = data['validation_errors']
-        self.assertIn('age', errors)
-        self.assertIn('range', errors['age'].lower())
-
-        response = self.app.patch('/api/test/' + str(personid),
-                                  data=dumps(dict(age=9999)))
-        self.assertIn('validation_errors', data)
-        errors = data['validation_errors']
-        self.assertIn('age', errors)
-        self.assertIn('range', errors['age'].lower())
-
-        # patching a person with a normal age should be fine
-        person = dict(age=100)
-        response = self.app.patch('/api/test/' + str(personid),
-                                  data=dumps(person))
-        data = loads(response.data)
-        if 'validation_errors' in data and 'age' in data['validation_errors']:
-            self.assertNotIn('range', errors['age'].lower())
-
-
-class SAVTest(ValidationTestCase):
-    """Tests for validation errors raised by the ``savalidation`` package. For
-    more information about this package, see `its PyPI page
-    <http://pypi.python.org/pypi/savalidation>`_.
-
-    """
-    # TODO fill me in, if possible
-    pass
+        self.assertEqual(data['name'], 'Jeffrey')
+        self.assertEqual(data['email'], 'example@example.com')
 
 
 # skipUnless should be used as a decorator, but Python 2.5 doesn't have
 # decorators.
-SAETest = skipUnless(has_sqlalchemy_elixir_validations,
-                     'sqlalchemy_elixir_validations not found.')(SAETest)
 SAVTest = skipUnless(has_savalidation, 'savalidation not found.')(SAVTest)
 
 
@@ -452,6 +261,5 @@ def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
     suite = TestSuite()
     suite.addTest(loader.loadTestsFromTestCase(SimpleValidationTest))
-    suite.addTest(loader.loadTestsFromTestCase(SAETest))
     suite.addTest(loader.loadTestsFromTestCase(SAVTest))
     return suite

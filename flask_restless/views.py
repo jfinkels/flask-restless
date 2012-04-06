@@ -531,6 +531,51 @@ class API(ModelView):
             self._remove_from_relation(query, columnname, toremove=toremove)
         return tochange
 
+    def _handle_validation_exception(self, exception):
+        """Rolls back the session, extracts validation error messages, and
+        returns a :func:`flask.jsonify` response with :http:statuscode:`400`
+        containing the extracted validation error messages.
+
+        Again, *this method calls
+        :meth:`sqlalchemy.orm.session.Session.rollback`*.
+
+        """
+        self.session.rollback()
+        errors = self._extract_error_messages(exception) or \
+            'Could not determine specific validation errors'
+        return jsonify_status_code(400, validation_errors=errors)
+
+    def _extract_error_messages(self, exception):
+        """Tries to extract a dictionary mapping field name to validation error
+        messages from `exception`, which is a validation exception as provided
+        in the ``validation_exceptions`` keyword argument in the constructor of
+        this class.
+
+        Since the type of the exception is provided by the user in the
+        constructor of this class, we don't know for sure where the validation
+        error messages live inside `exception`. Therefore this method simply
+        attempts to access a few likely attributes and returns the first one it
+        finds (or ``None`` if no error messages dictionary can be extracted).
+
+        """
+        # 'errors' comes from sqlalchemy_elixir_validations
+        if hasattr(exception, 'errors'):
+            return exception.errors
+        # 'message' comes from savalidation
+        if hasattr(exception, 'message'):
+            # TODO this works only if there is one validation error
+            left, right = exception.message.rsplit(':', 1)
+            try:
+                left_bracket = left.rindex('[')
+                right_bracket = right.rindex(']')
+            except ValueError:
+                # could not parse the string; we're not trying too hard here...
+                return None
+            msg = right[:right_bracket].strip(' "')
+            fieldname = left[left_bracket + 1:].strip()
+            return {fieldname: msg}
+        return None
+
     def _strings_to_dates(self, dictionary):
         """Returns a new dictionary with all the mappings of `dictionary` but
         with date strings mapped to :class:`datetime.datetime` objects.
@@ -759,8 +804,7 @@ class API(ModelView):
 
             return jsonify_status_code(201, id=instance.id)
         except self.validation_exceptions, exception:
-            self.session.rollback()
-            return jsonify_status_code(400, validation_errors=exception.errors)
+            return self._handle_validation_exception(exception)
 
     def patch(self, instid):
         """Updates the instance specified by ``instid`` of the named model, or
@@ -811,8 +855,7 @@ class API(ModelView):
                 num_modified = query.update(params, False)
             self.session.commit()
         except self.validation_exceptions, exception:
-            self.session.rollback()
-            return jsonify_status_code(400, validation_errors=exception.errors)
+            return self._handle_validation_exception(exception)
 
         if patchmany:
             return jsonify(num_modified=num_modified)

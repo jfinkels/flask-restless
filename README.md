@@ -122,17 +122,11 @@ This is a Python module which, when executed, simply runs all unit tests.
 
 Validation is not provided directly by Flask-Restless, but it does provide a
 way for users to indicate exceptions to catch. If you wish to test validation
-of SQLAlchemy models more extensively, you may install one or more of the
-following Python libraries:
+of SQLAlchemy models with a real external SQLAlchemy validation library,
+install [SAValidation][sav]. The test suite will automatically skip these tests
+if it is not installed.
 
-* [sqlalchemy-validation][sav]
-* [SAValidation][sav2]
-
-The test suite will automatically skip tests for those libraries which are not
-installed.
-
-[sav]: http://code.google.com/p/sqlalchemy-validations/
-[sav2]: http://pypi.python.org/pypi/SAValidation
+[sav]: http://pypi.python.org/pypi/SAValidation
 
 ## Building documentation ##
 
