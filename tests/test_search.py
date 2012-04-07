@@ -114,6 +114,10 @@ class OperatorsTest(TestSupportPrefilled):
     """
 
     def test_operators(self):
+        """Tests for each of the individual operators in
+        :data:`flask_restless.search.OPERATORS`.
+
+        """
         for op in '==', 'eq', 'equals', 'equal_to':
             d = dict(filters=[dict(name='name', op=op, val='Lincoln')])
             result = search(self.db.session, self.Person, d)
@@ -155,10 +159,45 @@ class OperatorsTest(TestSupportPrefilled):
         d = dict(filters=[dict(name='birth_date', op='is_not_null')])
         result = search(self.db.session, self.Person, d)
         self.assertEqual(len(result), 1)
-        # desc
-        # asc
-        # has
-        # any
+
+    def test_desc_and_asc(self):
+        """Tests for the ``"desc"`` and ``"asc"`` operators."""
+        # TODO Not yet implemented because I don't understand these operators.
+        pass
+
+    def test_has_and_any(self):
+        """Tests for the ``"has"`` and ``"any"`` operators.
+
+        The `any` operator returns all instances for which any related instance
+        in a given collection has some property. The `has` operator returns all
+        instances for which a related instance has a given property.
+
+        """
+        # create test computers
+        computer1 = self.Computer(name='c1', vendor='foo')
+        computer2 = self.Computer(name='c2', vendor='bar')
+        computer3 = self.Computer(name='c3', vendor='bar')
+        computer4 = self.Computer(name='c4', vendor='bar')
+        computer5 = self.Computer(name='c5', vendor='foo')
+        computer6 = self.Computer(name='c6', vendor='foo')
+        self.db.session.add_all((computer1, computer2, computer3, computer4,
+                                 computer5, computer6))
+        self.db.session.commit()
+        # add the computers to three test people
+        person1, person2, person3 = self.people[:3]
+        person1.computers = [computer1, computer2, computer3]
+        person2.computers = [computer4]
+        person3.computers = [computer5, computer6]
+        self.db.session.commit()
+        # test 'any'
+        d = dict(filters=[dict(name='computers__vendor', val=u'foo',
+                               op='any')])
+        result = search(self.db.session, self.Person, d)
+        self.assertEqual(len(result), 2)
+        # test 'has'
+        d = dict(filters=[dict(name='owner__name', op='has', val=u'Lincoln')])
+        result = search(self.db.session, self.Computer, d)
+        self.assertEqual(len(result), 3)
 
 
 class SearchTest(TestSupportPrefilled):
