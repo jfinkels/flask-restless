@@ -32,48 +32,52 @@
     :license: GNU AGPLv3, see COPYING for more details
 
 """
+import inspect
 
 #: The mapping from operator name (as accepted by the search method) to a
 #: function which returns the SQLAlchemy expression corresponding to that
 #: operator.
 #:
-#: The function in each of the values takes three arguments. The first argument
-#: is the field object on which to apply the operator. The second argument is
-#: the second argument to the operator, should one exist. The third argument is
-#: the name of the field. All functions use the first argument, some use the
-#:  second, and few use the third.
+#: Each of these functions accepts either one, two, or three arguments. The
+#: first argument is the field object on which to apply the operator. The
+#: second argument, where it exists, is the second argument to the operator.
+#: The third argument, where it exists, is the name of the field.
 #:
 #: Some operations have multiple names. For example, the equality operation can
 #: be described by the strings ``'=='``, ``'eq'``, ``'equals'``, etc.
 OPERATORS = {
-    '==': lambda f, a, fn: f == a,
-    'eq': lambda f, a, fn: f == a,
-    'equals': lambda f, a, fn: f == a,
-    'equal_to': lambda f, a, fn: f == a,
-    '!=': lambda f, a, fn: f != a,
-    'ne': lambda f, a, fn: f != a,
-    'neq': lambda f, a, fn: f != a,
-    'not_equal_to': lambda f, a, fn: f != a,
-    'does_not_equal': lambda f, a, fn: f != a,
-    '>': lambda f, a, fn: f > a,
-    'gt': lambda f, a, fn: f > a,
-    '<': lambda f, a, fn: f < a,
-    'lt': lambda f, a, fn: f < a,
-    '>=': lambda f, a, fn: f >= a,
-    'ge': lambda f, a, fn: f >= a,
-    'gte': lambda f, a, fn: f >= a,
-    'geq': lambda f, a, fn: f >= a,
-    '<=': lambda f, a, fn: f <= a,
-    'le': lambda f, a, fn: f <= a,
-    'lte': lambda f, a, fn: f <= a,
-    'leq': lambda f, a, fn: f <= a,
-    'like': lambda f, a, fn: f.like(a),
-    'in': lambda f, a, fn: f.in_(a),
-    'not_in': lambda f, a, fn: ~f.in_(a),
-    'is_null': lambda f, a, fn: f == None,
-    'is_not_null': lambda f, a, fn: f != None,
-    'desc': lambda f, a, fn: f.desc,
-    'asc': lambda f, a, fn: f.asc,
+    # Operators which accept a single argument.
+    'is_null': lambda f: f == None,
+    'is_not_null': lambda f: f != None,
+    # TODO what are these?
+    'desc': lambda f: f.desc,
+    'asc': lambda f: f.asc,
+    # Operators which accept two arguments.
+    '==': lambda f, a: f == a,
+    'eq': lambda f, a: f == a,
+    'equals': lambda f, a: f == a,
+    'equal_to': lambda f, a: f == a,
+    '!=': lambda f, a: f != a,
+    'ne': lambda f, a: f != a,
+    'neq': lambda f, a: f != a,
+    'not_equal_to': lambda f, a: f != a,
+    'does_not_equal': lambda f, a: f != a,
+    '>': lambda f, a: f > a,
+    'gt': lambda f, a: f > a,
+    '<': lambda f, a: f < a,
+    'lt': lambda f, a: f < a,
+    '>=': lambda f, a: f >= a,
+    'ge': lambda f, a: f >= a,
+    'gte': lambda f, a: f >= a,
+    'geq': lambda f, a: f >= a,
+    '<=': lambda f, a: f <= a,
+    'le': lambda f, a: f <= a,
+    'lte': lambda f, a: f <= a,
+    'leq': lambda f, a: f <= a,
+    'like': lambda f, a: f.like(a),
+    'in': lambda f, a: f.in_(a),
+    'not_in': lambda f, a: ~f.in_(a),
+    # Operators which accept three arguments.
     # HACK For Python 2.5, unicode dictionary keys are not allowed.
     'has': lambda f, a, fn: f.has(**{str(fn): a}),
     'any': lambda f, a, fn: f.any(**{str(fn): a})
@@ -86,14 +90,6 @@ def _unicode_keys_to_strings(dictionary):
 
     """
     return dict((str(k), v) for k, v in dictionary.iteritems())
-
-
-class IllegalArgumentError(Exception):
-    """This exception is raised when illegal arguments are provided as input to
-    a function.
-
-    """
-    pass
 
 
 class OrderBy(object):
@@ -136,14 +132,17 @@ class Filter(object):
 
         If `argument` is specified, it is the value to place on the right side
         of the operator. If `otherfield` is specified, that field on the model
-        will be placed on the right side of the operator. Exactly one of
-        `arguemnt` and `otherfield` must be specified. If not, a
-        :exc:`IllegalArgumentError` will be raised.
+        will be placed on the right side of the operator.
+
+        .. admonition:: About `argument` and `otherfield`
+
+           Some operators don't need either argument and some need exactly one.
+           However, this constructor will not raise any errors or otherwise
+           inform you of which situation you are in; it is basically just a
+           named tuple. Calling code must handle errors caused by missing
+           required arguments.
 
         """
-        if (argument and otherfield) or not (argument or otherfield):
-            raise IllegalArgumentError('Must specify exactly one of argument'
-                                       ' and otherfield')
         self.fieldname = fieldname
         self.operator = operator
         self.argument = argument
@@ -173,10 +172,6 @@ class Filter(object):
         which the operator will be applied, and ``dictionary['other']`` is the
         name of the other field of the model to which the operator will be
         applied.
-
-        Raises a :exc:`IllegalArgumentError` if both ``'val'`` and ``'field'``
-        are in `dictionary` or if neither ``'val'`` not ``'field'`` are in
-        `dictionary`.
 
         """
         fieldname = dictionary.get('name')
@@ -244,13 +239,9 @@ class SearchParameters(object):
         The provided dictionary may have other key/value pairs, but they are
         ignored.
 
-        Raises a :exc:`IllegalArgumentError` if there is an error instantiating
-        one of the :class:`Filter` objects.
-
         """
         # for the sake of brevity...
         from_dict = Filter.from_dictionary
-        # may raise IllegalArgumentError
         filters = [from_dict(f) for f in dictionary.get('filters', [])]
         # HACK In Python 2.5, unicode dictionary keys are not allowed.
         order_by_list = dictionary.get('order_by', [])
@@ -304,17 +295,43 @@ class QueryBuilder(object):
         which the operation will be applied as part of the search, or ``None``
         if this function should not use a related entity in the search.
 
+        This function raises the following errors:
+        * :exc:`KeyError` if the `operator` is unknown (that is, not in
+          :data:`OPERATORS`)
+        * :exc:`TypeError` if an incorrect number of arguments are provided for
+          the operation (for example, if `operation` is `'=='` but no
+          `argument` is provided)
+        * :exc:`AttributeError` if no column with name `fieldname` or
+          `relation` exists on `model`
+
         """
+        # raises KeyError if operator not in OPERATORS
+        opfunc = OPERATORS[operator]
+        argspec = inspect.getargspec(opfunc)
+        numargs = len(argspec.args)
+        # raises AttributeError if `fieldname` or `relation` does not exist
         field = getattr(model, relation or fieldname)
-        return OPERATORS.get(operator)(field, argument, fieldname)
+        # each of these will raise a TypeError if the wrong number of argments
+        # is supplied to `opfunc`.
+        if numargs == 1:
+            return opfunc(field)
+        if argument is None:
+            raise TypeError
+        if numargs == 2:
+            return opfunc(field, argument)
+        return opfunc(field, argument, fieldname)
 
     @staticmethod
     def _create_filters(model, search_params):
-        """Returns the list of operations on ``model`` specified in the
-        :attr:`filters` attribute on the ``search_params`` object.
+        """Returns the list of operations on `model` specified in the
+        :attr:`filters` attribute on the `search_params` object.
 
-        ``search_params`` is an instance of the :class:`SearchParameters`
-        class whose fields represent the parameters of the search.
+        `search-params` is an instance of the :class:`SearchParameters` class
+        whose fields represent the parameters of the search.
+
+        Raises one of :exc:`AttributeError`, :exc:`KeyError`, or
+        :exc:`TypeError` if there is a problem creating the query. See the
+        documentation for :func:`_create_operation` for more information.
 
         """
         filters = []
@@ -328,8 +345,9 @@ class QueryBuilder(object):
             # get the other field to which to compare, if it exists
             if filt.otherfield:
                 val = getattr(model, filt.otherfield)
-            param = QueryBuilder._create_operation(model, fname, filt.operator,
-                                                   val, relation)
+            # for the sake of brevity...
+            create_op = QueryBuilder._create_operation
+            param = create_op(model, fname, filt.operator, val, relation)
             filters.append(param)
         return filters
 
@@ -352,9 +370,14 @@ class QueryBuilder(object):
         3. limiting the query
         4. offsetting the query
 
+        Raises one of :exc:`AttributeError`, :exc:`KeyError`, or
+        :exc:`TypeError` if there is a problem creating the query. See the
+        documentation for :func:`_create_operation` for more information.
+
         """
         # Adding field filters
         query = session.query(model)
+        # may raise exception here
         filters = QueryBuilder._create_filters(model, search_params)
         for filt in filters:
             query = query.filter(filt)

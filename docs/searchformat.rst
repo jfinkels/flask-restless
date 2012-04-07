@@ -63,6 +63,9 @@ mappings, all of which are optional:
   search. If this is ``true`` and either no results or multiple results meet
   the criteria of the search, the server responds with an error message.
 
+If a filter is poorly formatted (for example, ``op`` is set to ``'=='`` but
+``val`` is not set), the server responds with :http:statuscode:`400`.
+
 .. _operators:
 
 Operators

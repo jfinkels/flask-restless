@@ -27,28 +27,13 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from flask.ext.restless.search import create_query
 from flask.ext.restless.search import Filter
-from flask.ext.restless.search import IllegalArgumentError
 from flask.ext.restless.search import search
 from flask.ext.restless.search import SearchParameters
 
 from .helpers import TestSupportPrefilled
 
 
-__all__ = ['FilterTest', 'QueryCreationTest', 'SearchTest']
-
-
-class FilterTest(TestCase):
-    """Unit tests for the :class:`flask.ext.restless.search.Filter` class."""
-
-    def test_init_bad_arguments(self):
-        """Tests that providing bad initial arguments to the constructor raises
-        an :exc:`flask.ext.restless.search.IllegalArgumentError`.
-
-        """
-        with self.assertRaises(IllegalArgumentError):
-            Filter('x', 'y', argument='z', otherfield='a')
-        with self.assertRaises(IllegalArgumentError):
-            Filter('x', 'y')
+__all__ = ['OperatorsTest', 'QueryCreationTest', 'SearchTest']
 
 
 class QueryCreationTest(TestSupportPrefilled):
@@ -122,6 +107,99 @@ class QueryCreationTest(TestSupportPrefilled):
         self.assertEqual(results[1].other, 19)
 
 
+class OperatorsTest(TestSupportPrefilled):
+    """Tests for each of the query operators defined in
+    :data:`flask_restless.search.OPERATORS`.
+
+    """
+
+    def test_operators(self):
+        """Tests for each of the individual operators in
+        :data:`flask_restless.search.OPERATORS`.
+
+        """
+        for op in '==', 'eq', 'equals', 'equal_to':
+            d = dict(filters=[dict(name='name', op=op, val='Lincoln')])
+            result = search(self.db.session, self.Person, d)
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0].name, 'Lincoln')
+        for op in '!=', 'ne', 'neq', 'not_equal_to', 'does_not_equal':
+            d = dict(filters=[dict(name='name', op=op, val='Lincoln')])
+            result = search(self.db.session, self.Person, d)
+            self.assertEqual(len(result), len(self.people) - 1)
+            self.assertNotIn('Lincoln', (p.name for p in result))
+        for op in '>', 'gt':
+            d = dict(filters=[dict(name='age', op=op, val=20)])
+            result = search(self.db.session, self.Person, d)
+            self.assertEqual(len(result), 3)
+        for op in '<', 'lt':
+            d = dict(filters=[dict(name='age', op=op, val=20)])
+            result = search(self.db.session, self.Person, d)
+            self.assertEqual(len(result), 2)
+        for op in '>=', 'ge', 'gte', 'geq':
+            d = dict(filters=[dict(name='age', op=op, val=23)])
+            result = search(self.db.session, self.Person, d)
+            self.assertEqual(len(result), 3)
+        for op in '<=', 'le', 'lte', 'leq':
+            d = dict(filters=[dict(name='age', op=op, val=23)])
+            result = search(self.db.session, self.Person, d)
+            self.assertEqual(len(result), 3)
+        d = dict(filters=[dict(name='name', op='like', val='%y%')])
+        result = search(self.db.session, self.Person, d)
+        self.assertEqual(len(result), 3)
+        d = dict(filters=[dict(name='age', op='in', val=[19, 21, 23])])
+        result = search(self.db.session, self.Person, d)
+        self.assertEqual(len(result), 2)
+        d = dict(filters=[dict(name='age', op='not_in', val=[19, 21, 23])])
+        result = search(self.db.session, self.Person, d)
+        self.assertEqual(len(result), 3)
+        d = dict(filters=[dict(name='birth_date', op='is_null')])
+        result = search(self.db.session, self.Person, d)
+        self.assertEqual(len(result), 4)
+        d = dict(filters=[dict(name='birth_date', op='is_not_null')])
+        result = search(self.db.session, self.Person, d)
+        self.assertEqual(len(result), 1)
+
+    def test_desc_and_asc(self):
+        """Tests for the ``"desc"`` and ``"asc"`` operators."""
+        # TODO Not yet implemented because I don't understand these operators.
+        pass
+
+    def test_has_and_any(self):
+        """Tests for the ``"has"`` and ``"any"`` operators.
+
+        The `any` operator returns all instances for which any related instance
+        in a given collection has some property. The `has` operator returns all
+        instances for which a related instance has a given property.
+
+        """
+        # create test computers
+        computer1 = self.Computer(name='c1', vendor='foo')
+        computer2 = self.Computer(name='c2', vendor='bar')
+        computer3 = self.Computer(name='c3', vendor='bar')
+        computer4 = self.Computer(name='c4', vendor='bar')
+        computer5 = self.Computer(name='c5', vendor='foo')
+        computer6 = self.Computer(name='c6', vendor='foo')
+        self.db.session.add_all((computer1, computer2, computer3, computer4,
+                                 computer5, computer6))
+        self.db.session.commit()
+        # add the computers to three test people
+        person1, person2, person3 = self.people[:3]
+        person1.computers = [computer1, computer2, computer3]
+        person2.computers = [computer4]
+        person3.computers = [computer5, computer6]
+        self.db.session.commit()
+        # test 'any'
+        d = dict(filters=[dict(name='computers__vendor', val=u'foo',
+                               op='any')])
+        result = search(self.db.session, self.Person, d)
+        self.assertEqual(len(result), 2)
+        # test 'has'
+        d = dict(filters=[dict(name='owner__name', op='has', val=u'Lincoln')])
+        result = search(self.db.session, self.Computer, d)
+        self.assertEqual(len(result), 3)
+
+
 class SearchTest(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.search.search` function.
 
@@ -159,7 +237,7 @@ class SearchTest(TestSupportPrefilled):
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
     suite = TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(FilterTest))
+    suite.addTest(loader.loadTestsFromTestCase(OperatorsTest))
     suite.addTest(loader.loadTestsFromTestCase(QueryCreationTest))
     suite.addTest(loader.loadTestsFromTestCase(SearchTest))
     return suite

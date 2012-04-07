@@ -710,6 +710,26 @@ class APITestCase(TestSupport):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['message'], 'Multiple results found')
 
+    def test_search_bad_arguments(self):
+        """Tests that search requests with bad parameters respond with an error
+        message.
+
+        """
+        # missing argument
+        d = dict(filters=[dict(name='name', op='==')])
+        resp = self.app.search('/api/person', dumps(d))
+        self.assertEqual(resp.status_code, 400)
+
+        # missing operator
+        d = dict(filters=[dict(name='name', val='Test')])
+        resp = self.app.search('/api/person', dumps(d))
+        self.assertEqual(resp.status_code, 400)
+
+        # missing fieldname
+        d = dict(filters=[dict(op='==', val='Test')])
+        resp = self.app.search('/api/person', dumps(d))
+        self.assertEqual(resp.status_code, 400)
+
     def test_authentication(self):
         """Tests basic authentication using custom authentication functions."""
         # must provide authentication function if authentication is required
