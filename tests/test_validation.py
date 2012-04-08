@@ -39,6 +39,8 @@ try:
 except:
     has_savalidation = False
 
+from .helpers import setUpModule
+from .helpers import tearDownModule
 from .helpers import TestSupport
 
 __all__ = ['SAVTest', 'SimpleValidationTest']

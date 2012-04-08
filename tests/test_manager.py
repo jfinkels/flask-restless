@@ -27,6 +27,8 @@ from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.restless import APIManager
 from flask.ext.restless.views import _get_columns
 
+from .helpers import setUpModule
+from .helpers import tearDownModule
 from .helpers import TestSupport
 
 
