@@ -284,7 +284,7 @@ class APITestCase(TestSupport):
         # assert loads(response.data)['error_list'].keys() == ['age']
 
         response = self.app.post('/api/person',
-                                 data=dumps({'name': 'Lincoln', 'age': 23}))
+                                 data=dumps({'name': u'Lincoln', 'age': 23}))
         self.assertEqual(response.status_code, 201)
         self.assertIn('id', loads(response.data))
 
@@ -313,7 +313,7 @@ class APITestCase(TestSupport):
         """
         # Creating the person who's gonna be deleted
         response = self.app.post('/api/person',
-                                 data=dumps({'name': 'Lincoln', 'age': 23}))
+                                 data=dumps({'name': u'Lincoln', 'age': 23}))
         self.assertEqual(response.status_code, 201)
         self.assertIn('id', loads(response.data))
 
@@ -360,11 +360,11 @@ class APITestCase(TestSupport):
 
         # Creating some people
         self.app.post('/api/v2/person',
-                      data=dumps({'name': 'Lincoln', 'age': 23}))
+                      data=dumps({'name': u'Lincoln', 'age': 23}))
         self.app.post('/api/v2/person',
-                      data=dumps({'name': 'Lucy', 'age': 23}))
+                      data=dumps({'name': u'Lucy', 'age': 23}))
         self.app.post('/api/v2/person',
-                      data=dumps({'name': 'Mary', 'age': 25}))
+                      data=dumps({'name': u'Mary', 'age': 25}))
 
         # change a single entry
         resp = self.app.put('/api/v2/person/1', data=dumps({'age': 24}))
@@ -410,11 +410,11 @@ class APITestCase(TestSupport):
 
         # Creating some people
         self.app.post('/api/v2/person',
-                      data=dumps({'name': 'Lincoln', 'age': 23}))
+                      data=dumps({'name': u'Lincoln', 'age': 23}))
         self.app.post('/api/v2/person',
-                      data=dumps({'name': 'Lucy', 'age': 23}))
+                      data=dumps({'name': u'Lucy', 'age': 23}))
         self.app.post('/api/v2/person',
-                      data=dumps({'name': 'Mary', 'age': 25}))
+                      data=dumps({'name': u'Mary', 'age': 25}))
 
         # Trying to pass invalid data to the update method
         resp = self.app.patch('/api/v2/person', data='Hello there')
@@ -439,7 +439,7 @@ class APITestCase(TestSupport):
         :http:method:`patch` method.
 
         """
-        resp = self.app.post('/api/person', data=dumps({'name': 'Lincoln',
+        resp = self.app.post('/api/person', data=dumps({'name': u'Lincoln',
                                                          'age': 10}))
         self.assertEqual(resp.status_code, 201)
         self.assertIn('id', loads(resp.data))

@@ -121,15 +121,15 @@ class OperatorsTest(TestSupportPrefilled):
 
         """
         for op in '==', 'eq', 'equals', 'equal_to':
-            d = dict(filters=[dict(name='name', op=op, val='Lincoln')])
+            d = dict(filters=[dict(name='name', op=op, val=u'Lincoln')])
             result = search(self.db.session, self.Person, d)
             self.assertEqual(len(result), 1)
-            self.assertEqual(result[0].name, 'Lincoln')
+            self.assertEqual(result[0].name, u'Lincoln')
         for op in '!=', 'ne', 'neq', 'not_equal_to', 'does_not_equal':
-            d = dict(filters=[dict(name='name', op=op, val='Lincoln')])
+            d = dict(filters=[dict(name='name', op=op, val=u'Lincoln')])
             result = search(self.db.session, self.Person, d)
             self.assertEqual(len(result), len(self.people) - 1)
-            self.assertNotIn('Lincoln', (p.name for p in result))
+            self.assertNotIn(u'Lincoln', (p.name for p in result))
         for op in '>', 'gt':
             d = dict(filters=[dict(name='age', op=op, val=20)])
             result = search(self.db.session, self.Person, d)
@@ -146,7 +146,7 @@ class OperatorsTest(TestSupportPrefilled):
             d = dict(filters=[dict(name='age', op=op, val=23)])
             result = search(self.db.session, self.Person, d)
             self.assertEqual(len(result), 3)
-        d = dict(filters=[dict(name='name', op='like', val='%y%')])
+        d = dict(filters=[dict(name='name', op='like', val=u'%y%')])
         result = search(self.db.session, self.Person, d)
         self.assertEqual(len(result), 3)
         d = dict(filters=[dict(name='age', op='in', val=[19, 21, 23])])
@@ -176,12 +176,12 @@ class OperatorsTest(TestSupportPrefilled):
 
         """
         # create test computers
-        computer1 = self.Computer(name='c1', vendor='foo')
-        computer2 = self.Computer(name='c2', vendor='bar')
-        computer3 = self.Computer(name='c3', vendor='bar')
-        computer4 = self.Computer(name='c4', vendor='bar')
-        computer5 = self.Computer(name='c5', vendor='foo')
-        computer6 = self.Computer(name='c6', vendor='foo')
+        computer1 = self.Computer(name=u'c1', vendor=u'foo')
+        computer2 = self.Computer(name=u'c2', vendor=u'bar')
+        computer3 = self.Computer(name=u'c3', vendor=u'bar')
+        computer4 = self.Computer(name=u'c4', vendor=u'bar')
+        computer5 = self.Computer(name=u'c5', vendor=u'foo')
+        computer6 = self.Computer(name=u'c6', vendor=u'foo')
         self.db.session.add_all((computer1, computer2, computer3, computer4,
                                  computer5, computer6))
         self.db.session.commit()
