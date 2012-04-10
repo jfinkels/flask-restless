@@ -1,23 +1,14 @@
-# -*- coding: utf-8; Mode: Python -*-
-#
-# Copyright (C) 2011 Lincoln de Sousa <lincoln@comum.org>
-# Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-#
-# This file is part of Flask-Restless.
-#
-# Flask-Restless is free software: you can redistribute it and/or modify it
-# under the terms of the GNU Affero General Public License as published by the
-# Free Software Foundation, either version 3 of the License, or (at your
-# option) any later version.
-#
-# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
-"""Unit tests for the :mod:`flask_restless.views` module."""
+"""
+    tests.test_views
+    ~~~~~~~~~~~~~~~~
+
+    Provides unit tests for the :mod:`flask_restless.views` module.
+
+    :copyright: 2011 by Lincoln de Sousa <lincoln@comum.org>
+    :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
+    :license: GNU AGPLv3 or BSD
+
+"""
 from __future__ import with_statement
 
 from datetime import date

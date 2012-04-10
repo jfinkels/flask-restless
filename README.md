@@ -23,10 +23,16 @@ For more information, check the World Wide Web!
 
 ## Copyright license ##
 
-The code comprising this program is copyright 2011 Lincoln de Sousa and 2012
-Jeffrey Finkelstein, and is published under the GNU Affero General Public
-License, either version 3 or (at your option) any later version. For more
-information see the `COPYING` file.
+The code comprising this program is copyright 2011 Lincoln de Sousa and
+copyright 2012 Jeffrey Finkelstein, and is dual-licensed under the following
+two copyright licenses:
+
+* the GNU Affero General Public License, either version 3 or (at your option)
+  any later version
+* the 3-clause BSD License
+
+For more information, see the files `LICENSE.AGPL` and `LICENSE.BSD` in this
+directory.
 
 ## Contents ##
 
