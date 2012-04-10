@@ -6,7 +6,7 @@
 
     :copyright: 2011 by Lincoln de Sousa <lincoln@comum.org>
     :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-    :license: GNU AGPLv3 or BSD
+    :license: GNU AGPLv3+ or BSD
 
 """
 from __future__ import with_statement

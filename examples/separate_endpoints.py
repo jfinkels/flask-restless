@@ -10,7 +10,7 @@
     using :http:get:`http://localhost:5000/add/person`, etc.
 
     :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-    :license: GNU AGPLv3 or BSD
+    :license: GNU AGPLv3+ or BSD
 
 """
 import flask

@@ -5,7 +5,7 @@
     Provides unit tests for the :mod:`flask_restless.manager` module.
 
     :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-    :license: GNU AGPLv3 or BSD
+    :license: GNU AGPLv3+ or BSD
 
 """
 import datetime

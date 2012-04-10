@@ -22,7 +22,7 @@
         python setup.py test
 
     :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-    :license: GNU AGPLv3 or BSD
+    :license: GNU AGPLv3+ or BSD
 
 """
 from unittest2 import TestSuite

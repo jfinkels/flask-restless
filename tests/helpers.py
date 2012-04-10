@@ -17,7 +17,7 @@
     more quickly.
 
     :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-    :license: GNU AGPLv3 or BSD
+    :license: GNU AGPLv3+ or BSD
 
 """
 import datetime
