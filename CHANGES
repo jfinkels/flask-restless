@@ -11,7 +11,7 @@ Here you can see the full list of changes between each Flask-Restless release.
 Version 0.5
 -----------
 
-Not yet released.
+Released on April 10, 2012.
 
 - Dual-licensed under GNU AGPLv3+ and 3-clause BSD license.
 - Added capturing of exceptions raised during field validation.
