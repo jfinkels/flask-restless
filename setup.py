@@ -14,8 +14,6 @@
       * `Source code repository <http://github.com/jfinkels/flask-restless>`_
 
 """
-from __future__ import with_statement
-
 import sys
 from setuptools import Command
 from setuptools import setup
