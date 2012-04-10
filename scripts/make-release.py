@@ -19,6 +19,27 @@ from subprocess import Popen, PIPE
 _date_clean_re = re.compile(r'(\d+)(st|nd|rd|th)')
 
 
+def add_new_changelog_section(current_version, next_version):
+    version_string = 'Version {}'.format(current_version)
+    LF = '\n'
+    with open('CHANGES') as f:
+        all_lines = f.readlines()
+    stripped_lines = [l.strip() for l in all_lines]
+    try:
+        # get the index of the first occurrence of `version_string`
+        line_num = stripped_lines.index(version_string)
+    except:
+        fail('Could not find "{}" in {}.'.format(version_string, 'CHANGES'))
+    new_header = 'Version {}'.format(next_version)
+    horizontal_rule = '-' * len(new_header)
+    new_lines = [new_header, horizontal_rule, LF, 'Not yet released.', LF]
+    # insert the new lines into the list of all lines read from CHANGES
+    all_lines[line_num:line_num] = new_lines
+    # write the changes back to...CHANGES
+    with open('CHANGES', 'w') as f:
+        f.writelines(all_lines)
+
+
 def parse_changelog():
     with open('CHANGES') as f:
         lineiter = iter(f)
@@ -99,7 +120,8 @@ def info(message, *args):
 
 
 def get_git_tags():
-    return set(Popen(['git', 'tag'], stdout=PIPE).communicate()[0].splitlines())
+    process = Popen(['git', 'tag'], stdout=PIPE)
+    return set(process.communicate()[0].splitlines())
 
 
 def git_is_clean():
@@ -145,6 +167,8 @@ def main():
     build_and_upload()
     set_init_version(dev_version)
     set_setup_version(dev_version)
+    add_new_changelog_section(version, dev_version)
+    make_git_commit('Set development version number to %s', dev_version)
 
 
 if __name__ == '__main__':
