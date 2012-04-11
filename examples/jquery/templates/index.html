@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <title>Flask-Restless — jQuery example</title>
+  <meta charset="utf-8" />
+  <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js"></script>
+  <script type="text/javascript">
+  var SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+  (function() {
+    "use strict";
+    $(document).ready(function() {
+      $("#next-button").click(function() {
+        var nextid = parseInt($("#next-id").val(), 10);
+        $.ajax({
+          url: SCRIPT_ROOT + '/api/person/' + nextid,
+          dataType: 'json',
+          error: function() {
+            alert("No more people.");
+          },
+          success: function(data) {
+            var new_row = $("<tr><td>" + data.id + "</td><td>" + data.name
+                            + "</td></tr>");
+            $("#people").append(new_row);
+            $("#next-id").val(nextid + 1);
+          }
+        });
+      });
+    });
+  }());
+  </script>
+</head>
+<body>
+  <input type="button" id="next-button" value="Get next person" />
+  <input type="hidden" id="next-id" value="1" />
+  <table id="people">
+    <tr><th>ID</th><th>Name</th></tr>
+  </table>
+</body>
+</html>

@@ -1,23 +1,14 @@
-# -*- coding: utf-8; Mode: Python -*-
-#
-# Copyright (C) 2011 Lincoln de Sousa <lincoln@comum.org>
-# Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-#
-# This file is part of Flask-Restless.
-#
-# Flask-Restless is free software: you can redistribute it and/or modify it
-# under the terms of the GNU Affero General Public License as published by the
-# Free Software Foundation, either version 3 of the License, or (at your
-# option) any later version.
-#
-# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
-"""Unit tests for the :mod:`flask_restless.views` module."""
+"""
+    tests.test_views
+    ~~~~~~~~~~~~~~~~
+
+    Provides unit tests for the :mod:`flask_restless.views` module.
+
+    :copyright: 2011 by Lincoln de Sousa <lincoln@comum.org>
+    :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
+    :license: GNU AGPLv3+ or BSD
+
+"""
 from __future__ import with_statement
 
 from datetime import date
@@ -28,13 +19,14 @@ from flask import json
 from sqlalchemy.exc import OperationalError
 
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
-from flask.ext.restless.views import _get_by
 from flask.ext.restless.views import _get_columns
 from flask.ext.restless.views import _get_or_create
 from flask.ext.restless.views import _get_relations
 from flask.ext.restless.views import _to_dict
 from flask.ext.restless.manager import IllegalArgumentError
 
+from .helpers import setUpModule
+from .helpers import tearDownModule
 from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
 
@@ -283,7 +275,7 @@ class APITestCase(TestSupport):
         # assert loads(response.data)['error_list'].keys() == ['age']
 
         response = self.app.post('/api/person',
-                                 data=dumps({'name': 'Lincoln', 'age': 23}))
+                                 data=dumps({'name': u'Lincoln', 'age': 23}))
         self.assertEqual(response.status_code, 201)
         self.assertIn('id', loads(response.data))
 
@@ -291,7 +283,7 @@ class APITestCase(TestSupport):
         self.assertEqual(response.status_code, 200)
 
         deep = {'computers': []}
-        inst = _to_dict(_get_by(self.db.session, self.Person, id=1), deep)
+        inst = _to_dict(self.Person.query.get(1), deep)
         self.assertEqual(loads(response.data), inst)
 
     def test_post_with_submodels(self):
@@ -312,13 +304,13 @@ class APITestCase(TestSupport):
         """
         # Creating the person who's gonna be deleted
         response = self.app.post('/api/person',
-                                 data=dumps({'name': 'Lincoln', 'age': 23}))
+                                 data=dumps({'name': u'Lincoln', 'age': 23}))
         self.assertEqual(response.status_code, 201)
         self.assertIn('id', loads(response.data))
 
         # Making sure it has been created
         deep = {'computers': []}
-        inst = _to_dict(_get_by(self.db.session, self.Person, id=1), deep)
+        inst = _to_dict(self.Person.query.get(1), deep)
         response = self.app.get('/api/person/1')
         self.assertEqual(loads(response.data), inst)
 
@@ -327,7 +319,7 @@ class APITestCase(TestSupport):
         self.assertEqual(response.status_code, 204)
 
         # Making sure it has been deleted
-        self.assertIsNone(_get_by(self.db.session, self.Person, id=1))
+        self.assertIsNone(self.Person.query.get(1))
 
     def test_delete_absent_instance(self):
         """Test that deleting an instance of the model which does not exist
@@ -359,11 +351,11 @@ class APITestCase(TestSupport):
 
         # Creating some people
         self.app.post('/api/v2/person',
-                      data=dumps({'name': 'Lincoln', 'age': 23}))
+                      data=dumps({'name': u'Lincoln', 'age': 23}))
         self.app.post('/api/v2/person',
-                      data=dumps({'name': 'Lucy', 'age': 23}))
+                      data=dumps({'name': u'Lucy', 'age': 23}))
         self.app.post('/api/v2/person',
-                      data=dumps({'name': 'Mary', 'age': 25}))
+                      data=dumps({'name': u'Mary', 'age': 25}))
 
         # change a single entry
         resp = self.app.put('/api/v2/person/1', data=dumps({'age': 24}))
@@ -409,11 +401,11 @@ class APITestCase(TestSupport):
 
         # Creating some people
         self.app.post('/api/v2/person',
-                      data=dumps({'name': 'Lincoln', 'age': 23}))
+                      data=dumps({'name': u'Lincoln', 'age': 23}))
         self.app.post('/api/v2/person',
-                      data=dumps({'name': 'Lucy', 'age': 23}))
+                      data=dumps({'name': u'Lucy', 'age': 23}))
         self.app.post('/api/v2/person',
-                      data=dumps({'name': 'Mary', 'age': 25}))
+                      data=dumps({'name': u'Mary', 'age': 25}))
 
         # Trying to pass invalid data to the update method
         resp = self.app.patch('/api/v2/person', data='Hello there')
@@ -438,7 +430,7 @@ class APITestCase(TestSupport):
         :http:method:`patch` method.
 
         """
-        resp = self.app.post('/api/person', data=dumps({'name': 'Lincoln',
+        resp = self.app.post('/api/person', data=dumps({'name': u'Lincoln',
                                                          'age': 10}))
         self.assertEqual(resp.status_code, 201)
         self.assertIn('id', loads(resp.data))
@@ -482,7 +474,7 @@ class APITestCase(TestSupport):
                          data['computers']['add'][0]['vendor'])
 
         # test that this new computer was added to the database as well
-        computer = _get_by(self.db.session, self.Computer, id=1)
+        computer = self.Computer.query.get(1)
         self.assertIsNotNone(computer)
         self.assertEqual(data['computers']['add'][0]['name'], computer.name)
         self.assertEqual(data['computers']['add'][0]['vendor'],
@@ -710,6 +702,26 @@ class APITestCase(TestSupport):
         resp = self.app.search('/api/person', dumps({'single': True}))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['message'], 'Multiple results found')
+
+    def test_search_bad_arguments(self):
+        """Tests that search requests with bad parameters respond with an error
+        message.
+
+        """
+        # missing argument
+        d = dict(filters=[dict(name='name', op='==')])
+        resp = self.app.search('/api/person', dumps(d))
+        self.assertEqual(resp.status_code, 400)
+
+        # missing operator
+        d = dict(filters=[dict(name='name', val='Test')])
+        resp = self.app.search('/api/person', dumps(d))
+        self.assertEqual(resp.status_code, 400)
+
+        # missing fieldname
+        d = dict(filters=[dict(op='==', val='Test')])
+        resp = self.app.search('/api/person', dumps(d))
+        self.assertEqual(resp.status_code, 400)
 
     def test_authentication(self):
         """Tests basic authentication using custom authentication functions."""

@@ -14,7 +14,7 @@ a response with :http:statuscode:`405`. To explicitly specify which methods
 should be allowed for the endpoint, pass a list as the value of keyword
 argument ``methods``::
 
-    apimanager.create_api(session, Person, methods=['GET', 'POST', 'DELETE'])
+    apimanager.create_api(Person, methods=['GET', 'POST', 'DELETE'])
 
 This creates an endpoint at ``/api/person`` which responds to
 :http:method:`get`, :http:method:`post`, and :http:method:`delete` methods, but
@@ -77,7 +77,7 @@ API prefix
 To create an API at a different prefix, use the ``url_prefix`` keyword
 argument::
 
-    apimanager.create_api(session, Person, url_prefix='/api/v2')
+    apimanager.create_api(Person, url_prefix='/api/v2')
 
 Then your API for ``Person`` will be available at ``/api/v2/person``.
 
@@ -89,7 +89,7 @@ the model. To provide a different name for the model, provide a string to the
 `collection_name` keyword argument of the :meth:`APIManager.create_api`
 method::
 
-    apimanager.create_api(session, Person, collection_name='people')
+    apimanager.create_api(Person, collection_name='people')
 
 Then the API will be exposed at ``/api/people`` instead of ``/api/person``.
 
@@ -104,10 +104,52 @@ keyword argument of the :meth:`APIManager.create_api` method to be ``True``,
 :http:patch:`/api/person` requests will patch the provided attributes on all
 instances of ``Person``::
 
-    apimanager.create_api(session, Person, allow_patch_many=True)
+    apimanager.create_api(Person, allow_patch_many=True)
 
-Exposing evaluation of SQL function
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. _validation:
+
+Capturing validation errors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, no validation is performed by Flask-Restless; if you want
+validation, implement it yourself in your database models. However, by
+specifying a list of exceptions raised by your backend on validation errors,
+Flask-Restless will forward messages from raised exceptions to the client in an
+error response.
+
+For example, if your validation framework includes an exception called
+``ValidationError``, then call the :meth:`APIManager.create_api` method with
+the ``validation_errors`` keyword argument::
+
+    from cool_validation_framework import ValidationError
+    apimanager.create_api(Person, validation_errors=[ValidationError])
+
+.. note::
+
+   Currently, Flask-Restless expects that an instance of a specified validation
+   error will have a ``errors`` attribute, which is a dictionary mapping field
+   name to error description (note: one error per field). If you have a better,
+   more general solution to this problem, please visit `our issue tracker
+   <https://github.com/jfinkels/flask-restless/issues>`_.
+
+Now when you make :http:method:`post` and :http:method:`patch` requests with
+invalid fields, the JSON response will look like this:
+
+.. sourcecode:: http
+
+   HTTP/1.1 400 Bad Request
+
+   { "validation_errors":
+       {
+         "age": "Must be an integer",
+       }
+   }
+
+Currently, Flask-Restless can only forward one exception at a time to the
+client.
+
+Exposing evaluation of SQL functions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If the ``allow_functions`` keyword argument is set to ``True`` when creating an
 API for a model using :meth:`APIManager.create_api`, then an endpoint will be
@@ -118,6 +160,35 @@ For information about the request and response formats for this endpoint, see
 :ref:`functionevaluation`.
 
 .. _authentication:
+
+Specifying which columns are provided in responses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, all columns of your model will be exposed by the API. If the
+``include_columns`` keyword argument is an iterable of strings, *only* columns
+with those names (that is, the strings represent the names of attributes of the
+model which are ``Column`` objects) will be provided in JSON responses for
+:http:method:`get` requests.
+
+For example, if your model is defined like this::
+
+    class Person(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.Unicode, unique=True)
+        birth_date = db.Column(db.Date)
+        computers = db.relationship('Computer')
+
+and you want your JSON responses to include only the values of the ``name`` and
+``birth_date`` columns, create your API with the following arguments::
+
+    apimanager.create_api(Person, include_columns=['name', 'birth_date'])
+
+Now requests like :http:get:`/api/person/1` will return JSON objects which look
+like this:
+
+.. sourcecode:: javascript
+
+   {"name": "Jeffrey", "birth_date": "1999-12-31"}
 
 Requiring authentication for some methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1,3 +1,18 @@
+"""
+    Separate URLs example
+    ~~~~~~~~~~~~~~~~~~~~~
+
+    This provides an example of creating separate API endpoints for different
+    HTTP methods.
+
+    You can read from the database by making a
+    :http:get:`http://localhost:5000/get/person` request, add a new person
+    using :http:get:`http://localhost:5000/add/person`, etc.
+
+    :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
+    :license: GNU AGPLv3+ or BSD
+
+"""
 import flask
 import flask.ext.sqlalchemy
 import flask.ext.restless
@@ -36,10 +51,12 @@ db.create_all()
 # Create the Flask-Restless API manager.
 manager = flask.ext.restless.APIManager(app, db)
 
-# Create API endpoints, which will be available at /api/<tablename> by
-# default. Allowed HTTP methods can be specified as well.
-manager.create_api(Person, methods=['GET', 'POST', 'DELETE'])
-manager.create_api(Computer, methods=['GET'])
+# Create API endpoints, each at a different URL and with different allowed HTTP
+# methods, but which all affect the Person model.
+manager.create_api(Person, methods=['GET'], url_prefix='/get')
+manager.create_api(Person, methods=['POST'], url_prefix='/add')
+manager.create_api(Person, methods=['PATCH'], url_prefix='/update')
+manager.create_api(Person, methods=['DELETE'], url_prefix='/remove')
 
 # start the flask loop
 app.run()

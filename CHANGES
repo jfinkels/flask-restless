@@ -8,11 +8,23 @@ Here you can see the full list of changes between each Flask-Restless release.
    As of version 0.5, Flask-Restless only supports Flask-SQLAlchemy
    models. Before that, it supported only Elixir models.
 
-Version 0.5
+Version 0.6
 -----------
 
 Not yet released.
 
+Version 0.5
+-----------
+
+Released on April 10, 2012.
+
+- Dual-licensed under GNU AGPLv3+ and 3-clause BSD license.
+- Added capturing of exceptions raised during field validation.
+- Added :file:`examples/separate_endpoints.py`, showing how to create separate
+  API endpoints for a single model.
+- Added ``include_columns`` keyword argument to
+  :meth:`~flask_restless.APIManager.create_api` method to allow users to
+  specify which columns of the model are exposed in the API.
 - Replaced Elixir with Flask-SQLAlchemy. Flask-Restless now only supports
   Flask-SQLAlchemy.
 

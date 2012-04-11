@@ -1,22 +1,3 @@
-# -*- coding: utf-8; Mode: Python -*-
-#
-# Copyright (C) 2011 Lincoln de Sousa <lincoln@comum.org>
-# Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-#
-# This file is part of Flask-Restless.
-#
-# Flask-Restless is free software: you can redistribute it and/or modify it
-# under the terms of the GNU Affero General Public License as published by the
-# Free Software Foundation, either version 3 of the License, or (at your
-# option) any later version.
-#
-# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
 """
     flask.ext.restless.views
     ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,9 +16,9 @@
       Provides a :http:method:`get` endpoint which returns the result of
       evaluating some function on the entire collection of a given model.
 
-    :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
-    :copyright:2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-    :license: GNU AGPLv3, see COPYING for more details
+    :copyright: 2011 by Lincoln de Sousa <lincoln@comum.org>
+    :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
+    :license: GNU AGPLv3+ or BSD
 
 """
 import datetime
@@ -88,19 +69,6 @@ def _is_date_field(model, fieldname):
     return isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime)
 
 
-def _get_by(session, model, **kw):
-    """Gets the first row when filtering `model` by the given keyword arguments
-    in the specified `session`.
-
-    For example::
-
-        >>> _get_by(session, Person, name='Jeffrey')
-        Person(id=1, name='Jeffrey')
-
-    """
-    return session.query(model).filter_by(**kw).first()
-
-
 def _get_or_create(session, model, **kwargs):
     """Returns the first instance of the specified model filtered by the
     keyword arguments, or creates a new instance of the model and returns that.
@@ -122,7 +90,8 @@ def _get_or_create(session, model, **kwargs):
     :func:`sqlalchemy.orm.query.Query.filter_by` function.
 
     """
-    instance = _get_by(session, model, **kwargs)
+    # TODO document that this uses the .first() function
+    instance = model.query.filter_by(**kwargs).first()
     if instance:
         return instance, False
     else:
@@ -200,6 +169,29 @@ def _to_dict(instance, deep=None, exclude=None):
         else:
             result[relation] = _to_dict(relatedvalue, rdeep, newexclude)
     return result
+
+
+def _include_keys(dictionary, keys):
+    """Returns a new dictionary containing only the mappings from `dictionary`
+    with keys as specified in `keys`.
+
+    """
+    return dict((k, v) for k, v in dictionary.items() if k in keys)
+
+
+def _to_dict_include(instance, deep=None, exclude=None, include=None):
+    """Returns the dictionary representation of `instance` as returned by
+    :func:`_to_dict`, but only with the fields specified by `include` (if it is
+    not ``None``).
+
+    If `include` is ``None``, all keys will be included. If it is an iterable
+    of strings, only those keys will be included in the returned dictionary.
+
+    """
+    result = _to_dict(instance, deep, exclude)
+    if include is None:
+        return result
+    return _include_keys(result, include)
 
 
 def _evaluate_functions(session, model, functions):
@@ -348,7 +340,8 @@ class API(ModelView):
     """
 
     def __init__(self, session, model, authentication_required_for=None,
-                 authentication_function=None, *args, **kw):
+                 authentication_function=None, include_columns=None,
+                 validation_exceptions=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -371,6 +364,31 @@ class API(ModelView):
         Pre-condition (callers must satisfy): if `authentication_required_for`
         is specified, so must `authentication_function`.
 
+        `validation_exceptions` is the tuple of exceptions raised by backend
+        validation (if any exist). If exceptions are specified here, any
+        exceptions which are caught when writing to the database. Will be
+        returned to the client as a :http:statuscode:`400` response with a
+        message specifying the validation error which occurred. For more
+        information, see :ref:`validation`.
+
+        `include_columns` is a list of strings which name the columns of
+        `model` which will be included in the JSON representation of that model
+        provided in response to :http:method:`get` requests. Only the named
+        columns will be included. If this list includes a string which does not
+        name a column in `model`, it will be ignored.
+
+        .. versionadded:: 0.5
+           Added the `include_columns` keyword argument.
+
+        .. versionadded:: 0.5
+           Added the `validation_exceptions` keyword argument.
+
+        .. versionadded:: 0.4
+           Added the `authentication_required_for` keyword argument.
+
+        .. versionadded:: 0.4
+           Added the `authentication_function` keyword argument.
+
         """
         super(API, self).__init__(session, model, *args, **kw)
         self.authentication_required_for = authentication_required_for or ()
@@ -378,6 +396,8 @@ class API(ModelView):
         # convert HTTP method names to uppercase
         self.authentication_required_for = \
             frozenset([m.upper() for m in self.authentication_required_for])
+        self.include_columns = include_columns
+        self.validation_exceptions = tuple(validation_exceptions or ())
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
@@ -404,7 +424,7 @@ class API(ModelView):
         submodel = _get_related_model(self.model, relationname)
         for dictionary in toadd or []:
             if 'id' in dictionary:
-                subinst = _get_by(self.session, submodel, id=dictionary['id'])
+                subinst = submodel.query.get(dictionary['id'])
             else:
                 subinst = _get_or_create(self.session, submodel,
                                          **dictionary)[0]
@@ -439,9 +459,10 @@ class API(ModelView):
         for dictionary in toremove or []:
             remove = dictionary.pop('__delete__', False)
             if 'id' in dictionary:
-                subinst = _get_by(self.session, submodel, id=dictionary['id'])
+                subinst = submodel.query.get(dictionary['id'])
             else:
-                subinst = _get_by(self.session, submodel, **dictionary)
+                # TODO document that we use .first() here
+                subinst = submodel.query.filter_by(**dictionary).first()
             for instance in query:
                 getattr(instance, relationname).remove(subinst)
             if remove:
@@ -490,6 +511,51 @@ class API(ModelView):
             self._add_to_relation(query, columnname, toadd=toadd)
             self._remove_from_relation(query, columnname, toremove=toremove)
         return tochange
+
+    def _handle_validation_exception(self, exception):
+        """Rolls back the session, extracts validation error messages, and
+        returns a :func:`flask.jsonify` response with :http:statuscode:`400`
+        containing the extracted validation error messages.
+
+        Again, *this method calls
+        :meth:`sqlalchemy.orm.session.Session.rollback`*.
+
+        """
+        self.session.rollback()
+        errors = self._extract_error_messages(exception) or \
+            'Could not determine specific validation errors'
+        return jsonify_status_code(400, validation_errors=errors)
+
+    def _extract_error_messages(self, exception):
+        """Tries to extract a dictionary mapping field name to validation error
+        messages from `exception`, which is a validation exception as provided
+        in the ``validation_exceptions`` keyword argument in the constructor of
+        this class.
+
+        Since the type of the exception is provided by the user in the
+        constructor of this class, we don't know for sure where the validation
+        error messages live inside `exception`. Therefore this method simply
+        attempts to access a few likely attributes and returns the first one it
+        finds (or ``None`` if no error messages dictionary can be extracted).
+
+        """
+        # 'errors' comes from sqlalchemy_elixir_validations
+        if hasattr(exception, 'errors'):
+            return exception.errors
+        # 'message' comes from savalidation
+        if hasattr(exception, 'message'):
+            # TODO this works only if there is one validation error
+            left, right = exception.message.rsplit(':', 1)
+            try:
+                left_bracket = left.rindex('[')
+                right_bracket = right.rindex(']')
+            except ValueError:
+                # could not parse the string; we're not trying too hard here...
+                return None
+            msg = right[:right_bracket].strip(' "')
+            fieldname = left[left_bracket + 1:].strip()
+            return {fieldname: msg}
+        return None
 
     def _strings_to_dates(self, dictionary):
         """Returns a new dictionary with all the mappings of `dictionary` but
@@ -594,6 +660,9 @@ class API(ModelView):
             return jsonify(message='No result found')
         except MultipleResultsFound:
             return jsonify(message='Multiple results found')
+        except:
+            return jsonify_status_code(400,
+                                       message='Unable to construct query')
 
         # create a placeholder for the relations of the returned models
         relations = _get_relations(self.model)
@@ -601,9 +670,13 @@ class API(ModelView):
 
         # for security purposes, don't transmit list as top-level JSON
         if isinstance(result, list):
-            return jsonify(objects=[_to_dict(x) for x in result])
+            objects = [_to_dict_include(x, include=self.include_columns)
+                       for x in result]
+            return jsonify(objects=objects)
         else:
-            return jsonify(_to_dict(result, deep))
+            result = _to_dict_include(result, deep,
+                                      include=self.include_columns)
+            return jsonify(result)
 
     def _check_authentication(self):
         """If the specified HTTP method requires authentication (see the
@@ -633,12 +706,13 @@ class API(ModelView):
         self._check_authentication()
         if instid is None:
             return self._search()
-        inst = _get_by(self.session, self.model, id=instid)
+        inst = self.model.query.get(instid)
         if inst is None:
             abort(404)
         relations = _get_relations(self.model)
         deep = dict((r, {}) for r in relations)
-        return jsonify(_to_dict(inst, deep))
+        result = _to_dict_include(inst, deep, include=self.include_columns)
+        return jsonify(result)
 
     def delete(self, instid):
         """Removes the specified instance of the model with the specified name
@@ -650,7 +724,7 @@ class API(ModelView):
 
         """
         self._check_authentication()
-        inst = _get_by(self.session, self.model, id=instid)
+        inst = self.model.query.get(instid)
         if inst is not None:
             self.session.delete(inst)
             self.session.commit()
@@ -696,22 +770,25 @@ class API(ModelView):
         # date into an instance of the Python ``datetime`` object.
         params = self._strings_to_dates(params)
 
-        # Instantiate the model with the parameters
-        instance = self.model(**dict([(i, params[i]) for i in props]))
+        try:
+            # Instantiate the model with the parameters
+            instance = self.model(**dict([(i, params[i]) for i in props]))
 
-        # Handling relations, a single level is allowed
-        for col in set(relations).intersection(paramkeys):
-            submodel = cols[col].property.mapper.class_
-            for subparams in params[col]:
-                subinst = _get_or_create(self.session, submodel,
-                                         **subparams)[0]
-                getattr(instance, col).append(subinst)
+            # Handling relations, a single level is allowed
+            for col in set(relations).intersection(paramkeys):
+                submodel = cols[col].property.mapper.class_
+                for subparams in params[col]:
+                    subinst = _get_or_create(self.session, submodel,
+                                             **subparams)[0]
+                    getattr(instance, col).append(subinst)
 
-        # add the created model to the session
-        self.session.add(instance)
-        self.session.commit()
+            # add the created model to the session
+            self.session.add(instance)
+            self.session.commit()
 
-        return jsonify_status_code(201, id=instance.id)
+            return jsonify_status_code(201, id=instance.id)
+        except self.validation_exceptions, exception:
+            return self._handle_validation_exception(exception)
 
     def patch(self, instid):
         """Updates the instance specified by ``instid`` of the named model, or
@@ -740,8 +817,12 @@ class API(ModelView):
 
         patchmany = instid is None
         if patchmany:
-            # create a SQLALchemy Query from the query parameter `q`
-            query = create_query(self.session, self.model, data)
+            try:
+                # create a SQLALchemy Query from the query parameter `q`
+                query = create_query(self.session, self.model, data)
+            except:
+                return jsonify_status_code(400,
+                                           message='Unable to construct query')
         else:
             # create a SQLAlchemy Query which has exactly the specified row
             query = self.session.query(self.model).filter_by(id=instid)
@@ -755,11 +836,14 @@ class API(ModelView):
         # date into an instance of the Python ``datetime`` object.
         params = self._strings_to_dates(params)
 
-        # Let's update all instances present in the query
-        num_modified = 0
-        if params:
-            num_modified = query.update(params, False)
-        self.session.commit()
+        try:
+            # Let's update all instances present in the query
+            num_modified = 0
+            if params:
+                num_modified = query.update(params, False)
+            self.session.commit()
+        except self.validation_exceptions, exception:
+            return self._handle_validation_exception(exception)
 
         if patchmany:
             return jsonify(num_modified=num_modified)

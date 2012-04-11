@@ -23,10 +23,16 @@ For more information, check the World Wide Web!
 
 ## Copyright license ##
 
-The code comprising this program is copyright 2011 Lincoln de Sousa and 2012
-Jeffrey Finkelstein, and is published under the GNU Affero General Public
-License, either version 3 or (at your option) any later version. For more
-information see the `COPYING` file.
+The code comprising this program is copyright 2011 Lincoln de Sousa and
+copyright 2012 Jeffrey Finkelstein, and is dual-licensed under the following
+two copyright licenses:
+
+* the GNU Affero General Public License, either version 3 or (at your option)
+  any later version
+* the 3-clause BSD License
+
+For more information, see the files `LICENSE.AGPL` and `LICENSE.BSD` in this
+directory.
 
 ## Contents ##
 
@@ -117,6 +123,16 @@ You can also run the unit tests in a less verbose way by doing
 This is a Python module which, when executed, simply runs all unit tests.
 
 [ut2]: http://pypi.python.org/pypi/unittest2
+
+### Testing validation ###
+
+Validation is not provided directly by Flask-Restless, but it does provide a
+way for users to indicate exceptions to catch. If you wish to test validation
+of SQLAlchemy models with a real external SQLAlchemy validation library,
+install [SAValidation][sav]. The test suite will automatically skip these tests
+if it is not installed.
+
+[sav]: http://pypi.python.org/pypi/SAValidation
 
 ## Building documentation ##
 

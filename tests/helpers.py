@@ -1,22 +1,26 @@
-# -*- coding: utf-8; Mode: Python -*-
-#
-# Copyright 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
-#
-# This file is part of Flask-Restless.
-#
-# Flask-Restless is free software: you can redistribute it and/or modify it
-# under the terms of the GNU Affero General Public License as published by the
-# Free Software Foundation, either version 3 of the License, or (at your
-# option) any later version.
-#
-# Flask-Restless is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-# FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-# details.
-#
-# You should have received a copy of the GNU Affero General Public License
-# along with Flask-Restless. If not, see <http://www.gnu.org/licenses/>.
-"""Helper functions for unit tests in this package."""
+"""
+    tests.helpers
+    ~~~~~~~~~~~~~
+
+    Provides helper functions for unit tests in this package.
+
+    New test modules whose test classes inherit from :class:`TestSupport` must
+    import the :func:`setUpModule` and :func:`tearDownModule` functions, which
+    create and destroy a file for a test database, respectively, from this
+    module::
+
+        from .helpers import setUpModule
+        from .helpers import tearDownModule
+
+    This makes :mod:`unittest` execute these functions once per test module,
+    which saves some disk usage and should theoretically cause the tests to run
+    more quickly.
+
+    :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
+    :license: GNU AGPLv3+ or BSD
+
+"""
+import datetime
 import os
 import tempfile
 from unittest2 import TestCase
@@ -25,6 +29,28 @@ from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 
 from flask.ext.restless import APIManager
+
+#: The file descriptor and filename of the database which will be used in the
+#: tests.
+DB = dict(fd=None, filename=None)
+
+
+def setUpModule():
+    """Creates a temporary file which will contain the database to use in the
+    tests.
+
+    """
+    DB['fd'], DB['filename'] = tempfile.mkstemp()
+
+
+def tearDownModule():
+    """Closes and unlinks the database file used in the tests."""
+    if DB['fd']:
+        os.close(DB['fd'])
+        DB['fd'] = None
+    if DB['filename']:
+        os.unlink(DB['filename'])
+        DB['filename'] = None
 
 
 class TestSupport(TestCase):
@@ -38,16 +64,12 @@ class TestSupport(TestCase):
     """
 
     def setUp(self):
-        """Creates the database, the Flask application, and the APIManager."""
-
-        # create a temporary file for the database
-        self.db_fd, self.db_file = tempfile.mkstemp()
-
+        """Creates the Flask application and the APIManager."""
         # create the Flask application
         app = Flask(__name__)
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///%s' % self.db_file
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///%s' % DB['filename']
         self.flaskapp = app
 
         # initialize Flask-SQLAlchemy and Flask-Restless
@@ -84,15 +106,8 @@ class TestSupport(TestCase):
         self.app = app.test_client()
 
     def tearDown(self):
-        """Drops all tables from the temporary database and closes and unlink
-        the temporary file in which it lived.
-
-        """
-        # drop all tables
+        """Drops all tables from the temporary database."""
         self.db.drop_all()
-        # close and unlink the file
-        os.close(self.db_fd)
-        os.unlink(self.db_file)
 
 
 class TestSupportPrefilled(TestSupport):
@@ -113,7 +128,8 @@ class TestSupportPrefilled(TestSupport):
         # create the database
         super(TestSupportPrefilled, self).setUp()
         # create some people in the database for testing
-        lincoln = self.Person(name=u'Lincoln', age=23, other=22)
+        lincoln = self.Person(name=u'Lincoln', age=23, other=22,
+                              birth_date=datetime.date(1900, 1, 2))
         mary = self.Person(name=u'Mary', age=19, other=19)
         lucy = self.Person(name=u'Lucy', age=25, other=20)
         katy = self.Person(name=u'Katy', age=7, other=10)
