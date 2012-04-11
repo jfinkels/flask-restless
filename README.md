@@ -130,8 +130,8 @@ You can measure the test coverage by running
     
     python setup.py coverage
 
-Running coverage requires [covearage.py][cov] package installed, you can do that 
-by running 
+Measuring test coverage requires the [coverage.py][cov] package, which can be
+installed like this:
 
     pip install coverage
 
