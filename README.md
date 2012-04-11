@@ -122,6 +122,8 @@ You can also run the unit tests in a less verbose way by doing
 
 This is a Python module which, when executed, simply runs all unit tests.
 
+### Test coverage ###
+
 You can measure the test coverage by running
     
     python setup.py coverage
@@ -131,6 +133,7 @@ by running
 
     pip install coverage
 
+[cov]: http://nedbatchelder.com/code/coverage
 [ut2]: http://pypi.python.org/pypi/unittest2
 
 ### Testing validation ###
