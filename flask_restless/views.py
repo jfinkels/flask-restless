@@ -40,6 +40,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.properties import RelationshipProperty as RelProperty
 from sqlalchemy.sql import func
 
+from .helpers import unicode_keys_to_strings
 from .search import create_query
 from .search import search
 
@@ -771,8 +772,10 @@ class API(ModelView):
         params = self._strings_to_dates(params)
 
         try:
-            # Instantiate the model with the parameters
-            instance = self.model(**dict([(i, params[i]) for i in props]))
+            # Instantiate the model with the parameters.
+            modelargs = dict([(i, params[i]) for i in props])
+            # HACK Python 2.5 requires __init__() keywords to be strings.
+            instance = self.model(**unicode_keys_to_strings(modelargs))
 
             # Handling relations, a single level is allowed
             for col in set(relations).intersection(paramkeys):
