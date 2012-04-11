@@ -124,6 +124,19 @@ This is a Python module which, when executed, simply runs all unit tests.
 
 [ut2]: http://pypi.python.org/pypi/unittest2
 
+### Test coverage ###
+
+You can measure the test coverage by running
+    
+    python setup.py coverage
+
+Running coverage requires [covearage.py][cov] package installed, you can do that 
+by running 
+
+    pip install coverage
+
+[cov]: http://nedbatchelder.com/code/coverage
+
 ### Testing validation ###
 
 Validation is not provided directly by Flask-Restless, but it does provide a
