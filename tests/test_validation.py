@@ -24,6 +24,7 @@ from flask import json
 try:
     import savalidation as _sav
     import savalidation.validators as sav
+    sav_version = tuple(int(n) for n in _sav.VERSION.split('.'))
     has_savalidation = True
 except:
     has_savalidation = False
@@ -245,7 +246,8 @@ class SAVTest(TestSupport):
 
 # skipUnless should be used as a decorator, but Python 2.5 doesn't have
 # decorators.
-SAVTest = skipUnless(has_savalidation, 'savalidation not found.')(SAVTest)
+SAVTest = skipUnless(has_savalidation and sav_version >= (0, 2),
+                     'savalidation not found.')(SAVTest)
 
 
 def load_tests(loader, standard_tests, pattern):

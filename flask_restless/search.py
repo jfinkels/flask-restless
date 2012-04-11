@@ -15,6 +15,8 @@
 """
 import inspect
 
+from .helpers import unicode_keys_to_strings
+
 #: The mapping from operator name (as accepted by the search method) to a
 #: function which returns the SQLAlchemy expression corresponding to that
 #: operator.
@@ -63,14 +65,6 @@ OPERATORS = {
     'has': lambda f, a, fn: f.has(**{str(fn): a}),
     'any': lambda f, a, fn: f.any(**{str(fn): a})
 }
-
-
-def _unicode_keys_to_strings(dictionary):
-    """Returns a new dictionary with the same mappings as `dictionary`, but
-    with each of the keys coerced to a string (by calling :func:`str(key)`).
-
-    """
-    return dict((str(k), v) for k, v in dictionary.iteritems())
 
 
 class OrderBy(object):
@@ -226,7 +220,7 @@ class SearchParameters(object):
         filters = [from_dict(f) for f in dictionary.get('filters', [])]
         # HACK In Python 2.5, unicode dictionary keys are not allowed.
         order_by_list = dictionary.get('order_by', [])
-        order_by_list = (_unicode_keys_to_strings(o) for o in order_by_list)
+        order_by_list = (unicode_keys_to_strings(o) for o in order_by_list)
         order_by = [OrderBy(**o) for o in order_by_list]
         limit = dictionary.get('limit')
         offset = dictionary.get('offset')
