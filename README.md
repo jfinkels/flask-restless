@@ -19,7 +19,7 @@ For more information, check the World Wide Web!
 [![Build status](https://secure.travis-ci.org/jfinkels/flask-restless.png)](http://travis-ci.org/jfinkels/flask-restless)
 
 [1]: http://flask.pocoo.org
-[2]: http://packages.python.org/Flask.SQLAlchemy
+[2]: http://packages.python.org/Flask-SQLAlchemy
 
 ## Copyright license ##
 
