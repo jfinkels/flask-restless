@@ -5,7 +5,11 @@ import os.path
 import sys
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-from unittest2 import main
+import unittest2
 from tests import suite
 
-main(defaultTest='suite')
+def main():
+    unittest2.main(defaultTest='suite')
+
+if __name__ == '__main__':
+    main()
