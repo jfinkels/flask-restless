@@ -238,7 +238,7 @@ If query parameter ``q`` has the value
 
    { "filters":
      [
-       {"name": "computers__manufacturer", "val": "Dell", "op": "any"}
+       {"name": "computers__manufacturer", "val": "Apple", "op": "any"}
      ]
    }
 
