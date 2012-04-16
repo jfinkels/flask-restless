@@ -802,8 +802,8 @@ class API(ModelView):
             for col in set(relations).intersection(paramkeys):
                 submodel = cols[col].property.mapper.class_
                 for subparams in params[col]:
-                    subinst = _get_or_create(self.session, submodel,
-                                            **unicode_keys_to_strings(subparams))[0]
+                    kw = unicode_keys_to_strings(subparams)
+                    subinst = _get_or_create(self.session, submodel, **kw)[0]
                     getattr(instance, col).append(subinst)
 
             # add the created model to the session

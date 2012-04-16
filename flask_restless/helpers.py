@@ -20,7 +20,7 @@ def unicode_keys_to_strings(dictionary):
 
         >>> def func(a=1, b=2):
         ...     return a + b
-        ... 
+        ...
         >>> d = {u'a': 10, u'b': 20}
         >>> func(**d)
         Traceback (most recent call last):
