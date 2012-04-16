@@ -13,6 +13,7 @@
 """
 
 from flask import Blueprint
+from sqlalchemy.orm import scoped_session
 
 from .views import API
 from .views import FunctionAPI
@@ -68,7 +69,9 @@ class APIManager(object):
         application.
 
         `session` is the :class:`session.orm.session.Session` object in which
-        changes to the database will be made.
+        changes to the database will be made. It may also be a
+        :class:`session.orm.session.Session` class, in which case a new
+        :class:`sqlalchemy.orm.scoped_session` will be created from it.
 
         `flask_sqlalchemy_db` is the :class:`flask.ext.sqlalchemy.SQLAlchemy`
         object with which `app` has been registered and which contains the
@@ -182,6 +185,8 @@ class APIManager(object):
         """
         self.app = app
         self.session = session or flask_sqlalchemy_db.session
+        if isinstance(self.session, type):
+            self.session = scoped_session(self.session)
 
     def create_api(self, model, methods=READONLY_METHODS, url_prefix='/api',
                    collection_name=None, allow_patch_many=False,

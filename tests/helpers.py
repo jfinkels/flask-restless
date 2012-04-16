@@ -101,9 +101,9 @@ class TestSupport(FlaskTestBase):
         app = self.flaskapp
         engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'],
                                convert_unicode=True)
-        self.session = scoped_session(sessionmaker(autocommit=False,
-                                                   autoflush=False,
-                                                   bind=engine))
+        self.Session = sessionmaker(autocommit=False, autoflush=False,
+                                    bind=engine)
+        self.session = scoped_session(self.Session)
         self.Base = declarative_base()
         self.Base.metadata.bind = engine
         #Base.query = self.session.query_property()

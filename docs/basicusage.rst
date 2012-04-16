@@ -109,6 +109,13 @@ instead::
 
     manager = APIManager(app, session=mysession)
 
+You may also provide the session class (as returned by
+:class:`sqlalchemy.orm.sessionmaker`); in this case Flask-Restless will
+instantiate a new :class:`sqlalchemy.orm.scoped_session` from the provided
+class::
+
+    manager = APIManager(app, session=Session)
+
 Third, create the API endpoints which will be accessible to web clients::
 
     person_blueprint = manager.create_api(Person,

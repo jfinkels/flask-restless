@@ -268,6 +268,20 @@ class APIManagerTest(TestSupport):
         response = self.app.get('/get/person/1')
         self.assertEqual(response.status_code, 404)
 
+    def test_session_class(self):
+        """Test for providing a session class instead of a sesssion instance.
+
+        """
+        manager = APIManager(self.flaskapp, session=self.Session)
+        manager.create_api(self.Person, methods=['GET', 'POST'])
+        response = self.app.get('/api/person')
+        self.assertEqual(response.status_code, 200)
+        response = self.app.post('/api/person', data=dumps(dict(name='foo')))
+        self.assertEqual(response.status_code, 201)
+        response = self.app.get('/api/person/1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data)['id'], 1)
+
 
 class FSATest(FlaskTestBase):
     """Tests which use models defined using Flask-SQLAlchemy instead of pure
