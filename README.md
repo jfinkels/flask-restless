@@ -129,7 +129,7 @@ This is a Python module which, when executed, simply runs all unit tests.
 ### Test coverage ###
 
 You can measure the test coverage by running
-    
+
     python setup.py coverage
 
 Measuring test coverage requires the [coverage.py][cov] package, which can be
