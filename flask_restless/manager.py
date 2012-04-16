@@ -56,22 +56,27 @@ class APIManager(object):
     #:    has been registered.
     BLUEPRINTNAME_FORMAT = '%s%s'
 
-    def __init__(self, app=None, session=None):
+    def __init__(self, app=None, session=None, flask_sqlalchemy_db=None):
         """Stores the specified :class:`flask.Flask` application object on
-        which API endpoints will be registered and the
-        :class:`sqlalchemy.orm.session.Session` object in which all database
-        changes will be made.
+        which API endpoints will be registered.
 
-        If either `app` or `session` is ``None``, the user must call the
-        :meth:`init_app` method before calling the :meth:`create_api` method.
+        If `app` is ``None`` or one of `session` and `flask_sqlalchemy_db_` is
+        ``None``, the user must call the :meth:`init_app` method before calling
+        the :meth:`create_api` method.
 
         `app` is the :class:`flask.Flask` object containing the user's Flask
         application.
 
         `session` is the :class:`session.orm.session.Session` object in which
-        changes to the database will be made..
+        changes to the database will be made.
 
-        For example::
+        `flask_sqlalchemy_db` is the :class:`flask.ext.sqlalchemy.SQLAlchemy`
+        object with which `app` has been registered and which contains the
+        database models for which API endpoints will be created.
+
+        If `flask_sqlalchemy_db` is not ``None``, `session` will be ignored.
+
+        For example, to use this class with models defined in pure SQLAlchemy::
 
             from flask import Flask
             from flask.ext.restless import APIManager
@@ -81,11 +86,21 @@ class APIManager(object):
             engine = create_engine('sqlite:////tmp/mydb.sqlite')
             Session = sessionmaker(bind=engine)
             mysession = Session()
-            app = flask.Flask(__name__)
-            apimanager = flask.ext.restless.APIManager(app, mysession)
+            app = Flask(__name__)
+            apimanager = APIManager(app, session=mysession)
+
+        and with models defined with Flask-SQLAlchemy::
+
+            from flask import Flask
+            from flask.ext.restless import APIManager
+            from flask.ext.sqlalchemy import SQLAlchemy
+
+            app = Flask(__name__)
+            db = SQLALchemy(app)
+            apimanager = APIManager(app, flask_sqlalchemy_db=db)
 
         """
-        self.init_app(app, session)
+        self.init_app(app, session, flask_sqlalchemy_db)
 
     def _next_blueprint_name(self, basename):
         """Returns the next name for a blueprint with the specified base name.
@@ -114,15 +129,26 @@ class APIManager(object):
             next_number = max(existing_numbers) + 1
         return APIManager.BLUEPRINTNAME_FORMAT % (basename, next_number)
 
-    def init_app(self, app, session):
+    def init_app(self, app, session=None, flask_sqlalchemy_db=None):
         """Stores the specified :class:`flask.Flask` application object on
         which API endpoints will be registered and the
         :class:`sqlalchemy.orm.session.Session` object in which all database
         changes will be made.
 
+        `session` is the :class:`session.orm.session.Session` object in which
+        changes to the database will be made.
+
+        `flask_sqlalchemy_db` is the :class:`flask.ext.sqlalchemy.SQLAlchemy`
+        object with which `app` has been registered and which contains the
+        database models for which API endpoints will be created.
+
+        If `flask_sqlalchemy_db` is not ``None``, `session` will be ignored.
+
         This is for use in the situation in which this class must be
         instantiated before the :class:`~flask.Flask` application has been
-        created. For example::
+        created.
+
+        To use this method with pure SQLAlchemy, for example::
 
             from flask import Flask
             from flask.ext.restless import APIManager
@@ -137,11 +163,25 @@ class APIManager(object):
             Session = sessionmaker(bind=engine)
             mysession = Session()
             app = Flask(__name__)
-            apimanager.init_app(app, mysession)
+            apimanager.init_app(app, session=mysession)
+
+        and with models defined with Flask-SQLAlchemy::
+
+            from flask import Flask
+            from flask.ext.restless import APIManager
+            from flask.ext.sqlalchemy import SQLAlchemy
+
+            apimanager = APIManager()
+
+            # later...
+
+            app = Flask(__name__)
+            db = SQLALchemy(app)
+            apimanager.init_app(app, flask_sqlalchemy_db=db)
 
         """
         self.app = app
-        self.session = session
+        self.session = session or flask_sqlalchemy_db.session
 
     def create_api(self, model, methods=READONLY_METHODS, url_prefix='/api',
                    collection_name=None, allow_patch_many=False,
