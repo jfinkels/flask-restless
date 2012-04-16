@@ -170,7 +170,7 @@ with those names (that is, the strings represent the names of attributes of the
 model which are ``Column`` objects) will be provided in JSON responses for
 :http:method:`get` requests.
 
-For example, if your model is defined like this::
+For example, if your model is defined like this (using Flask-SQLAlchemy)::
 
     class Person(db.Model):
         id = db.Column(db.Integer, primary_key=True)

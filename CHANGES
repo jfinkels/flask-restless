@@ -5,13 +5,15 @@ Here you can see the full list of changes between each Flask-Restless release.
 
 .. note::
 
-   As of version 0.5, Flask-Restless only supports Flask-SQLAlchemy
-   models. Before that, it supported only Elixir models.
+   As of version 0.6, Flask-Restless supports both pure SQLAlchemy and
+   Flask-SQLAlchemy models. Before that, it supported only Elixir models.
 
 Version 0.6
 -----------
 
 Not yet released.
+
+- Added support for pure SQLAlchemy in addition to Flask-SQLAlchemy.
 
 Version 0.5
 -----------

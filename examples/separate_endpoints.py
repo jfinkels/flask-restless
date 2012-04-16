@@ -49,7 +49,7 @@ class Computer(db.Model):
 db.create_all()
 
 # Create the Flask-Restless API manager.
-manager = flask.ext.restless.APIManager(app, db)
+manager = flask.ext.restless.APIManager(app, flask_sqlalchemy_db=db)
 
 # Create API endpoints, each at a different URL and with different allowed HTTP
 # methods, but which all affect the Person model.

@@ -13,10 +13,13 @@ Flask-Restless has the following dependencies (which will be automatically
 installed if you use ``pip``):
 
 * `Flask <http://flask.pocoo.org>`_ version 0.7 or greater
-* `Flask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy>`_
+* `SQLAlchemy <http://sqlalchemy.org>`_
 * `python-dateutil <http://labix.org/python-dateutil>`_ version less than 2.0
 * `simplejson <http://pypi.python.org/pypi/simplejson>`_, *only if* you are
   using Python 2.5
+* `Flask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy>`_, *only if*
+  you want to define your models using Flask-SQLAlchemy (which we highly
+  recommend)
 
 Flask-Restless requires Python version 2.5, 2.6 or 2.7. Python 3 support will
 come when Flask has it.

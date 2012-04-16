@@ -55,7 +55,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///%s' % DATABASE
 
 # Step 2: initialize extensions.
 db = SQLAlchemy(app)
-api_manager = APIManager(app, db)
+api_manager = APIManager(app, flask_sqlalchemy_db=db)
 
 
 # Step 3: create the database model.

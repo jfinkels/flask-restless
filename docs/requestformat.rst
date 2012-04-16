@@ -9,7 +9,8 @@ Requests and responses are all in JSON format, so the mimetype is
 :mimetype:`application/json`. Ensure that requests you make have the correct
 mimetype and/or content type.
 
-Suppose we have the following models::
+Suppose we have the following Flask-SQLAlchemy models (the example works with
+pure SQLALchemy just the same)::
 
     from flask import Flask
     from flask.ext.sqlalchemy import SQLAlchemy

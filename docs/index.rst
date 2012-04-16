@@ -2,8 +2,8 @@ Flask-Restless
 ==============
 
 **Flask-Restless** provides simple generation of ReSTful APIs for database
-models defined using Flask-SQLAlchemy. The generated APIs send and receive
-messages in JSON format.
+models defined using SQLAlchemy (or Flask-SQLAlchemy). The generated APIs send
+and receive messages in JSON format.
 
 User's guide
 ------------

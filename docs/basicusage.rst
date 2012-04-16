@@ -5,13 +5,13 @@
 Creating API endpoints
 ======================
 
-To use this extension, you must have defined your database models using
-Flask-SQLALchemy.
+To use this extension, you must have defined your database models using either
+SQLAlchemy or Flask-SQLALchemy.
 
 The basic setup for Flask-SQLAlchemy is the same. First, create your
 :class:`flask.Flask` object, :class:`flask.ext.sqlalchemy.SQLAlchemy` object,
-and model classes as usual but with the following two (reasonable)
-restrictions on models:
+and model classes as usual but with the following two (reasonable) restrictions
+on models:
 
 1. They must have an ``id`` column of type :class:`sqlalchemy.Integer`.
 2. They must have an ``__init__`` method which accepts keyword arguments for
@@ -47,6 +47,44 @@ restrictions on models:
 
    db.create_all()
 
+If you are using pure SQLAlchemy::
+
+   from flask import Flask
+   from sqlalchemy import Column, Date, DateTime, Float, Integer, Unicode
+   from sqlalchemy import ForeignKey
+   from sqlalchemy import create_engine
+   from sqlalchemy.ext.declarative import declarative_base
+   from sqlalchemy.orm import backref, relationship
+   from sqlalchemy.orm import scoped_session, sessionmaker
+
+   app = Flask(__name__)
+   engine = create_engine('sqlite:////tmp/testdb.sqlite', convert_unicode=True)
+   Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+   mysession = scoped_session(Session)
+
+   Base = declarative_base()
+   Base.metadata.bind = engine
+
+   class Computer(Base):
+       __tablename__ = 'computer'
+       id = Column(Integer, primary_key=True)
+       name = Column(Unicode, unique=True)
+       vendor = Column(Unicode)
+       buy_date = Column(DateTime)
+       owner_id = Column(Integer, ForeignKey('person.id'))
+
+   class Person(Base):
+       __tablename__ = 'person'
+       id = Column(Integer, primary_key=True)
+       name = Column(Unicode, unique=True)
+       age = Column(Float)
+       other = Column(Float)
+       birth_date = Column(Date)
+       computers = relationship('Computer',
+                                backref=backref('owner', lazy='dynamic'))
+
+   Base.metadata.create_all()
+
 .. warning::
 
    Attributes of these entities must not have a name containing two
@@ -64,7 +102,12 @@ Second, instantiate a :class:`flask.ext.restless.APIManager` object with the
 
     from flask.ext.restless import APIManager
 
-    manager = APIManager(app, db)
+    manager = APIManager(app, flask_sqlalchemy_db=db)
+
+Or if you are using pure SQLAlchemy, specify the session you created above
+instead::
+
+    manager = APIManager(app, session=mysession)
 
 Third, create the API endpoints which will be accessible to web clients::
 
