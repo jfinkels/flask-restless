@@ -57,7 +57,7 @@ class ModelTestCase(TestSupport):
 
         """
         person = self.Person(birth_date=date(1986, 9, 15))
-        self.db.session.commit()
+        self.session.commit()
         d = _to_dict(person)
         self.assertIn('birth_date', d)
         self.assertEqual(d['birth_date'], person.birth_date.isoformat())
@@ -68,7 +68,7 @@ class ModelTestCase(TestSupport):
 
         """
         computer = self.Computer(buy_date=datetime.now())
-        self.db.session.commit()
+        self.session.commit()
         d = _to_dict(computer)
         self.assertIn('buy_date', d)
         self.assertEqual(d['buy_date'], computer.buy_date.isoformat())
@@ -79,7 +79,7 @@ class ModelTestCase(TestSupport):
 
         """
         me = self.Person(name=u'Lincoln', age=24, birth_date=date(1986, 9, 15))
-        self.db.session.commit()
+        self.session.commit()
 
         me_dict = _to_dict(me)
         expectedfields = sorted(['birth_date', 'age', 'id', 'name', 'other'])
@@ -99,7 +99,7 @@ class ModelTestCase(TestSupport):
         computer = self.Computer(name=u'lixeiro', vendor=u'Lemote',
                                  buy_date=now)
         someone.computers.append(computer)
-        self.db.session.commit()
+        self.session.commit()
 
         deep = {'computers': []}
         computers = _to_dict(someone, deep)['computers']
@@ -113,14 +113,14 @@ class ModelTestCase(TestSupport):
         """Test for :meth:`flask_restless.model.Entity.get_or_create()`."""
         # Here we're sure that we have a fresh table with no rows, so
         # let's create the first one:
-        instance, created = _get_or_create(self.db.session, self.Person,
+        instance, created = _get_or_create(self.session, self.Person,
                                            name=u'Lincoln', age=24)
         self.assertTrue(created)
         self.assertEqual(instance.name, u'Lincoln')
         self.assertEqual(instance.age, 24)
 
         # Now that we have a row, let's try to get it again
-        second_instance, created = _get_or_create(self.db.session, self.Person,
+        second_instance, created = _get_or_create(self.session, self.Person,
                                                   name=u'Lincoln')
         self.assertFalse(created)
         self.assertEqual(second_instance.name, u'Lincoln')
@@ -136,23 +136,23 @@ class FunctionEvaluationTest(TestSupportPrefilled):
     def test_basic_evaluation(self):
         """Tests for basic function evaluation."""
         # test for no model
-        result = evaluate_functions(self.db.session, None, [])
+        result = evaluate_functions(self.session, None, [])
         self.assertEqual(result, {})
 
         # test for no functions
-        result = evaluate_functions(self.db.session, self.Person, [])
+        result = evaluate_functions(self.session, self.Person, [])
         self.assertEqual(result, {})
 
         # test for summing ages
         functions = [{'name': 'sum', 'field': 'age'}]
-        result = evaluate_functions(self.db.session, self.Person, functions)
+        result = evaluate_functions(self.session, self.Person, functions)
         self.assertIn('sum__age', result)
         self.assertEqual(result['sum__age'], 102.0)
 
         # test for multiple functions
         functions = [{'name': 'sum', 'field': 'age'},
                      {'name': 'avg', 'field': 'other'}]
-        result = evaluate_functions(self.db.session, self.Person, functions)
+        result = evaluate_functions(self.session, self.Person, functions)
         self.assertIn('sum__age', result)
         self.assertEqual(result['sum__age'], 102.0)
         self.assertIn('avg__other', result)
@@ -163,12 +163,12 @@ class FunctionEvaluationTest(TestSupportPrefilled):
         # test for unknown field
         functions = [{'name': 'sum', 'field': 'bogus'}]
         with self.assertRaises(AttributeError):
-            evaluate_functions(self.db.session, self.Person, functions)
+            evaluate_functions(self.session, self.Person, functions)
 
         # test for unknown function
         functions = [{'name': 'bogus', 'field': 'age'}]
         with self.assertRaises(OperationalError):
-            evaluate_functions(self.db.session, self.Person, functions)
+            evaluate_functions(self.session, self.Person, functions)
 
 
 class FunctionAPITestCase(TestSupportPrefilled):
@@ -283,7 +283,8 @@ class APITestCase(TestSupport):
         self.assertEqual(response.status_code, 200)
 
         deep = {'computers': []}
-        inst = _to_dict(self.Person.query.get(1), deep)
+        person = self.session.query(self.Person).filter_by(id=1).first()
+        inst = _to_dict(person, deep)
         self.assertEqual(loads(response.data), inst)
 
     def test_post_with_submodels(self):
@@ -310,7 +311,8 @@ class APITestCase(TestSupport):
 
         # Making sure it has been created
         deep = {'computers': []}
-        inst = _to_dict(self.Person.query.get(1), deep)
+        person = self.session.query(self.Person).filter_by(id=1).first()
+        inst = _to_dict(person, deep)
         response = self.app.get('/api/person/1')
         self.assertEqual(loads(response.data), inst)
 
@@ -319,7 +321,8 @@ class APITestCase(TestSupport):
         self.assertEqual(response.status_code, 204)
 
         # Making sure it has been deleted
-        self.assertIsNone(self.Person.query.get(1))
+        people = self.session.query(self.Person).filter_by(id=1)
+        self.assertEquals(people.count(), 0)
 
     def test_delete_absent_instance(self):
         """Test that deleting an instance of the model which does not exist
@@ -474,7 +477,7 @@ class APITestCase(TestSupport):
                          data['computers']['add'][0]['vendor'])
 
         # test that this new computer was added to the database as well
-        computer = self.Computer.query.get(1)
+        computer = self.session.query(self.Computer).filter_by(id=1).first()
         self.assertIsNotNone(computer)
         self.assertEqual(data['computers']['add'][0]['name'], computer.name)
         self.assertEqual(data['computers']['add'][0]['vendor'],

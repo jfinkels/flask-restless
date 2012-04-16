@@ -15,10 +15,13 @@
 """
 import re
 
+from flask import json
+from sqlalchemy import Column
+from sqlalchemy import Integer
+from sqlalchemy import Unicode
+from sqlalchemy.orm import validates
 from unittest2 import TestSuite
 from unittest2 import skipUnless
-
-from flask import json
 
 # for SAValidation package on pypi.python.org
 try:
@@ -56,22 +59,20 @@ class SimpleValidationTest(TestSupport):
     def setUp(self):
         """Create APIs for the validated models."""
         super(SimpleValidationTest, self).setUp()
-        # for the sake of brevity...
-        db = self.db
 
         class CoolValidationError(Exception):
             pass
 
         # create the validated class
-        # NOTE: don't name this `Person`, as in models.Person
-        class Test(db.Model):
+        # NOTE: don't name this `Person`, as in self.Person
+        class Test(self.Base):
             __tablename__ = 'test'
-            id = db.Column(db.Integer, primary_key=True)
-            name = db.Column(db.Unicode(30), nullable=False, index=True)
-            email = db.Column(db.Unicode, nullable=False)
-            age = db.Column(db.Integer, nullable=False)
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode(30), nullable=False, index=True)
+            email = Column(Unicode, nullable=False)
+            age = Column(Integer, nullable=False)
 
-            @db.validates('email')
+            @validates('email')
             def validate_email(self, key, string):
                 if len(EMAIL_REGEX.findall(string)) != 1:
                     exception = CoolValidationError()
@@ -80,7 +81,7 @@ class SimpleValidationTest(TestSupport):
                     raise exception
                 return string
 
-            @db.validates('age')
+            @validates('age')
             def validate_age(self, key, number):
                 if not 0 <= number <= 150:
                     exception = CoolValidationError()
@@ -88,14 +89,14 @@ class SimpleValidationTest(TestSupport):
                     raise exception
                 return number
 
-            @db.validates('name')
+            @validates('name')
             def validate_name(self, key, string):
                 if string is None:
                     exception = CoolValidationError()
                     exception.errors = dict(name='Must not be empty')
                     raise exception
                 return string
-        db.create_all()
+        self.Base.metadata.create_all()
         self.manager.create_api(Test, methods=['GET', 'POST', 'PATCH'],
                                 validation_exceptions=[CoolValidationError])
 
@@ -146,20 +147,18 @@ class SAVTest(TestSupport):
     def setUp(self):
         """Create APIs for the validated models."""
         super(SAVTest, self).setUp()
-        # for the sake of brevity...
-        db = self.db
 
-        class Test(db.Model, _sav.ValidationMixin):
+        class Test(self.Base, _sav.ValidationMixin):
             __tablename__ = 'test'
-            id = db.Column(db.Integer, primary_key=True)
-            name = db.Column(db.Unicode(30))
-            email = db.Column(db.Unicode)
-            age = db.Column(db.Integer)
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode(30))
+            email = Column(Unicode)
+            age = Column(Integer)
 
             sav.validates_presence_of('name', 'email')
             sav.validates_email('email')
 
-        db.create_all()
+        self.Base.metadata.create_all()
 
         exceptions = [_sav.ValidationError]
         self.manager.create_api(Test, methods=['GET', 'POST', 'PATCH'],

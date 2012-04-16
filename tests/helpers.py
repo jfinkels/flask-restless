@@ -26,7 +26,19 @@ import tempfile
 from unittest2 import TestCase
 
 from flask import Flask
-from flask.ext.sqlalchemy import SQLAlchemy
+from sqlalchemy import Column
+from sqlalchemy import create_engine
+from sqlalchemy import Date
+from sqlalchemy import DateTime
+from sqlalchemy import Float
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import Unicode
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import sessionmaker
 
 from flask.ext.restless import APIManager
 
@@ -72,42 +84,48 @@ class TestSupport(TestCase):
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///%s' % DB['filename']
         self.flaskapp = app
 
-        # initialize Flask-SQLAlchemy and Flask-Restless
-        self.db = SQLAlchemy(app)
-        self.manager = APIManager(app, self.db)
-
-        # for the sake of brevity...
-        db = self.db
+        # initialize SQLAlchemy and Flask-Restless
+        engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'],
+                               convert_unicode=True)
+        self.session = scoped_session(sessionmaker(autocommit=False,
+                                                   autoflush=False,
+                                                   bind=engine))
+        self.Base = declarative_base()
+        self.Base.metadata.bind = engine
+        #Base.query = self.session.query_property()
+        self.manager = APIManager(app, self.session)
 
         # declare the models
-        class Computer(db.Model):
-            id = db.Column(db.Integer, primary_key=True)
-            name = db.Column(db.Unicode, unique=True)
-            vendor = db.Column(db.Unicode)
-            buy_date = db.Column(db.DateTime)
-            owner_id = db.Column(db.Integer, db.ForeignKey('person.id'))
+        class Computer(self.Base):
+            __tablename__ = 'computer'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode, unique=True)
+            vendor = Column(Unicode)
+            buy_date = Column(DateTime)
+            owner_id = Column(Integer, ForeignKey('person.id'))
 
-        class Person(db.Model):
-            id = db.Column(db.Integer, primary_key=True)
-            name = db.Column(db.Unicode, unique=True)
-            age = db.Column(db.Float)
-            other = db.Column(db.Float)
-            birth_date = db.Column(db.Date)
-            computers = db.relationship('Computer',
-                                        backref=db.backref('owner',
-                                                           lazy='dynamic'))
+        class Person(self.Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode, unique=True)
+            age = Column(Float)
+            other = Column(Float)
+            birth_date = Column(Date)
+            computers = relationship('Computer',
+                                     backref=backref('owner', lazy='dynamic'))
         self.Person = Person
         self.Computer = Computer
 
         # create all the tables required for the models
-        self.db.create_all()
+        self.Base.metadata.create_all()
 
         # create the test client
         self.app = app.test_client()
 
     def tearDown(self):
         """Drops all tables from the temporary database."""
-        self.db.drop_all()
+        #self.session.remove()
+        self.Base.metadata.drop_all()
 
 
 class TestSupportPrefilled(TestSupport):
@@ -135,5 +153,5 @@ class TestSupportPrefilled(TestSupport):
         katy = self.Person(name=u'Katy', age=7, other=10)
         john = self.Person(name=u'John', age=28, other=10)
         self.people = [lincoln, mary, lucy, katy, john]
-        self.db.session.add_all(self.people)
-        self.db.session.commit()
+        self.session.add_all(self.people)
+        self.session.commit()

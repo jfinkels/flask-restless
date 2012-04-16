@@ -13,7 +13,6 @@ from unittest2 import TestSuite
 
 from flask import Flask
 from flask import json
-from flask.ext.sqlalchemy import SQLAlchemy
 
 from flask.ext.restless import APIManager
 from flask.ext.restless.views import _get_columns
@@ -41,7 +40,7 @@ class APIManagerTest(TestSupport):
 
         """
         # initialize the Flask application
-        self.manager.init_app(self.flaskapp, self.db)
+        self.manager.init_app(self.flaskapp, self.session)
 
         # create an API
         self.manager.create_api(self.Person)

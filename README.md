@@ -4,7 +4,7 @@
 
 This is Flask-Restless, a [Flask][1] extension which facilitates the creation
 of ReSTful JSON APIs. It is compatible with models which have been defined
-using [Flask-SQLAlchemy][2].
+using [SQLAlchemy][2].
 
 This document contains some brief instructions concerning installation of
 requirements, installation of this extension, configuration and usage of this
@@ -19,7 +19,7 @@ For more information, check the World Wide Web!
 [![Build status](https://secure.travis-ci.org/jfinkels/flask-restless.png)](http://travis-ci.org/jfinkels/flask-restless)
 
 [1]: http://flask.pocoo.org
-[2]: http://packages.python.org/Flask.SQLAlchemy
+[2]: http://sqlalchemy.org
 
 ## Copyright license ##
 

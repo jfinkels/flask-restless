@@ -92,7 +92,7 @@ def _get_or_create(session, model, **kwargs):
 
     """
     # TODO document that this uses the .first() function
-    instance = model.query.filter_by(**kwargs).first()
+    instance = session.query(model).filter_by(**kwargs).first()
     if instance:
         return instance, False
     else:
@@ -280,6 +280,11 @@ class ModelView(MethodView):
     performed when dealing with this model can be accessed from the
     :attr:`session` attribute.
 
+    When subclasses wish to make queries to the database model specified in the
+    constructor, they should access the ``self.query`` function, which
+    delegates to the appropriate SQLAlchemy query object or Flask-SQLAlchemy
+    query object, depending on how the model has been defined.
+
     """
 
     def __init__(self, session, model, *args, **kw):
@@ -296,6 +301,19 @@ class ModelView(MethodView):
         super(ModelView, self).__init__(*args, **kw)
         self.session = session
         self.model = model
+
+    def query(self, model=None):
+        """Returns either a SQLAlchemy query or Flask-SQLAlchemy query object
+        (depending on the type of the model) on the specified `model`, or if
+        `model` is ``None``, the model specified in the constructor of this
+        class.
+
+        """
+        the_model = model or self.model
+        if hasattr(the_model, 'query'):
+            return the_model.query
+        else:
+            return self.session.query(the_model)
 
 
 class FunctionAPI(ModelView):
@@ -425,10 +443,11 @@ class API(ModelView):
         submodel = _get_related_model(self.model, relationname)
         for dictionary in toadd or []:
             if 'id' in dictionary:
-                subinst = submodel.query.get(dictionary['id'])
+                filtered = self.query(submodel).filter_by(id=dictionary['id'])
+                subinst = filtered.first()
             else:
-                subinst = _get_or_create(self.session, submodel,
-                                         **unicode_keys_to_strings(dictionary))[0]
+                kw = unicode_keys_to_strings(dictionary)
+                subinst = _get_or_create(self.session, submodel, **kw)[0]
             for instance in query:
                 getattr(instance, relationname).append(subinst)
 
@@ -460,11 +479,12 @@ class API(ModelView):
         for dictionary in toremove or []:
             remove = dictionary.pop('__delete__', False)
             if 'id' in dictionary:
-                subinst = submodel.query.get(dictionary['id'])
+                filtered = self.query(submodel).filter_by(id=dictionary['id'])
+                subinst = filtered.first()
             else:
+                kw = unicode_keys_to_strings(dictionary)
                 # TODO document that we use .first() here
-                subinst = submodel.query.filter_by(
-                    **unicode_keys_to_strings(dictionary)).first()
+                subinst = self.query(submodel).filter_by(**kw).first()
             for instance in query:
                 getattr(instance, relationname).remove(subinst)
             if remove:
@@ -708,7 +728,7 @@ class API(ModelView):
         self._check_authentication()
         if instid is None:
             return self._search()
-        inst = self.model.query.get(instid)
+        inst = self.query().filter_by(id=instid).first()
         if inst is None:
             abort(404)
         relations = _get_relations(self.model)
@@ -726,7 +746,7 @@ class API(ModelView):
 
         """
         self._check_authentication()
-        inst = self.model.query.get(instid)
+        inst = self.query().filter_by(id=instid).first()
         if inst is not None:
             self.session.delete(inst)
             self.session.commit()
@@ -829,7 +849,7 @@ class API(ModelView):
                                            message='Unable to construct query')
         else:
             # create a SQLAlchemy Query which has exactly the specified row
-            query = self.session.query(self.model).filter_by(id=instid)
+            query = self.query().filter_by(id=instid)
             assert query.count() == 1, 'Multiple rows with same ID'
 
         relations = self._update_relations(query, data)
