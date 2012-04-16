@@ -68,7 +68,7 @@ This application requires the following libraries to be installed:
 * [SQLAlchemy][sa]
 * [python-dateutil][5] version less than 2.0
 * [simplejson][sj] only in Python 2.5
-* [Flask-SQLAlchemy][2] only if your models are defined using Flask-SQLAlchemy
+* [Flask-SQLAlchemy][fsa] only if your models are defined using Flask-SQLAlchemy
 
 These requirements are also listed in the `requirements.txt` file. Using `pip`
 is probably the easiest way to install these:
