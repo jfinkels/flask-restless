@@ -427,8 +427,8 @@ class API(ModelView):
             if 'id' in dictionary:
                 subinst = submodel.query.get(dictionary['id'])
             else:
-                subinst = _get_or_create(self.session, submodel,
-                                         **unicode_keys_to_strings(dictionary))[0]
+                kw = unicode_keys_to_strings(dictionary)
+                subinst = _get_or_create(self.session, submodel, **kw)[0]
             for instance in query:
                 getattr(instance, relationname).append(subinst)
 
@@ -462,9 +462,9 @@ class API(ModelView):
             if 'id' in dictionary:
                 subinst = submodel.query.get(dictionary['id'])
             else:
+                kw = unicode_keys_to_strings(dictionary)
                 # TODO document that we use .first() here
-                subinst = submodel.query.filter_by(
-                    **unicode_keys_to_strings(dictionary)).first()
+                subinst = submodel.query.filter_by(**kw).first()
             for instance in query:
                 getattr(instance, relationname).remove(subinst)
             if remove:
@@ -782,8 +782,8 @@ class API(ModelView):
             for col in set(relations).intersection(paramkeys):
                 submodel = cols[col].property.mapper.class_
                 for subparams in params[col]:
-                    subinst = _get_or_create(self.session, submodel,
-                                            **unicode_keys_to_strings(subparams))[0]
+                    kw = unicode_keys_to_strings(subparams)
+                    subinst = _get_or_create(self.session, submodel, **kw)[0]
                     getattr(instance, col).append(subinst)
 
             # add the created model to the session
