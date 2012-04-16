@@ -4,7 +4,7 @@
 
 This is Flask-Restless, a [Flask][1] extension which facilitates the creation
 of ReSTful JSON APIs. It is compatible with models which have been defined
-using [SQLAlchemy][2].
+using either [SQLAlchemy][sa] or [Flask-SQLAlchemy][fsa].
 
 This document contains some brief instructions concerning installation of
 requirements, installation of this extension, configuration and usage of this
@@ -19,7 +19,8 @@ For more information, check the World Wide Web!
 [![Build status](https://secure.travis-ci.org/jfinkels/flask-restless.png)](http://travis-ci.org/jfinkels/flask-restless)
 
 [1]: http://flask.pocoo.org
-[2]: http://sqlalchemy.org
+[sa]: http://sqlalchemy.org
+[fsa]: http://packages.python.org/Flask-SQLAlchemy
 
 ## Copyright license ##
 
@@ -64,9 +65,10 @@ This application requires [Python][4] version 2.5, 2.6, or 2.7.
 This application requires the following libraries to be installed:
 
 * [Flask][1] version 0.7 or greater
-* [Flask-SQLAlchemy][2]
+* [SQLAlchemy][sa]
 * [python-dateutil][5] version less than 2.0
 * [simplejson][sj] only in Python 2.5
+* [Flask-SQLAlchemy][2] only if your models are defined using Flask-SQLAlchemy
 
 These requirements are also listed in the `requirements.txt` file. Using `pip`
 is probably the easiest way to install these:
@@ -75,7 +77,7 @@ is probably the easiest way to install these:
 
 or
 
-    pip install Flask Flask-SQLAlchemy python-dateutil simplejson
+    pip install Flask Flask-SQLAlchemy python-dateutil simplejson sqlalchemy
 
 Technical note: simplejson is only required if you are using Python 2.5. The
 built-in json module will suffice in later Python versions.
