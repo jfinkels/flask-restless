@@ -65,7 +65,25 @@ def tearDownModule():
         DB['filename'] = None
 
 
-class TestSupport(TestCase):
+class FlaskTestBase(TestCase):
+    """Base class for tests which use a Flask application."""
+
+    def setUp(self):
+        """Creates the Flask application and the APIManager."""
+        super(FlaskTestBase, self).setUp()
+
+        # create the Flask application
+        app = Flask(__name__)
+        app.config['DEBUG'] = True
+        app.config['TESTING'] = True
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///%s' % DB['filename']
+        self.flaskapp = app
+
+        # create the test client
+        self.app = app.test_client()
+
+
+class TestSupport(FlaskTestBase):
     """Base class for tests which use a database and have an
     :class:`flask_restless.APIManager` with a :class:`flask.Flask` app object.
 
@@ -77,14 +95,10 @@ class TestSupport(TestCase):
 
     def setUp(self):
         """Creates the Flask application and the APIManager."""
-        # create the Flask application
-        app = Flask(__name__)
-        app.config['DEBUG'] = True
-        app.config['TESTING'] = True
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///%s' % DB['filename']
-        self.flaskapp = app
+        super(TestSupport, self).setUp()
 
         # initialize SQLAlchemy and Flask-Restless
+        app = self.flaskapp
         engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'],
                                convert_unicode=True)
         self.session = scoped_session(sessionmaker(autocommit=False,
@@ -118,9 +132,6 @@ class TestSupport(TestCase):
 
         # create all the tables required for the models
         self.Base.metadata.create_all()
-
-        # create the test client
-        self.app = app.test_client()
 
     def tearDown(self):
         """Drops all tables from the temporary database."""
