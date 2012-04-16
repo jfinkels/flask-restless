@@ -27,10 +27,11 @@ from unittest2 import skipUnless
 try:
     import savalidation as _sav
     import savalidation.validators as sav
-    sav_version = tuple(int(n) for n in _sav.VERSION.split('.'))
-    has_savalidation = True
 except:
     has_savalidation = False
+else:
+    sav_version = tuple(int(n) for n in _sav.VERSION.split('.'))
+    has_savalidation = True
 
 from .helpers import setUpModule
 from .helpers import tearDownModule
