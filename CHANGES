@@ -13,6 +13,8 @@ Version 0.6
 
 Not yet released.
 
+- Separated API blueprint creation from registration, using
+  :meth:`APIManager.create_api` and :meth:`APIManager.create_api_blueprint`.
 - Added support for pure SQLAlchemy in addition to Flask-SQLAlchemy.
 
 Version 0.5
