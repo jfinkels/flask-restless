@@ -371,7 +371,7 @@ class APIManager(object):
 
         This is a convenience method for the following code::
 
-            blueprint = apimanager.create_api(*args, **kw)
+            blueprint = apimanager.create_api_blueprint(*args, **kw)
             app.register_blueprint(blueprint)
 
         .. versionchanged:: 0.6
