@@ -11,3 +11,5 @@ in Flask-Restless.
    .. automethod:: init_app
 
    .. automethod:: create_api
+
+   .. automethod:: create_api_blueprint

@@ -119,10 +119,10 @@ error response.
 
 For example, if your validation framework includes an exception called
 ``ValidationError``, then call the :meth:`APIManager.create_api` method with
-the ``validation_errors`` keyword argument::
+the ``validation_exceptions`` keyword argument::
 
     from cool_validation_framework import ValidationError
-    apimanager.create_api(Person, validation_errors=[ValidationError])
+    apimanager.create_api(Person, validation_exceptions=[ValidationError])
 
 .. note::
 

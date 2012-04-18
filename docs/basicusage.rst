@@ -136,6 +136,14 @@ examine its attributes, but if you don't need it then just ignore it::
     manager.create_api(Person, methods=['GET', 'POST', 'DELETE'])
     manager.create_api(Computer)
 
+If you wish to create the blueprint for the API without registering it (for
+example, if you wish to register it later in your code), use the
+:meth:`APIManager.create_api_blueprint` method instead::
+
+    blueprint = manager.create_api_blueprint(Person, methods=['GET', 'POST'])
+    # later...
+    app.register_blueprint(blueprint)
+
 By default, the API for ``Person``, in the above code samples, will be
 accessible at ``http://<host>:<port>/api/person``, where the ``person`` part of
 the URL is the value of ``Person.__tablename__``::
