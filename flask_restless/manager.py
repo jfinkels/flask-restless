@@ -192,7 +192,7 @@ class APIManager(object):
                    collection_name=None, allow_patch_many=False,
                    allow_functions=False, authentication_required_for=None,
                    authentication_function=None, include_columns=None,
-                   validation_exceptions=None):
+                   validation_exceptions=None, results_per_page=10):
         """Creates a ReSTful API interface as a blueprint and registers it on
         the :class:`flask.Flask` application specified in the constructor to
         this class.
@@ -277,6 +277,14 @@ class APIManager(object):
         columns will be included. If this list includes a string which does not
         name a column in `model`, it will be ignored.
 
+        `results_per_page` is a positive integer which represents the number of
+        results which are returned per page. If this is anything except a
+        positive integer, pagination will be disabled (warning: this may result
+        in large responses). For more information, see :ref:`pagination`.
+
+        .. versionadded:: 0.6
+           Added the `results_per_page` keyword argument.
+
         .. versionadded:: 0.5
            Added the `include_columns` keyword argument.
 
@@ -328,7 +336,7 @@ class APIManager(object):
         api_view = API.as_view(apiname, self.session, model,
                                authentication_required_for,
                                authentication_function, include_columns,
-                               validation_exceptions)
+                               validation_exceptions, results_per_page)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the

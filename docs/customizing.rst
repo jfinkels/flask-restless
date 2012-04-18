@@ -215,3 +215,35 @@ For an example using `Flask-Login <packages.python.org/Flask-Login/>`_, see the
 :file:`examples/authentication` directory in the source distribution, or view
 it online at `GitHub
 <https://github.com/jfinkels/flask-restless/tree/master/examples/authentication>`_.
+
+Pagination
+~~~~~~~~~~
+
+To set the number of results returned per page, use the ``results_per_page``
+keyword arguments to the :meth:`APIManager.create_api` method. The default
+number of results per page is ten. If this is set to anything except a positive
+integer, pagination will be disabled and all results will be returned on each
+:http:method:`get` request.
+
+.. admonition::
+
+   Disabling pagination can result in large responses!
+
+For example, to set each page to include only two results::
+
+    apimanager.create_api(Person, results_per_page=2)
+
+Then a request to :http:get:`/api/person` will return a JSON object which looks
+like this:
+
+.. sourcecode:: javascript
+
+   {
+     "page": 1,
+     "objects": [
+       {"name": "Jeffrey", "id": 1},
+       {"name": "John", "id": 2}
+     ]
+   }
+
+For more information on using pagination, see :ref:`pagination`.

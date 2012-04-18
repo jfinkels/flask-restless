@@ -376,3 +376,33 @@ the empty JSON object, ``{}``.
    SQLAlchemy's `func
    <http://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.expression.func>`_
    object.
+
+.. _pagination:
+
+Pagination
+----------
+
+Responses to :http:method:`get` requests are paginated by default, with at most
+ten objects per page. To request a specific page, add a ``page=N`` query
+parameter to the request URL, where ``N`` is a positive integer (the first page
+is page one). If no ``page`` query parameter is specified, the first page will
+be returned. If ``page`` is specified but pagination has been disabled, this
+parameter will be ignored.
+
+In addition to the ``"objects"`` list, the response JSON object will have a
+``"page"`` key whose value is the current page. For example, a request to
+:http:get:`/api/person?page=2` will result in the following response:
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+
+   {
+     "page": 2,
+     "objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]
+   }
+
+If pagination is disabled (by setting ``results_per_page=None`` in
+:meth:`APIManager.create_api`, for example), any ``page`` key in the query
+parameters will be ignored, and the response JSON will include a ``"page"`` key
+which always has the value ``1``.

@@ -13,6 +13,7 @@ Version 0.6
 
 Not yet released.
 
+- Added support for pagination of responses.
 - Added support for pure SQLAlchemy in addition to Flask-SQLAlchemy.
 
 Version 0.5

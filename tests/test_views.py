@@ -296,7 +296,7 @@ class APITestCase(TestSupport):
         self.assertIn('id', loads(response.data))
 
         response = self.app.get('/api/person')
-        self.assertEqual(len(loads(response.data)), 1)
+        self.assertEqual(len(loads(response.data)['objects']), 1)
 
     def test_delete(self):
         """Test for deleting an instance of the database using the
@@ -771,6 +771,48 @@ class APITestCase(TestSupport):
             self.assertEqual(response.status_code, 200)
             response = self.app.get('/api/v3/person')
             self.assertEqual(response.status_code, 401)
+
+    def test_pagination(self):
+        """Tests for pagination of long result sets."""
+        self.manager.create_api(self.Person, url_prefix='/api/v2',
+                                results_per_page=5)
+        self.manager.create_api(self.Person, url_prefix='/api/v3',
+                                results_per_page=0)
+        for i in range(25):
+            d = dict(name=unicode('person%s' % i))
+            response = self.app.post('/api/person', data=dumps(d))
+            self.assertEqual(response.status_code, 201)
+        response = self.app.get('/api/person')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data)['page'], 1)
+        self.assertEqual(len(loads(response.data)['objects']), 10)
+        response = self.app.get('/api/person?page=1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data)['page'], 1)
+        self.assertEqual(len(loads(response.data)['objects']), 10)
+        response = self.app.get('/api/person?page=2')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data)['page'], 2)
+        self.assertEqual(len(loads(response.data)['objects']), 10)
+        response = self.app.get('/api/person?page=3')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data)['page'], 3)
+        self.assertEqual(len(loads(response.data)['objects']), 5)
+
+        response = self.app.get('/api/v2/person?page=3')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data)['page'], 3)
+        self.assertEqual(len(loads(response.data)['objects']), 5)
+
+        response = self.app.get('/api/v3/person')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data)['page'], 1)
+        self.assertEqual(len(loads(response.data)['objects']), 25)
+
+        response = self.app.get('/api/v3/person?page=2')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data)['page'], 1)
+        self.assertEqual(len(loads(response.data)['objects']), 25)
 
 
 def load_tests(loader, standard_tests, pattern):

@@ -360,7 +360,7 @@ class API(ModelView):
 
     def __init__(self, session, model, authentication_required_for=None,
                  authentication_function=None, include_columns=None,
-                 validation_exceptions=None, *args, **kw):
+                 validation_exceptions=None, results_per_page=10, *args, **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -396,6 +396,14 @@ class API(ModelView):
         columns will be included. If this list includes a string which does not
         name a column in `model`, it will be ignored.
 
+        `results_per_page` is a positive integer which represents the number of
+        results which are returned per page. If this is anything except a
+        positive integer, pagination will be disabled (warning: this may result
+        in large responses). For more information, see :ref:`pagination`.
+
+        .. versionadded:: 0.6
+           Added the `results_per_page` keyword argument.
+
         .. versionadded:: 0.5
            Added the `include_columns` keyword argument.
 
@@ -417,6 +425,9 @@ class API(ModelView):
             frozenset([m.upper() for m in self.authentication_required_for])
         self.include_columns = include_columns
         self.validation_exceptions = tuple(validation_exceptions or ())
+        self.results_per_page = results_per_page
+        self.paginate = (isinstance(self.results_per_page, int)
+                         and self.results_per_page > 0)
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
@@ -692,13 +703,45 @@ class API(ModelView):
 
         # for security purposes, don't transmit list as top-level JSON
         if isinstance(result, list):
-            objects = [_to_dict_include(x, include=self.include_columns)
-                       for x in result]
-            return jsonify(objects=objects)
+            return self._paginated(result, deep)
         else:
             result = _to_dict_include(result, deep,
                                       include=self.include_columns)
             return jsonify(result)
+
+    # TODO it is ugly to have `deep` as an arg here; can we remove it?
+    def _paginated(self, instances, deep):
+        """Returns a paginated JSONified response from the specified list of
+        model instances.
+
+        `instances` is a list of model instances.
+
+        `deep` is the dictionary which defines the depth of submodels to output
+        in the JSON format of the model instances in `instances`; it is passed
+        directly to :func:`_to_dict_include`.
+
+        The response data is JSON of the form:
+
+        .. sourcecode:: javascript
+
+           {
+             "page": 2,
+             "objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]
+           }
+
+        """
+        if self.paginate:
+            # get the page number (first page is page 1)
+            page_num = int(request.args.get('page', 1))
+            start = (page_num - 1) * self.results_per_page
+            end = min(len(instances), start + self.results_per_page)
+        else:
+            page_num = 1
+            start = 0
+            end = len(instances)
+        objects = [_to_dict_include(x, deep, include=self.include_columns)
+                   for x in instances[start:end]]
+        return jsonify(page=page_num, objects=objects)
 
     def _check_authentication(self):
         """If the specified HTTP method requires authentication (see the
