@@ -296,7 +296,7 @@ class APITestCase(TestSupport):
         self.assertIn('id', loads(response.data))
 
         response = self.app.get('/api/person')
-        self.assertEqual(len(loads(response.data)), 1)
+        self.assertEqual(len(loads(response.data)['objects']), 1)
 
     def test_delete(self):
         """Test for deleting an instance of the database using the
