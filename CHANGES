@@ -24,6 +24,10 @@ Not yet released.
 - Removes `mimerender`_ as a dependency.
 - :issue:`7`: allows filtering before function evaluation.
 - :issue:`49`: deserializers now expect a complete JSON API document.
+- :issue:`60`: added the ``hide_disallowed_endpoints`` keyword argument to
+  :meth:`APIManager.create_api_blueprint` to hide disallowed HTTP methods
+  behind a :http:status:`404` response instead of a :http:status:`405`
+  response.
 - :issue:`200`: be smarter about determining the ``collection_name`` for
   polymorphic models defined with single-table inheritance.
 - :issue:`253`: don't assign to callable attributes of models.
@@ -60,10 +64,10 @@ Version 1.0.0b1
 Released on April 2, 2016.
 
 - :issue:`255`: adds support for filtering by PostgreSQL network operators.
-- :issue:`257`: ensures additional attributes specified by the user actually exist on
-  the model.
-- :issue:`363` (partial solution): don't use ``COUNT`` on requests that don't require
-  pagination.
+- :issue:`257`: ensures additional attributes specified by the user actually
+  exist on the model.
+- :issue:`363` (partial solution): don't use ``COUNT`` on requests that don't
+  require pagination.
 - :issue:`404`: **Major overhaul of Flask-Restless to support JSON API**.
 - Increases minimum version requirement for ``python-dateutil`` to be strictly
   greater than 2.2 to avoid parsing bug.

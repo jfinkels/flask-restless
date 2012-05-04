@@ -425,6 +425,29 @@ class TestAPIManager(ManagerTestBase):
             response = func('/api/person')
             assert response.status_code == 405
 
+    def test_hide_disallowed_endpoints(self):
+        """Test for hiding disallowed endpoints behind a 404 Not Found.
+
+        Setting the `hide_disallowed_endpoints` keyword argument to True
+        should cause requests that would normally cause a
+        :http:status:`405` response to cause a :http:status:`404`
+        response instead.
+
+        """
+        self.manager.create_api(self.Person, hide_disallowed_endpoints=True)
+
+        response = self.app.get('/api/person')
+        self.assertNotEqual(response.status_code, 404)
+
+        response = self.app.post('/api/person')
+        self.assertEqual(response.status_code, 404)
+        response = self.app.patch('/api/person/1')
+        self.assertEqual(response.status_code, 404)
+        response = self.app.delete('/api/person/1')
+        self.assertEqual(response.status_code, 404)
+        response = self.app.put('/api/person/1')
+        self.assertEqual(response.status_code, 404)
+
     def test_empty_collection_name(self):
         """Tests that calling :meth:`APIManager.create_api` with an empty
         collection name raises an exception.
