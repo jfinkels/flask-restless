@@ -225,7 +225,7 @@ number of results per page is ten. If this is set to anything except a positive
 integer, pagination will be disabled and all results will be returned on each
 :http:method:`get` request.
 
-.. admonition::
+.. attention::
 
    Disabling pagination can result in large responses!
 

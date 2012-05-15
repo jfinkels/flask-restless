@@ -406,3 +406,11 @@ If pagination is disabled (by setting ``results_per_page=None`` in
 :meth:`APIManager.create_api`, for example), any ``page`` key in the query
 parameters will be ignored, and the response JSON will include a ``"page"`` key
 which always has the value ``1``.
+
+.. note::
+
+   As specified in in :ref:`queryformat`, clients can receive responses with
+   ``limit`` (a maximum number of objects in the response) and ``offset`` (the
+   number of initial objects to skip in the response) applied. It is possible,
+   though not recommended, to use pagination in addition to ``limit`` and
+   ``offset``. For simple clients, pagination should be fine.
