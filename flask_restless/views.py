@@ -405,16 +405,12 @@ class API(ModelView):
            Added the `results_per_page` keyword argument.
 
         .. versionadded:: 0.5
-           Added the `include_columns` keyword argument.
-
-        .. versionadded:: 0.5
-           Added the `validation_exceptions` keyword argument.
+           Added the `include_columns`, and `validation_exceptions` keyword
+           arguments.
 
         .. versionadded:: 0.4
-           Added the `authentication_required_for` keyword argument.
-
-        .. versionadded:: 0.4
-           Added the `authentication_function` keyword argument.
+           Added the `authentication_required_for` and
+           `authentication_function` keyword arguments.
 
         """
         super(API, self).__init__(session, model, *args, **kw)

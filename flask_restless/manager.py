@@ -291,28 +291,16 @@ class APIManager(object):
            Added the `results_per_page` keyword argument.
 
         .. versionadded:: 0.5
-           Added the `include_columns` keyword argument.
-
-        .. versionadded:: 0.5
-           Added the `validation_exceptions` keyword argument.
+           Added the `include_columns` and `validation_exceptions` keyword
+           argument.
 
         .. versionadded:: 0.4
-           Added the `authentication_required_for` keyword argument.
+           Added the `allow_functions`, `allow_patch_many`,
+           `authentication_required_for`, `authentication_function`, and
+           `collection_name` keyword arguments.
 
         .. versionadded:: 0.4
-           Added the `authentication_function` keyword argument.
-
-        .. versionadded:: 0.4
-           Added the `allow_functions` keyword argument.
-
-        .. versionchanged:: 0.4
            Force the model name in the URL to lowercase.
-
-        .. versionadded:: 0.4
-           Added the `allow_patch_many` keyword argument.
-
-        .. versionadded:: 0.4
-           Added the `collection_name` keyword argument.
 
         """
         if authentication_required_for and not authentication_function:
