@@ -13,6 +13,8 @@ Version 0.6
 
 Not yet released.
 
+- Fixed issue due to symbolic link from :file:`README` to :file:`README.md`
+  when running ``pip bundle foobar Flask-Restless``.
 - Separated API blueprint creation from registration, using
   :meth:`APIManager.create_api` and :meth:`APIManager.create_api_blueprint`.
 - Added support for pure SQLAlchemy in addition to Flask-SQLAlchemy.
