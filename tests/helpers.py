@@ -127,8 +127,14 @@ class TestSupport(FlaskTestBase):
             birth_date = Column(Date)
             computers = relationship('Computer',
                                      backref=backref('owner', lazy='dynamic'))
+
+        class Planet(self.Base):
+            __tablename__ = 'planet'
+            name = Column(Unicode, primary_key=True)
+
         self.Person = Person
         self.Computer = Computer
+        self.Planet = Planet
 
         # create all the tables required for the models
         self.Base.metadata.create_all()
