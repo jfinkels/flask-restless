@@ -194,7 +194,8 @@ class APIManager(object):
                              authentication_required_for=None,
                              authentication_function=None,
                              include_columns=None, validation_exceptions=None,
-                             results_per_page=10):
+                             results_per_page=10,
+                             post_method_decorator_function=None):
         """Creates an returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
 
@@ -283,6 +284,13 @@ class APIManager(object):
         positive integer, pagination will be disabled (warning: this may result
         in large responses). For more information, see :ref:`pagination`.
 
+        `post_method_decorator_function` is a callback function which takes
+        POST input parameters loaded from JSON and enhances them with other
+        key/value pairs. The example use of this is when your ``model``
+        requires to store user identity and for security reasons the identity
+        is not read from the post parameters (where malicious user can tamper
+        with them) but from the session.
+
         .. versionadded:: 0.6
            This functionality was formerly in :meth:`create_api`, but the
            blueprint creation and registration have now been separated.
@@ -328,7 +336,8 @@ class APIManager(object):
         api_view = API.as_view(apiname, self.session, model,
                                authentication_required_for,
                                authentication_function, include_columns,
-                               validation_exceptions, results_per_page)
+                               validation_exceptions, results_per_page,
+                               post_method_decorator_function)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the

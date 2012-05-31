@@ -378,7 +378,8 @@ class API(ModelView):
 
     def __init__(self, session, model, authentication_required_for=None,
                  authentication_function=None, include_columns=None,
-                 validation_exceptions=None, results_per_page=10, *args, **kw):
+                 validation_exceptions=None, results_per_page=10,
+                 post_method_decorator_function=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -419,6 +420,13 @@ class API(ModelView):
         positive integer, pagination will be disabled (warning: this may result
         in large responses). For more information, see :ref:`pagination`.
 
+        `post_method_decorator_function` is a callback function which takes
+        POST input parameters loaded from JSON and enhances them with other
+        key/value pairs. The example use of this is when your ``model``
+        requires to store user identity and for security reasons the identity
+        is not read from the post parameters (where malicious user can tamper
+        with them) but from the session.
+
         .. versionadded:: 0.6
            Added the `results_per_page` keyword argument.
 
@@ -442,6 +450,7 @@ class API(ModelView):
         self.results_per_page = results_per_page
         self.paginate = (isinstance(self.results_per_page, int)
                          and self.results_per_page > 0)
+        self.post_method_decorator_function = post_method_decorator_function
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
@@ -854,6 +863,10 @@ class API(ModelView):
             params = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
+
+        # If post_method_decorator_function is specified, call it
+        if self.post_method_decorator_function:
+            params = self.post_method_decorator_function(params)
 
         # Getting the list of relations that will be added later
         cols = _get_columns(self.model)
