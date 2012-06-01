@@ -84,8 +84,13 @@ Then your API for ``Person`` will be available at ``/api/v2/person``.
 Collection name
 ~~~~~~~~~~~~~~~
 
-By default, the name of the collection in the API will be the lowercase name of
-the model. To provide a different name for the model, provide a string to the
+By default, the name of the collection which appears in the URLs of the API
+will be the name of the table which backs your model. If your model is a
+SQLAlchemy model, this will be the value of ``__tablename__``. If your model is
+a Flask-SQLAlchemy model, this will be the lowercase name of the model with
+``CamelCase`` changed to ``camel_case``.
+
+To provide a different name for the model, provide a string to the
 `collection_name` keyword argument of the :meth:`APIManager.create_api`
 method::
 
