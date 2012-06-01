@@ -42,12 +42,15 @@ loads = json.loads
 class ModelTestCase(TestSupport):
     """Provides tests for helper functions which operate on models."""
 
-    def test_column_introspection(self):
+    def test_get_columns(self):
         """Test for getting the names of columns as strings."""
         columns = _get_columns(self.Person)
         self.assertEqual(sorted(columns.keys()), sorted(['age', 'birth_date',
                                                          'computers', 'id',
                                                          'name', 'other']))
+
+    def test_get_relations(self):
+        """Tests getting the names of the relations of a model as strings."""
         relations = _get_relations(self.Person)
         self.assertEqual(relations, ['computers'])
 
