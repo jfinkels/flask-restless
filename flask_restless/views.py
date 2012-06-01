@@ -32,6 +32,7 @@ from flask.views import MethodView
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import ColumnProperty
 from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm import RelationshipProperty
@@ -122,6 +123,23 @@ def _get_relations(model):
     """Returns a list of relation names of `model` (as a list of strings)."""
     cols = _get_columns(model)
     return [k for k in cols if isinstance(cols[k].property, RelProperty)]
+
+
+def _primary_key_name(model_or_instance):
+    """Returns the name of the primary key of the specified model or instance
+    of a model, as a string.
+
+    If `model_or_instance` specifies multiple primary keys and ``'id'`` is one
+    of them, ``'id'`` is returned. If `model_or_instance` specifies multiple
+    primary keys and ``'id'`` is not one of them, only the name of the first
+    one in the list of primary keys is returned.
+
+    """
+    its_a_model = isinstance(model_or_instance, type)
+    mapper = class_mapper if its_a_model else object_mapper
+    mapped = mapper(model_or_instance)
+    primary_key_names = [key.name for key in mapped.primary_key]
+    return 'id' if 'id' in primary_key_names else primary_key_names[0]
 
 
 # This code was adapted from :meth:`elixir.entity.Entity.to_dict` and
@@ -450,8 +468,7 @@ class API(ModelView):
         submodel = _get_related_model(self.model, relationname)
         for dictionary in toadd or []:
             if 'id' in dictionary:
-                filtered = self.query(submodel).filter_by(id=dictionary['id'])
-                subinst = filtered.first()
+                subinst = self._get_by(dictionary['id'], submodel)
             else:
                 kw = unicode_keys_to_strings(dictionary)
                 subinst = _get_or_create(self.session, submodel, **kw)[0]
@@ -486,8 +503,7 @@ class API(ModelView):
         for dictionary in toremove or []:
             remove = dictionary.pop('__delete__', False)
             if 'id' in dictionary:
-                filtered = self.query(submodel).filter_by(id=dictionary['id'])
-                subinst = filtered.first()
+                subinst = self._get_by(dictionary['id'], submodel)
             else:
                 kw = unicode_keys_to_strings(dictionary)
                 # TODO document that we use .first() here
@@ -750,6 +766,27 @@ class API(ModelView):
             and not self.authentication_function()):
             abort(401)
 
+    def _query_by_primary_key(self, primary_key_value, model=None):
+        """Returns a SQLAlchemy query object containing the result of querying
+        `model` (or ``self.model`` if not specified) for instances whose
+        primary key has the value `primary_key_value`.
+
+        Presumably, the returned query should have at most one element.
+
+        """
+        the_model = model or self.model
+        # force unicode primary key name to string; see unicode_keys_to_strings
+        pk_name = str(_primary_key_name(the_model))
+        return self.query(the_model).filter_by(**{pk_name: primary_key_value})
+
+    def _get_by(self, primary_key_value, model=None):
+        """Returns the single instance of `model` (or ``self.model`` if not
+        specified) whose primary key has the value `primary_key_value`, or
+        ``None`` if no such instance exists.
+
+        """
+        return self._query_by_primary_key(primary_key_value, model).first()
+
     def get(self, instid):
         """Returns a JSON representation of an instance of model with the
         specified name.
@@ -767,7 +804,7 @@ class API(ModelView):
         self._check_authentication()
         if instid is None:
             return self._search()
-        inst = self.query().filter_by(id=instid).first()
+        inst = self._get_by(instid)
         if inst is None:
             abort(404)
         relations = _get_relations(self.model)
@@ -785,7 +822,7 @@ class API(ModelView):
 
         """
         self._check_authentication()
-        inst = self.query().filter_by(id=instid).first()
+        inst = self._get_by(instid)
         if inst is not None:
             self.session.delete(inst)
             self.session.commit()
@@ -849,7 +886,9 @@ class API(ModelView):
             self.session.add(instance)
             self.session.commit()
 
-            return jsonify_status_code(201, id=instance.id)
+            pk_name = str(_primary_key_name(instance))
+            pk_value = getattr(instance, pk_name)
+            return jsonify_status_code(201, **{pk_name: pk_value})
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
 
@@ -888,7 +927,7 @@ class API(ModelView):
                                            message='Unable to construct query')
         else:
             # create a SQLAlchemy Query which has exactly the specified row
-            query = self.query().filter_by(id=instid)
+            query = self._query_by_primary_key(instid)
             assert query.count() == 1, 'Multiple rows with same ID'
 
         relations = self._update_relations(query, data)

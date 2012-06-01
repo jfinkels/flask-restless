@@ -322,7 +322,6 @@ class APIManager(object):
             methods & frozenset(('GET', 'PATCH', 'DELETE', 'PUT'))
         # the base URL of the endpoints on which requests will be made
         collection_endpoint = '/%s' % collection_name
-        instance_endpoint = collection_endpoint + '/<int:instid>'
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.APINAME_FORMAT % collection_name
         # the view function for the API for this model
@@ -344,8 +343,13 @@ class APIManager(object):
         blueprint.add_url_rule(collection_endpoint, defaults={'instid': None},
                                methods=possibly_empty_instance_methods,
                                view_func=api_view)
-        blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
-                               view_func=api_view)
+        # the per-instance endpoints will allow both integer and string primary
+        # key accesses
+        for converter in ('int', 'string'):
+            instance_endpoint = '%s/<%s:instid>' % (collection_endpoint,
+                                                    converter)
+            blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
+                                   view_func=api_view)
         # if function evaluation is allowed, add an endpoint at /api/eval/...
         # which responds only to GET requests and responds with the result of
         # evaluating functions on all instances of the specified model

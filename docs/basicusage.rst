@@ -13,7 +13,8 @@ The basic setup for Flask-SQLAlchemy is the same. First, create your
 and model classes as usual but with the following two (reasonable) restrictions
 on models:
 
-1. They must have an ``id`` column of type :class:`sqlalchemy.Integer`.
+1. They must have a primary key column of type :class:`sqlalchemy.Integer` or
+   type :class:`sqlalchemy.Unicode`.
 2. They must have an ``__init__`` method which accepts keyword arguments for
    all columns (the constructor in
    :class:`flask.ext.sqlalchemy.SQLAlchemy.Model` supplies such a method, so
@@ -169,3 +170,8 @@ the URL is the value of ``Person.__tablename__``::
       "computers": [],
       "id": 1
     }
+
+If the primary key is a :class:`~sqlalchemy.Unicode` instead of an
+:class:`~sqlalchemy.Integer`, the instances will be accesible at URL endpoints
+like ``http://<host>:<port>/api/person/foo`` instead of
+``http://<host>:<port>/api/person/1``.

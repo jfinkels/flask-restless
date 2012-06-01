@@ -817,6 +817,23 @@ class APITestCase(TestSupport):
         self.assertEqual(loads(response.data)['page'], 1)
         self.assertEqual(len(loads(response.data)['objects']), 25)
 
+    def test_alternate_primary_key(self):
+        """Tests that models with primary keys which are not ``id`` columns are
+        accessible via their primary keys.
+
+        """
+        self.manager.create_api(self.Planet, methods=['GET', 'POST'])
+        response = self.app.post('/api/planet', data=dumps(dict(name='Earth')))
+        self.assertEqual(response.status_code, 201)
+        response = self.app.get('/api/planet/1')
+        self.assertEqual(response.status_code, 404)
+        response = self.app.get('/api/planet')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(loads(response.data)['objects']), 1)
+        response = self.app.get('/api/planet/Earth')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data), dict(name='Earth'))
+
 
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
