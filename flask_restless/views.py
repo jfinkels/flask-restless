@@ -942,7 +942,10 @@ class API(ModelView):
             # Let's update all instances present in the query
             num_modified = 0
             if params:
-                num_modified = query.update(params, False)
+                for item in query.all():
+                    for param, value in params.iteritems():
+                        setattr(item, param, value)
+                    num_modified += 1
             self.session.commit()
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
