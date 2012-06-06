@@ -33,8 +33,6 @@ else:
     sav_version = tuple(int(n) for n in _sav.VERSION.split('.'))
     has_savalidation = True
 
-from .helpers import setUpModule
-from .helpers import tearDownModule
 from .helpers import TestSupport
 
 __all__ = ['SAVTest', 'SimpleValidationTest']
@@ -123,6 +121,7 @@ class SimpleValidationTest(TestSupport):
         person = dict(name='Jeffrey', email='bogus!!!email', age=24)
         response = self.app.patch('/api/test/' + str(personid),
                                   data=dumps(person))
+        data = loads(response.data)
         self.assertIn('validation_errors', data)
         errors = data['validation_errors']
         self.assertIn('email', errors)
