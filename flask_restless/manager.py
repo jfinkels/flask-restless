@@ -195,7 +195,7 @@ class APIManager(object):
                              authentication_function=None,
                              include_columns=None, validation_exceptions=None,
                              results_per_page=10,
-                             post_method_decorator_function=None):
+                             post_form_preprocessor=None):
         """Creates an returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
 
@@ -284,7 +284,7 @@ class APIManager(object):
         positive integer, pagination will be disabled (warning: this may result
         in large responses). For more information, see :ref:`pagination`.
 
-        `post_method_decorator_function` is a callback function which takes
+        `post_form_preprocessor` is a callback function which takes
         POST input parameters loaded from JSON and enhances them with other
         key/value pairs. The example use of this is when your ``model``
         requires to store user identity and for security reasons the identity
@@ -337,7 +337,7 @@ class APIManager(object):
                                authentication_required_for,
                                authentication_function, include_columns,
                                validation_exceptions, results_per_page,
-                               post_method_decorator_function)
+                               post_form_preprocessor)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the

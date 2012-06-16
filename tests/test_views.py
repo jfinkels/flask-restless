@@ -831,7 +831,7 @@ class APITestCase(TestSupport):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(loads(response.data), dict(name='Earth'))
 
-    def test_post_method_decorator_function(self):
+    def test_post_form_preprocessor(self):
         """Tests POST method decoration using a custom function."""
         def decorator_function(params):
             if params:
@@ -842,7 +842,7 @@ class APITestCase(TestSupport):
         # test for function that decorates parameters with 'other' attribute
         self.manager.create_api(self.Person, methods=['POST'],
                                 url_prefix='/api/v2',
-                                post_method_decorator_function=decorator_function)
+                                post_form_preprocessor=decorator_function)
 
         response = self.app.post('/api/v2/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
