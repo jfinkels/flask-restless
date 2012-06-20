@@ -123,6 +123,7 @@ class SimpleValidationTest(TestSupport):
         person = dict(name='Jeffrey', email='bogus!!!email', age=24)
         response = self.app.patch('/api/test/' + str(personid),
                                   data=dumps(person))
+        data = loads(response.data)
         self.assertIn('validation_errors', data)
         errors = data['validation_errors']
         self.assertIn('email', errors)
