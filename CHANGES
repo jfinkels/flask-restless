@@ -13,6 +13,9 @@ Version 0.6
 
 Not yet released.
 
+- Added ``post_form_preprocessor`` keyword argument to
+  :meth:`APIManager.create_api`; see `issue #74
+  <https://github.com/jfinkels/flask-restless/pull/74>`_.
 - Fixed `issue #77 <https://github.com/jfinkels/flask-restless/pull/77>`_:
   validation errors are now correctly handled on :http:method:`PATCH` requests.
 - Added support for accessing model instances via arbitrary primary keys,

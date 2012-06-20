@@ -252,3 +252,24 @@ like this:
    }
 
 For more information on using pagination, see :ref:`pagination`.
+
+Updating POST parameters before committing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To apply some function to the :http:method:`post` form parameters before the
+database model is created, specify the ``post_form_preprocessor`` keyword. The
+value of ``post_form_preprocessor`` must be a function which accepts a single
+dictionary as input and outputs a dictionary. The input dictionary is the
+dictionary mapping names of columns of the model to values to assign to that
+column, as specified by the JSON provided in the body of the
+:http:method:`post` request. The output dictionary should be the same, but with
+whatever additions, deletions, or modifications you wish.
+
+For example, if the client is making a :http:method:`post` request to a model
+which which has an ``owner`` field which should contain the ID of the currently
+logged in user, you may wish for the server to append the mapping ``('owner',
+current_user.id)`` to the form parameters. In this case, you would set the
+value of ``post_form_processor`` to be the function defined below:
+
+    def add_user_id(dictionary):
+        dictionary['owner'] = current_user.id
