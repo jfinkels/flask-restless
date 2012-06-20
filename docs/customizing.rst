@@ -269,7 +269,7 @@ For example, if the client is making a :http:method:`post` request to a model
 which which has an ``owner`` field which should contain the ID of the currently
 logged in user, you may wish for the server to append the mapping ``('owner',
 current_user.id)`` to the form parameters. In this case, you would set the
-value of ``post_form_processor`` to be the function defined below:
+value of ``post_form_processor`` to be the function defined below::
 
     def add_user_id(dictionary):
         dictionary['owner'] = current_user.id
