@@ -834,6 +834,26 @@ class APITestCase(TestSupport):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(loads(response.data), dict(name='Earth'))
 
+    def test_post_form_preprocessor(self):
+        """Tests POST method decoration using a custom function."""
+        def decorator_function(params):
+            if params:
+                # just add a new attribute
+                params['other'] = 7
+            return params
+
+        # test for function that decorates parameters with 'other' attribute
+        self.manager.create_api(self.Person, methods=['POST'],
+                                url_prefix='/api/v2',
+                                post_form_preprocessor=decorator_function)
+
+        response = self.app.post('/api/v2/person',
+                                 data=dumps({'name': u'Lincoln', 'age': 23}))
+        self.assertEqual(response.status_code, 201)
+
+        person = self.session.query(self.Person).filter_by(id=loads(response.data)['id']).first()
+        self.assertEquals(person.other, 7)
+
 
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
