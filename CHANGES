@@ -11,7 +11,7 @@ Here you can see the full list of changes between each Flask-Restless release.
 Version 0.6
 -----------
 
-Not yet released.
+Released on June 20, 2012.
 
 - Added ``post_form_preprocessor`` keyword argument to
   :meth:`APIManager.create_api`; see `issue #74
