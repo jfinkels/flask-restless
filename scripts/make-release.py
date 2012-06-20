@@ -21,7 +21,6 @@ _date_clean_re = re.compile(r'(\d+)(st|nd|rd|th)')
 
 def add_new_changelog_section(current_version, next_version):
     version_string = 'Version {}'.format(current_version)
-    LF = '\n'
     with open('CHANGES') as f:
         all_lines = f.readlines()
     stripped_lines = [l.strip() for l in all_lines]
@@ -32,7 +31,8 @@ def add_new_changelog_section(current_version, next_version):
         fail('Could not find "{}" in {}.'.format(version_string, 'CHANGES'))
     new_header = 'Version {}'.format(next_version)
     horizontal_rule = '-' * len(new_header)
-    new_lines = [new_header, horizontal_rule, LF, 'Not yet released.', LF]
+    new_lines = [new_header + '\n', horizontal_rule + '\n', '\n',
+                 'Not yet released.' + '\n', '\n']
     # insert the new lines into the list of all lines read from CHANGES
     all_lines[line_num:line_num] = new_lines
     # write the changes back to...CHANGES
