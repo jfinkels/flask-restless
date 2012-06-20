@@ -273,3 +273,4 @@ value of ``post_form_processor`` to be the function defined below::
 
     def add_user_id(dictionary):
         dictionary['owner'] = current_user.id
+        return dictionary
