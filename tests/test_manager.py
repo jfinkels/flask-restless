@@ -43,6 +43,13 @@ class APIManagerTest(TestSupport):
 
     """
 
+    def test_constructor(self):
+        """Tests that no error occurs on instantiation without any arguments to
+        the constructor.
+
+        """
+        APIManager()
+
     def test_init_app(self):
         """Tests for initializing the Flask application after instantiating the
         :class:`flask.ext.restless.APIManager` object.

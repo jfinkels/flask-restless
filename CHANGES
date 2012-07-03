@@ -13,6 +13,10 @@ Version 0.7-dev
 
 Not yet released.
 
+- Fixed `issue #79 <https://github.com/jfinkels/flask-restless/issues/79>`_:
+  attempted to access attribute of ``None`` in constructor of
+  :class:`APIManager`.
+
 Version 0.6
 -----------
 
