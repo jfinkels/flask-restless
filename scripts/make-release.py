@@ -135,7 +135,8 @@ def make_git_commit(message, *args):
 
 def make_git_tag(tag):
     info('Tagging "%s"', tag)
-    Popen(['git', 'tag', '-s', tag]).wait()
+    msg = '"Released version {}"'.format(tag)
+    Popen(['git', 'tag', '-s', '-m', msg, tag]).wait()
 
 
 def main():
