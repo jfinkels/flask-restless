@@ -10,10 +10,8 @@
 """
 import datetime
 from unittest2 import skipUnless
-from unittest2 import TestCase
 from unittest2 import TestSuite
 
-from flask import Flask
 from flask import json
 try:
     from flask.ext.sqlalchemy import SQLAlchemy
