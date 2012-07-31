@@ -895,7 +895,8 @@ class API(ModelView):
                     # model has several related objects
                     for subparams in params[col]:
                         kw = unicode_keys_to_strings(subparams)
-                        subinst = _get_or_create(self.session, submodel, **kw)[0]
+                        subinst = _get_or_create(self.session, submodel,
+                                                 **kw)[0]
                         getattr(instance, col).append(subinst)
                 else:
                     # model has single related object
