@@ -71,16 +71,6 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       {"objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]}
 
-   If the value of the ``q`` parameter indicates that a function should be
-   evaluated on the matched instances instead, the response would look like
-   this:
-
-   .. sourcecode:: http
-
-      HTTP/1.1 200 OK
-
-      {"sum__age": 135, "avg__age": 25.5, ...}
-
 .. http:get:: /api/person/(int:id)
 
    Gets a single instance of ``Person`` with the specified ID.
