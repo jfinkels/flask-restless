@@ -891,7 +891,7 @@ class API(ModelView):
             for col in set(relations).intersection(paramkeys):
                 submodel = cols[col].property.mapper.class_
                 
-                if type(params[col]) == type([]):
+                if type(params[col]) == list:
                     # model has several related objects
                     for subparams in params[col]:
                         kw = unicode_keys_to_strings(subparams)
