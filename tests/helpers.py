@@ -117,6 +117,7 @@ class TestSupport(FlaskTestBase):
             vendor = Column(Unicode)
             buy_date = Column(DateTime)
             owner_id = Column(Integer, ForeignKey('person.id'))
+            owner = relationship('Person')
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -125,8 +126,7 @@ class TestSupport(FlaskTestBase):
             age = Column(Float)
             other = Column(Float)
             birth_date = Column(Date)
-            computers = relationship('Computer',
-                                     backref=backref('owner', lazy='dynamic'))
+            computers = relationship('Computer')
 
         class Planet(self.Base):
             __tablename__ = 'planet'

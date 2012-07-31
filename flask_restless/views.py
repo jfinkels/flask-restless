@@ -890,10 +890,18 @@ class API(ModelView):
             # Handling relations, a single level is allowed
             for col in set(relations).intersection(paramkeys):
                 submodel = cols[col].property.mapper.class_
-                for subparams in params[col]:
-                    kw = unicode_keys_to_strings(subparams)
+                
+                if type(params[col]) == type([]):
+                    # model has several related objects
+                    for subparams in params[col]:
+                        kw = unicode_keys_to_strings(subparams)
+                        subinst = _get_or_create(self.session, submodel, **kw)[0]
+                        getattr(instance, col).append(subinst)
+                else:
+                    # model has single related object
+                    kw = unicode_keys_to_strings(params[col])
                     subinst = _get_or_create(self.session, submodel, **kw)[0]
-                    getattr(instance, col).append(subinst)
+                    setattr(instance, col, subinst)
 
             # add the created model to the session
             self.session.add(instance)

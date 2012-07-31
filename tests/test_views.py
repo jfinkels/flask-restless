@@ -300,6 +300,18 @@ class APITestCase(TestSupport):
 
         response = self.app.get('/api/person')
         self.assertEqual(len(loads(response.data)['objects']), 1)
+        
+    def test_post_with_single_submodel(self):
+        response = self.app.post('/api/computer', data=dumps({
+                                                   'vendor': u'Apple', 
+                                                   'name': u'iMac', 
+                                                   'owner': {'name': u'John', 'age': 2041}
+                                                   }))
+        self.assertEqual(response.status_code, 201)
+        self.assertIn('id', loads(response.data))
+        # Test if owner was successfully created
+        response = self.app.get('/api/person')
+        self.assertEqual(len(loads(response.data)['objects']), 1)
 
     def test_delete(self):
         """Test for deleting an instance of the database using the
