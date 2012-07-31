@@ -125,6 +125,120 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       {"id": 1}
 
+   To create a new person which includes a related list of **new** computer
+   instances via a one-to-many relationship, a request must take the following
+   form.
+
+   **Sample request**:
+
+   .. sourcecode:: http
+
+      POST /api/person HTTP/1.1
+      Host: example.com
+
+      {
+        "name": "Jeffrey",
+        "age": 24,
+        "computers":
+          [
+            {"manufacturer": "Dell", "model": "Inspiron"},
+            {"manufacturer": "Apple", "model": "MacBook"},
+          ]
+      }
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 201 Created
+
+      {"id": 1}
+
+   .. warning::
+
+      The response does not denote that new instances have been created for the
+      ``Computer`` models.
+
+   To create a new person which includes a single related **new** computer
+   instance (via a one-to-one relationship), a request must take the following
+   form.
+
+   **Sample request**:
+
+   .. sourcecode:: http
+
+      POST /api/person HTTP/1.1
+      Host: example.com
+
+      {
+        "name": "Jeffrey",
+        "age": 24,
+        "computer": {"manufacturer": "Dell", "model": "Inspiron"}
+      }
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 201 Created
+
+      {"id": 1}
+
+   .. warning::
+
+      The response does not denote that a new ``Computer`` instance has been
+      created.
+
+   To create a new person which includes a related list of **existing**
+   computer instances via a one-to-many relationship, a request must take the
+   following form.
+
+   **Sample request**:
+
+   .. sourcecode:: http
+
+      POST /api/person HTTP/1.1
+      Host: example.com
+
+      {
+        "name": "Jeffrey",
+        "age": 24,
+        "computers": [ {"id": 1}, {"id": 2} ]
+      }
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 201 Created
+
+      {"id": 1}
+
+   To create a new person which includes a single related **existing** computer
+   instance (via a one-to-one relationship), a request must take the following
+   form.
+
+   **Sample request**:
+
+   .. sourcecode:: http
+
+      POST /api/person HTTP/1.1
+      Host: example.com
+
+      {
+        "name": "Jeffrey",
+        "age": 24,
+        "computer": {"id": 1}
+      }
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 201 Created
+
+      {"id": 1}
+
 .. http:patch:: /api/person?q=<searchjson>
 .. http:put:: /api/person/?q=<searchjson>
 
