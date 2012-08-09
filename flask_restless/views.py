@@ -36,9 +36,11 @@ from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import ColumnProperty
 from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm import RelationshipProperty
+from sqlalchemy.orm.dynamic import AppenderQuery
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.properties import RelationshipProperty as RelProperty
+from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import func
 
 from .helpers import unicode_keys_to_strings
@@ -178,8 +180,17 @@ def _to_dict(instance, deep=None, exclude=None):
         # exclude foreign keys of the related object for the recursive call
         relationproperty = object_mapper(instance).get_property(relation)
         newexclude = (key.name for key in relationproperty.remote_side)
-        # get the related value so we can see if it is None or a list
+        # Get the related value so we can see if it is None, a list, a query
+        # (as specified by a dynamic relationship loader), or an actual
+        # instance of a model.
         relatedvalue = getattr(instance, relation)
+        # HACK: in case the relatedvalue is a dynamically loaded relationship,
+        # we need to resolve the query into a concrete list of objects. See
+        # issue #89. I can't figure out a better way to test for
+        # AppenderBaseQuery.
+        if (isinstance(relatedvalue, AppenderQuery)
+            or type(relatedvalue).__name__ == 'AppenderBaseQuery'):
+            relatedvalue = relatedvalue.all()
         if relatedvalue is None:
             result[relation] = None
         elif isinstance(relatedvalue, list):
