@@ -128,6 +128,19 @@ class TestSupport(FlaskTestBase):
             birth_date = Column(Date)
             computers = relationship('Computer')
 
+        class LazyComputer(self.Base):
+            __tablename__ = 'lazycomputer'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+            ownerid = Column(Integer, ForeignKey('lazyperson.id'))
+
+        class LazyPerson(self.Base):
+            __tablename__ = 'lazyperson'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+            computers = relationship('LazyComputer',
+                                     backref=backref('owner', lazy='dynamic'))
+
         class Planet(self.Base):
             __tablename__ = 'planet'
             name = Column(Unicode, primary_key=True)
@@ -138,6 +151,8 @@ class TestSupport(FlaskTestBase):
             inception_time = Column(DateTime, nullable=True)
 
         self.Person = Person
+        self.LazyComputer = LazyComputer
+        self.LazyPerson = LazyPerson
         self.Computer = Computer
         self.Planet = Planet
         self.Star = Star
