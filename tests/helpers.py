@@ -132,9 +132,15 @@ class TestSupport(FlaskTestBase):
             __tablename__ = 'planet'
             name = Column(Unicode, primary_key=True)
 
+        class Star(self.Base):
+            __tablename__ = 'star'
+            id = Column(Integer, primary_key=True)
+            inception_time = Column(DateTime, nullable=True)
+
         self.Person = Person
         self.Computer = Computer
         self.Planet = Planet
+        self.Star = Star
 
         # create all the tables required for the models
         self.Base.metadata.create_all()

@@ -629,7 +629,7 @@ class API(ModelView):
         """
         result = {}
         for fieldname, value in dictionary.iteritems():
-            if _is_date_field(self.model, fieldname):
+            if _is_date_field(self.model, fieldname) and value is not None:
                 result[fieldname] = parse_datetime(value)
             else:
                 result[fieldname] = value
