@@ -36,7 +36,7 @@ from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import ColumnProperty
 from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm import RelationshipProperty
-from sqlalchemy.orm.dynamic import AppenderQuery
+from sqlalchemy.orm.dynamic import AppenderMixin
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.properties import RelationshipProperty as RelProperty
@@ -184,13 +184,12 @@ def _to_dict(instance, deep=None, exclude=None):
         # (as specified by a dynamic relationship loader), or an actual
         # instance of a model.
         relatedvalue = getattr(instance, relation)
-        # HACK: in case the relatedvalue is a dynamically loaded relationship,
+        # HACK: In case the relatedvalue is a dynamically loaded relationship,
         # we need to resolve the query into a concrete list of objects. See
-        # issue #89. I can't figure out a better way to test for
-        # AppenderBaseQuery.
-        if (isinstance(relatedvalue, AppenderQuery)
-            or type(relatedvalue).__name__ == 'AppenderBaseQuery'):
+        # issue #89.
+        if isinstance(relatedvalue, (AppenderMixin, Query)):
             relatedvalue = relatedvalue.all()
+
         if relatedvalue is None:
             result[relation] = None
         elif isinstance(relatedvalue, list):
