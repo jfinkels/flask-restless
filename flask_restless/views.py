@@ -22,6 +22,7 @@
 
 """
 import datetime
+import math
 
 from dateutil.parser import parse as parse_datetime
 from flask import abort
@@ -768,13 +769,17 @@ class API(ModelView):
             page_num = int(request.args.get('page', 1))
             start = (page_num - 1) * self.results_per_page
             end = min(len(instances), start + self.results_per_page)
+            total_pages = int(math.ceil(len(instances) / float(self.results_per_page)))
+
         else:
             page_num = 1
             start = 0
             end = len(instances)
+            total_pages = 1
+            
         objects = [_to_dict_include(x, deep, include=self.include_columns)
                    for x in instances[start:end]]
-        return jsonify(page=page_num, objects=objects)
+        return jsonify(page=page_num, objects=objects, total_pages=total_pages)
 
     def _check_authentication(self):
         """If the specified HTTP method requires authentication (see the
