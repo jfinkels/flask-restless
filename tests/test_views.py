@@ -91,6 +91,27 @@ class ModelTestCase(TestSupport):
         self.assertEqual(me_dict['age'], 24)
         self.assertEqual(me_dict['birth_date'], me.birth_date.isoformat())
 
+    def test_to_dict_dynamic_relation(self):
+        """Tests that a dynamically queried relation is resolved when getting
+        the dictionary representation of an instance of a model.
+
+        """
+        person = self.LazyPerson(name='Lincoln')
+        self.session.add(person)
+        computer = self.LazyComputer(name='lixeiro')
+        self.session.add(computer)
+        person.computers.append(computer)
+        self.session.commit()
+        person_dict = _to_dict(person, deep={'computers': []})
+        computer_dict = _to_dict(computer, deep={'owner': None})
+        self.assertEqual(sorted(person_dict), ['computers', 'id', 'name'])
+        self.assertEqual(sorted(computer_dict), ['id', 'name', 'owner',
+                                                 'ownerid'])
+        expected_person = _to_dict(person)
+        expected_computer = _to_dict(computer)
+        self.assertEqual(person_dict['computers'], [expected_computer])
+        self.assertEqual(computer_dict['owner'], [expected_person])
+
     def test_to_dict_deep(self):
         """Tests that fields corresponding to related model instances are
         correctly serialized by the
