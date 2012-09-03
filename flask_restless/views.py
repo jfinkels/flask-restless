@@ -184,12 +184,14 @@ def _to_dict(instance, deep=None, exclude=None):
         # (as specified by a dynamic relationship loader), or an actual
         # instance of a model.
         relatedvalue = getattr(instance, relation)
-        # HACK: In case the relatedvalue is a dynamically loaded relationship,
-        # we need to resolve the query into a concrete list of objects. See
-        # issue #89.
+        # HACK: In case the relatedvalue is a dynamically loaded
+        # relationship, we need to resolve the query into a concrete
+        # list of objects; see issue #89. We should also check to see
+        # if relatedvalue is a many-to-one relationship, in order to
+        # call relatedvalue.one() or something, but I don't know how
+        # to do that.
         if isinstance(relatedvalue, (AppenderMixin, Query)):
             relatedvalue = relatedvalue.all()
-
         if relatedvalue is None:
             result[relation] = None
         elif isinstance(relatedvalue, list):
