@@ -1,7 +1,6 @@
 language: python
 python:
-# Installing Flask with pip in Python 2.5 fails; see issue #32.
-#  - "2.5"
+  - "2.5"
   - "2.6"
   - "2.7"
   - "pypy"
