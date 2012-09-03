@@ -103,16 +103,14 @@ class ModelTestCase(TestSupport):
         person.computers.append(computer)
         self.session.commit()
         person_dict = _to_dict(person, deep={'computers': []})
-        computer_dict = _to_dict(computer, deep={'owner': []})
-        print 'person:', person_dict
-        print 'computer:', computer_dict
+        computer_dict = _to_dict(computer, deep={'owner': None})
         self.assertEqual(sorted(person_dict), ['computers', 'id', 'name'])
         self.assertEqual(sorted(computer_dict), ['id', 'name', 'owner',
                                                  'ownerid'])
         expected_person = _to_dict(person)
         expected_computer = _to_dict(computer)
         self.assertEqual(person_dict['computers'], [expected_computer])
-        self.assertEqual(computer_dict['owner'], expected_person)
+        self.assertEqual(computer_dict['owner'], [expected_person])
 
     def test_to_dict_deep(self):
         """Tests that fields corresponding to related model instances are
