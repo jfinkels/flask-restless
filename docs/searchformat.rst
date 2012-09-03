@@ -109,7 +109,10 @@ instances which have ``age`` attribute greater than or equal to 10.
 
    HTTP/1.1 200 OK
 
-   { "objects":
+   {
+     "total_pages": 3,
+     "page": 2,
+     "objects":
      [
        {"id": 1, "name": "Jeffrey", "age": 24},
        {"id": 2, "name": "John", "age": 13},
@@ -139,7 +142,10 @@ inclusive.
 
    HTTP/1.1 200 OK
 
-   { "objects":
+   {
+     "total_pages": 3,
+     "page": 2,
+     "objects":
      [
        {"id": 2, "name": "John", "age": 13},
        {"id": 3, "name": "Mary", "age": 18}
@@ -222,7 +228,10 @@ the ``height`` attribute.
 
    HTTP/1.1 200 OK
 
-   { "objects":
+   {
+     "total_pages": 3,
+     "page": 2,
+     "objects":
      [
        {"id": 1, "name": "John", "age": 80, "height": 65},
        {"id": 2, "name": "Mary", "age": 73, "height": 60}
@@ -250,7 +259,10 @@ Apple.
 
    HTTP/1.1 200 OK
 
-   { "objects": [
+   {
+     "total_pages": 3,
+     "page": 2,
+     "objects":
        {
          "id": 1,
          "name": "John",

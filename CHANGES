@@ -13,6 +13,9 @@ Version 0.7-dev
 
 Not yet released.
 
+- Added a ``total_pages`` mapping to the JSON response according to
+  `pull request #93
+  <https://github.com/jfinkels/flask-restless/pull/93>`.
 - Fixed `issue #91 <https://github.com/jfinkels/flask-restless/issues/91>`_:
   correctly handle :http:method:`post` requests to nullable
   :class:`~sqlalchemy.DateTime` columns.

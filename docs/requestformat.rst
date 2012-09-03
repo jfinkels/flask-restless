@@ -53,9 +53,13 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
    .. sourcecode:: http
 
-       HTTP/1.1 200 OK
+      HTTP/1.1 200 OK
 
-       {"objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]}
+      {
+        "total_pages": 3,
+        "page": 2,
+        "objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]
+      }
 
 .. http:get:: /api/person?q=<searchjson>
 
@@ -69,7 +73,11 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       HTTP/1.1 200 OK
 
-      {"objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]}
+      {
+         "total_pages": 3,
+         "page": 2,
+         "objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]
+       }
 
 .. http:get:: /api/person/(int:id)
 
