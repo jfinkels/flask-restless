@@ -456,7 +456,7 @@ Function evaluation
 If the ``allow_functions`` keyword argument is set to ``True`` when creating an
 API for a model using :meth:`APIManager.create_api`, then an endpoint will be
 made available for :http:get:`/api/eval/person` which responds to requests for
-evaluation of functions on all instances the model.
+evaluation of functions on *all* instances the model.
 
 **Sample request**:
 
@@ -488,6 +488,28 @@ the empty JSON object, ``{}``.
    SQLAlchemy's `func
    <http://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.expression.func>`_
    object.
+
+.. admonition:: Example
+
+   To get the total number of rows in the query (that is, the number of
+   instances of the requested model), use ``count`` as the name of the function
+   to evaluate, and ``id`` for the field on which to evaluate it:
+
+   **Request**:
+
+   .. sourcecode:: http
+
+      GET /api/eval/person HTTP/1.1
+
+      {"functions": [{"name": "count", "field": "id"}]}
+
+   **Response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+
+      {"count__id": 5}
 
 .. _pagination:
 

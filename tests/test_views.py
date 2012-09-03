@@ -182,6 +182,13 @@ class FunctionEvaluationTest(TestSupportPrefilled):
         self.assertIn('avg__other', result)
         self.assertEqual(result['avg__other'], 16.2)
 
+    def test_count(self):
+        """Tests for counting the number of rows in a query."""
+        functions = [{'name': 'count', 'field': 'id'}]
+        result = evaluate_functions(self.session, self.Person, functions)
+        self.assertIn('count__id', result)
+        self.assertEqual(result['count__id'], 5)
+
     def test_poorly_defined_functions(self):
         """Tests that poorly defined functions raise errors."""
         # test for unknown field
@@ -214,7 +221,8 @@ class FunctionAPITestCase(TestSupportPrefilled):
 
         """
         functions = [{'name': 'sum', 'field': 'age'},
-                     {'name': 'avg', 'field': 'other'}]
+                     {'name': 'avg', 'field': 'other'},
+                     {'name': 'count', 'field': 'id'}]
         response = self.app.get('/api/eval/person',
                                 data=dumps(dict(functions=functions)))
         self.assertEqual(response.status_code, 200)
@@ -223,6 +231,8 @@ class FunctionAPITestCase(TestSupportPrefilled):
         self.assertEqual(data['sum__age'], 102.0)
         self.assertIn('avg__other', data)
         self.assertEqual(data['avg__other'], 16.2)
+        self.assertIn('count__id', data)
+        self.assertEqual(data['count__id'], 5)
 
     def test_no_functions(self):
         """Tests that if no functions are defined, an empty response is
