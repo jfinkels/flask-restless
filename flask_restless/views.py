@@ -836,7 +836,9 @@ class API(ModelView):
         if inst is None:
             abort(404)
         relations = _get_relations(self.model)
-        deep = dict((r, {}) for r in relations)
+        # do no follow relations that will not be included in the response
+        followed_relations = relations if self.include_columns == None else set(relations) & set(self.include_columns)
+        deep = dict((r, {}) for r in followed_relations)
         result = _to_dict_include(inst, deep, include=self.include_columns)
         return jsonify(result)
 
