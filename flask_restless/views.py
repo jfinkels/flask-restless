@@ -735,7 +735,12 @@ class API(ModelView):
 
         # create a placeholder for the relations of the returned models
         relations = _get_relations(self.model)
-        deep = dict((r, {}) for r in relations)
+        # do no follow relations that will not be included in the response
+        if self.include_columns == None:
+            followed_relations = relations
+        else:
+            followed_relations = set(relations) & set(self.include_columns)
+        deep = dict((r, {}) for r in followed_relations)
 
         # for security purposes, don't transmit list as top-level JSON
         if isinstance(result, list):
@@ -837,7 +842,10 @@ class API(ModelView):
             abort(404)
         relations = _get_relations(self.model)
         # do no follow relations that will not be included in the response
-        followed_relations = relations if self.include_columns == None else set(relations) & set(self.include_columns)
+        if self.include_columns == None:
+            followed_relations = relations
+        else:
+            followed_relations = set(relations) & set(self.include_columns)
         deep = dict((r, {}) for r in followed_relations)
         result = _to_dict_include(inst, deep, include=self.include_columns)
         return jsonify(result)
