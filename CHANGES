@@ -13,6 +13,9 @@ Version 0.7-dev
 
 Not yet released.
 
+- Fixed `issue #98 <https://github.com/jfinkels/flask-restless/issues/98>`_:
+  :http:method:`get` requests to the function evaluation endpoint should not
+  have a data payload.
 - Added a ``total_pages`` mapping to the JSON response according to
   `pull request #93
   <https://github.com/jfinkels/flask-restless/pull/93>`_.

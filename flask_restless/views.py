@@ -366,7 +366,7 @@ class FunctionAPI(ModelView):
 
         """
         try:
-            data = json.loads(request.data)
+            data = json.loads(request.args.get('q')) or {}
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
         try:

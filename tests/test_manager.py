@@ -143,7 +143,7 @@ class APIManagerTest(TestSupport):
 
         """
         self.manager.create_api(self.Person, allow_functions=True)
-        response = self.app.get('/api/eval/person', data=dumps(dict()))
+        response = self.app.get('/api/eval/person?q={}')
         self.assertNotEqual(response.status_code, 400)
         self.assertEqual(response.status_code, 204)
 

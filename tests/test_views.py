@@ -223,8 +223,8 @@ class FunctionAPITestCase(TestSupportPrefilled):
         functions = [{'name': 'sum', 'field': 'age'},
                      {'name': 'avg', 'field': 'other'},
                      {'name': 'count', 'field': 'id'}]
-        response = self.app.get('/api/eval/person',
-                                data=dumps(dict(functions=functions)))
+        query = dumps(dict(functions=functions))
+        response = self.app.get('/api/eval/person?q=%s' % query)
         self.assertEqual(response.status_code, 200)
         data = loads(response.data)
         self.assertIn('sum__age', data)
@@ -243,11 +243,11 @@ class FunctionAPITestCase(TestSupportPrefilled):
         response = self.app.get('/api/eval/person')
         self.assertEqual(response.status_code, 400)
         # so is the empty string
-        response = self.app.get('/api/eval/person', data='')
+        response = self.app.get('/api/eval/person?q=')
         self.assertEqual(response.status_code, 400)
 
         # if we provide no functions, then we expect an empty response
-        response = self.app.get('/api/eval/person', data=dumps(dict()))
+        response = self.app.get('/api/eval/person?q=%s' % dumps(dict()))
         self.assertEqual(response.status_code, 204)
 
     def test_poorly_defined_functions(self):
@@ -257,14 +257,14 @@ class FunctionAPITestCase(TestSupportPrefilled):
         """
         # test for bad field name
         search = {'functions': [{'name': 'sum', 'field': 'bogusfieldname'}]}
-        resp = self.app.get('/api/eval/person', data=dumps(search))
+        resp = self.app.get('/api/eval/person?q=%s' % dumps(search))
         self.assertEqual(resp.status_code, 400)
         self.assertIn('message', loads(resp.data))
         self.assertIn('bogusfieldname', loads(resp.data)['message'])
 
         # test for bad function name
         search = {'functions': [{'name': 'bogusfuncname', 'field': 'age'}]}
-        resp = self.app.get('/api/eval/person', data=dumps(search))
+        resp = self.app.get('/api/eval/person?q=%s' % dumps(search))
         self.assertEqual(resp.status_code, 400)
         self.assertIn('message', loads(resp.data))
         self.assertIn('bogusfuncname', loads(resp.data)['message'])

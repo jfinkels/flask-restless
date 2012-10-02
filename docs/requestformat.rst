@@ -462,14 +462,7 @@ evaluation of functions on *all* instances the model.
 
 .. sourcecode:: http
 
-   GET /api/eval/person HTTP/1.1
-
-   { "functions":
-     [
-       {"name": "sum", "field": "age"},
-       {"name": "avg", "field": "height"}
-     ]
-   }
+   GET /api/eval/person?q={"functions": [{"name": "sum", "field": "age"}, {"name": "avg", "field": "height"}]} HTTP/1.1
 
 The format of the response is
 
@@ -499,9 +492,7 @@ the empty JSON object, ``{}``.
 
    .. sourcecode:: http
 
-      GET /api/eval/person HTTP/1.1
-
-      {"functions": [{"name": "count", "field": "id"}]}
+      GET /api/eval/person?q={"functions": [{"name": "count", "field": "id"}]} HTTP/1.1
 
    **Response**:
 
