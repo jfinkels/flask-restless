@@ -15,12 +15,12 @@ Not yet released.
 
 - Added a ``total_pages`` mapping to the JSON response according to
   `pull request #93
-  <https://github.com/jfinkels/flask-restless/pull/93>`.
+  <https://github.com/jfinkels/flask-restless/pull/93>`_.
 - Fixed `issue #91 <https://github.com/jfinkels/flask-restless/issues/91>`_:
   correctly handle :http:method:`post` requests to nullable
   :class:`~sqlalchemy.DateTime` columns.
 - Fixed `issue #83 <https://github.com/jfinkels/flask-restless/issues/83>`_:
-  allow :http:request:`post` requests with one-to-one related instances.
+  allow :http:method:`post` requests with one-to-one related instances.
 - Fixed `issue #79 <https://github.com/jfinkels/flask-restless/issues/79>`_:
   attempted to access attribute of ``None`` in constructor of
   :class:`APIManager`.
