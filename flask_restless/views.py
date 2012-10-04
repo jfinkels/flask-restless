@@ -97,7 +97,6 @@ def _get_or_create(session, model, **kwargs):
     :func:`sqlalchemy.orm.query.Query.filter_by` function.
 
     """
-    # TODO document that this uses the .first() function
     instance = session.query(model).filter_by(**kwargs).first()
     if instance:
         return instance, False
@@ -515,7 +514,9 @@ class API(ModelView):
         of an existing model to remove. If a dictionary contains the key
         ``'id'``, that instance of the related model will be
         removed. Otherwise, the instance to remove will be retrieved using the
-        other attributes specified in the dictionary.
+        other attributes specified in the dictionary. If multiple instances
+        match the specified attributes, only the first instance will be
+        removed.
 
         If one of the dictionaries contains a mapping from ``'__delete__'`` to
         ``True``, then the removed object will be deleted after being removed
@@ -529,7 +530,6 @@ class API(ModelView):
                 subinst = self._get_by(dictionary['id'], submodel)
             else:
                 kw = unicode_keys_to_strings(dictionary)
-                # TODO document that we use .first() here
                 subinst = self.query(submodel).filter_by(**kw).first()
             for instance in query:
                 getattr(instance, relationname).remove(subinst)
