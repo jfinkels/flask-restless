@@ -157,6 +157,67 @@ class APIManagerTest(TestSupport):
         self.assertNotEqual(response.status_code, 200)
         self.assertEqual(response.status_code, 404)
 
+    def test_include_related(self):
+        """Test for specifying included columns on related models."""
+        date = datetime.date(1999,12,31)
+        person = self.Person(name='Test', age=10, other=20, birth_date=date)
+        computer = self.Computer(name='foo', vendor='bar', buy_date=date)
+        self.session.add(person)
+        person.computers.append(computer)
+        self.session.commit()
+
+        include = frozenset(['name', 'age', 'computers', 'computers.id',
+                             'computers.name'])
+        self.manager.create_api(self.Person, include_columns=include)
+        include = frozenset(['name', 'age', 'computers.id', 'computers.name'])
+        self.manager.create_api(self.Person, url_prefix='/api2',
+                                include_columns=include)
+
+        response = self.app.get('/api/person/%s' % person.id)
+        person_dict = loads(response.data)
+        for column in 'name', 'age', 'computers':
+            self.assertIn(column, person_dict)
+        for column in 'id', 'other', 'birth_date':
+            self.assertNotIn(column, person_dict)
+        for column in 'id', 'name':
+            self.assertIn(column, person_dict['computers'][0])
+        for column in 'vendor', 'owner_id', 'buy_date':
+            self.assertNotIn(column, person_dict['computers'][0])
+
+        response = self.app.get('/api2/person/%s' % person.id)
+        self.assertNotIn('computers', loads(response.data))
+
+    def test_exclude_related(self):
+        """Test for specifying excluded columns on related models."""
+        date = datetime.date(1999,12,31)
+        person = self.Person(name='Test', age=10, other=20, birth_date=date)
+        computer = self.Computer(name='foo', vendor='bar', buy_date=date)
+        self.session.add(person)
+        person.computers.append(computer)
+        self.session.commit()
+
+        exclude = frozenset(['name', 'age', 'computers', 'computers.id',
+                             'computers.name'])
+        self.manager.create_api(self.Person, exclude_columns=exclude)
+        exclude = frozenset(['name', 'age', 'computers.id', 'computers.name'])
+        self.manager.create_api(self.Person, url_prefix='/api2',
+                                exclude_columns=exclude)
+
+        response = self.app.get('/api/person/%s' % person.id)
+        person_dict = loads(response.data)
+        for column in 'name', 'age', 'computers':
+            self.assertNotIn(column, person_dict)
+        for column in 'id', 'other', 'birth_date':
+            self.assertIn(column, person_dict)
+
+        response = self.app.get('/api2/person/%s' % person.id)
+        person_dict = loads(response.data)
+        self.assertIn('computers', person_dict)
+        for column in 'id', 'name':
+            self.assertNotIn(column, person_dict['computers'][0])
+        for column in 'vendor', 'owner_id', 'buy_date':
+            self.assertIn(column, person_dict['computers'][0])
+
     def test_include_columns(self):
         """Tests that the `include_columns` argument specifies which columns to
         return in the JSON representation of instances of the model.

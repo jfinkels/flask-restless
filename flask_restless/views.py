@@ -23,6 +23,7 @@
 """
 from __future__ import division
 
+from collections import defaultdict
 import datetime
 import math
 
@@ -46,6 +47,7 @@ from sqlalchemy.orm.properties import RelationshipProperty as RelProperty
 from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import func
 
+from .helpers import partition
 from .helpers import unicode_keys_to_strings
 from .search import create_query
 from .search import search
@@ -147,7 +149,8 @@ def _primary_key_name(model_or_instance):
 
 # This code was adapted from :meth:`elixir.entity.Entity.to_dict` and
 # http://stackoverflow.com/q/1958219/108197.
-def _to_dict(instance, deep=None, exclude=None, include=None):
+def _to_dict(instance, deep=None, exclude=None, include=None,
+             exclude_relations=None, include_relations=None):
     """Returns a dictionary representing the fields of the specified `instance`
     of a SQLAlchemy model.
 
@@ -173,8 +176,14 @@ def _to_dict(instance, deep=None, exclude=None, include=None):
        ``None``, then the returned dictionary will include all columns not
        excluded by `exclude`.
 
+    `include_relations` is a dictionary mapping strings representing relation
+    fields on the specified `instance` to a list of strings representing the
+    names of fields on the related model which should be included in the
+    returned dictionary; `exclude_relations` is similar.
+
     """
-    if exclude and include:
+    if (exclude is not None or exclude_relations is not None) and \
+            (include is not None or include_relations is not None):
         raise ValueError('Cannot specify both include and exclude.')
     # create the dictionary mapping column name to value
     columns = (p.key for p in object_mapper(instance).iterate_properties
@@ -208,12 +217,86 @@ def _to_dict(instance, deep=None, exclude=None, include=None):
             relatedvalue = relatedvalue.all()
         if relatedvalue is None:
             result[relation] = None
-        elif isinstance(relatedvalue, list):
-            result[relation] = [_to_dict(inst, rdeep)
-                                for inst in relatedvalue]
         else:
-            result[relation] = _to_dict(relatedvalue, rdeep)
+            # Determine the included and excluded fields for the related model.
+            newexclude = None
+            newinclude = None
+            if exclude_relations is not None and relation in exclude_relations:
+                newexclude = exclude_relations[relation]
+            elif include_relations is not None and \
+                    relation in include_relations:
+                newinclude = include_relations[relation]
+            if isinstance(relatedvalue, list):
+                result[relation] = [_to_dict(inst, rdeep, exclude=newexclude,
+                                             include=newinclude)
+                                    for inst in relatedvalue]
+            else:
+                result[relation] = _to_dict(relatedvalue, rdeep,
+                                            exclude=newexclude,
+                                            include=newinclude)
     return result
+
+
+def _parse_includes(column_names):
+    """Returns a pair, consisting of a list of column names to include on the
+    left and a dictionary mapping relation name to a list containing the names
+    of fields on the related model which should be included.
+
+    `column_names` is either ``None`` or a list of strings. If it is ``None``,
+    the returned pair will be ``(None, None)``.
+
+    If the name of a relation appears as a key in the dictionary, then it will
+    not appear in the list.
+
+    """
+    if column_names is None:
+        return None, None
+    dotted_names, columns = partition(column_names, lambda name: '.' in name)
+    # Create a dictionary mapping relation names to fields on the related
+    # model.
+    relations = defaultdict(list)
+    for name in dotted_names:
+        relation, field = name.split('.', 1)
+        # Only add the relation if it's column has been specified.
+        if relation in columns:
+            relations[relation].append(field)
+    # Included relations need only be in the relations dictionary, not the
+    # columns list.
+    for relation in relations:
+        if relation in columns:
+            columns.remove(relation)
+    return columns, relations
+
+
+def _parse_excludes(column_names):
+    """Returns a pair, consisting of a list of column names to exclude on the
+    left and a dictionary mapping relation name to a list containing the names
+    of fields on the related model which should be excluded.
+
+    `column_names` is either ``None`` or a list of strings. If it is ``None``,
+    the returned pair will be ``(None, None)``.
+
+    If the name of a relation appears in the list then it will not appear in
+    the dictionary.
+
+    """
+    if column_names is None:
+        return None, None
+    dotted_names, columns = partition(column_names, lambda name: '.' in name)
+    # Create a dictionary mapping relation names to fields on the related
+    # model.
+    relations = defaultdict(list)
+    for name in dotted_names:
+        relation, field = name.split('.', 1)
+        # Only add the relation if it's column has not been specified.
+        if relation not in columns:
+            relations[relation].append(field)
+    # Relations which are to be excluded entirely need only be in the columns
+    # list, not the relations dictionary.
+    for column in columns:
+        if column in relations:
+            del relations[column]
+    return columns, relations
 
 
 def _evaluate_functions(session, model, functions):
@@ -414,24 +497,24 @@ class API(ModelView):
         information, see :ref:`validation`.
 
         If either `include_columns` or `exclude_columns` is not ``None``,
-        exactly one of them must be specified; if both are specified, the
-        behavior of this function is undefined. `exclude_columns` must be an
-        iterable of strings specifying the columns of `model` which will *not*
-        be present in the JSON representation of the model provided in response
-        to :http:method:`get` requests. Similarly, `include_columns` specifies
-        the *only* columns which will be present in the returned dictionary. In
-        other words, `exclude_columns` is a blacklist and `include_columns` is
-        a whitelist; you can only use one of them per API endpoint. If either
-        `include_columns` or `exclude_columns` contains a string which does not
-        name a column in `model`, it will be ignored.
+        exactly one of them must be specified. If both are not ``None``, then
+        the behavior of this function is undefined. `exclude_columns` must be
+        an iterable of strings specifying the columns of `model` which will
+        *not* be present in the JSON representation of the model provided in
+        response to :http:method:`get` requests.  Similarly, `include_columns`
+        specifies the *only* columns which will be present in the returned
+        dictionary. In other words, `exclude_columns` is a blacklist and
+        `include_columns` is a whitelist; you can only use one of them per API
+        endpoint. If either `include_columns` or `exclude_columns` contains a
+        string which does not name a column in `model`, it will be ignored.
 
-        .. note::
+        If `include_columns` is an iterable of length zero (like the empty
+        tuple or the empty list), then the returned dictionary will be
+        empty. If `include_columns` is ``None``, then the returned dictionary
+        will include all columns not excluded by `exclude_columns`.
 
-           If `include_columns` is an iterable of length zero (like the empty
-           tuple or the empty list), then the returned dictionary will be
-           empty. If `include_columns` is ``None``, then the returned
-           dictionary will include all columns not excluded by
-           `exclude_columns`.
+        See :ref:`includes` for information on specifying included or excluded
+        columns on fields of related models.
 
         `results_per_page` is a positive integer which represents the number of
         results which are returned per page. If this is anything except a
@@ -466,8 +549,10 @@ class API(ModelView):
         # convert HTTP method names to uppercase
         self.authentication_required_for = \
             frozenset([m.upper() for m in self.authentication_required_for])
-        self.exclude_columns = exclude_columns
-        self.include_columns = include_columns
+        self.exclude_columns, self.exclude_relations = \
+            _parse_excludes(exclude_columns)
+        self.include_columns, self.include_relations = \
+            _parse_includes(include_columns)
         self.validation_exceptions = tuple(validation_exceptions or ())
         self.results_per_page = results_per_page
         self.paginate = (isinstance(self.results_per_page, int)
@@ -745,7 +830,9 @@ class API(ModelView):
         relations = frozenset(_get_relations(self.model))
         # do not follow relations that will not be included in the response
         if self.include_columns is not None:
-            relations &= frozenset(self.include_columns)
+            cols = frozenset(self.include_columns)
+            rels = frozenset(self.include_relations)
+            relations &= (cols | rels)
         elif self.exclude_columns is not None:
             relations -= frozenset(self.exclude_columns)
         deep = dict((r, {}) for r in relations)
@@ -755,7 +842,9 @@ class API(ModelView):
             return self._paginated(result, deep)
         else:
             result = _to_dict(result, deep, exclude=self.exclude_columns,
-                              include=self.include_columns)
+                              exclude_relations=self.exclude_relations,
+                              include=self.include_columns,
+                              include_relations=self.include_relations)
             return jsonify(result)
 
     # TODO it is ugly to have `deep` as an arg here; can we remove it?
@@ -793,7 +882,9 @@ class API(ModelView):
             end = num_results
             total_pages = 1
         objects = [_to_dict(x, deep, exclude=self.exclude_columns,
-                            include=self.include_columns)
+                            exclude_relations=self.exclude_relations,
+                            include=self.include_columns,
+                            include_relations=self.include_relations)
                    for x in instances[start:end]]
         return jsonify(page=page_num, objects=objects, total_pages=total_pages)
 
@@ -853,12 +944,16 @@ class API(ModelView):
         relations = frozenset(_get_relations(self.model))
         # do not follow relations that will not be included in the response
         if self.include_columns is not None:
-            relations &= frozenset(self.include_columns)
+            cols = frozenset(self.include_columns)
+            rels = frozenset(self.include_relations)
+            relations &= (cols | rels)
         elif self.exclude_columns is not None:
             relations -= frozenset(self.exclude_columns)
         deep = dict((r, {}) for r in relations)
         result = _to_dict(inst, deep, exclude=self.exclude_columns,
-                          include=self.include_columns)
+                          exclude_relations=self.exclude_relations,
+                          include=self.include_columns,
+                          include_relations=self.include_relations)
         return jsonify(result)
 
     def delete(self, instid):
@@ -930,7 +1025,7 @@ class API(ModelView):
             # Handling relations, a single level is allowed
             for col in set(relations).intersection(paramkeys):
                 submodel = cols[col].property.mapper.class_
-                
+
                 if type(params[col]) == list:
                     # model has several related objects
                     for subparams in params[col]:

@@ -275,24 +275,24 @@ class APIManager(object):
 
         If either `include_columns` or `exclude_columns` is not ``None``,
         exactly one of them must be specified. If both are not ``None``, then
-        this function will raise a
-        :exc:`IllegalArgumentError`. `exclude_columns` must be an iterable of
-        strings specifying the columns of `model` which will *not* be present
-        in the JSON representation of the model provided in response to
-        :http:method:`get` requests. Similarly, `include_columns` specifies the
-        *only* columns which will be present in the returned dictionary. In
-        other words, `exclude_columns` is a blacklist and `include_columns` is
-        a whitelist; you can only use one of them per API endpoint. If either
-        `include_columns` or `exclude_columns` contains a string which does not
-        name a column in `model`, it will be ignored.
+        this function will raise a :exc:`IllegalArgumentError`.
+        `exclude_columns` must be an iterable of strings specifying the columns
+        of `model` which will *not* be present in the JSON representation of
+        the model provided in response to :http:method:`get` requests.
+        Similarly, `include_columns` specifies the *only* columns which will be
+        present in the returned dictionary. In other words, `exclude_columns`
+        is a blacklist and `include_columns` is a whitelist; you can only use
+        one of them per API endpoint. If either `include_columns` or
+        `exclude_columns` contains a string which does not name a column in
+        `model`, it will be ignored.
 
-        .. note::
+        If `include_columns` is an iterable of length zero (like the empty
+        tuple or the empty list), then the returned dictionary will be
+        empty. If `include_columns` is ``None``, then the returned dictionary
+        will include all columns not excluded by `exclude_columns`.
 
-           If `include_columns` is an iterable of length zero (like the empty
-           tuple or the empty list), then the returned dictionary will be
-           empty. If `include_columns` is ``None``, then the returned
-           dictionary will include all columns not excluded by
-           `exclude_columns`.
+        See :ref:`includes` for information on specifying included or excluded
+        columns on fields of related models.
 
         `results_per_page` is a positive integer which represents the number of
         results which are returned per page. If this is anything except a

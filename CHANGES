@@ -13,6 +13,8 @@ Version 0.7-dev
 
 Not yet released.
 
+- Fixed `issue #86 <https://github.com/jfinkels/flask-restless/issues/86>`_:
+  allow specifying include and exclude for related models.
 - Added ``exclude_columns`` keyword argument to :meth:`APIManager.create_api`.
 - Fixed `issue #101 <https://github.com/jfinkels/flask-restless/issues/101>`_:
   ``exclude`` in :func:`views._to_dict` function now correctly excludes
