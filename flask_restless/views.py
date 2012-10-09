@@ -147,28 +147,43 @@ def _primary_key_name(model_or_instance):
 
 # This code was adapted from :meth:`elixir.entity.Entity.to_dict` and
 # http://stackoverflow.com/q/1958219/108197.
-#
-# TODO should we have an `include` argument also?
-def _to_dict(instance, deep=None, exclude=None):
+def _to_dict(instance, deep=None, exclude=None, include=None):
     """Returns a dictionary representing the fields of the specified `instance`
     of a SQLAlchemy model.
 
     `deep` is a dictionary containing a mapping from a relation name (for a
     relation of `instance`) to either a list or a dictionary. This is a
     recursive structure which represents the `deep` argument when calling
-    `_to_dict` on related instances. When an empty list is encountered,
-    `_to_dict` returns a list of the string representations of the related
-    instances.
+    :func:`!_to_dict` on related instances. When an empty list is encountered,
+    :func:`!_to_dict` returns a list of the string representations of the
+    related instances.
 
-    `exclude` specifies the columns which will *not* be present in the returned
-    dictionary representation of the object.
+    If either `include` or `exclude` is not ``None``, exactly one of them must
+    be specified. If both are not ``None``, then this function will raise a
+    :exc:`ValueError`. `exclude` must be a list of strings specifying the
+    columns which will *not* be present in the returned dictionary
+    representation of the object (in other words, it is a
+    blacklist). Similarly, `include` specifies the only columns which will be
+    present in the returned dictionary (in other words, it is a whitelist).
+
+    .. note::
+
+       If `include` is an iterable of length zero (like the empty tuple or the
+       empty list), then the returned dictionary will be empty. If `include` is
+       ``None``, then the returned dictionary will include all columns not
+       excluded by `exclude`.
 
     """
-    deep = deep or {}
-    exclude = exclude or ()
+    if exclude and include:
+        raise ValueError('Cannot specify both include and exclude.')
     # create the dictionary mapping column name to value
     columns = (p.key for p in object_mapper(instance).iterate_properties
                if isinstance(p, ColumnProperty))
+    # filter the columns based on exclude and include values
+    if exclude is not None:
+        columns = (c for c in columns if c not in exclude)
+    elif include is not None:
+        columns = (c for c in columns if c in include)
     result = dict((col, getattr(instance, col)) for col in columns)
     # Convert datetime and date objects to ISO 8601 format.
     #
@@ -177,10 +192,8 @@ def _to_dict(instance, deep=None, exclude=None):
         if isinstance(value, datetime.date):
             result[key] = value.isoformat()
     # recursively call _to_dict on each of the `deep` relations
+    deep = deep or {}
     for relation, rdeep in deep.iteritems():
-        # exclude foreign keys of the related object for the recursive call
-        relationproperty = object_mapper(instance).get_property(relation)
-        newexclude = (key.name for key in relationproperty.remote_side)
         # Get the related value so we can see if it is None, a list, a query
         # (as specified by a dynamic relationship loader), or an actual
         # instance of a model.
@@ -196,34 +209,11 @@ def _to_dict(instance, deep=None, exclude=None):
         if relatedvalue is None:
             result[relation] = None
         elif isinstance(relatedvalue, list):
-            result[relation] = [_to_dict(inst, rdeep, newexclude)
+            result[relation] = [_to_dict(inst, rdeep)
                                 for inst in relatedvalue]
         else:
-            result[relation] = _to_dict(relatedvalue, rdeep, newexclude)
+            result[relation] = _to_dict(relatedvalue, rdeep)
     return result
-
-
-def _include_keys(dictionary, keys):
-    """Returns a new dictionary containing only the mappings from `dictionary`
-    with keys as specified in `keys`.
-
-    """
-    return dict((k, v) for k, v in dictionary.items() if k in keys)
-
-
-def _to_dict_include(instance, deep=None, exclude=None, include=None):
-    """Returns the dictionary representation of `instance` as returned by
-    :func:`_to_dict`, but only with the fields specified by `include` (if it is
-    not ``None``).
-
-    If `include` is ``None``, all keys will be included. If it is an iterable
-    of strings, only those keys will be included in the returned dictionary.
-
-    """
-    result = _to_dict(instance, deep, exclude)
-    if include is None:
-        return result
-    return _include_keys(result, include)
 
 
 def _evaluate_functions(session, model, functions):
@@ -745,8 +735,7 @@ class API(ModelView):
         if isinstance(result, list):
             return self._paginated(result, deep)
         else:
-            result = _to_dict_include(result, deep,
-                                      include=self.include_columns)
+            result = _to_dict(result, deep, include=self.include_columns)
             return jsonify(result)
 
     # TODO it is ugly to have `deep` as an arg here; can we remove it?
@@ -758,7 +747,7 @@ class API(ModelView):
 
         `deep` is the dictionary which defines the depth of submodels to output
         in the JSON format of the model instances in `instances`; it is passed
-        directly to :func:`_to_dict_include`.
+        directly to :func:`_to_dict`.
 
         The response data is JSON of the form:
 
@@ -783,7 +772,7 @@ class API(ModelView):
             start = 0
             end = num_results
             total_pages = 1
-        objects = [_to_dict_include(x, deep, include=self.include_columns)
+        objects = [_to_dict(x, deep, include=self.include_columns)
                    for x in instances[start:end]]
         return jsonify(page=page_num, objects=objects, total_pages=total_pages)
 
@@ -846,7 +835,7 @@ class API(ModelView):
         else:
             followed_relations = set(relations) & set(self.include_columns)
         deep = dict((r, {}) for r in followed_relations)
-        result = _to_dict_include(inst, deep, include=self.include_columns)
+        result = _to_dict(inst, deep, include=self.include_columns)
         return jsonify(result)
 
     def delete(self, instid):

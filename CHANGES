@@ -13,6 +13,11 @@ Version 0.7-dev
 
 Not yet released.
 
+- Fixed `issue #101 <https://github.com/jfinkels/flask-restless/issues/101>`_:
+  ``exclude`` in :func:`views._to_dict` function now correctly excludes
+  requested fields from the returned dictionary.
+- Added working ``include`` and ``exclude`` functionality to the
+  :func:`views._to_dict` function.
 - Fixed `issue #98 <https://github.com/jfinkels/flask-restless/issues/98>`_:
   :http:method:`get` requests to the function evaluation endpoint should not
   have a data payload.
