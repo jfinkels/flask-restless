@@ -8,10 +8,10 @@ Here you can see the full list of changes between each Flask-Restless release.
    As of version 0.6, Flask-Restless supports both pure SQLAlchemy and
    Flask-SQLAlchemy models. Before that, it supported only Elixir models.
 
-Version 0.7-dev
----------------
+Version 0.7.0
+-------------
 
-Not yet released.
+Released on October 9, 2012.
 
 - Fixed `issue #86 <https://github.com/jfinkels/flask-restless/issues/86>`_:
   allow specifying include and exclude for related models.
