@@ -70,7 +70,12 @@ def bump_version(version):
         parts = map(int, version.split('.'))
     except ValueError:
         fail('Current version is not numeric')
-    parts[-1] += 1
+    if sys.argv[1] == 'major':
+        parts = [parts[0] + 1, 0, 0]
+    elif sys.argv[1] == 'minor':
+        parts = [parts[0], parts[1] + 1, 0]
+    else:
+        parts[-1] += 1
     return '.'.join(map(str, parts))
 
 
