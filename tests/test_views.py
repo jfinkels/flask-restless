@@ -110,7 +110,7 @@ class ModelTestCase(TestSupport):
         expected_person = _to_dict(person)
         expected_computer = _to_dict(computer)
         self.assertEqual(person_dict['computers'], [expected_computer])
-        self.assertEqual(computer_dict['owner'], [expected_person])
+        self.assertEqual(computer_dict['owner'], expected_person)
 
     def test_to_dict_deep(self):
         """Tests that fields corresponding to related model instances are

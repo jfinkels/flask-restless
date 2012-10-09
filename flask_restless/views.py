@@ -207,33 +207,25 @@ def _to_dict(instance, deep=None, exclude=None, include=None,
         # (as specified by a dynamic relationship loader), or an actual
         # instance of a model.
         relatedvalue = getattr(instance, relation)
-        # HACK: In case the relatedvalue is a dynamically loaded
-        # relationship, we need to resolve the query into a concrete
-        # list of objects; see issue #89. We should also check to see
-        # if relatedvalue is a many-to-one relationship, in order to
-        # call relatedvalue.one() or something, but I don't know how
-        # to do that.
-        if isinstance(relatedvalue, (AppenderMixin, Query)):
-            relatedvalue = relatedvalue.all()
         if relatedvalue is None:
             result[relation] = None
+            continue
+        # Determine the included and excluded fields for the related model.
+        newexclude = None
+        newinclude = None
+        if exclude_relations is not None and relation in exclude_relations:
+            newexclude = exclude_relations[relation]
+        elif (include_relations is not None and
+              relation in include_relations):
+            newinclude = include_relations[relation]
+        if isinstance(relatedvalue, list):
+            result[relation] = [_to_dict(inst, rdeep, exclude=newexclude,
+                                         include=newinclude)
+                                for inst in relatedvalue]
         else:
-            # Determine the included and excluded fields for the related model.
-            newexclude = None
-            newinclude = None
-            if exclude_relations is not None and relation in exclude_relations:
-                newexclude = exclude_relations[relation]
-            elif include_relations is not None and \
-                    relation in include_relations:
-                newinclude = include_relations[relation]
-            if isinstance(relatedvalue, list):
-                result[relation] = [_to_dict(inst, rdeep, exclude=newexclude,
-                                             include=newinclude)
-                                    for inst in relatedvalue]
-            else:
-                result[relation] = _to_dict(relatedvalue, rdeep,
-                                            exclude=newexclude,
-                                            include=newinclude)
+            result[relation] = _to_dict(relatedvalue.one(), rdeep,
+                                        exclude=newexclude,
+                                        include=newinclude)
     return result
 
 
