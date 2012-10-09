@@ -169,8 +169,6 @@ evaluation of functions on all instances the model.
 For information about the request and response formats for this endpoint, see
 :ref:`functionevaluation`.
 
-.. _authentication:
-
 Specifying which columns are provided in responses
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -211,6 +209,8 @@ will produce responses like::
 .. sourcecode:: javascript
 
    {"id": 1, "computers": [{"id": 1, "vendor": "Apple", "model": "MacBook"}]}
+
+.. _authentication:
 
 Requiring authentication for some methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
