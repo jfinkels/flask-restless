@@ -204,6 +204,54 @@ class APIManagerTest(TestSupport):
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
             self.assertNotIn(column, loads(response.data))
 
+    def test_exclude_columns(self):
+        """Tests that the ``exclude_columns`` argument specifies which columns
+        to exclude in the JSON representation of instances of the model.
+
+        """
+        all_columns = _get_columns(self.Person)
+        # allow all
+        self.manager.create_api(self.Person, exclude_columns=None,
+                                url_prefix='/all')
+        self.manager.create_api(self.Person, exclude_columns=(),
+                                url_prefix='/all2')
+        # allow some
+        exclude = ('other', 'birth_date', 'computers')
+        self.manager.create_api(self.Person, exclude_columns=exclude,
+                                url_prefix='/some')
+        # allow none
+        self.manager.create_api(self.Person, exclude_columns=all_columns,
+                                url_prefix='/none')
+
+        # create a test person
+        self.manager.create_api(self.Person, methods=['POST'],
+                                url_prefix='/add')
+        d = dict(name=u'Test', age=10, other=20,
+                 birth_date=datetime.date(1999, 12, 31).isoformat())
+        response = self.app.post('/add/person', data=dumps(d))
+        self.assertEqual(response.status_code, 201)
+        personid = loads(response.data)['id']
+
+        # get all
+        response = self.app.get('/all/person/%s' % personid)
+        for column in 'name', 'age', 'other', 'birth_date', 'computers':
+            self.assertIn(column, loads(response.data))
+        response = self.app.get('/all2/person/%s' % personid)
+        for column in 'name', 'age', 'other', 'birth_date', 'computers':
+            self.assertIn(column, loads(response.data))
+
+        # get some
+        response = self.app.get('/some/person/%s' % personid)
+        for column in 'name', 'age':
+            self.assertIn(column, loads(response.data))
+        for column in 'other', 'birth_date', 'computers':
+            self.assertNotIn(column, loads(response.data))
+
+        # get none
+        response = self.app.get('/none/person/%s' % personid)
+        for column in 'name', 'age', 'other', 'birth_date', 'computers':
+            self.assertNotIn(column, loads(response.data))
+
     def test_different_urls(self):
         """Tests that establishing different URL endpoints for the same model
         affect the same database table.

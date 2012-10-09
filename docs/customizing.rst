@@ -200,6 +200,18 @@ like this:
 
    {"name": "Jeffrey", "birth_date": "1999-12-31"}
 
+The ``exclude_columns`` keyword argument works similarly; it forces your JSON
+responses to include only the columns *not* specified in ``exclude_columns``.
+For example::
+
+    apimanager.create_api(Person, exclude_columns=['name', 'birth_date'])
+
+will produce responses like::
+
+.. sourcecode:: javascript
+
+   {"id": 1, "computers": [{"id": 1, "vendor": "Apple", "model": "MacBook"}]}
+
 Requiring authentication for some methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

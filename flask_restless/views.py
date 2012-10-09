@@ -380,9 +380,10 @@ class API(ModelView):
     """
 
     def __init__(self, session, model, authentication_required_for=None,
-                 authentication_function=None, include_columns=None,
-                 validation_exceptions=None, results_per_page=10,
-                 post_form_preprocessor=None, *args, **kw):
+                 authentication_function=None, exclude_columns=None,
+                 include_columns=None, validation_exceptions=None,
+                 results_per_page=10, post_form_preprocessor=None, *args,
+                 **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -412,11 +413,25 @@ class API(ModelView):
         message specifying the validation error which occurred. For more
         information, see :ref:`validation`.
 
-        `include_columns` is a list of strings which name the columns of
-        `model` which will be included in the JSON representation of that model
-        provided in response to :http:method:`get` requests. Only the named
-        columns will be included. If this list includes a string which does not
+        If either `include_columns` or `exclude_columns` is not ``None``,
+        exactly one of them must be specified; if both are specified, the
+        behavior of this function is undefined. `exclude_columns` must be an
+        iterable of strings specifying the columns of `model` which will *not*
+        be present in the JSON representation of the model provided in response
+        to :http:method:`get` requests. Similarly, `include_columns` specifies
+        the *only* columns which will be present in the returned dictionary. In
+        other words, `exclude_columns` is a blacklist and `include_columns` is
+        a whitelist; you can only use one of them per API endpoint. If either
+        `include_columns` or `exclude_columns` contains a string which does not
         name a column in `model`, it will be ignored.
+
+        .. note::
+
+           If `include_columns` is an iterable of length zero (like the empty
+           tuple or the empty list), then the returned dictionary will be
+           empty. If `include_columns` is ``None``, then the returned
+           dictionary will include all columns not excluded by
+           `exclude_columns`.
 
         `results_per_page` is a positive integer which represents the number of
         results which are returned per page. If this is anything except a
@@ -429,6 +444,9 @@ class API(ModelView):
         requires to store user identity and for security reasons the identity
         is not read from the post parameters (where malicious user can tamper
         with them) but from the session.
+
+        .. versionadded:: 0.7
+           Added the `exclude_columns` keyword argument.
 
         .. versionadded:: 0.6
            Added the `results_per_page` keyword argument.
@@ -448,6 +466,7 @@ class API(ModelView):
         # convert HTTP method names to uppercase
         self.authentication_required_for = \
             frozenset([m.upper() for m in self.authentication_required_for])
+        self.exclude_columns = exclude_columns
         self.include_columns = include_columns
         self.validation_exceptions = tuple(validation_exceptions or ())
         self.results_per_page = results_per_page
@@ -723,19 +742,20 @@ class API(ModelView):
                                        message='Unable to construct query')
 
         # create a placeholder for the relations of the returned models
-        relations = _get_relations(self.model)
-        # do no follow relations that will not be included in the response
-        if self.include_columns == None:
-            followed_relations = relations
-        else:
-            followed_relations = set(relations) & set(self.include_columns)
-        deep = dict((r, {}) for r in followed_relations)
+        relations = frozenset(_get_relations(self.model))
+        # do not follow relations that will not be included in the response
+        if self.include_columns is not None:
+            relations &= frozenset(self.include_columns)
+        elif self.exclude_columns is not None:
+            relations -= frozenset(self.exclude_columns)
+        deep = dict((r, {}) for r in relations)
 
         # for security purposes, don't transmit list as top-level JSON
         if isinstance(result, list):
             return self._paginated(result, deep)
         else:
-            result = _to_dict(result, deep, include=self.include_columns)
+            result = _to_dict(result, deep, exclude=self.exclude_columns,
+                              include=self.include_columns)
             return jsonify(result)
 
     # TODO it is ugly to have `deep` as an arg here; can we remove it?
@@ -772,7 +792,8 @@ class API(ModelView):
             start = 0
             end = num_results
             total_pages = 1
-        objects = [_to_dict(x, deep, include=self.include_columns)
+        objects = [_to_dict(x, deep, exclude=self.exclude_columns,
+                            include=self.include_columns)
                    for x in instances[start:end]]
         return jsonify(page=page_num, objects=objects, total_pages=total_pages)
 
@@ -828,14 +849,16 @@ class API(ModelView):
         inst = self._get_by(instid)
         if inst is None:
             abort(404)
-        relations = _get_relations(self.model)
-        # do no follow relations that will not be included in the response
-        if self.include_columns == None:
-            followed_relations = relations
-        else:
-            followed_relations = set(relations) & set(self.include_columns)
-        deep = dict((r, {}) for r in followed_relations)
-        result = _to_dict(inst, deep, include=self.include_columns)
+        # create a placeholder for the relations of the returned models
+        relations = frozenset(_get_relations(self.model))
+        # do not follow relations that will not be included in the response
+        if self.include_columns is not None:
+            relations &= frozenset(self.include_columns)
+        elif self.exclude_columns is not None:
+            relations -= frozenset(self.exclude_columns)
+        deep = dict((r, {}) for r in relations)
+        result = _to_dict(inst, deep, exclude=self.exclude_columns,
+                          include=self.include_columns)
         return jsonify(result)
 
     def delete(self, instid):

@@ -193,8 +193,8 @@ class APIManager(object):
                              allow_patch_many=False, allow_functions=False,
                              authentication_required_for=None,
                              authentication_function=None,
-                             include_columns=None, validation_exceptions=None,
-                             results_per_page=10,
+                             exclude_columns=None, include_columns=None,
+                             validation_exceptions=None, results_per_page=10,
                              post_form_preprocessor=None):
         """Creates an returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
@@ -273,11 +273,26 @@ class APIManager(object):
         returns ``True`` if and only if a client is authorized to make a
         request on an endpoint.
 
-        `include_columns` is a list of strings which name the columns of
-        `model` which will be included in the JSON representation of that model
-        provided in response to :http:method:`get` requests. Only the named
-        columns will be included. If this list includes a string which does not
+        If either `include_columns` or `exclude_columns` is not ``None``,
+        exactly one of them must be specified. If both are not ``None``, then
+        this function will raise a
+        :exc:`IllegalArgumentError`. `exclude_columns` must be an iterable of
+        strings specifying the columns of `model` which will *not* be present
+        in the JSON representation of the model provided in response to
+        :http:method:`get` requests. Similarly, `include_columns` specifies the
+        *only* columns which will be present in the returned dictionary. In
+        other words, `exclude_columns` is a blacklist and `include_columns` is
+        a whitelist; you can only use one of them per API endpoint. If either
+        `include_columns` or `exclude_columns` contains a string which does not
         name a column in `model`, it will be ignored.
+
+        .. note::
+
+           If `include_columns` is an iterable of length zero (like the empty
+           tuple or the empty list), then the returned dictionary will be
+           empty. If `include_columns` is ``None``, then the returned
+           dictionary will include all columns not excluded by
+           `exclude_columns`.
 
         `results_per_page` is a positive integer which represents the number of
         results which are returned per page. If this is anything except a
@@ -290,6 +305,9 @@ class APIManager(object):
         requires to store user identity and for security reasons the identity
         is not read from the post parameters (where malicious user can tamper
         with them) but from the session.
+
+        .. versionadded:: 0.7
+           Added the `exclude_columns` keyword argument.
 
         .. versionadded:: 0.6
            This functionality was formerly in :meth:`create_api`, but the
@@ -315,6 +333,10 @@ class APIManager(object):
             msg = ('If authentication_required is specified, so must'
                    ' authentication_function.')
             raise IllegalArgumentError(msg)
+        if exclude_columns is not None and include_columns is not None:
+            msg = ('Cannot simultaneously specify both include columns and'
+                   ' exclude columns.')
+            raise IllegalArgumentError(msg)
         if collection_name is None:
             collection_name = model.__tablename__
         # convert all method names to upper case
@@ -335,9 +357,9 @@ class APIManager(object):
         # the view function for the API for this model
         api_view = API.as_view(apiname, self.session, model,
                                authentication_required_for,
-                               authentication_function, include_columns,
-                               validation_exceptions, results_per_page,
-                               post_form_preprocessor)
+                               authentication_function, exclude_columns,
+                               include_columns, validation_exceptions,
+                               results_per_page, post_form_preprocessor)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the

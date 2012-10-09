@@ -13,6 +13,7 @@ Version 0.7-dev
 
 Not yet released.
 
+- Added ``exclude_columns`` keyword argument to :meth:`APIManager.create_api`.
 - Fixed `issue #101 <https://github.com/jfinkels/flask-restless/issues/101>`_:
   ``exclude`` in :func:`views._to_dict` function now correctly excludes
   requested fields from the returned dictionary.
