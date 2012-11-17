@@ -627,7 +627,20 @@ class API(ModelView):
                 getattr(instance, relationname).remove(subinst)
             if remove:
                 self.session.delete(subinst)
-
+    def _override_from_relation(self, query, relationname, tooverride=None):
+        submodel = _get_related_model(self.model, relationname)
+        subinst_list = []
+        for dictionary in tooverride or []:
+            if 'id' in dictionary:
+                subinst = self._get_by(dictionary['id'], submodel)
+            else:
+                kw = unicode_keys_to_strings(dictionary)
+                subinst = _get_or_create(self.session, submodel, **kw)[0]
+            subinst_list.append(subinst)
+        
+        for instance in query:
+            setattr(instance, relationname, subinst_list)
+        
     # TODO change this to have more sensible arguments
     def _update_relations(self, query, params):
         """Adds or removes models which are related to the model specified in
@@ -666,10 +679,16 @@ class API(ModelView):
         relations = _get_relations(self.model)
         tochange = frozenset(relations) & frozenset(params)
         for columnname in tochange:
-            toadd = params[columnname].get('add', [])
-            toremove = params[columnname].get('remove', [])
-            self._add_to_relation(query, columnname, toadd=toadd)
-            self._remove_from_relation(query, columnname, toremove=toremove)
+            if isinstance(params[columnname], list):
+                tooverride = params[columnname]
+                self._override_from_relation(query, columnname, tooverride=tooverride)
+            else:
+                toadd = params[columnname].get('add', [])
+                toremove = params[columnname].get('remove', [])
+                
+                self._add_to_relation(query, columnname, toadd=toadd)
+                self._remove_from_relation(query, columnname, toremove=toremove)
+            
         return tochange
 
     def _handle_validation_exception(self, exception):
@@ -863,6 +882,7 @@ class API(ModelView):
            {
              "page": 2,
              "total_pages": 3,
+             "num_results": 8,
              "objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]
            }
 
@@ -1070,7 +1090,6 @@ class API(ModelView):
 
         """
         self._check_authentication()
-
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.data)
