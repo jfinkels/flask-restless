@@ -25,8 +25,6 @@ from flask.ext.restless.views import _get_relations
 from flask.ext.restless.views import _to_dict
 from flask.ext.restless.manager import IllegalArgumentError
 
-from .helpers import setUpModule
-from .helpers import tearDownModule
 from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
 

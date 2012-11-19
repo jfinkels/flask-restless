@@ -19,8 +19,6 @@ from flask.ext.restless.search import create_query
 from flask.ext.restless.search import search
 from flask.ext.restless.search import SearchParameters
 
-from .helpers import setUpModule
-from .helpers import tearDownModule
 from .helpers import TestSupportPrefilled
 
 

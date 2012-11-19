@@ -4,25 +4,11 @@
 
     Provides helper functions for unit tests in this package.
 
-    New test modules whose test classes inherit from :class:`TestSupport` must
-    import the :func:`setUpModule` and :func:`tearDownModule` functions, which
-    create and destroy a file for a test database, respectively, from this
-    module::
-
-        from .helpers import setUpModule
-        from .helpers import tearDownModule
-
-    This makes :mod:`unittest` execute these functions once per test module,
-    which saves some disk usage and should theoretically cause the tests to run
-    more quickly.
-
     :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
     :license: GNU AGPLv3+ or BSD
 
 """
 import datetime
-import os
-import tempfile
 from unittest2 import TestCase
 
 from flask import Flask
@@ -42,28 +28,6 @@ from sqlalchemy.orm import sessionmaker
 
 from flask.ext.restless import APIManager
 
-#: The file descriptor and filename of the database which will be used in the
-#: tests.
-DB = dict(fd=None, filename=None)
-
-
-def setUpModule():
-    """Creates a temporary file which will contain the database to use in the
-    tests.
-
-    """
-    DB['fd'], DB['filename'] = tempfile.mkstemp()
-
-
-def tearDownModule():
-    """Closes and unlinks the database file used in the tests."""
-    if DB['fd']:
-        os.close(DB['fd'])
-        DB['fd'] = None
-    if DB['filename']:
-        os.unlink(DB['filename'])
-        DB['filename'] = None
-
 
 class FlaskTestBase(TestCase):
     """Base class for tests which use a Flask application."""
@@ -76,7 +40,7 @@ class FlaskTestBase(TestCase):
         app = Flask(__name__)
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///%s' % DB['filename']
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
         self.flaskapp = app
 
         # create the test client

@@ -33,8 +33,6 @@ else:
     sav_version = tuple(int(n) for n in _sav.VERSION.split('.'))
     has_savalidation = True
 
-from .helpers import setUpModule
-from .helpers import tearDownModule
 from .helpers import TestSupport
 
 __all__ = ['SAVTest', 'SimpleValidationTest']
