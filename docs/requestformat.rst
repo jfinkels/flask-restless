@@ -56,6 +56,7 @@ Also suppose we have registered an API for these models at ``/api/person`` and
       HTTP/1.1 200 OK
 
       {
+        "num_results": 8,
         "total_pages": 3,
         "page": 2,
         "objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]
@@ -74,6 +75,7 @@ Also suppose we have registered an API for these models at ``/api/person`` and
       HTTP/1.1 200 OK
 
       {
+         "num_results": 8,
          "total_pages": 3,
          "page": 2,
          "objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]
@@ -515,7 +517,10 @@ be returned. If ``page`` is specified but pagination has been disabled, this
 parameter will be ignored.
 
 In addition to the ``"objects"`` list, the response JSON object will have a
-``"page"`` key whose value is the current page. For example, a request to
+``"page"`` key whose value is the current page, a ``"num_pages"`` key whose
+value is the total number of pages into which the set of matching instances is
+divided, and a ``"num_results"`` key whose value is the total number of
+instances which match the requested search. For example, a request to
 :http:get:`/api/person?page=2` will result in the following response:
 
 .. sourcecode:: http
@@ -523,7 +528,9 @@ In addition to the ``"objects"`` list, the response JSON object will have a
    HTTP/1.1 200 OK
 
    {
+     "num_results": 8,
      "page": 2,
+     "num_pages": 3,
      "objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]
    }
 

@@ -879,6 +879,22 @@ class APITestCase(TestSupport):
         self.assertEqual(len(loads(response.data)['objects']), 25)
         self.assertEqual(loads(response.data)['total_pages'], 1)
 
+    def test_num_results(self):
+        """Tests that a request for (a subset of) all instances of a model
+        includes the total number of results as part of the JSON response.
+
+        """
+        self.manager.create_api(self.Person)
+        for i in range(25):
+            d = dict(name=unicode('person%s' % i))
+            response = self.app.post('/api/person', data=dumps(d))
+            self.assertEqual(response.status_code, 201)
+        response = self.app.get('/api/person')
+        self.assertEqual(response.status_code, 200)
+        data = loads(response.data)
+        self.assertIn('num_results', data)
+        self.assertEqual(data['num_results'], 25)
+
     def test_alternate_primary_key(self):
         """Tests that models with primary keys which are not ``id`` columns are
         accessible via their primary keys.

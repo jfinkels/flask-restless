@@ -110,6 +110,7 @@ instances which have ``age`` attribute greater than or equal to 10.
    HTTP/1.1 200 OK
 
    {
+     "num_results": 8,
      "total_pages": 3,
      "page": 2,
      "objects":
@@ -143,6 +144,7 @@ inclusive.
    HTTP/1.1 200 OK
 
    {
+     "num_results": 6,
      "total_pages": 3,
      "page": 2,
      "objects":
@@ -229,6 +231,7 @@ the ``height`` attribute.
    HTTP/1.1 200 OK
 
    {
+     "num_results": 6,
      "total_pages": 3,
      "page": 2,
      "objects":
@@ -260,6 +263,7 @@ Apple.
    HTTP/1.1 200 OK
 
    {
+     "num_results": 6,
      "total_pages": 3,
      "page": 2,
      "objects":

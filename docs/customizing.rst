@@ -293,6 +293,8 @@ like this:
 .. sourcecode:: javascript
 
    {
+     "num_results": 6,
+     "total_pages": 3,
      "page": 1,
      "objects": [
        {"name": "Jeffrey", "id": 1},

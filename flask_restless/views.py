@@ -878,7 +878,8 @@ class API(ModelView):
                             include=self.include_columns,
                             include_relations=self.include_relations)
                    for x in instances[start:end]]
-        return jsonify(page=page_num, objects=objects, total_pages=total_pages)
+        return jsonify(page=page_num, objects=objects, total_pages=total_pages,
+                       num_results=num_results)
 
     def _check_authentication(self):
         """If the specified HTTP method requires authentication (see the
