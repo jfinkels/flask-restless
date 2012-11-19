@@ -13,7 +13,7 @@ Version 0.8.0-dev
 
 Not yet released.
 
-- Fixed `issue #104 <https://github.com/jfinkels/flask-restless/issues/104`_:
+- Fixed `issue #104 <https://github.com/jfinkels/flask-restless/issues/104>`_:
   added ``num_results`` key to paginated JSON responses.
 - Fixed `issue #94 <https://github.com/jfinkels/flask-restless/issues/94>`_:
   :func:`views._to_dict` should return a single object instead of a list when
