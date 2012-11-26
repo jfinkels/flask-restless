@@ -13,6 +13,11 @@ Version 0.9.0-dev
 
 Not yet released.
 
+- Fixed `issue #108 <https://github.com/jfinkels/flask-restless/issues/108>`_:
+  dynamically loaded relationships should now be rendered correctly by the
+  :func:`views._to_dict` function regardless of whether they are a list or a
+  single object.
+
 Version 0.8.0
 -------------
 

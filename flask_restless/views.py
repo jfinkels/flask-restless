@@ -218,14 +218,20 @@ def _to_dict(instance, deep=None, exclude=None, include=None,
         elif (include_relations is not None and
               relation in include_relations):
             newinclude = include_relations[relation]
-        if isinstance(relatedvalue, list):
+        # Do some black magic on SQLAlchemy to decide if the related instance
+        # should be rendered as a list or as a single object.
+        uselist = instance._sa_class_manager[relation].property.uselist
+        if uselist:
             result[relation] = [_to_dict(inst, rdeep, exclude=newexclude,
                                          include=newinclude)
                                 for inst in relatedvalue]
-        else:
-            result[relation] = _to_dict(relatedvalue.one(), rdeep,
-                                        exclude=newexclude,
-                                        include=newinclude)
+            continue
+        # If the related value is dynamically loaded, resolve the query to get
+        # the single instance.
+        if isinstance(relatedvalue, Query):
+            relatedvalue = relatedvalue.one()
+        result[relation] = _to_dict(relatedvalue, rdeep, exclude=newexclude,
+                                    include=newinclude)
     return result
 
 

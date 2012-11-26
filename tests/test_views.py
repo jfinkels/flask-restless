@@ -14,31 +14,154 @@ from __future__ import with_statement
 from datetime import date
 from datetime import datetime
 from unittest2 import TestSuite
+from unittest2 import skipUnless
 
 from flask import json
+try:
+    from flask.ext.sqlalchemy import SQLAlchemy
+except:
+    has_flask_sqlalchemy = False
+else:
+    has_flask_sqlalchemy = True
 from sqlalchemy.exc import OperationalError
 
+from flask.ext.restless.manager import APIManager
+from flask.ext.restless.manager import IllegalArgumentError
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
 from flask.ext.restless.views import _get_columns
 from flask.ext.restless.views import _get_or_create
 from flask.ext.restless.views import _get_relations
 from flask.ext.restless.views import _to_dict
-from flask.ext.restless.manager import IllegalArgumentError
 
+from .helpers import FlaskTestBase
 from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
 
 
 __all__ = ['ModelTestCase', 'FunctionEvaluationTest', 'FunctionAPITestCase',
-           'APITestCase']
+           'APITestCase', 'FSAModelTest']
 
 
 dumps = json.dumps
 loads = json.loads
 
 
+class FSAModelTest(FlaskTestBase):
+    """Tests for functions which operate on Flask-SQLAlchemy models."""
+
+    def setUp(self):
+        """Creates the Flask-SQLAlchemy database and models."""
+        super(FSAModelTest, self).setUp()
+
+        db = SQLAlchemy(self.flaskapp)
+
+        class User(db.Model):
+            id = db.Column(db.Integer, primary_key=True)
+
+        class Pet(db.Model):
+            id = db.Column(db.Integer, primary_key=True)
+            ownerid = db.Column(db.Integer, db.ForeignKey(User.id))
+            owner = db.relationship(User, backref=db.backref('pets'))
+
+        class LazyUser(db.Model):
+            id = db.Column(db.Integer, primary_key=True)
+
+        class LazyPet(db.Model):
+            id = db.Column(db.Integer, primary_key=True)
+            ownerid = db.Column(db.Integer, db.ForeignKey(LazyUser.id))
+            owner = db.relationship(LazyUser,
+                                    backref=db.backref('pets', lazy='dynamic'))
+
+        self.User = User
+        self.Pet = Pet
+        self.LazyUser = LazyUser
+        self.LazyPet = LazyPet
+
+        self.db = db
+        self.db.create_all()
+
+        self.manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
+
+    def tearDown(self):
+        """Drops all tables."""
+        self.db.drop_all()
+
+    def test_get(self):
+        """Test for the :meth:`views.API.get` method with models defined using
+        Flask-SQLAlchemy with both dynamically loaded and static relationships.
+
+        """
+        # create the API endpoint
+        self.manager.create_api(self.User)
+        self.manager.create_api(self.LazyUser)
+        self.manager.create_api(self.Pet)
+        self.manager.create_api(self.LazyPet)
+
+        response = self.app.get('/api/user')
+        self.assertEqual(200, response.status_code)
+        response = self.app.get('/api/lazy_user')
+        self.assertEqual(200, response.status_code)
+        response = self.app.get('/api/pet')
+        self.assertEqual(200, response.status_code)
+        response = self.app.get('/api/lazy_pet')
+        self.assertEqual(200, response.status_code)
+
+        # create a user with two pets
+        owner = self.User()
+        pet1 = self.Pet()
+        pet2 = self.Pet()
+        pet1.owner = owner
+        pet2.owner = owner
+        self.db.session.add_all([owner, pet1, pet2])
+        self.db.session.commit()
+
+        response = self.app.get('/api/user/%d' % owner.id)
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertEqual(2, len(data['pets']))
+        for pet in data['pets']:
+            self.assertEqual(owner.id, pet['ownerid'])
+
+        response = self.app.get('/api/pet/1')
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertFalse(isinstance(data['owner'], list))
+        self.assertEqual(owner.id, data['ownerid'])
+
+        # create a lazy user with two lazy pets
+        owner = self.LazyUser()
+        pet1 = self.LazyPet()
+        pet2 = self.LazyPet()
+        pet1.owner = owner
+        pet2.owner = owner
+        self.db.session.add_all([owner, pet1, pet2])
+        self.db.session.commit()
+
+        response = self.app.get('/api/lazy_user/%d' % owner.id)
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertEqual(2, len(data['pets']))
+        for pet in data['pets']:
+            self.assertEqual(owner.id, pet['ownerid'])
+
+        response = self.app.get('/api/lazy_pet/1')
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertFalse(isinstance(data['owner'], list))
+        self.assertEqual(owner.id, data['ownerid'])
+
+
+# skipUnless should be used as a decorator, but Python 2.5 doesn't have
+# decorators.
+FSATest = skipUnless(has_flask_sqlalchemy,
+                     'Flask-SQLAlchemy not found.')(FSAModelTest)
+
+
 class ModelTestCase(TestSupport):
-    """Provides tests for helper functions which operate on models."""
+    """Provides tests for helper functions which operate on pure SQLAlchemy
+    models.
+
+    """
 
     def test_get_columns(self):
         """Test for getting the names of columns as strings."""
@@ -103,6 +226,7 @@ class ModelTestCase(TestSupport):
         person_dict = _to_dict(person, deep={'computers': []})
         computer_dict = _to_dict(computer, deep={'owner': None})
         self.assertEqual(sorted(person_dict), ['computers', 'id', 'name'])
+        self.assertFalse(isinstance(computer_dict['owner'], list))
         self.assertEqual(sorted(computer_dict), ['id', 'name', 'owner',
                                                  'ownerid'])
         expected_person = _to_dict(person)
@@ -935,6 +1059,7 @@ def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
     suite = TestSuite()
     suite.addTest(loader.loadTestsFromTestCase(ModelTestCase))
+    suite.addTest(loader.loadTestsFromTestCase(FSAModelTest))
     suite.addTest(loader.loadTestsFromTestCase(FunctionAPITestCase))
     suite.addTest(loader.loadTestsFromTestCase(FunctionEvaluationTest))
     suite.addTest(loader.loadTestsFromTestCase(APITestCase))
