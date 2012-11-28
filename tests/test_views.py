@@ -646,6 +646,32 @@ class APITestCase(TestSupport):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['age'], 24)
 
+    def test_patch_set_submodel(self):
+        """Test for assigning a list to a relation of a model using
+        :http:method:`patch`.
+
+        """
+        response = self.app.post('/api/person', data=dumps({}))
+        self.assertEqual(response.status_code, 201)
+        data = {'computers': [{'name': u'lixeiro', 'vendor': u'Lemote'},
+                              {'name': u'foo', 'vendor': u'bar'}]}
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        self.assertEqual(200, response.status_code)
+        data = json.loads(response.data)
+        self.assertEqual(2, len(data['computers']))
+        self.assertEqual(u'lixeiro', data['computers'][0]['name'])
+        self.assertEqual(u'foo', data['computers'][1]['name'])
+        data = {'computers': [{'name': u'hey', 'vendor': u'you'},
+                              {'name': u'big', 'vendor': u'money'},
+                              {'name': u'milk', 'vendor': u'chocolate'}]}
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        self.assertEqual(200, response.status_code)
+        data = json.loads(response.data)
+        self.assertEqual(3, len(data['computers']))
+        self.assertEqual(u'hey', data['computers'][0]['name'])
+        self.assertEqual(u'big', data['computers'][1]['name'])
+        self.assertEqual(u'milk', data['computers'][2]['name'])
+
     def test_patch_add_submodel(self):
         """Test for updating a single instance of the model by adding a related
         model using the :http:method:`patch` method.
