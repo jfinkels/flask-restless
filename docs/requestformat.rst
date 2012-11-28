@@ -125,6 +125,9 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       {"id": 1}
 
+   The server will respond with :http:statuscode:`400` if the request specifies
+   a field which does not exist on the model.
+
    To create a new person which includes a related list of **new** computer
    instances via a one-to-many relationship, a request must take the following
    form.
@@ -303,6 +306,9 @@ Also suppose we have registered an API for these models at ``/api/person`` and
       HTTP/1.1 201 Created
 
       {"id": 1, "name": "Foobar", "age": 24}
+
+   The server will respond with :http:statuscode:`400` if the request specifies
+   a field which does not exist on the model.
 
    To add an existing object to a one-to-many relationship, a request must take
    the following form.

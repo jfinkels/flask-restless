@@ -997,7 +997,12 @@ class API(ModelView):
             params = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
-
+        # Check for any request parameter naming a column which does not exist
+        # on the current model.
+        for field in params:
+            if not hasattr(self.model, field):
+                msg = "Model does not have field '%s'" % field
+                return jsonify_status_code(400, message=msg)
         # If post_form_preprocessor is specified, call it
         if self.post_form_preprocessor:
             params = self.post_form_preprocessor(params)
@@ -1072,7 +1077,13 @@ class API(ModelView):
         except (TypeError, ValueError, OverflowError):
             # this also happens when request.data is empty
             return jsonify_status_code(400, message='Unable to decode data')
-
+        # Check for any request parameter naming a column which does not exist
+        # on the current model.
+        for field in data:
+            if not hasattr(self.model, field):
+                msg = "Model does not have field '%s'" % field
+                return jsonify_status_code(400, message=msg)
+        # Check if the request is to patch many instances of the current model.
         patchmany = instid is None
         if patchmany:
             try:

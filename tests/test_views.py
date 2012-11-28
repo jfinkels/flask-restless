@@ -443,6 +443,15 @@ class APITestCase(TestSupport):
         inst = _to_dict(person, deep)
         self.assertEqual(loads(response.data), inst)
 
+    def test_post_bad_parameter(self):
+        """Tests that attempting to make a :http:method:`post` request with a
+        form parameter which does not exist on the specified model responds
+        with an error message.
+
+        """
+        response = self.app.post('/api/person', data=dumps(dict(bogus=0)))
+        self.assertEqual(400, response.status_code)
+
     def test_post_nullable_date(self):
         """Tests the creation of a model with a nullable date field."""
         self.manager.create_api(self.Star, methods=['GET', 'POST'])
@@ -568,6 +577,17 @@ class APITestCase(TestSupport):
         # here we send the empty string (which is not valid JSON)
         response = self.app.patch('/api/person/' + str(personid), data='')
         self.assertEqual(response.status_code, 400)
+
+    def test_patch_bad_parameter(self):
+        """Tests that attempting to make a :http:method:`patch` request with a
+        form parameter which does not exist on the specified model responds
+        with an error message.
+
+        """
+        response = self.app.post('/api/person', data=dumps({}))
+        self.assertEqual(201, response.status_code)
+        response = self.app.patch('/api/person/1', data=dumps(dict(bogus=0)))
+        self.assertEqual(400, response.status_code)
 
     def test_patch_many(self):
         """Test for updating a collection of instances of the model using the
