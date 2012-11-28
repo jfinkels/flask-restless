@@ -13,6 +13,8 @@ Version 0.9.0-dev
 
 Not yet released.
 
+- Fixed `issue #105 <https://github.com/jfinkels/flask-restless/issues/105>`_:
+  added ability to set a list of related model instances on a model.
 - Fixed `issue #107 <https://github.com/jfinkels/flask-restless/issues/107>`_:
   server responds with an error code when a :http:method:`patch` or
   :http:method:`post` request specifies a field which does not exist on the
