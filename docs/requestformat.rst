@@ -444,6 +444,41 @@ Also suppose we have registered an API for these models at ``/api/person`` and
         ]
       }
 
+   To set the value of a one-to-many relationship to contain either existing or
+   new instances of the related model, a request must take the following form.
+
+   **Sample request**:
+
+   .. sourcecode:: http
+
+      PATCH /api/person/1 HTTP/1.1
+      Host: example.com
+
+      { "computers":
+          [
+            {"id": 1},
+            {"id": 3},
+            {"manufacturer": "Lenovo", "model": "ThinkPad"}
+          ]
+      }
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+
+      {
+        "id": 1,
+        "name": "Jeffrey",
+        "age": 24,
+        "computers": [
+          {"id": 1, "manufacturer": "Dell", "model": "Inspiron 9300"},
+          {"id": 3, "manufacturer": "Apple", "model": "MacBook"}
+          {"id": 4, "manufacturer": "Lenovo", "model": "ThinkPad"}
+        ]
+      }
+
 Error messages
 --------------
 
