@@ -28,6 +28,7 @@ sys.path.append(os.path.abspath('_themes'))
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.intersphinx']
 extensions += ['sphinxcontrib.httpdomain']
+extensions += ['sphinxcontrib.issuetracker']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -275,3 +276,7 @@ except ImportError, e:
     pygments_style = 'tango'
     html_theme = 'default'
     html_theme_options = {}
+
+# Configuration for issuetracker extension.
+issuetracker = 'github'
+issuetracker_project = 'jfinkels/flask-restless'
