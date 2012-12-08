@@ -1097,7 +1097,8 @@ class APITestCase(TestSupport):
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
         self.assertEqual(response.status_code, 201)
 
-        person = self.session.query(self.Person).filter_by(id=loads(response.data)['id']).first()
+        personid = loads(response.data)['id']
+        person = self.session.query(self.Person).filter_by(id=personid).first()
         self.assertEquals(person.other, 7)
 
 
