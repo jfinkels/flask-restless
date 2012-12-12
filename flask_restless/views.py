@@ -463,8 +463,8 @@ class API(ModelView):
     def __init__(self, session, model, authentication_required_for=None,
                  authentication_function=None, exclude_columns=None,
                  include_columns=None, validation_exceptions=None,
-                 results_per_page=10, post_form_preprocessor=None, *args,
-                 **kw):
+                 results_per_page=10, max_results_per_page=100,
+                 post_form_preprocessor=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -514,10 +514,15 @@ class API(ModelView):
         See :ref:`includes` for information on specifying included or excluded
         columns on fields of related models.
 
-        `results_per_page` is a positive integer which represents the number of
-        results which are returned per page. If this is anything except a
-        positive integer, pagination will be disabled (warning: this may result
-        in large responses). For more information, see :ref:`pagination`.
+        `results_per_page` is a positive integer which represents the default
+        number of results which are returned per page. Requests made by clients
+        may override this default by specifying ``results_per_page`` as a query
+        argument. `max_results_per_page` is a positive integer which represents
+        the maximum number of results which are returned per page. This is a
+        "hard" upper bound in the sense that even if a client specifies that
+        greater than `max_results_per_page` should be returned, only
+        `max_results_per_page` results will be returned. For more information,
+        see :ref:`serverpagination`.
 
         `post_form_preprocessor` is a callback function which takes
         POST input parameters loaded from JSON and enhances them with other
@@ -525,6 +530,9 @@ class API(ModelView):
         requires to store user identity and for security reasons the identity
         is not read from the post parameters (where malicious user can tamper
         with them) but from the session.
+
+        .. versionadded:: 0.9.0
+           Added the `max_results_per_page` keyword argument.
 
         .. versionadded:: 0.7
            Added the `exclude_columns` keyword argument.
@@ -553,8 +561,7 @@ class API(ModelView):
             _parse_includes(include_columns)
         self.validation_exceptions = tuple(validation_exceptions or ())
         self.results_per_page = results_per_page
-        self.paginate = (isinstance(self.results_per_page, int)
-                         and self.results_per_page > 0)
+        self.max_results_per_page = max_results_per_page
         self.post_form_preprocessor = post_form_preprocessor
 
     def _add_to_relation(self, query, relationname, toadd=None):
@@ -886,6 +893,21 @@ class API(ModelView):
                               include_relations=self.include_relations)
             return jsonify(result)
 
+    def _compute_results_per_page(self):
+        """Helper function which returns the number of results per page based
+        on the request argument ``results_per_page`` and the server
+        configuration parameters :attr:`results_per_page` and
+        :attr:`max_results_per_page`.
+
+        """
+        try:
+            results_per_page = int(request.args.get('results_per_page'))
+        except:
+            results_per_page = self.results_per_page
+        if results_per_page <= 0:
+            results_per_page = self.results_per_page
+        return min(results_per_page, self.max_results_per_page)
+
     # TODO it is ugly to have `deep` as an arg here; can we remove it?
     def _paginated(self, instances, deep):
         """Returns a paginated JSONified response from the specified list of
@@ -910,12 +932,13 @@ class API(ModelView):
 
         """
         num_results = len(instances)
-        if self.paginate:
+        results_per_page = self._compute_results_per_page()
+        if results_per_page > 0:
             # get the page number (first page is page 1)
             page_num = int(request.args.get('page', 1))
-            start = (page_num - 1) * self.results_per_page
-            end = min(num_results, start + self.results_per_page)
-            total_pages = int(math.ceil(num_results / self.results_per_page))
+            start = (page_num - 1) * results_per_page
+            end = min(num_results, start + results_per_page)
+            total_pages = int(math.ceil(num_results / results_per_page))
         else:
             page_num = 1
             start = 0

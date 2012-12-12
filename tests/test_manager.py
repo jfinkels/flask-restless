@@ -394,6 +394,20 @@ class APIManagerTest(TestSupport):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(loads(response.data)['id'], 1)
 
+    def test_max_results_per_page(self):
+        """Test for specifying the ``max_results_per_page`` keyword argument.
+
+        """
+        self.manager.create_api(self.Person, methods=['GET', 'POST'],
+                                max_results_per_page=15)
+        for n in range(100):
+            response = self.app.post('/api/person', data=dumps({}))
+            self.assertEqual(201, response.status_code)
+        response = self.app.get('/api/person?results_per_page=20')
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertEqual(15, len(data['objects']))
+
 
 class FSATest(FlaskTestBase):
     """Tests which use models defined using Flask-SQLAlchemy instead of pure

@@ -195,6 +195,7 @@ class APIManager(object):
                              authentication_function=None,
                              exclude_columns=None, include_columns=None,
                              validation_exceptions=None, results_per_page=10,
+                             max_results_per_page=100,
                              post_form_preprocessor=None):
         """Creates an returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
@@ -294,10 +295,15 @@ class APIManager(object):
         See :ref:`includes` for information on specifying included or excluded
         columns on fields of related models.
 
-        `results_per_page` is a positive integer which represents the number of
-        results which are returned per page. If this is anything except a
-        positive integer, pagination will be disabled (warning: this may result
-        in large responses). For more information, see :ref:`pagination`.
+        `results_per_page` is a positive integer which represents the default
+        number of results which are returned per page. Requests made by clients
+        may override this default by specifying ``results_per_page`` as a query
+        argument. `max_results_per_page` is a positive integer which represents
+        the maximum number of results which are returned per page. This is a
+        "hard" upper bound in the sense that even if a client specifies that
+        greater than `max_results_per_page` should be returned, only
+        `max_results_per_page` results will be returned. For more information,
+        see :ref:`serverpagination`.
 
         `post_form_preprocessor` is a callback function which takes
         POST input parameters loaded from JSON and enhances them with other
@@ -305,6 +311,9 @@ class APIManager(object):
         requires to store user identity and for security reasons the identity
         is not read from the post parameters (where malicious user can tamper
         with them) but from the session.
+
+        .. versionadded:: 0.9.0
+           Added the `max_results_per_page` keyword argument.
 
         .. versionadded:: 0.7
            Added the `exclude_columns` keyword argument.
@@ -359,7 +368,8 @@ class APIManager(object):
                                authentication_required_for,
                                authentication_function, exclude_columns,
                                include_columns, validation_exceptions,
-                               results_per_page, post_form_preprocessor)
+                               results_per_page, max_results_per_page,
+                               post_form_preprocessor)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the

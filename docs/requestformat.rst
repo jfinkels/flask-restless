@@ -545,7 +545,7 @@ the empty JSON object, ``{}``.
 
       {"count__id": 5}
 
-.. _pagination:
+.. _clientpagination:
 
 Pagination
 ----------
@@ -554,7 +554,12 @@ Responses to :http:method:`get` requests are paginated by default, with at most
 ten objects per page. To request a specific page, add a ``page=N`` query
 parameter to the request URL, where ``N`` is a positive integer (the first page
 is page one). If no ``page`` query parameter is specified, the first page will
-be returned. If ``page`` is specified but pagination has been disabled, this
+be returned.
+
+In order to specify the number of results per page, add the query parameter
+``results_per_page=N`` where ``N`` is a positive integer. If
+``results_per_page`` is greater than the maximum number of results per page as
+configured by the server (see :ref:`serverpagination`), then the query
 parameter will be ignored.
 
 In addition to the ``"objects"`` list, the response JSON object will have a

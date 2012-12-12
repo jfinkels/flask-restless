@@ -270,14 +270,29 @@ For an example using `Flask-Login <packages.python.org/Flask-Login/>`_, see the
 it online at `GitHub
 <https://github.com/jfinkels/flask-restless/tree/master/examples/authentication>`_.
 
-Pagination
-~~~~~~~~~~
+.. _serverpagination:
 
-To set the number of results returned per page, use the ``results_per_page``
-keyword arguments to the :meth:`APIManager.create_api` method. The default
-number of results per page is ten. If this is set to anything except a positive
-integer, pagination will be disabled and all results will be returned on each
-:http:method:`get` request.
+Server-side pagination
+~~~~~~~~~~~~~~~~~~~~~~
+
+To set the default number of results returned per page, use the
+``results_per_page`` keyword argument to the :meth:`APIManager.create_api`
+method. The default number of results per page is ten. The client can override
+the number of results per page by using a query parameter in its
+:http:method:`get` request; see :ref:`clientpagination`.
+
+To set the maximum number of results returned per page, use the
+``max_results_per_page`` keyword argument. Even if ``results_per_page >
+max_results_per_page``, at most ``max_results_per_page`` will be returned. The
+same is true if the client specifies ``results_per_page`` as a query argument;
+``max_results_per_page`` provides an upper bound.
+
+If ``max_results_per_page`` is set to anything but a positive integer, the
+client will be able to specify arbitrarily large page sizes. If, further,
+``results_per_page`` is set to anything but a positive integer, pagination will
+be disabled by default, and any :http:method:`get` request which does not
+specify a page size in its query parameters will get a response with all
+matching results.
 
 .. attention::
 
@@ -302,7 +317,8 @@ like this:
      ]
    }
 
-For more information on using pagination, see :ref:`pagination`.
+For more information on using pagination in the client, see
+:ref:`clientpagination`.
 
 Updating POST parameters before committing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1100,6 +1100,31 @@ class APITestCase(TestSupport):
         person = self.session.query(self.Person).filter_by(id=loads(response.data)['id']).first()
         self.assertEquals(person.other, 7)
 
+    def test_results_per_page(self):
+        """Tests that the client can correctly specify the number of results
+        appearing per page, in addition to specifying which page of results to
+        return.
+
+        """
+        self.manager.create_api(self.Person, methods=['POST', 'GET'])
+        for n in range(150):
+            response = self.app.post('/api/person', data=dumps({}))
+            self.assertEqual(201, response.status_code)
+        response = self.app.get('/api/person?results_per_page=20')
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertEqual(20, len(data['objects']))
+        # Fall back to default number of results per page on bad requests.
+        response = self.app.get('/api/person?results_per_page=-1')
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertEqual(10, len(data['objects']))
+        # Only return max number of results per page.
+        response = self.app.get('/api/person?results_per_page=120')
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertEqual(100, len(data['objects']))
+
 
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""

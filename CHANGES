@@ -13,6 +13,9 @@ Version 0.9.0-dev
 
 Not yet released.
 
+- Fixed issue #110: enable ``results_per_page`` query parameter for clients,
+  and added ``max_results_per_page`` keyword argument to
+  :meth:`APIManager.create_api`.
 - Fixed issue #109: use `sphinxcontrib-issuetracker`_ to render links to GitHub
   issues in documentation.
 - Fixed issue #105: added ability to set a list of related model instances on a
