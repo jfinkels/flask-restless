@@ -587,14 +587,18 @@ class API(ModelView):
 
         """
         submodel = _get_related_model(self.model, relationname)
+        if isinstance(toadd, dict): toadd = [toadd]
         for dictionary in toadd or []:
             if 'id' in dictionary:
                 subinst = self._get_by(dictionary['id'], submodel)
             else:
                 kw = unicode_keys_to_strings(dictionary)
                 subinst = _get_or_create(self.session, submodel, **kw)[0]
-            for instance in query:
-                getattr(instance, relationname).append(subinst)
+            try:
+                for instance in query:
+                    getattr(instance, relationname).append(subinst)
+            except AttributeError:
+                setattr(instance, relationname, subinst)
 
     def _remove_from_relation(self, query, relationname, toremove=None):
         """Removes a related model from each model specified by `query`.
