@@ -736,6 +736,40 @@ class APITestCase(TestSupport):
         self.assertEqual(loaded['computers'][0]['id'],
                          data['computers']['add']['id'])
 
+    def test_patch_add_submodels(self):
+        """Test for updating a single instance of the model by adding a list of
+        related models using the :http:method:`patch` method.
+
+        """
+        data = dict(name=u'Lincoln', age=23)
+        response = self.app.post('/api/person', data=dumps(data))
+        self.assertEqual(response.status_code, 201)
+
+        data = {'computers':
+                    {'add': [{'name': u'lixeiro', 'vendor': u'Lemote'},
+                             {'name': u'foo', 'vendor': u'bar'}]}
+                }
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        self.assertEqual(response.status_code, 200)
+        response = self.app.get('/api/person/1')
+        loaded = loads(response.data)
+
+        self.assertEqual(len(loaded['computers']), 2)
+        self.assertEqual(loaded['computers'][0]['name'], u'lixeiro')
+        self.assertEqual(loaded['computers'][0]['vendor'], u'Lemote')
+        self.assertEqual(loaded['computers'][1]['name'], u'foo')
+        self.assertEqual(loaded['computers'][1]['vendor'], u'bar')
+
+        # test that these new computers were added to the database as well
+        computer = self.session.query(self.Computer).filter_by(id=1).first()
+        self.assertIsNotNone(computer)
+        self.assertEqual(u'lixeiro', computer.name)
+        self.assertEqual(u'Lemote', computer.vendor)
+        computer = self.session.query(self.Computer).filter_by(id=2).first()
+        self.assertIsNotNone(computer)
+        self.assertEqual(u'foo', computer.name)
+        self.assertEqual(u'bar', computer.vendor)
+
     def test_patch_remove_submodel(self):
         """Test for updating a single instance of the model by removing a
         related model using the :http:method:`patch` method.
