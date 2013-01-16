@@ -474,7 +474,7 @@ class APITestCase(TestSupport):
 
         response = self.app.get('/api/person')
         self.assertEqual(len(loads(response.data)['objects']), 1)
-        
+
     def test_post_with_single_submodel(self):
         data = {'vendor': u'Apple',  'name': u'iMac',
                 'owner': {'name': u'John', 'age': 2041}}
@@ -674,19 +674,20 @@ class APITestCase(TestSupport):
         self.assertEqual(u'big', data['computers'][1]['name'])
         self.assertEqual(u'milk', data['computers'][2]['name'])
 
-    def test_patch_add_submodel(self):
-        """Test for updating a single instance of the model by adding a related
-        model using the :http:method:`patch` method.
+    def test_patch_new_single(self):
+        """Test for adding a single new object to a one-to-one relationship
+        using :http:method:`patch`.
 
         """
-        # Let's create a row as usual
-        response = self.app.post('/api/person',
-                                 data=dumps({'name': u'Lincoln', 'age': 23}))
+        # create the person
+        data = {'name': u'Lincoln', 'age': 23}
+        response = self.app.post('/api/person', data=dumps(data))
         self.assertEqual(response.status_code, 201)
 
-        data = {'computers':
-                    {'add': [{'name': u'lixeiro', 'vendor': u'Lemote'}]}
-                }
+        # patch the person with a new computer
+        data = {'computers': {'add': {'name': u'lixeiro',
+            'vendor': u'Lemote'}}}
+
         response = self.app.patch('/api/person/1', data=dumps(data))
         self.assertEqual(response.status_code, 200)
 
@@ -696,16 +697,44 @@ class APITestCase(TestSupport):
 
         self.assertEqual(len(loaded['computers']), 1)
         self.assertEqual(loaded['computers'][0]['name'],
-                         data['computers']['add'][0]['name'])
+                         data['computers']['add']['name'])
         self.assertEqual(loaded['computers'][0]['vendor'],
-                         data['computers']['add'][0]['vendor'])
+                         data['computers']['add']['vendor'])
 
         # test that this new computer was added to the database as well
         computer = self.session.query(self.Computer).filter_by(id=1).first()
         self.assertIsNotNone(computer)
-        self.assertEqual(data['computers']['add'][0]['name'], computer.name)
-        self.assertEqual(data['computers']['add'][0]['vendor'],
+        self.assertEqual(data['computers']['add']['name'], computer.name)
+        self.assertEqual(data['computers']['add']['vendor'],
                          computer.vendor)
+
+    def test_patch_existing_single(self):
+        """Test for adding a single existing object to a one-to-one relationship
+        using :http:method:`patch`.
+
+        """
+        # create the person
+        data = {'name': u'Lincoln', 'age': 23}
+        response = self.app.post('/api/person', data=dumps(data))
+        self.assertEqual(response.status_code, 201)
+
+        # create the computer
+        data = {'name': u'lixeiro', 'vendor': u'Lemote'}
+        response = self.app.post('/api/computer', data=dumps(data))
+        self.assertEqual(response.status_code, 201)
+
+        # patch the person with the created computer
+        data = {'computers': {'add': {'id': 1}}}
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        self.assertEqual(response.status_code, 200)
+
+        # Let's check it out
+        response = self.app.get('/api/person/1')
+        loaded = loads(response.data)
+
+        self.assertEqual(len(loaded['computers']), 1)
+        self.assertEqual(loaded['computers'][0]['id'],
+                         data['computers']['add']['id'])
 
     def test_patch_remove_submodel(self):
         """Test for updating a single instance of the model by removing a
