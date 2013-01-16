@@ -310,8 +310,8 @@ Also suppose we have registered an API for these models at ``/api/person`` and
    The server will respond with :http:statuscode:`400` if the request specifies
    a field which does not exist on the model.
 
-   To add an existing object to a one-to-many relationship, a request must take
-   the following form.
+   To add a list of existing object to a one-to-many relationship, a request
+   must take the following form.
 
    **Sample request**:
 
@@ -339,8 +339,8 @@ Also suppose we have registered an API for these models at ``/api/person`` and
         "computers": [ {"id": 1, "manufacturer": "Dell", "model": "Inspiron"} ]
       }
 
-   To add a new object to a one-to-many relationship, a request must take the
-   following form.
+   To add a list of new objects to a one-to-many relationship, a request must
+   take the following form.
 
    **Sample request**:
 
@@ -359,6 +359,35 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       The response does not denote that a new instance has been created for the
       ``Computer`` model.
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+
+      {
+        "id": 1,
+        "name": "Jeffrey",
+        "age": 24,
+        "computers": [ {"id": 1, "manufacturer": "Dell", "model": "Inspiron"} ]
+      }
+
+   Similarly, to add a new or existing instance of a related model to a
+   one-to-one relationship, a request must take the following form.
+
+   **Sample request**:
+
+   .. sourcecode:: http
+
+      PATCH /api/person/1 HTTP/1.1
+      Host: example.com
+
+      { "computers":
+        {
+          "add": {"id": 1}
+        }
+      }
 
    **Sample response**:
 
