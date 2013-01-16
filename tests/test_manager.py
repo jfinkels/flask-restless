@@ -436,6 +436,9 @@ class FSATest(FlaskTestBase):
             vendor = db.Column(db.Unicode)
             buy_date = db.Column(db.DateTime)
             owner_id = db.Column(db.Integer, db.ForeignKey('person.id'))
+            owner = db.relationship('Person',
+                                    backref=db.backref('computers',
+                                                       lazy='dynamic'))
 
         class Person(db.Model):
             id = db.Column(db.Integer, primary_key=True)
@@ -443,9 +446,7 @@ class FSATest(FlaskTestBase):
             age = db.Column(db.Float)
             other = db.Column(db.Float)
             birth_date = db.Column(db.Date)
-            computers = db.relationship('Computer',
-                                        backref=db.backref('owner',
-                                                           lazy='dynamic'))
+
         self.Person = Person
         self.Computer = Computer
 

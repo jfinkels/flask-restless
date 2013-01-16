@@ -13,6 +13,9 @@ Version 0.9.0-dev
 
 Not yet released.
 
+- Changes some dynamically loaded relationships used for testing and in
+  examples to be many-to-one instead of the incorrect one-to-many. Versions of
+  SQLAlchemy after 0.8.0b2 raise an exception when the latter is used.
 - Fixed issue #117: allow adding related instances on :http:method:`patch`
   requests for one-to-one relationships.
 - Fixed issue #114: fix bug where string representations of integers were

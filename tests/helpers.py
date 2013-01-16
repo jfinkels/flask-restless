@@ -97,13 +97,13 @@ class TestSupport(FlaskTestBase):
             id = Column(Integer, primary_key=True)
             name = Column(Unicode)
             ownerid = Column(Integer, ForeignKey('lazyperson.id'))
+            owner = relationship('LazyPerson',
+                                 backref=backref('computers', lazy='dynamic'))
 
         class LazyPerson(self.Base):
             __tablename__ = 'lazyperson'
             id = Column(Integer, primary_key=True)
             name = Column(Unicode)
-            computers = relationship('LazyComputer',
-                                     backref=backref('owner', lazy='dynamic'))
 
         class Planet(self.Base):
             __tablename__ = 'planet'
