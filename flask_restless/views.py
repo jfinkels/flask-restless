@@ -757,8 +757,8 @@ class API(ModelView):
         # 'message' comes from savalidation
         if hasattr(exception, 'message'):
             # TODO this works only if there is one validation error
-            left, right = exception.message.rsplit(':', 1)
             try:
+                left, right = exception.message.rsplit(':', 1)
                 left_bracket = left.rindex('[')
                 right_bracket = right.rindex(']')
             except ValueError:
