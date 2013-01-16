@@ -23,6 +23,8 @@ except:
     has_flask_sqlalchemy = False
 else:
     has_flask_sqlalchemy = True
+from sqlalchemy import Column
+from sqlalchemy import Unicode
 from sqlalchemy.exc import OperationalError
 
 from flask.ext.restless.manager import APIManager
@@ -1125,6 +1127,47 @@ class APITestCase(TestSupport):
         self.assertEqual(200, response.status_code)
         data = loads(response.data)
         self.assertEqual(100, len(data['objects']))
+
+    def test_get_string_pk(self):
+        """Tests for getting a row which has a string primary key, including
+        the possibility of a string representation of a number.
+
+        """
+        # create a model and an instance of the model
+        class StringID(self.Base):
+            __tablename__ = 'stringid'
+            name = Column(Unicode, primary_key=True)
+        self.Base.metadata.create_all()
+        self.manager.create_api(StringID)
+
+        foo = StringID(name='1')
+        self.session.add(foo)
+        self.session.commit()
+        response = self.app.get('/api/stringid/1')
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertIn('name', data)
+        self.assertEqual('1', data['name'])
+        response = self.app.get('/api/stringid/01')
+        self.assertEqual(404, response.status_code)
+
+        bar = StringID(name='01')
+        self.session.add(bar)
+        self.session.commit()
+        response = self.app.get('/api/stringid/01')
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertIn('name', data)
+        self.assertEqual('01', data['name'])
+
+        baz = StringID(name='hey')
+        self.session.add(baz)
+        self.session.commit()
+        response = self.app.get('/api/stringid/hey')
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertIn('name', data)
+        self.assertEqual('hey', data['name'])
 
 
 def load_tests(loader, standard_tests, pattern):
