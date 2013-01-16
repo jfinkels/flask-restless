@@ -13,6 +13,8 @@ Version 0.9.0-dev
 
 Not yet released.
 
+- Fixed issue #123: :http:method:`patch` requests to instances which do not
+  exist result in a :http:statuscode:`404` response.
 - Removed ability to provide a :class:`~sqlalchemy.orm.session.Session` class
   when initializing :class:`APIManager`; provide an instance of the class
   instead.
