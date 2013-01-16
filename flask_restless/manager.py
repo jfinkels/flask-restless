@@ -13,7 +13,6 @@
 """
 
 from flask import Blueprint
-from sqlalchemy.orm import scoped_session
 
 from .views import API
 from .views import FunctionAPI

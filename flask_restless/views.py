@@ -40,7 +40,6 @@ from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import ColumnProperty
 from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm import RelationshipProperty
-from sqlalchemy.orm.dynamic import AppenderMixin
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.properties import RelationshipProperty as RelProperty
@@ -587,7 +586,8 @@ class API(ModelView):
 
         """
         submodel = _get_related_model(self.model, relationname)
-        if isinstance(toadd, dict): toadd = [toadd]
+        if isinstance(toadd, dict):
+            toadd = [toadd]
         for dictionary in toadd or []:
             if 'id' in dictionary:
                 subinst = self._get_by(dictionary['id'], submodel)

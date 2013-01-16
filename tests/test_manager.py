@@ -157,7 +157,7 @@ class APIManagerTest(TestSupport):
 
     def test_include_related(self):
         """Test for specifying included columns on related models."""
-        date = datetime.date(1999,12,31)
+        date = datetime.date(1999, 12, 31)
         person = self.Person(name='Test', age=10, other=20, birth_date=date)
         computer = self.Computer(name='foo', vendor='bar', buy_date=date)
         self.session.add(person)
@@ -187,7 +187,7 @@ class APIManagerTest(TestSupport):
 
     def test_exclude_related(self):
         """Test for specifying excluded columns on related models."""
-        date = datetime.date(1999,12,31)
+        date = datetime.date(1999, 12, 31)
         person = self.Person(name='Test', age=10, other=20, birth_date=date)
         computer = self.Computer(name='foo', vendor='bar', buy_date=date)
         self.session.add(person)

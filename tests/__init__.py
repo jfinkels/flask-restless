@@ -34,6 +34,7 @@ from . import test_search
 from . import test_validation
 from . import test_views
 
+
 def suite():
     """Returns the test suite for this module."""
     result = TestSuite()

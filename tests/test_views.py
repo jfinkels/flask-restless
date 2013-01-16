@@ -717,8 +717,8 @@ class APITestCase(TestSupport):
                          computer.vendor)
 
     def test_patch_existing_single(self):
-        """Test for adding a single existing object to a one-to-one relationship
-        using :http:method:`patch`.
+        """Test for adding a single existing object to a one-to-one
+        relationship using :http:method:`patch`.
 
         """
         # create the person
