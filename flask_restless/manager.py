@@ -386,10 +386,8 @@ class APIManager(object):
                                view_func=api_view)
         # the per-instance endpoints will allow both integer and string primary
         # key accesses
-        for converter in ('int', 'string'):
-            instance_endpoint = '%s/<%s:instid>' % (collection_endpoint,
-                                                    converter)
-            blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
+        instance_endpoint = '%s/<instid>' % (collection_endpoint)
+        blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
                                    view_func=api_view)
         # if function evaluation is allowed, add an endpoint at /api/eval/...
         # which responds only to GET requests and responds with the result of
