@@ -648,6 +648,14 @@ class APITestCase(TestSupport):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(loads(resp.data)['age'], 24)
 
+    def test_patch_404(self):
+        """Tests that making a :http:method:`patch` request to an instance
+        which does not exist results in a :http:statuscode:`404`.
+
+        """
+        resp = self.app.patch('/api/person/1', data=dumps(dict(name='foo')))
+        self.assertEqual(resp.status_code, 404)
+
     def test_patch_set_submodel(self):
         """Test for assigning a list to a relation of a model using
         :http:method:`patch`.
