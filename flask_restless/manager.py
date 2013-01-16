@@ -185,8 +185,6 @@ class APIManager(object):
         """
         self.app = app
         self.session = session or getattr(flask_sqlalchemy_db, 'session', None)
-        if isinstance(self.session, type):
-            self.session = scoped_session(self.session)
 
     def create_api_blueprint(self, model, methods=READONLY_METHODS,
                              url_prefix='/api', collection_name=None,
