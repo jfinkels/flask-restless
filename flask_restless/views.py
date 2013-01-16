@@ -1163,6 +1163,8 @@ class API(ModelView):
         else:
             # create a SQLAlchemy Query which has exactly the specified row
             query = self._query_by_primary_key(instid)
+            if query.count() == 0:
+                abort(404)
             assert query.count() == 1, 'Multiple rows with same ID'
 
         relations = self._update_relations(query, data)
