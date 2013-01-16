@@ -351,7 +351,7 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       { "computers":
         {
-          "add": [ {"id": 1} ]
+          "add": [ {"manufacturer": "Dell", "model": "Inspiron"} ]
         }
       }
 
