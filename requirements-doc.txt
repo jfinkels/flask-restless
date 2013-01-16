@@ -2,3 +2,4 @@
 sphinx
 sphinxcontrib-httpdomain>=1.1.7
 sphinxcontrib-issuetracker
+requests<1.0.3
