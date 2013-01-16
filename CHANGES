@@ -13,6 +13,8 @@ Version 0.9.0-dev
 
 Not yet released.
 
+- Fixed issue #114: fix bug where string representations of integers were
+  converted to integers.
 - Fixed issue #110: enable ``results_per_page`` query parameter for clients,
   and added ``max_results_per_page`` keyword argument to
   :meth:`APIManager.create_api`.
