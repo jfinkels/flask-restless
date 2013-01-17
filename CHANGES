@@ -13,6 +13,8 @@ Version 0.9.1-dev
 
 Not yet released.
 
+- #127: added "ilike" query operator.
+
 Version 0.9.0
 -------------
 

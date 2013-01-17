@@ -57,6 +57,7 @@ OPERATORS = {
     'le': lambda f, a: f <= a,
     'lte': lambda f, a: f <= a,
     'leq': lambda f, a: f <= a,
+    'ilike': lambda f, a: f.ilike(a),
     'like': lambda f, a: f.like(a),
     'in': lambda f, a: f.in_(a),
     'not_in': lambda f, a: ~f.in_(a),
