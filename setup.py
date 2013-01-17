@@ -98,6 +98,6 @@ setup(
     test_suite='tests.suite',
     tests_require=['unittest2'],
     url='http://github.com/jfinkels/flask-restless',
-    version='0.9.1',
+    version='0.9.2-dev',
     zip_safe=False
 )
