@@ -393,6 +393,20 @@ class FunctionAPITestCase(TestSupportPrefilled):
         self.assertIn('message', loads(resp.data))
         self.assertIn('bogusfuncname', loads(resp.data)['message'])
 
+    def test_jsonp(self):
+        """Test for JSON-P callbacks."""
+        person1 = self.Person(age=10)
+        person2 = self.Person(age=20)
+        person3 = self.Person(age=35)
+        self.session.add_all([person1, person2, person3])
+        self.session.commit()
+        functions = [{'name': 'sum', 'field': 'age'}]
+        query = dumps(dict(functions=functions))
+        response = self.app.get('/api/eval/person?q=%s&callback=baz' % query)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data.startswith('baz('))
+        self.assertTrue(response.data.endswith(')'))
+
 
 class APITestCase(TestSupport):
     """Unit tests for the :class:`flask_restless.views.API` class."""
@@ -1239,6 +1253,23 @@ class APITestCase(TestSupport):
         data = loads(response.data)
         self.assertIn('name', data)
         self.assertEqual('hey', data['name'])
+
+    def test_jsonp(self):
+        """Test for JSON-P callbacks."""
+        person1 = self.Person(name='foo')
+        person2 = self.Person(name='bar')
+        self.session.add_all([person1, person2])
+        self.session.commit()
+        # test for GET
+        response = self.app.get('/api/person/1?callback=baz')
+        self.assertEqual(200, response.status_code)
+        self.assertTrue(response.data.startswith('baz('))
+        self.assertTrue(response.data.endswith(')'))
+        # test for search
+        response = self.app.get('/api/person?callback=baz')
+        self.assertEqual(200, response.status_code)
+        self.assertTrue(response.data.startswith('baz('))
+        self.assertTrue(response.data.endswith(')'))
 
 
 def load_tests(loader, standard_tests, pattern):

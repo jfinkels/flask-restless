@@ -574,6 +574,36 @@ the empty JSON object, ``{}``.
 
       {"count__id": 5}
 
+JSON-P callbacks
+----------------
+
+Add a ``callback=myfunc`` query parameter to the request URL on any
+:http:method:`get` requests (including endpoints for function evaluation) to
+have the JSON data of the response wrapped in the Javascript function
+``myfunc``. This can be used to circumvent some cross domain scripting security
+issues. For example, a request like this:
+
+.. sourcecode:: http
+
+   GET /api/person/1?callback=foo HTTP/1.1
+
+will produce a response like this:
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+
+   foo({"id": 1, "name": "Henry", "age": 10})
+
+Then in your Javascript code, write the function ``foo`` like this:
+
+.. sourcecode:: javascript
+
+   function foo(response) {
+     var name = response.name;
+     console.log(name);
+   }
+
 .. _clientpagination:
 
 Pagination

@@ -29,6 +29,7 @@ import math
 
 from dateutil.parser import parse as parse_datetime
 from flask import abort
+from flask import current_app
 from flask import json
 from flask import jsonify
 from flask import request
@@ -61,6 +62,24 @@ def jsonify_status_code(status_code, *args, **kw):
     """
     response = jsonify(*args, **kw)
     response.status_code = status_code
+    return response
+
+
+def jsonpify(*args, **kw):
+    """Passes the specified arguments directly to :func:`flask.jsonify`, then
+    wraps the response with the name of a JSON-P callback function specified as
+    a query parameter called ``'callback'`` (or does nothing if no such
+    callback function is specified in the request).
+
+    """
+    response = jsonify(*args, **kw)
+    callback = request.args.get('callback', False)
+    if callback:
+        content = '%s(%s)' % (callback, response.data)
+        # Note that this is different from the mimetype used in Flask for JSON
+        # responses; Flask uses 'application/json'.
+        mimetype = 'application/javascript'
+        return current_app.response_class(content, mimetype=mimetype)
     return response
 
 
@@ -442,7 +461,7 @@ class FunctionAPI(ModelView):
                                          data.get('functions'))
             if not result:
                 return jsonify_status_code(204)
-            return jsonify(result)
+            return jsonpify(result)
         except AttributeError, exception:
             message = 'No such field "%s"' % exception.field
             return jsonify_status_code(400, message=message)
@@ -889,13 +908,13 @@ class API(ModelView):
 
         # for security purposes, don't transmit list as top-level JSON
         if isinstance(result, list):
-            return self._paginated(result, deep)
+            result = self._paginated(result, deep)
         else:
             result = _to_dict(result, deep, exclude=self.exclude_columns,
                               exclude_relations=self.exclude_relations,
                               include=self.include_columns,
                               include_relations=self.include_relations)
-            return jsonify(result)
+        return jsonpify(result)
 
     def _compute_results_per_page(self):
         """Helper function which returns the number of results per page based
@@ -953,8 +972,8 @@ class API(ModelView):
                             include=self.include_columns,
                             include_relations=self.include_relations)
                    for x in instances[start:end]]
-        return jsonify(page=page_num, objects=objects, total_pages=total_pages,
-                       num_results=num_results)
+        return dict(page=page_num, objects=objects, total_pages=total_pages,
+                    num_results=num_results)
 
     def _check_authentication(self):
         """If the specified HTTP method requires authentication (see the
@@ -1022,7 +1041,7 @@ class API(ModelView):
                           exclude_relations=self.exclude_relations,
                           include=self.include_columns,
                           include_relations=self.include_relations)
-        return jsonify(result)
+        return jsonpify(result)
 
     def delete(self, instid):
         """Removes the specified instance of the model with the specified name
