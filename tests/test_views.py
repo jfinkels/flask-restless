@@ -1008,6 +1008,7 @@ class APITestCase(TestSupport):
         search = {'limit': 1, 'offset': 1}
         resp = self.app.search('/api/person', dumps(search))
         self.assertEqual(resp.status_code, 200)
+        self.assertEqual(1, len(loads(resp.data)['objects']))
         self.assertEqual(loads(resp.data)['objects'][0]['name'], u'Everton')
 
         # Testing multiple results when calling .one()
