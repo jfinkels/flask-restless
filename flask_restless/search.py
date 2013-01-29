@@ -353,7 +353,10 @@ class QueryBuilder(object):
 
         """
         # Adding field filters
-        query = model.query
+        if hasattr(model, 'query'):
+            query = model.query
+        else:
+            query = session.query(model)
         # may raise exception here
         filters = QueryBuilder._create_filters(model, search_params)
         for filt in filters:
