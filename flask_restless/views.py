@@ -117,7 +117,11 @@ def _get_or_create(session, model, **kwargs):
     :func:`sqlalchemy.orm.query.Query.filter_by` function.
 
     """
-    instance = session.query(model).filter_by(**kwargs).first()
+    if hasattr(model, 'query'):
+        query = model.query
+    else:
+        query = session.query(model)
+    instance = query.filter_by(**kwargs).first()
     if instance:
         return instance, False
     instance = model(**kwargs)
