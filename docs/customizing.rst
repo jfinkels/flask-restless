@@ -320,6 +320,29 @@ like this:
 For more information on using pagination in the client, see
 :ref:`clientpagination`.
 
+.. _processors:
+
+Request preprocessors and postprocessors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To apply a function to the request parameters and/or body before the request is
+processed, use the ``preprocessors`` keyword argument. To apply a function
+after the request is processed (immediately before the response is sent), use
+the ``postprocessors`` keyword argument. Both ``preprocessors`` and
+``postprocessors`` must be a dictionary which maps HTTP method name as a string
+(for example, ``'GET'`` or ``'POST'``) to a list of functions. The specified
+functions will be applied in the order given in the list.
+
+.. Preprocessors for the :http:method:`get` argument have a single argument
+
+.. note::
+
+   Since :http:method:`put` requests are handled by the :http:method:`patch`
+   handler, any preprocessors or postprocessors specified for the
+   :http:method:`put` method will be applied on :http:method:`patch` requests
+   *after* the preprocessors or postprocessors specified for the
+   :http:method:`patch` method.
+
 Updating POST parameters before committing
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

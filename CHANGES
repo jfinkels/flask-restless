@@ -13,6 +13,8 @@ Version 0.9.1-dev
 
 Not yet released.
 
+- Fixed issue #82: added request pre- and postprocessors.
+
 Version 0.9.0
 -------------
 
