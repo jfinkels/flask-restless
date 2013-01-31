@@ -26,6 +26,7 @@ from __future__ import division
 from collections import defaultdict
 import datetime
 import math
+import warnings
 
 from dateutil.parser import parse as parse_datetime
 from flask import abort
@@ -1269,7 +1270,7 @@ class API(ModelView):
         if patchmany:
             result = dict(num_modified=num_modified)
         else:
-            result = self._inst_to_dict()
+            result = self._inst_to_dict(instid)
         for postprocessor in self.postprocessors['PATCH']:
             result = postprocessor(result)
         return jsonify(result)
