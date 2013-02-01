@@ -961,7 +961,7 @@ class API(ModelView):
         try:
             for preprocessor in self.preprocessors['GET_LIST']:
                 data = preprocessor(data)
-        except StopPreprocessor, e:
+        except StopPreprocessor as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -999,7 +999,7 @@ class API(ModelView):
         try:
             for postprocessor in self.postprocessors['GET_LIST']:
                 result = postprocessor(result)
-        except StopPostprocessor, e:
+        except StopPostprocessor as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1148,7 +1148,7 @@ class API(ModelView):
         try:
             for postprocessor in self.postprocessors['GET_SINGLE']:
                 result = postprocessor(result)
-        except StopPostprocessor, e:
+        except StopPostprocessor as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1168,7 +1168,7 @@ class API(ModelView):
         try:
             for preprocessor in self.preprocessors['DELETE']:
                 preprocessor(instid)
-        except StopPreprocessor, e:
+        except StopPreprocessor as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1180,7 +1180,7 @@ class API(ModelView):
         try:
             for postprocessor in self.postprocessors['DELETE']:
                 postprocessor(is_deleted)
-        except StopPostprocessor, e:
+        except StopPostprocessor as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1223,7 +1223,7 @@ class API(ModelView):
         try:
             for preprocessor in self.preprocessors['POST']:
                 params = preprocessor(params)
-        except StopPreprocessor, e:
+        except StopPreprocessor as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1274,7 +1274,7 @@ class API(ModelView):
             try:
                 for postprocessor in self.postprocessors['POST']:
                     result = postprocessor(result)
-            except StopPostprocessor, e:
+            except StopPostprocessor as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
 
@@ -1320,7 +1320,7 @@ class API(ModelView):
                     data = preprocessor(data)
                 # create a SQLALchemy Query from the query parameter `q`
                 query = create_query(self.session, self.model, data)
-            except StopPreprocessor, e:
+            except StopPreprocessor as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
             except:
@@ -1330,7 +1330,7 @@ class API(ModelView):
             try:
                 for preprocessor in self.preprocessors['PATCH_SINGLE']:
                     preprocessor(instid, data)
-            except StopPreprocessor, e:
+            except StopPreprocessor as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
             # create a SQLAlchemy Query which has exactly the specified row
@@ -1364,7 +1364,7 @@ class API(ModelView):
             try:
                 for postprocessor in self.postprocessors['PATCH_MANY']:
                     result = postprocessor(result, query)
-            except StopPostprocessor, e:
+            except StopPostprocessor as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
         else:
@@ -1372,7 +1372,7 @@ class API(ModelView):
             try:
                 for postprocessor in self.postprocessors['PATCH_SINGLE']:
                     result = postprocessor(result)
-            except StopPostprocessor, e:
+            except StopPostprocessor as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
 
