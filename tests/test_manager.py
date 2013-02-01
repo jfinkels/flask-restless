@@ -394,34 +394,6 @@ class APIManagerTest(TestSupport):
         data = loads(response.data)
         self.assertEqual(15, len(data['objects']))
 
-    def test_pre_and_post_processors(self):
-        """Test for user-provided pre- and post-processors."""
-        foo = []
-        bar = []
-
-        def append_to_foo(dictionary):
-            print 'appending to foo'
-            print '  argument dictionary', dictionary
-            foo.append(dictionary)
-
-        def move_to_bar(dictionary):
-            print 'moving to bar'
-            print '  argument dictionary:', dictionary
-            bar.append(foo.pop())
-            return dictionary
-
-        pre = dict(GET=[append_to_foo])
-        post = dict(GET=[move_to_bar])
-        self.manager.create_api(self.Person, methods=['POST', 'GET'],
-                                preprocessors=pre, postprocessors=post)
-        response = self.app.post('/api/person', data=dumps(dict(name='baz')))
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(foo, [])
-        self.assertEqual(bar, [])
-        response = self.app.get('/api/person/1')
-        self.assertEqual(foo, [])
-        self.assertEqual(bar, [1])
-
 
 class FSATest(FlaskTestBase):
     """Tests which use models defined using Flask-SQLAlchemy instead of pure
