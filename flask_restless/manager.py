@@ -20,6 +20,7 @@ from .views import FunctionAPI
 #: The set of methods which are allowed by default when creating an API
 READONLY_METHODS = frozenset(('GET', ))
 
+
 class IllegalArgumentError(Exception):
     """This exception is raised when a calling function has provided illegal
     arguments to a function or method.
