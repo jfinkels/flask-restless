@@ -208,7 +208,8 @@ class ModelTestCase(TestSupport):
         self.session.commit()
 
         me_dict = _to_dict(me)
-        expectedfields = sorted(['birth_date', 'age', 'id', 'name', 'other'])
+        expectedfields = sorted(['birth_date', 'age', 'id', 'name',
+            'other', 'is_minor'])
         self.assertEqual(sorted(me_dict), expectedfields)
         self.assertEqual(me_dict['name'], u'Lincoln')
         self.assertEqual(me_dict['age'], 24)
@@ -256,6 +257,15 @@ class ModelTestCase(TestSupport):
         self.assertEqual(computers[0]['vendor'], u'Lemote')
         self.assertEqual(computers[0]['buy_date'], now.isoformat())
         self.assertEqual(computers[0]['owner_id'], someone.id)
+
+    def test_to_dict_hybrid_property(self):
+        """Tests that hybrid properties are correctly serialized."""
+        young = self.Person(name=u'John', age=15)
+        old = self.Person(name=u'Sally', age=25)
+        self.session.commit()
+
+        self.assertTrue(_to_dict(young)['is_minor'])
+        self.assertFalse(_to_dict(old)['is_minor'])
 
     def test_get_or_create(self):
         """Test for :meth:`flask_restless.model.Entity.get_or_create()`."""

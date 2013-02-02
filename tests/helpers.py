@@ -21,6 +21,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Unicode
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
@@ -91,6 +92,10 @@ class TestSupport(FlaskTestBase):
             other = Column(Float)
             birth_date = Column(Date)
             computers = relationship('Computer')
+
+            @hybrid_property
+            def is_minor(self):
+                return self.age < 18
 
         class LazyComputer(self.Base):
             __tablename__ = 'lazycomputer'
