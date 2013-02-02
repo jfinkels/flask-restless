@@ -16,6 +16,7 @@
 import inspect
 
 from .helpers import unicode_keys_to_strings
+from .helpers import session_query
 
 #: The mapping from operator name (as accepted by the search method) to a
 #: function which returns the SQLAlchemy expression corresponding to that
@@ -353,7 +354,7 @@ class QueryBuilder(object):
 
         """
         # Adding field filters
-        query = session.query(model)
+        query = session_query(session, model)
         # may raise exception here
         filters = QueryBuilder._create_filters(model, search_params)
         for filt in filters:

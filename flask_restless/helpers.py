@@ -43,3 +43,10 @@ def unicode_keys_to_strings(dictionary):
 
     """
     return dict((str(k), v) for k, v in dictionary.iteritems())
+
+
+def session_query(session, model):
+    if hasattr(model, 'query'):
+        return model.query
+    else:
+        return session.query(model)

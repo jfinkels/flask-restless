@@ -49,6 +49,7 @@ from sqlalchemy.sql import func
 
 from .helpers import partition
 from .helpers import unicode_keys_to_strings
+from .helpers import session_query
 from .search import create_query
 from .search import search
 
@@ -117,7 +118,8 @@ def _get_or_create(session, model, **kwargs):
     :func:`sqlalchemy.orm.query.Query.filter_by` function.
 
     """
-    instance = session.query(model).filter_by(**kwargs).first()
+    query = session_query(session, model)
+    instance = query.filter_by(**kwargs).first()
     if instance:
         return instance, False
     instance = model(**kwargs)
@@ -430,10 +432,7 @@ class ModelView(MethodView):
 
         """
         the_model = model or self.model
-        if hasattr(the_model, 'query'):
-            return the_model.query
-        else:
-            return self.session.query(the_model)
+        return session_query(self.session, the_model)
 
 
 class FunctionAPI(ModelView):
