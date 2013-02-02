@@ -15,7 +15,7 @@ from datetime import date
 from unittest2 import TestSuite
 
 from flask import json
-from flask.ext.restless.views import StopPreprocessor, StopPostprocessor
+from flask.ext.restless.views import ProcessingException
 from .helpers import TestSupport
 
 __all__ = ['ProcessorsTestCase']
@@ -45,8 +45,8 @@ class ProcessorsTest(TestSupport):
         """
 
         def check_permissions(instid):
-            raise StopPreprocessor(status_code=403,
-                                   message='Permission denied')
+            raise ProcessingException(status_code=403,
+                                      message='Permission denied')
 
         pre = dict(GET_SINGLE=[check_permissions])
         self.manager.create_api(self.Person, methods=['GET', 'POST'],
@@ -98,8 +98,8 @@ class ProcessorsTest(TestSupport):
             return params
 
         def check_permissions(params):
-            raise StopPreprocessor(status_code=403,
-                                   message='Permission denied')
+            raise ProcessingException(status_code=403,
+                                      message='Permission denied')
 
         self.manager.create_api(self.Person, methods=['POST'],
                                 url_prefix='/api/v2',
@@ -125,8 +125,8 @@ class ProcessorsTest(TestSupport):
 
         """
         def check_permissions(instid):
-            raise StopPreprocessor(status_code=403,
-                                   message='Permission denied')
+            raise ProcessingException(status_code=403,
+                                      message='Permission denied')
 
         pre = dict(DELETE=[check_permissions])
         # recreate the api at /api/v1/person
@@ -156,8 +156,8 @@ class ProcessorsTest(TestSupport):
         """
 
         def check_permissions(instid, data):
-            raise StopPreprocessor(status_code=403,
-                                   message='Permission denied')
+            raise ProcessingException(status_code=403,
+                                      message='Permission denied')
 
         pre = dict(PATCH_SINGLE=[check_permissions])
         # recreate the api at /api/v1/person

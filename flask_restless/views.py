@@ -55,33 +55,22 @@ from .search import create_query
 from .search import search
 
 
-class StopPreprocessor(Exception):
-    """
-    Causes the preprocessor chain to stop.
+class ProcessingException(Exception):
+    """Raised when a preprocessor or postprocessor encounters a problem.
 
-    If StopPreprocessor is raised, no more preprocessor functions in list are
-    called. If raised with a status_code and message, the status_code and
-    message will be escalted to http responce.
-    """
-    def __init__(self, status_code=200, message='', *args, **kwargs):
-        """
-        """
-        Exception.__init__(self, message, *args, **kwargs)
-        self.status_code = status_code
+    This exception should be raised by functions supplied in the
+    ``preprocessors`` and ``postprocessors`` keyword arguments to :class:`API`.
+    When this exception is raised, all preprocessing or postprocessing halts,
+    so any processors appearing later in the list will not be invoked.
 
+    `status_code` is the HTTP status code of the response supplied to the
+    client in the case that this exception is raised. `message` is an error
+    message describing the cause of this exception.
 
-class StopPostprocessor(Exception):
     """
-    Causes the postprocessor chain to stop.
-
-    If StopPostprocessor is raised, no more postprocessor functions in list are
-    called. If raised with a status_code and message, the status_code and
-    message will be escalted to http responce.
-    """
-    def __init__(self, status_code=200, message='', *args, **kwargs):
-        """
-        """
-        Exception.__init__(self, message, *args, **kwargs)
+    def __init__(self, message='', status_code=400, *args, **kwargs):
+        super(ProcessingException, self).__init__(*args, **kwargs)
+        self.message = message
         self.status_code = status_code
 
 
@@ -575,9 +564,9 @@ class API(ModelView):
         `max_results_per_page` results will be returned. For more information,
         see :ref:`serverpagination`.
 
-        .. deprecated:: 0.8
+        .. deprecated:: 0.9.2
            The `post_form_preprocessor` keyword argument is deprecated in
-           version 0.8. It will be removed in version 1.0. Replace code that
+           version 0.9.2. It will be removed in version 1.0. Replace code that
            looks like this::
 
                manager.create_api(Person, post_form_preprocessor=foo)
@@ -962,7 +951,7 @@ class API(ModelView):
         try:
             for preprocessor in self.preprocessors['GET_LIST']:
                 data = preprocessor(data)
-        except StopPreprocessor as e:
+        except ProcessingException as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1000,7 +989,7 @@ class API(ModelView):
         try:
             for postprocessor in self.postprocessors['GET_LIST']:
                 result = postprocessor(result)
-        except StopPostprocessor as e:
+        except ProcessingException as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1140,7 +1129,7 @@ class API(ModelView):
         try:
             for preprocessor in self.preprocessors['GET_SINGLE']:
                 preprocessor(instid)
-        except StopPreprocessor as e:
+        except ProcessingException as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1149,7 +1138,7 @@ class API(ModelView):
         try:
             for postprocessor in self.postprocessors['GET_SINGLE']:
                 result = postprocessor(result)
-        except StopPostprocessor as e:
+        except ProcessingException as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1169,7 +1158,7 @@ class API(ModelView):
         try:
             for preprocessor in self.preprocessors['DELETE']:
                 preprocessor(instid)
-        except StopPreprocessor as e:
+        except ProcessingException as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1181,7 +1170,7 @@ class API(ModelView):
         try:
             for postprocessor in self.postprocessors['DELETE']:
                 postprocessor(is_deleted)
-        except StopPostprocessor as e:
+        except ProcessingException as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1224,7 +1213,7 @@ class API(ModelView):
         try:
             for preprocessor in self.preprocessors['POST']:
                 params = preprocessor(params)
-        except StopPreprocessor as e:
+        except ProcessingException as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1275,7 +1264,7 @@ class API(ModelView):
             try:
                 for postprocessor in self.postprocessors['POST']:
                     result = postprocessor(result)
-            except StopPostprocessor as e:
+            except ProcessingException as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
 
@@ -1321,7 +1310,7 @@ class API(ModelView):
                     data = preprocessor(data)
                 # create a SQLALchemy Query from the query parameter `q`
                 query = create_query(self.session, self.model, data)
-            except StopPreprocessor as e:
+            except ProcessingException as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
             except:
@@ -1331,7 +1320,7 @@ class API(ModelView):
             try:
                 for preprocessor in self.preprocessors['PATCH_SINGLE']:
                     preprocessor(instid, data)
-            except StopPreprocessor as e:
+            except ProcessingException as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
             # create a SQLAlchemy Query which has exactly the specified row
@@ -1365,7 +1354,7 @@ class API(ModelView):
             try:
                 for postprocessor in self.postprocessors['PATCH_MANY']:
                     result = postprocessor(result, query)
-            except StopPostprocessor as e:
+            except ProcessingException as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
         else:
@@ -1373,7 +1362,7 @@ class API(ModelView):
             try:
                 for postprocessor in self.postprocessors['PATCH_SINGLE']:
                     result = postprocessor(result)
-            except StopPostprocessor as e:
+            except ProcessingException as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
 

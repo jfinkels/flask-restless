@@ -303,9 +303,9 @@ class APIManager(object):
         `max_results_per_page` results will be returned. For more information,
         see :ref:`serverpagination`.
 
-        .. deprecated:: 0.8
+        .. deprecated:: 0.9.2
            The `post_form_preprocessor` keyword argument is deprecated in
-           version 0.8. It will be removed in version 1.0. Replace code that
+           version 0.9.2. It will be removed in version 1.0. Replace code that
            looks like this::
 
                manager.create_api(Person, post_form_preprocessor=foo)
