@@ -109,7 +109,7 @@ keyword argument of the :meth:`APIManager.create_api` method to be ``True``,
 :http:patch:`/api/person` requests will patch the provided attributes on all
 instances of ``Person``::
 
-    apimanager.create_api(Person, allow_patch_many=True)
+    apimanager.create_api(Person, methods=['PATCH'], allow_patch_many=True)
 
 .. _validation:
 
