@@ -333,7 +333,7 @@ class APIManager(object):
         other code. For more information on preprocessors and postprocessors,
         see :ref:`processors`.
 
-        .. versionadded:: 0.9.0
+        .. versionadded:: 0.9.2
            Added the `preprocessors` and `postprocessors` keyword arguments.
 
         .. versionadded:: 0.9.0
