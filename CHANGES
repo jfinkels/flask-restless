@@ -13,6 +13,7 @@ Version 0.9.3-dev
 
 Not yet released.
 
+- Fixes incompatibility with Python 2.5 try/except syntax.
 - #116: handle requests which raise :exc:`~sqlalchemy.exc.IntegrityError`.
 
 Version 0.9.2
