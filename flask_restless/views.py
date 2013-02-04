@@ -56,6 +56,36 @@ from .search import create_query
 from .search import search
 
 
+class StopPreprocessor(Exception):
+    """
+    Causes the preprocessor chain to stop.
+
+    If StopPreprocessor is raised, no more preprocessor functions in list are
+    called. If raised with a status_code and message, the status_code and
+    message will be escalted to http responce.
+    """
+    def __init__(self, status_code=200, message='', *args, **kwargs):
+        """
+        """
+        Exception.__init__(self, message, *args, **kwargs)
+        self.status_code = status_code
+
+
+class StopPostprocessor(Exception):
+    """
+    Causes the postprocessor chain to stop.
+
+    If StopPostprocessor is raised, no more postprocessor functions in list are
+    called. If raised with a status_code and message, the status_code and
+    message will be escalted to http responce.
+    """
+    def __init__(self, status_code=200, message='', *args, **kwargs):
+        """
+        """
+        Exception.__init__(self, message, *args, **kwargs)
+        self.status_code = status_code
+
+
 def jsonify_status_code(status_code, *args, **kw):
     """Returns a jsonified response with the specified HTTP status code.
 
@@ -928,6 +958,13 @@ class API(ModelView):
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
+        try:
+            for preprocessor in self.preprocessors['GET_LIST']:
+                data = preprocessor(data)
+        except StopPreprocessor, e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
+
         # perform a filtered search
         try:
             result = search(self.session, self.model, data)
@@ -958,6 +995,14 @@ class API(ModelView):
                               exclude_relations=self.exclude_relations,
                               include=self.include_columns,
                               include_relations=self.include_relations)
+
+        try:
+            for postprocessor in self.postprocessors['GET_LIST']:
+                result = postprocessor(result)
+        except StopPostprocessor, e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
+
         return jsonpify(result)
 
     def _compute_results_per_page(self):
@@ -1052,6 +1097,9 @@ class API(ModelView):
         return self._query_by_primary_key(primary_key_value, model).first()
 
     def _inst_to_dict(self, instid):
+        """FIXME
+
+        """
         inst = self._get_by(instid)
         if inst is None:
             abort(404)
@@ -1085,13 +1133,25 @@ class API(ModelView):
 
         """
         self._check_authentication()
-        for preprocessor in self.preprocessors['GET']:
-            preprocessor()
+
         if instid is None:
             return self._search()
+        try:
+            for preprocessor in self.preprocessors['GET_SINGLE']:
+                preprocessor(instid)
+        except StopPreprocessor as e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
+
         result = self._inst_to_dict(instid)
-        for postprocessor in self.postprocessors['GET']:
-            result = postprocessor(result)
+
+        try:
+            for postprocessor in self.postprocessors['GET_SINGLE']:
+                result = postprocessor(result)
+        except StopPostprocessor, e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
+
         return jsonpify(result)
 
     def delete(self, instid):
@@ -1103,15 +1163,27 @@ class API(ModelView):
         whether an object was deleted.
 
         """
+        is_deleted = False
         self._check_authentication()
-        for preprocessor in self.preprocessors['DELETE']:
-            preprocessor()
+        try:
+            for preprocessor in self.preprocessors['DELETE']:
+                preprocessor(instid)
+        except StopPreprocessor, e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
+
         inst = self._get_by(instid)
         if inst is not None:
             self.session.delete(inst)
             self.session.commit()
-        for postprocessor in self.postprocessors['DELETE']:
-            postprocessor()
+            is_deleted = True
+        try:
+            for postprocessor in self.postprocessors['DELETE']:
+                postprocessor(is_deleted)
+        except StopPostprocessor, e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
+
         return jsonify_status_code(204)
 
     def post(self):
@@ -1146,9 +1218,14 @@ class API(ModelView):
             if not hasattr(self.model, field):
                 msg = "Model does not have field '%s'" % field
                 return jsonify_status_code(400, message=msg)
+
         # apply any preprocessors to the POST arguments
-        for preprocessor in self.preprocessors['POST']:
-            params = preprocessor(params)
+        try:
+            for preprocessor in self.preprocessors['POST']:
+                params = preprocessor(params)
+        except StopPreprocessor, e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
 
         # Getting the list of relations that will be added later
         cols = _get_columns(self.model)
@@ -1193,8 +1270,14 @@ class API(ModelView):
             pk_name = str(_primary_key_name(instance))
             pk_value = getattr(instance, pk_name)
             result = {pk_name: pk_value}
-            for postprocessor in self.postprocessors['POST']:
-                result = postprocessor(result)
+
+            try:
+                for postprocessor in self.postprocessors['POST']:
+                    result = postprocessor(result)
+            except StopPostprocessor, e:
+                return jsonify_status_code(status_code=e.status_code,
+                                           message=e.message)
+
             return jsonify_status_code(201, **result)
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
@@ -1228,19 +1311,28 @@ class API(ModelView):
             if not hasattr(self.model, field):
                 msg = "Model does not have field '%s'" % field
                 return jsonify_status_code(400, message=msg)
-        for preprocessor in self.preprocessors['PATCH']:
-            data = preprocessor(data)
 
         # Check if the request is to patch many instances of the current model.
         patchmany = instid is None
         if patchmany:
             try:
+                for preprocessor in self.preprocessors['PATCH_MANY']:
+                    data = preprocessor(data)
                 # create a SQLALchemy Query from the query parameter `q`
                 query = create_query(self.session, self.model, data)
+            except StopPreprocessor, e:
+                return jsonify_status_code(status_code=e.status_code,
+                                           message=e.message)
             except:
                 return jsonify_status_code(400,
                                            message='Unable to construct query')
         else:
+            try:
+                for preprocessor in self.preprocessors['PATCH_SINGLE']:
+                    preprocessor(instid, data)
+            except StopPreprocessor, e:
+                return jsonify_status_code(status_code=e.status_code,
+                                           message=e.message)
             # create a SQLAlchemy Query which has exactly the specified row
             query = self._query_by_primary_key(instid)
             if query.count() == 0:
@@ -1269,10 +1361,21 @@ class API(ModelView):
 
         if patchmany:
             result = dict(num_modified=num_modified)
+            try:
+                for postprocessor in self.postprocessors['PATCH_MANY']:
+                    result = postprocessor(result, query)
+            except StopPostprocessor, e:
+                return jsonify_status_code(status_code=e.status_code,
+                                           message=e.message)
         else:
             result = self._inst_to_dict(instid)
-        for postprocessor in self.postprocessors['PATCH']:
-            result = postprocessor(result)
+            try:
+                for postprocessor in self.postprocessors['PATCH_SINGLE']:
+                    result = postprocessor(result)
+            except StopPostprocessor, e:
+                return jsonify_status_code(status_code=e.status_code,
+                                           message=e.message)
+
         return jsonify(result)
 
     def put(self, instid):
