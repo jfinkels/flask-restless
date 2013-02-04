@@ -488,6 +488,19 @@ class APITestCase(TestSupport):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(loads(response.data)['inception_time'], None)
 
+    def test_post_empty_date(self):
+        """Tests that attempting to assign an empty date string to a date field
+        actually assigns a value of ``None``.
+
+        """
+        self.manager.create_api(self.Star, methods=['GET', 'POST'])
+        data = dict(inception_time='')
+        response = self.app.post('/api/star', data=dumps(data))
+        self.assertEqual(response.status_code, 201)
+        response = self.app.get('/api/star/1')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(loads(response.data)['inception_time'], None)
+
     def test_post_with_submodels(self):
         """Tests the creation of a model with a related field."""
         data = {'name': u'John', 'age': 2041,
