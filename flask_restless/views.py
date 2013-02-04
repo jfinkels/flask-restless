@@ -1081,7 +1081,14 @@ class API(ModelView):
         return self._query_by_primary_key(primary_key_value, model).first()
 
     def _inst_to_dict(self, instid):
-        """FIXME
+        """Returns the dictionary representation of the instance specified by
+        `instid`.
+
+        If no such instance of the model exists, this method aborts with a
+        :http:statuscode:`404`.
+
+        This method respect the include and exclude columns specified in the
+        constructor of this class.
 
         """
         inst = self._get_by(instid)
