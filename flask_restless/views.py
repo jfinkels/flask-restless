@@ -1134,7 +1134,7 @@ class API(ModelView):
             for postprocessor in self.postprocessors['GET_SINGLE']:
                 result = postprocessor(result)
             return jsonpify(result)
-        except ProcessingException as e:
+        except ProcessingException, e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1152,7 +1152,7 @@ class API(ModelView):
         try:
             for preprocessor in self.preprocessors['DELETE']:
                 preprocessor(instid)
-        except ProcessingException as e:
+        except ProcessingException, e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1164,7 +1164,7 @@ class API(ModelView):
         try:
             for postprocessor in self.postprocessors['DELETE']:
                 postprocessor(is_deleted)
-        except ProcessingException as e:
+        except ProcessingException, e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1207,7 +1207,7 @@ class API(ModelView):
         try:
             for preprocessor in self.preprocessors['POST']:
                 params = preprocessor(params)
-        except ProcessingException as e:
+        except ProcessingException, e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
@@ -1258,7 +1258,7 @@ class API(ModelView):
             try:
                 for postprocessor in self.postprocessors['POST']:
                     result = postprocessor(result)
-            except ProcessingException as e:
+            except ProcessingException, e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
 
@@ -1309,7 +1309,7 @@ class API(ModelView):
                     search_params, data = preprocessor(search_params, data)
                 # create a SQLALchemy Query from the query parameter `q`
                 query = create_query(self.session, self.model, search_params)
-            except ProcessingException as e:
+            except ProcessingException, e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
             except:
@@ -1319,7 +1319,7 @@ class API(ModelView):
             try:
                 for preprocessor in self.preprocessors['PATCH_SINGLE']:
                     data = preprocessor(instid, data)
-            except ProcessingException as e:
+            except ProcessingException, e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
             # create a SQLAlchemy Query which has exactly the specified row
@@ -1353,7 +1353,7 @@ class API(ModelView):
             try:
                 for postprocessor in self.postprocessors['PATCH_MANY']:
                     result = postprocessor(query, result)
-            except ProcessingException as e:
+            except ProcessingException, e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
         else:
@@ -1361,7 +1361,7 @@ class API(ModelView):
             try:
                 for postprocessor in self.postprocessors['PATCH_SINGLE']:
                     result = postprocessor(result)
-            except ProcessingException as e:
+            except ProcessingException, e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
 
