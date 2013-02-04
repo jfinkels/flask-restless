@@ -947,12 +947,9 @@ class API(ModelView):
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
-        try:
-            for preprocessor in self.preprocessors['GET_LIST']:
-                data = preprocessor(data)
-        except ProcessingException as e:
-            return jsonify_status_code(status_code=e.status_code,
-                                       message=e.message)
+        # exceptions are caught by the get() method, which calls this one
+        for preprocessor in self.preprocessors['GET_MANY']:
+            data = preprocessor(data)
 
         # perform a filtered search
         try:
@@ -985,12 +982,8 @@ class API(ModelView):
                               include=self.include_columns,
                               include_relations=self.include_relations)
 
-        try:
-            for postprocessor in self.postprocessors['GET_LIST']:
-                result = postprocessor(result)
-        except ProcessingException as e:
-            return jsonify_status_code(status_code=e.status_code,
-                                       message=e.message)
+        for postprocessor in self.postprocessors['GET_MANY']:
+            result = postprocessor(result)
 
         return jsonpify(result)
 
@@ -1123,25 +1116,18 @@ class API(ModelView):
         """
         self._check_authentication()
 
-        if instid is None:
-            return self._search()
         try:
+            if instid is None:
+                return self._search()
             for preprocessor in self.preprocessors['GET_SINGLE']:
                 preprocessor(instid)
-        except ProcessingException as e:
-            return jsonify_status_code(status_code=e.status_code,
-                                       message=e.message)
-
-        result = self._inst_to_dict(instid)
-
-        try:
+            result = self._inst_to_dict(instid)
             for postprocessor in self.postprocessors['GET_SINGLE']:
                 result = postprocessor(result)
+            return jsonpify(result)
         except ProcessingException as e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
-
-        return jsonpify(result)
 
     def delete(self, instid):
         """Removes the specified instance of the model with the specified name
@@ -1294,6 +1280,9 @@ class API(ModelView):
         except (TypeError, ValueError, OverflowError):
             # this also happens when request.data is empty
             return jsonify_status_code(400, message='Unable to decode data')
+        # Get the search parameters; all other keys in the `data` dictionary
+        # indicate a change in the model's field.
+        search_params = data.pop('q', {})
         # Check for any request parameter naming a column which does not exist
         # on the current model.
         for field in data:
@@ -1306,9 +1295,9 @@ class API(ModelView):
         if patchmany:
             try:
                 for preprocessor in self.preprocessors['PATCH_MANY']:
-                    data = preprocessor(data)
+                    search_params, data = preprocessor(search_params, data)
                 # create a SQLALchemy Query from the query parameter `q`
-                query = create_query(self.session, self.model, data)
+                query = create_query(self.session, self.model, search_params)
             except ProcessingException as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
@@ -1318,7 +1307,7 @@ class API(ModelView):
         else:
             try:
                 for preprocessor in self.preprocessors['PATCH_SINGLE']:
-                    preprocessor(instid, data)
+                    data = preprocessor(instid, data)
             except ProcessingException as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
@@ -1330,19 +1319,19 @@ class API(ModelView):
 
         relations = self._update_relations(query, data)
         field_list = frozenset(data) ^ relations
-        params = dict((field, data[field]) for field in field_list)
+        data = dict((field, data[field]) for field in field_list)
 
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
-        params = self._strings_to_dates(params)
+        data = self._strings_to_dates(data)
 
         try:
             # Let's update all instances present in the query
             num_modified = 0
-            if params:
+            if data:
                 for item in query.all():
-                    for param, value in params.iteritems():
-                        setattr(item, param, value)
+                    for field, value in data.iteritems():
+                        setattr(item, field, value)
                     num_modified += 1
             self.session.commit()
         except self.validation_exceptions, exception:
@@ -1352,7 +1341,7 @@ class API(ModelView):
             result = dict(num_modified=num_modified)
             try:
                 for postprocessor in self.postprocessors['PATCH_MANY']:
-                    result = postprocessor(result, query)
+                    result = postprocessor(query, result)
             except ProcessingException as e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)

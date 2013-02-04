@@ -56,7 +56,7 @@ class ProcessorsTest(TestSupport):
         response = self.app.get('/api/person/1')
         self.assertEqual(response.status_code, 403)
 
-    def test_get_list_preprocessor(self):
+    def test_get_many_preprocessor(self):
         def check_permissions(params):
             filt = {u'name': u'id', u'op': u'in', u'val': [1, 3]}
             if 'filters' not in params:
@@ -65,7 +65,7 @@ class ProcessorsTest(TestSupport):
                 params['filters'].append(filt)
             return params
 
-        pre = dict(GET_LIST=[check_permissions])
+        pre = dict(GET_MANY=[check_permissions])
         self.manager.create_api(self.Person, methods=['GET', 'POST'],
                                 preprocessors=pre)
 
@@ -216,11 +216,11 @@ class ProcessorsTest(TestSupport):
 
         """
 
-        def check_permissions_and_update_data(params):
-            params['other'] = 27
-            return params
+        def update_data(params, data):
+            data['other'] = 27
+            return params, data
 
-        pre = dict(PATCH_MANY=[check_permissions_and_update_data])
+        pre = dict(PATCH_MANY=[update_data])
         # recreate the api at /api/v1/person
         self.manager.create_api(self.Person, methods=['GET', 'POST', 'PATCH'],
                                 allow_patch_many=True,
