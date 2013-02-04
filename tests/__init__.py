@@ -33,6 +33,7 @@ from . import test_manager
 from . import test_search
 from . import test_validation
 from . import test_views
+from . import test_processors
 
 
 def suite():
@@ -44,4 +45,5 @@ def suite():
     result.addTest(loader.loadTestsFromModule(test_search))
     result.addTest(loader.loadTestsFromModule(test_validation))
     result.addTest(loader.loadTestsFromModule(test_views))
+    result.addTest(loader.loadTestsFromModule(test_processors))
     return result

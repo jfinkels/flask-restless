@@ -26,6 +26,7 @@ from __future__ import division
 from collections import defaultdict
 import datetime
 import math
+import warnings
 
 from dateutil.parser import parse as parse_datetime
 from flask import abort
@@ -50,8 +51,30 @@ from sqlalchemy.sql import func
 from .helpers import partition
 from .helpers import unicode_keys_to_strings
 from .helpers import session_query
+from .helpers import upper_keys
 from .search import create_query
 from .search import search
+
+
+class ProcessingException(Exception):
+    """Raised when a preprocessor or postprocessor encounters a problem.
+
+    This exception should be raised by functions supplied in the
+    ``preprocessors`` and ``postprocessors`` keyword arguments to
+    :class:`APIManager.create_api`. When this exception is raised, all
+    preprocessing or postprocessing halts, so any processors appearing later in
+    the list will not be invoked.
+
+    `status_code` is the HTTP status code of the response supplied to the
+    client in the case that this exception is raised. `message` is an error
+    message describing the cause of this exception. This message will appear in
+    the JSON object in the body of the response to the client.
+
+    """
+    def __init__(self, message='', status_code=400, *args, **kwargs):
+        super(ProcessingException, self).__init__(*args, **kwargs)
+        self.message = message
+        self.status_code = status_code
 
 
 def jsonify_status_code(status_code, *args, **kw):
@@ -481,7 +504,8 @@ class API(ModelView):
                  authentication_function=None, exclude_columns=None,
                  include_columns=None, validation_exceptions=None,
                  results_per_page=10, max_results_per_page=100,
-                 post_form_preprocessor=None, *args, **kw):
+                 post_form_preprocessor=None, preprocessors=None,
+                 postprocessors=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -541,12 +565,38 @@ class API(ModelView):
         `max_results_per_page` results will be returned. For more information,
         see :ref:`serverpagination`.
 
+        .. deprecated:: 0.9.2
+           The `post_form_preprocessor` keyword argument is deprecated in
+           version 0.9.2. It will be removed in version 1.0. Replace code that
+           looks like this::
+
+               manager.create_api(Person, post_form_preprocessor=foo)
+
+           with code that looks like this::
+
+               manager.create_api(Person, preprocessors=dict(POST=[foo]))
+
+           See :ref:`processors` for more information and examples.
+
         `post_form_preprocessor` is a callback function which takes
         POST input parameters loaded from JSON and enhances them with other
         key/value pairs. The example use of this is when your ``model``
         requires to store user identity and for security reasons the identity
         is not read from the post parameters (where malicious user can tamper
         with them) but from the session.
+
+        `preprocessors` is a dictionary mapping strings to lists of
+        functions. Each key is the name of an HTTP method (for example,
+        ``'GET'`` or ``'POST'``). Each value is a list of functions, each of
+        which will be called before any other code is executed when this API
+        receives the corresponding HTTP request. The functions will be called
+        in the order given here. The `postprocessors` keyword argument is
+        essentially the same, except the given functions are called after all
+        other code. For more information on preprocessors and postprocessors,
+        see :ref:`processors`.
+
+        .. versionadded:: 0.9.2
+           Added the `preprocessors` and `postprocessors` keyword arguments.
 
         .. versionadded:: 0.9.0
            Added the `max_results_per_page` keyword argument.
@@ -579,7 +629,23 @@ class API(ModelView):
         self.validation_exceptions = tuple(validation_exceptions or ())
         self.results_per_page = results_per_page
         self.max_results_per_page = max_results_per_page
-        self.post_form_preprocessor = post_form_preprocessor
+        self.postprocessors = defaultdict(list)
+        self.preprocessors = defaultdict(list)
+        self.postprocessors.update(upper_keys(postprocessors or {}))
+        self.preprocessors.update(upper_keys(preprocessors or {}))
+        # move post_form_preprocessor to preprocessors['POST'] for backward
+        # compatibility
+        if post_form_preprocessor:
+            msg = ('post_form_preprocessor is deprecated and will be removed'
+                   ' in version 1.0; use preprocessors instead.')
+            warnings.warn(msg, DeprecationWarning)
+            self.preprocessors['POST'].append(post_form_preprocessor)
+        # postprocessors for PUT are applied to PATCH because PUT is just a
+        # redirect to PATCH
+        for postprocessor in self.postprocessors['PUT']:
+            self.postprocessors['PATCH'].append(postprocessor)
+        for preprocessor in self.preprocessors['PUT']:
+            self.preprocessors['PATCH'].append(preprocessor)
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
@@ -883,6 +949,10 @@ class API(ModelView):
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
+        # exceptions are caught by the get() method, which calls this one
+        for preprocessor in self.preprocessors['GET_MANY']:
+            data = preprocessor(data)
+
         # perform a filtered search
         try:
             result = search(self.session, self.model, data)
@@ -913,6 +983,10 @@ class API(ModelView):
                               exclude_relations=self.exclude_relations,
                               include=self.include_columns,
                               include_relations=self.include_relations)
+
+        for postprocessor in self.postprocessors['GET_MANY']:
+            result = postprocessor(result)
+
         return jsonpify(result)
 
     def _compute_results_per_page(self):
@@ -1006,6 +1080,35 @@ class API(ModelView):
         """
         return self._query_by_primary_key(primary_key_value, model).first()
 
+    def _inst_to_dict(self, instid):
+        """Returns the dictionary representation of the instance specified by
+        `instid`.
+
+        If no such instance of the model exists, this method aborts with a
+        :http:statuscode:`404`.
+
+        This method respect the include and exclude columns specified in the
+        constructor of this class.
+
+        """
+        inst = self._get_by(instid)
+        if inst is None:
+            abort(404)
+        # create a placeholder for the relations of the returned models
+        relations = frozenset(_get_relations(self.model))
+        # do not follow relations that will not be included in the response
+        if self.include_columns is not None:
+            cols = frozenset(self.include_columns)
+            rels = frozenset(self.include_relations)
+            relations &= (cols | rels)
+        elif self.exclude_columns is not None:
+            relations -= frozenset(self.exclude_columns)
+        deep = dict((r, {}) for r in relations)
+        return _to_dict(inst, deep, exclude=self.exclude_columns,
+                        exclude_relations=self.exclude_relations,
+                        include=self.include_columns,
+                        include_relations=self.include_relations)
+
     def get(self, instid):
         """Returns a JSON representation of an instance of model with the
         specified name.
@@ -1021,26 +1124,19 @@ class API(ModelView):
 
         """
         self._check_authentication()
-        if instid is None:
-            return self._search()
-        inst = self._get_by(instid)
-        if inst is None:
-            abort(404)
-        # create a placeholder for the relations of the returned models
-        relations = frozenset(_get_relations(self.model))
-        # do not follow relations that will not be included in the response
-        if self.include_columns is not None:
-            cols = frozenset(self.include_columns)
-            rels = frozenset(self.include_relations)
-            relations &= (cols | rels)
-        elif self.exclude_columns is not None:
-            relations -= frozenset(self.exclude_columns)
-        deep = dict((r, {}) for r in relations)
-        result = _to_dict(inst, deep, exclude=self.exclude_columns,
-                          exclude_relations=self.exclude_relations,
-                          include=self.include_columns,
-                          include_relations=self.include_relations)
-        return jsonpify(result)
+
+        try:
+            if instid is None:
+                return self._search()
+            for preprocessor in self.preprocessors['GET_SINGLE']:
+                preprocessor(instid)
+            result = self._inst_to_dict(instid)
+            for postprocessor in self.postprocessors['GET_SINGLE']:
+                result = postprocessor(result)
+            return jsonpify(result)
+        except ProcessingException as e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
 
     def delete(self, instid):
         """Removes the specified instance of the model with the specified name
@@ -1051,11 +1147,27 @@ class API(ModelView):
         whether an object was deleted.
 
         """
+        is_deleted = False
         self._check_authentication()
+        try:
+            for preprocessor in self.preprocessors['DELETE']:
+                preprocessor(instid)
+        except ProcessingException as e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
+
         inst = self._get_by(instid)
         if inst is not None:
             self.session.delete(inst)
             self.session.commit()
+            is_deleted = True
+        try:
+            for postprocessor in self.postprocessors['DELETE']:
+                postprocessor(is_deleted)
+        except ProcessingException as e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
+
         return jsonify_status_code(204)
 
     def post(self):
@@ -1090,9 +1202,14 @@ class API(ModelView):
             if not hasattr(self.model, field):
                 msg = "Model does not have field '%s'" % field
                 return jsonify_status_code(400, message=msg)
-        # If post_form_preprocessor is specified, call it
-        if self.post_form_preprocessor:
-            params = self.post_form_preprocessor(params)
+
+        # apply any preprocessors to the POST arguments
+        try:
+            for preprocessor in self.preprocessors['POST']:
+                params = preprocessor(params)
+        except ProcessingException as e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
 
         # Getting the list of relations that will be added later
         cols = _get_columns(self.model)
@@ -1136,7 +1253,16 @@ class API(ModelView):
 
             pk_name = str(_primary_key_name(instance))
             pk_value = getattr(instance, pk_name)
-            return jsonify_status_code(201, **{pk_name: pk_value})
+            result = {pk_name: pk_value}
+
+            try:
+                for postprocessor in self.postprocessors['POST']:
+                    result = postprocessor(result)
+            except ProcessingException as e:
+                return jsonify_status_code(status_code=e.status_code,
+                                           message=e.message)
+
+            return jsonify_status_code(201, **result)
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
 
@@ -1163,22 +1289,37 @@ class API(ModelView):
         except (TypeError, ValueError, OverflowError):
             # this also happens when request.data is empty
             return jsonify_status_code(400, message='Unable to decode data')
+        # Get the search parameters; all other keys in the `data` dictionary
+        # indicate a change in the model's field.
+        search_params = data.pop('q', {})
         # Check for any request parameter naming a column which does not exist
         # on the current model.
         for field in data:
             if not hasattr(self.model, field):
                 msg = "Model does not have field '%s'" % field
                 return jsonify_status_code(400, message=msg)
+
         # Check if the request is to patch many instances of the current model.
         patchmany = instid is None
         if patchmany:
             try:
+                for preprocessor in self.preprocessors['PATCH_MANY']:
+                    search_params, data = preprocessor(search_params, data)
                 # create a SQLALchemy Query from the query parameter `q`
-                query = create_query(self.session, self.model, data)
+                query = create_query(self.session, self.model, search_params)
+            except ProcessingException as e:
+                return jsonify_status_code(status_code=e.status_code,
+                                           message=e.message)
             except:
                 return jsonify_status_code(400,
                                            message='Unable to construct query')
         else:
+            try:
+                for preprocessor in self.preprocessors['PATCH_SINGLE']:
+                    data = preprocessor(instid, data)
+            except ProcessingException as e:
+                return jsonify_status_code(status_code=e.status_code,
+                                           message=e.message)
             # create a SQLAlchemy Query which has exactly the specified row
             query = self._query_by_primary_key(instid)
             if query.count() == 0:
@@ -1187,28 +1328,42 @@ class API(ModelView):
 
         relations = self._update_relations(query, data)
         field_list = frozenset(data) ^ relations
-        params = dict((field, data[field]) for field in field_list)
+        data = dict((field, data[field]) for field in field_list)
 
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
-        params = self._strings_to_dates(params)
+        data = self._strings_to_dates(data)
 
         try:
             # Let's update all instances present in the query
             num_modified = 0
-            if params:
+            if data:
                 for item in query.all():
-                    for param, value in params.iteritems():
-                        setattr(item, param, value)
+                    for field, value in data.iteritems():
+                        setattr(item, field, value)
                     num_modified += 1
             self.session.commit()
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
 
         if patchmany:
-            return jsonify(num_modified=num_modified)
+            result = dict(num_modified=num_modified)
+            try:
+                for postprocessor in self.postprocessors['PATCH_MANY']:
+                    result = postprocessor(query, result)
+            except ProcessingException as e:
+                return jsonify_status_code(status_code=e.status_code,
+                                           message=e.message)
         else:
-            return self.get(instid)
+            result = self._inst_to_dict(instid)
+            try:
+                for postprocessor in self.postprocessors['PATCH_SINGLE']:
+                    result = postprocessor(result)
+            except ProcessingException as e:
+                return jsonify_status_code(status_code=e.status_code,
+                                           message=e.message)
+
+        return jsonify(result)
 
     def put(self, instid):
         """Alias for :meth:`patch`."""

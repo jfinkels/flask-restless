@@ -46,7 +46,21 @@ def unicode_keys_to_strings(dictionary):
 
 
 def session_query(session, model):
+    """Returns a SQLAlchemy query object for the specified `model`.
+
+    If `model` has a ``query`` attribute already, that object will be returned.
+    Otherwise a query will be created and returned based on `session`.
+
+    """
     if hasattr(model, 'query'):
         return model.query
     else:
         return session.query(model)
+
+
+def upper_keys(d):
+    """Returns a new dictionary with the keys of `d` converted to upper case
+    and the values left unchanged.
+
+    """
+    return dict(zip((k.upper() for k in d.keys()), d.values()))

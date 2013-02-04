@@ -320,24 +320,233 @@ like this:
 For more information on using pagination in the client, see
 :ref:`clientpagination`.
 
-Updating POST parameters before committing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. _processors:
 
-To apply some function to the :http:method:`post` form parameters before the
-database model is created, specify the ``post_form_preprocessor`` keyword. The
-value of ``post_form_preprocessor`` must be a function which accepts a single
-dictionary as input and outputs a dictionary. The input dictionary is the
-dictionary mapping names of columns of the model to values to assign to that
-column, as specified by the JSON provided in the body of the
-:http:method:`post` request. The output dictionary should be the same, but with
-whatever additions, deletions, or modifications you wish.
+Request preprocessors and postprocessors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For example, if the client is making a :http:method:`post` request to a model
-which which has an ``owner`` field which should contain the ID of the currently
-logged in user, you may wish for the server to append the mapping ``('owner',
-current_user.id)`` to the form parameters. In this case, you would set the
-value of ``post_form_processor`` to be the function defined below::
+To apply a function to the request parameters and/or body before the request is
+processed, use the ``preprocessors`` keyword argument. To apply a function to
+the response data after the request is processed (immediately before the
+response is sent), use the ``postprocessors`` keyword argument. Both
+``preprocessors`` and ``postprocessors`` must be a dictionary which maps HTTP
+method names as strings (with exceptions as described below) to a list of
+functions. The specified functions will be applied in the order given in the
+list.
 
-    def add_user_id(dictionary):
-        dictionary['owner'] = current_user.id
-        return dictionary
+Since :http:method:`get` and :http:method:`patch` (and :http:method:`put`)
+requests can be made not only on individual instances of the model but also the
+entire collection of instances, you must separately specify which functions to
+apply in the individual case and which to apply in the collection case. For
+example::
+
+    # Define pre- and postprocessor functions as described below.
+    def pre_get_single(instid): ...
+    def pre_get_many(params): ...
+    def post_patch_many(query, data): ...
+    def pre_delete(instid): ...
+
+    # Create an API for the Person model.
+    manager.create_api(Person,
+                       # Allow GET, PATCH, and POST requests.
+                       methods=['GET', 'PATCH', 'DELETE'],
+                       # Allow PATCH requests modifying the whole collection.
+                       allow_patch_many=True,
+                       # A list of preprocessors for each method.
+                       preprocessors={
+                           'GET_SINGLE': [pre_get_single],
+                           'GET_MANY': [pre_get_many],
+                           'DELETE': [pre_delete]
+                           },
+                       # A list of postprocessors for each method.
+                       postprocessors={
+                           'PATCH_MANY': [post_patch_many]
+                           }
+                       )
+
+As introduced in the above example, the dictionary keys for the `preprocessors`
+and `postprocessors` can be one of the following strings:
+
+* ``'GET_SINGLE'`` for requests to get a single instance of the model.
+* ``'GET_MANY'`` for requests to get the entire collection of instances of the
+  model.
+* ``'PATCH_SINGLE'`` or ``'PUT_SINGLE'`` for requests to patch a single
+  instance of the model.
+* ``'PATCH_MANY'`` or ``'PATCH_SINGLE'`` for requests to patch the entire
+  collection of instances of the model.
+* ``'POST'`` for requests to post a new instance of the model.
+* ``'DELETE'`` for requests to delete an instance of the model.
+
+.. note::
+
+   Since :http:method:`put` requests are handled by the :http:method:`patch`
+   handler, any preprocessors or postprocessors specified for the
+   :http:method:`put` method will be applied on :http:method:`patch` requests
+   *after* the preprocessors or postprocessors specified for the
+   :http:method:`patch` method.
+
+Also as seen in the above example, the preprocessors and postprocessors for
+each type of request accept different arguments and have different return
+values.
+
+* :http:method:`get` for a single instance::
+
+      def get_single_preprocessor(instid):
+          """Accepts a single argument, `instid`, the primary key of the
+          instance of the model to get.
+
+          The return value is ignored, so this function should return nothing.
+
+          """
+          return
+
+      def get_single_postprocessor(data):
+          """Accepts a single argument, `data`, which is the dictionary
+          representation of the requested instance of the model.
+
+          This function must return a dictionary representing the JSON to
+          return to the client.
+
+          """
+          return data
+
+  and for the collection::
+
+      def get_many_preprocessor(params):
+          """Accepts a single argument, `params`, which is a dictionary
+          containing the search parameters for the request.
+
+          This function must return a dictionary which represents the search
+          parameters for the request.
+
+          """
+          return params
+
+
+      def get_many_postprocessor(data):
+          """Accepts a single argument, `data`, which is the dictionary
+          representation of the JSON response which will be returned to the
+          client.
+
+          This function must return a dictionary representing the JSON to
+          return to the client.
+
+          """
+          return data
+
+* :http:method:`patch` (or :http:method:`put`) for a single instance::
+
+      def patch_single_preprocessor(instid, data):
+          """Accepts two arguments, `instid`, the primary key of the
+          instance of the model to patch, and `data`, the dictionary of fields
+          to change on the instance.
+
+          This function must return a dictionary representing the fields to
+          change in the specified instance of the model (that is, a modified
+          version of `data`).
+
+          """
+          return data
+
+      def patch_single_postprocessor(data):
+          """Accepts a single argument, `data`, which is the dictionary
+          representation of the requested instance of the model.
+
+          This function must return a dictionary representing the JSON to
+          return to the client.
+
+          """
+          return data
+
+  and for the collection::
+
+      def patch_many_preprocessor(search_params, data):
+          """Accepts two arguments: `search_params`, which is a dictionary
+          containing the search parameters for the request, and `data`, which
+          is a dictionary representing the fields to change on the matching
+          instances and the values to which they will be set.
+
+          This function must return a pair of dictionaries representing
+          modified versions of the input arguments.
+
+          """
+          return search_params, data
+
+      def patch_many_postprocessor(query, data):
+          """Accepts two arguments: `query`, which is the SQLAlchemy query
+          which was inferred from the search parameters in the query string,
+          and `data`, which is the dictionary representation of the JSON
+          response which will be returned to the client.
+
+          This function must return a dictionary representing the JSON to
+          return to the client.
+
+          """
+          return data
+
+* :http:method:`post`::
+
+      def post_preprocessor(data):
+          """Accepts a single argument, `data`, which is the dictionary of
+          fields to set on the new instance of the model.
+
+          This function must return a dictionary representing the fields to
+          set on the new instance of the model.
+
+          """
+          return data
+
+      def post_postprocessor(data):
+          """Accepts a single argument, `data`, which is the dictionary
+          representation of the created instance of the model.
+
+          This function must return a dictionary representing the JSON to
+          return to the client.
+
+          """
+          return data
+
+* :http:method:`delete`::
+
+      def delete_preprocessor(instid):
+          """Accepts a single argument, `instid`, which is the primary key of
+          the instance which will be deleted.
+
+          The return value is ignored, so this function should return nothing.
+
+          """
+          return
+
+      def delete_postprocessor(was_deleted):
+          """Accepts a single argument, `was_deleted`, which represents whether
+          the instance has been deleted.
+
+          The return value is ignored, so this function should return nothing.
+
+          """
+          return
+
+Note: for more information about search parameters, see :ref:`searchformat`,
+and for more information about request and response formats, see
+:ref:`requestformat`.
+
+Finally, in order to halt the preprocessing or postprocessing and return an
+error response directly to the client, your preprocessor or postprocessor
+functions can raise a :exc:`ProcessingException`. If a function raises this
+exception, no preprocessing or postprocessing functions that appear later in
+the list specified when the API was created will be invoked. For example, an
+authentication function can be implemented like this::
+
+    def check_auth(instid):
+        # Here, get the current user from the session.
+        current_user = ...
+        # Next, check if the user is authorized to modify the specified
+        # instance of the model.
+        if not is_authorized_to_modify(current_user, instid):
+            raise ProcessingException(message='Not Authorized',
+                                      status_code=401)
+    manager.create_api(Person, preprocessors=dict(GET_SINGLE=[check_auth]))
+
+The :exc:`ProcessingException` allows you to specify an HTTP status code for
+the generated response and an error message which the client will receive as
+part of the JSON in the body of the response.

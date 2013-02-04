@@ -13,6 +13,7 @@ Version 0.9.2-dev
 
 Not yet released.
 
+- #82, #134, #136: added request pre- and postprocessors.
 - #120: adds support for JSON-P callbacks in :http:method:`get` requests.
 
 Version 0.9.1

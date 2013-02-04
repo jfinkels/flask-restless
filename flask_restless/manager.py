@@ -193,7 +193,8 @@ class APIManager(object):
                              exclude_columns=None, include_columns=None,
                              validation_exceptions=None, results_per_page=10,
                              max_results_per_page=100,
-                             post_form_preprocessor=None):
+                             post_form_preprocessor=None,
+                             preprocessors=None, postprocessors=None):
         """Creates an returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
 
@@ -302,12 +303,38 @@ class APIManager(object):
         `max_results_per_page` results will be returned. For more information,
         see :ref:`serverpagination`.
 
+        .. deprecated:: 0.9.2
+           The `post_form_preprocessor` keyword argument is deprecated in
+           version 0.9.2. It will be removed in version 1.0. Replace code that
+           looks like this::
+
+               manager.create_api(Person, post_form_preprocessor=foo)
+
+           with code that looks like this::
+
+               manager.create_api(Person, preprocessors=dict(POST=[foo]))
+
+           See :ref:`processors` for more information and examples.
+
         `post_form_preprocessor` is a callback function which takes
         POST input parameters loaded from JSON and enhances them with other
         key/value pairs. The example use of this is when your ``model``
         requires to store user identity and for security reasons the identity
         is not read from the post parameters (where malicious user can tamper
         with them) but from the session.
+
+        `preprocessors` is a dictionary mapping strings to lists of
+        functions. Each key is the name of an HTTP method (for example,
+        ``'GET'`` or ``'POST'``). Each value is a list of functions, each of
+        which will be called before any other code is executed when this API
+        receives the corresponding HTTP request. The functions will be called
+        in the order given here. The `postprocessors` keyword argument is
+        essentially the same, except the given functions are called after all
+        other code. For more information on preprocessors and postprocessors,
+        see :ref:`processors`.
+
+        .. versionadded:: 0.9.2
+           Added the `preprocessors` and `postprocessors` keyword arguments.
 
         .. versionadded:: 0.9.0
            Added the `max_results_per_page` keyword argument.
@@ -366,7 +393,8 @@ class APIManager(object):
                                authentication_function, exclude_columns,
                                include_columns, validation_exceptions,
                                results_per_page, max_results_per_page,
-                               post_form_preprocessor)
+                               post_form_preprocessor, preprocessors,
+                               postprocessors)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the

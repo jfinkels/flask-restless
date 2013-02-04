@@ -18,5 +18,6 @@
 #: file.
 __version__ = '0.9.2-dev'
 
-# make the following name available as part of the public API
+# make the following names available as part of the public API
 from .manager import APIManager
+from .views import ProcessingException
