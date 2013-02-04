@@ -150,7 +150,7 @@ def _get_or_create(session, model, **kwargs):
         return instance, False
     instance = model(**kwargs)
     session.add(instance)
-    session.commit()
+    session.flush()
     return instance, True
 
 
