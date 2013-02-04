@@ -37,6 +37,7 @@ from flask import request
 from flask.views import MethodView
 from sqlalchemy import Date
 from sqlalchemy import DateTime
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import ColumnProperty
@@ -1265,6 +1266,8 @@ class API(ModelView):
             return jsonify_status_code(201, **result)
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
+        except IntegrityError, error:
+            return jsonify_status_code(400, message=error.message)
 
     def patch(self, instid):
         """Updates the instance specified by ``instid`` of the named model, or

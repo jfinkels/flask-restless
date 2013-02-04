@@ -1272,6 +1272,17 @@ class APITestCase(TestSupport):
         self.assertTrue(response.data.startswith('baz('))
         self.assertTrue(response.data.endswith(')'))
 
+    def test_duplicate_post(self):
+        """Tests for making a :http:method:`post` request with data that
+        already exists in the database.
+
+        """
+        data = dict(name='test')
+        response = self.app.post('/api/person', data=dumps(data))
+        self.assertEqual(201, response.status_code)
+        response = self.app.post('/api/person', data=dumps(data))
+        self.assertEqual(400, response.status_code)
+
 
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
