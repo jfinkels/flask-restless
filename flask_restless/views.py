@@ -60,13 +60,15 @@ class ProcessingException(Exception):
     """Raised when a preprocessor or postprocessor encounters a problem.
 
     This exception should be raised by functions supplied in the
-    ``preprocessors`` and ``postprocessors`` keyword arguments to :class:`API`.
-    When this exception is raised, all preprocessing or postprocessing halts,
-    so any processors appearing later in the list will not be invoked.
+    ``preprocessors`` and ``postprocessors`` keyword arguments to
+    :class:`APIManager.create_api`. When this exception is raised, all
+    preprocessing or postprocessing halts, so any processors appearing later in
+    the list will not be invoked.
 
     `status_code` is the HTTP status code of the response supplied to the
     client in the case that this exception is raised. `message` is an error
-    message describing the cause of this exception.
+    message describing the cause of this exception. This message will appear in
+    the JSON object in the body of the response to the client.
 
     """
     def __init__(self, message='', status_code=400, *args, **kwargs):
