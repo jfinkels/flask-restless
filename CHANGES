@@ -24,7 +24,6 @@ Released on January 17, 2013.
 - #126: fix documentation build failure due to bug in a dependency.
 - #127: added "ilike" query operator.
 
-
 Version 0.9.0
 -------------
 
