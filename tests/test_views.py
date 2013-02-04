@@ -863,11 +863,11 @@ class TestAPI(TestSupport):
                                             {'name': u'Maverick', 'seats': 2}]}
         response = self.app.post('/api/car_manufacturer', data=dumps(data))
         assert response.status_code == 201
-        data = loads(response.data)
+        responsedata = loads(response.data)
         assert 3 == len(data['models'])
-        assert u'Maverick' == data['models'][0]['name']
-        assert u'Mustang' == data['models'][1]['name']
-        assert u'Maverick' == data['models'][2]['name']
+        assert u'Maverick' == responsedata['models'][0]['name']
+        assert u'Mustang' == responsedata['models'][1]['name']
+        assert u'Maverick' == responsedata['models'][2]['name']
 
         # add another duplicate car
         data['models'].append({'name': u'Mustang', 'seats': 4})

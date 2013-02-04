@@ -31,7 +31,7 @@ import warnings
 from flask import abort
 from flask import current_app
 from flask import json
-from flask import jsonify
+from flask import jsonify as _jsonify
 from flask import request
 from flask.views import MethodView
 from sqlalchemy.exc import IntegrityError
@@ -114,7 +114,7 @@ def catch_processing_exceptions(func):
         except ProcessingException as exception:
             current_app.logger.exception(str(exception))
             status, message = exception.code, str(exception)
-            return jsonify_status_code(status_code=status, message=message)
+            return jsonify(message=message), status
     return decorator
 
 
@@ -130,22 +130,17 @@ def set_headers(response, headers):
         response.headers[key] = value
 
 
-def jsonify_status_code(status_code, headers=None, *args, **kw):
-    """Returns a jsonified response with the specified HTTP status code.
+def jsonify(*args, **kw):
+    """Same as :func:`flask.jsonify`, but sets response headers.
 
-    If `headers` is specified, it must be a dictionary specifying headers to
-    set before sending the JSONified response to the client. Headers on the
-    response will be overwritten by headers specified in the `headers`
-    dictionary.
-
-    The remaining positional and keyword arguments are passed directly to the
-    :func:`flask.jsonify` function which creates the response.
+    If ``headers`` is a keyword argument, this function will construct the JSON
+    response via :func:`flask.jsonify`, then set the specified ``headers`` on
+    the response. ``headers`` must be a dictionary mapping strings to strings.
 
     """
-    response = jsonify(*args, **kw)
-    response.status_code = status_code
-    if headers:
-        set_headers(response, headers)
+    response = _jsonify(*args, **kw)
+    if 'headers' in kw:
+        set_headers(response, kw['headers'])
     return response
 
 
@@ -205,11 +200,10 @@ def _headers_to_json(headers):
 
 
 def jsonpify(*args, **kw):
-    """Passes the specified arguments directly to :func:`jsonify_status_code`
-    with a status code of 200, then wraps the response with the name of a
-    JSON-P callback function specified as a query parameter called
-    ``'callback'`` (or does nothing if no such callback function is specified
-    in the request).
+    """Passes the specified arguments directly to :func:`jsonify` with a status
+    code of 200, then wraps the response with the name of a JSON-P callback
+    function specified as a query parameter called ``'callback'`` (or does
+    nothing if no such callback function is specified in the request).
 
     If `headers` is specified, it must be a dictionary specifying headers to
     set before sending the JSONified response to the client. Headers on the
@@ -218,6 +212,7 @@ def jsonpify(*args, **kw):
 
     """
     headers = kw.pop('headers', None)
+    # FIXME jsonify already sets headers, so we are doing it twice...
     response = jsonify(*args, **kw)
     callback = request.args.get('callback', False)
     if callback:
@@ -364,21 +359,21 @@ class FunctionAPI(ModelView):
             data = json.loads(str(request.args.get('q'))) or {}
         except (TypeError, ValueError, OverflowError) as exception:
             current_app.logger.exception(str(exception))
-            return jsonify_status_code(400, message='Unable to decode data')
+            return jsonify(message='Unable to decode data'), 400
         try:
             result = evaluate_functions(self.session, self.model,
                                         data.get('functions'))
             if not result:
-                return jsonify_status_code(204)
+                return jsonpify(), 204
             return jsonpify(result)
         except AttributeError as exception:
             current_app.logger.exception(str(exception))
             message = 'No such field "%s"' % exception.field
-            return jsonify_status_code(400, message=message)
+            return jsonify(message=message), 400
         except OperationalError as exception:
             current_app.logger.exception(str(exception))
             message = 'No such function "%s"' % exception.function
-            return jsonify_status_code(400, message=message)
+            return jsonify(message=message), 400
 
 
 class API(ModelView):
@@ -708,7 +703,7 @@ class API(ModelView):
         self.session.rollback()
         errors = self._extract_error_messages(exception) or \
             'Could not determine specific validation errors'
-        return jsonify_status_code(400, validation_errors=errors)
+        return jsonify(validation_errors=errors), 400
 
     def _extract_error_messages(self, exception):
         """Tries to extract a dictionary mapping field name to validation error
@@ -913,7 +908,7 @@ class API(ModelView):
             search_params = json.loads(request.args.get('q', '{}'))
         except (TypeError, ValueError, OverflowError) as exception:
             current_app.logger.exception(str(exception))
-            return jsonify_status_code(400, message='Unable to decode data')
+            return jsonify(message='Unable to decode data'), 400
 
         for preprocessor in self.preprocessors['GET_MANY']:
             preprocessor(search_params=search_params)
@@ -922,13 +917,12 @@ class API(ModelView):
         try:
             result = search(self.session, self.model, search_params)
         except NoResultFound:
-            return jsonify_status_code(400, message='No result found')
+            return jsonify(message='No result found'), 400
         except MultipleResultsFound:
-            return jsonify_status_code(400, message='Multiple results found')
+            return jsonify(message='Multiple results found'), 400
         except Exception as exception:
             current_app.logger.exception(str(exception))
-            return jsonify_status_code(400,
-                                       message='Unable to construct query')
+            return jsonify(message='Unable to construct query'), 400
 
         # create a placeholder for the relations of the returned models
         relations = frozenset(get_relations(self.model))
@@ -1056,7 +1050,7 @@ class API(ModelView):
             is_deleted = True
         for postprocessor in self.postprocessors['DELETE']:
             postprocessor(is_deleted=is_deleted)
-        return jsonify_status_code(204)
+        return jsonify(), 204
 
     def post(self):
         """Creates a new instance of a given model based on request data.
@@ -1081,14 +1075,14 @@ class API(ModelView):
         content_type = request.headers.get('Content-Type', None)
         if not content_type.startswith('application/json'):
             msg = 'Request must have "Content-Type: application/json" header'
-            return jsonify_status_code(415, message=msg)
+            return jsonify(message=msg), 415
 
         # try to read the parameters for the model from the body of the request
         try:
             params = json.loads(request.data)
         except (TypeError, ValueError, OverflowError) as exception:
             current_app.logger.exception(str(exception))
-            return jsonify_status_code(400, message='Unable to decode data')
+            return jsonify(message='Unable to decode data'), 400
 
         # apply any preprocessors to the POST arguments
         for preprocessor in self.preprocessors['POST']:
@@ -1099,7 +1093,7 @@ class API(ModelView):
         for field in params:
             if not has_field(self.model, field):
                 msg = "Model does not have field '%s'" % field
-                return jsonify_status_code(400, message=msg)
+                return jsonify(message=msg), 400
 
         # Getting the list of relations that will be added later
         cols = get_columns(self.model)
@@ -1152,12 +1146,12 @@ class API(ModelView):
             for postprocessor in self.postprocessors['POST']:
                 postprocessor(result=result)
                         
-            return jsonify_status_code(201, headers=headers, **result)
+            return jsonify(headers=headers, **result), 201
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
         except IntegrityError as exception:
             current_app.logger.exception(str(exception))
-            return jsonify_status_code(400, message=str(exception))
+            return jsonify(message=str(exception)), 400
 
     def patch(self, instid, relationname, relationinstid):
         """Updates the instance specified by ``instid`` of the named model, or
@@ -1187,7 +1181,7 @@ class API(ModelView):
         content_type = request.headers.get('Content-Type', None)
         if not content_type.startswith('application/json'):
             msg = 'Request must have "Content-Type: application/json" header'
-            return jsonify_status_code(415, message=msg)
+            return jsonify(message=msg), 415
 
         # try to load the fields/values to update from the body of the request
         try:
@@ -1195,7 +1189,7 @@ class API(ModelView):
         except (TypeError, ValueError, OverflowError) as exception:
             # this also happens when request.data is empty
             current_app.logger.exception(str(exception))
-            return jsonify_status_code(400, message='Unable to decode data')
+            return jsonify(message='Unable to decode data'), 400
         # Check if the request is to patch many instances of the current model.
         patchmany = instid is None
         # Perform any necessary preprocessing.
@@ -1214,16 +1208,14 @@ class API(ModelView):
         for field in data:
             if not has_field(self.model, field):
                 msg = "Model does not have field '%s'" % field
-                return jsonify_status_code(400, message=msg)
-
+                return jsonify(message=msg), 400
         if patchmany:
             try:
                 # create a SQLALchemy Query from the query parameter `q`
                 query = create_query(self.session, self.model, search_params)
             except Exception as exception:
                 current_app.logger.exception(str(exception))
-                return jsonify_status_code(400,
-                                           message='Unable to construct query')
+                return jsonify(message='Unable to construct query'), 400
         else:
             # create a SQLAlchemy Query which has exactly the specified row
             query = query_by_primary_key(self.session, self.model, instid)
@@ -1253,7 +1245,7 @@ class API(ModelView):
             return self._handle_validation_exception(exception)
         except IntegrityError as exception:
             current_app.logger.exception(str(exception))
-            return jsonify_status_code(400, message=str(exception))
+            return jsonify(message=str(exception)), 400
 
         # Perform any necessary postprocessing.
         if patchmany:
