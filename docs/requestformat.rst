@@ -242,15 +242,20 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       {"id": 1}
 
-.. http:patch:: /api/person?q=<searchjson>
-.. http:put:: /api/person/?q=<searchjson>
+.. http:patch:: /api/person
+.. http:put:: /api/person
 
    Sets specified attributes on every instance of ``Person`` which meets the
-   search criteria described in the ``q`` query parameter.
+   search criteria described in the ``q`` parameter.
+
+   The JSON object specified in the body of a :http:method:`patch` request to
+   this endpoint may include a mapping from `q` to the parameters for a search,
+   as described in :ref:`searchformat`. If no `q` key exists, then all
+   instances of the model will be patched.
+
    :http:put:`/api/person` is an alias for :http:patch:`/api/person`, because
    the latter is more semantically correct but the former is part of the core
-   HTTP standard. For more information on the format of the value of the ``q``
-   parameter, see :ref:`searchformat`.
+   HTTP standard.
 
    The response will return a JSON object which specifies the number of
    instances in the ``Person`` database which were modified.
@@ -258,21 +263,17 @@ Also suppose we have registered an API for these models at ``/api/person`` and
    **Sample request**:
 
    Suppose the database contains exactly three people with the letter "y" in
-   their names. Suppose that the client makes a request that has query
-   parameter ``q`` set to the following JSON object (as a string):
-
-   .. sourcecode:: javascript
-
-      { "filters": [{"name": "name", "op": "like", "val": "%y%"}] }
-
-   and with the content of the request:
+   his or her name.
 
    .. sourcecode:: http
 
-      PATCH /api/person/1 HTTP/1.1
+      PATCH /api/person HTTP/1.1
       Host: example.com
 
-      {"age": 1}
+      {
+        "age": 1,
+        "q": {"filters": [{"name": "name", "op": "like", "val": "%y%"}]}
+      }
 
    **Sample response**:
 
