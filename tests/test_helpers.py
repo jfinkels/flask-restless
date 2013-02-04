@@ -30,6 +30,12 @@ class HelpersTest(TestCase):
         self.assertEqual(list(range(5)), left)
         self.assertEqual(list(range(5, 10)), right)
 
+    def test_unicode_keys_to_strings(self):
+        self.fail('Not yet implemented')
+
+    def test_upper_keys(self):
+        self.fail('Not yet implemented')
+
 
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
