@@ -650,6 +650,34 @@ class APITestCase(TestSupport):
             self.assertEqual(i['birth_date'], ('%s-%s-%s' % (
                     year, str(month).zfill(2), str(day).zfill(2))))
 
+    def test_patch_many_with_filter(self):
+        """Test for updating a collection of instances of the model using a
+        :http:method:patch request with filters.
+
+        """
+        # recreate the api to allow patch many at /api/v2/person
+        self.manager.create_api(self.Person, methods=['GET', 'POST', 'PATCH'],
+                                allow_patch_many=True, url_prefix='/api/v2')
+        # Creating some people
+        self.app.post('/api/v2/person',
+                      data=dumps({'name': u'Lincoln', 'age': 23}))
+        self.app.post('/api/v2/person',
+                      data=dumps({'name': u'Lucy', 'age': 23}))
+        self.app.post('/api/v2/person',
+                      data=dumps({'name': u'Mary', 'age': 25}))
+        search = {
+                     'filters': [
+                         {'name': 'name', 'val': u'Lincoln', 'op': 'equals'}
+                     ],
+                 }
+        # Changing the birth date field for objects where name field equals Lincoln
+        day, month, year = 15, 9, 1986
+        birth_date = date(year, month, day).strftime('%d/%m/%Y') # iso8601
+        form = {'birth_date': birth_date, 'q': search}
+        response = self.app.patch('/api/v2/person', data=dumps(form))
+        num_modified = loads(response.data)['num_modified']
+        self.assertEqual(num_modified, 1)
+
     def test_single_update(self):
         """Test for updating a single instance of the model using the
         :http:method:`patch` method.
