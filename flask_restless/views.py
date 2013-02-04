@@ -455,8 +455,7 @@ class ModelView(MethodView):
         class.
 
         """
-        the_model = model or self.model
-        return session_query(self.session, the_model)
+        return session_query(self.session, model or self.model)
 
 
 class FunctionAPI(ModelView):
