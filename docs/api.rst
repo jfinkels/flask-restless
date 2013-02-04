@@ -13,3 +13,5 @@ in Flask-Restless.
    .. automethod:: create_api
 
    .. automethod:: create_api_blueprint
+
+.. autoclass:: ProcessingException
