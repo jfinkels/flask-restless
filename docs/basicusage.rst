@@ -149,7 +149,7 @@ the URL is the value of ``Person.__tablename__``::
     ...                   headers={'content-type': 'application/json'})
     >>> r.status_code, r.headers['content-type'], r.data
     (201, 'application/json', '{"id": 1}')
-    >>> newid = json.loads(response.data)['id']
+    >>> newid = json.loads(r.data)['id']
     >>> r = requests.get('/api/person/%s' % newid,
     ...                  headers={'content-type': 'application/json'})
     >>> r.status_code, r.headers['content-type']
