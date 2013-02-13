@@ -50,6 +50,7 @@ from sqlalchemy.orm.properties import RelationshipProperty as RelProperty
 from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import func
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.ext.associationproxy import AssociationProxy
 
 from .helpers import partition
 from .helpers import unicode_keys_to_strings
@@ -116,7 +117,10 @@ def _is_date_field(model, fieldname):
     :class:`datetime.datetime` object.
 
     """
-    prop = getattr(model, fieldname).property
+    field = getattr(model, fieldname)
+    if isinstance(field, AssociationProxy):
+        field = field.remote_attr
+    prop = field.property
     if isinstance(prop, RelationshipProperty):
         return False
     fieldtype = prop.columns[0].type
