@@ -15,6 +15,8 @@ Not yet released.
 
 - #113: interpret empty strings for date fields as ``None`` objects.
 - #135: added support for hybrid properties.
+- #141: relax requirement for version of `python-dateutil
+   <http://labix.org/python-dateutil>`_ to be not equal to 2.0.
 - #146: preprocessors now really execute before other code.
 
 Version 0.9.3

@@ -14,7 +14,8 @@ installed if you use ``pip``):
 
 * `Flask <http://flask.pocoo.org>`_ version 0.7 or greater
 * `SQLAlchemy <http://sqlalchemy.org>`_
-* `python-dateutil <http://labix.org/python-dateutil>`_ version less than 2.0
+* `python-dateutil <http://labix.org/python-dateutil>`_ any version other than
+  2.0
 * `simplejson <http://pypi.python.org/pypi/simplejson>`_, *only if* you are
   using Python 2.5
 * `Flask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy>`_, *only if*
