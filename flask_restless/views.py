@@ -1213,12 +1213,6 @@ class API(ModelView):
             params = json.loads(request.data)
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
-        # Check for any request parameter naming a column which does not exist
-        # on the current model.
-        for field in params:
-            if not hasattr(self.model, field):
-                msg = "Model does not have field '%s'" % field
-                return jsonify_status_code(400, message=msg)
 
         # apply any preprocessors to the POST arguments
         try:
@@ -1227,6 +1221,13 @@ class API(ModelView):
         except ProcessingException, e:
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
+
+        # Check for any request parameter naming a column which does not exist
+        # on the current model.
+        for field in params:
+            if not hasattr(self.model, field):
+                msg = "Model does not have field '%s'" % field
+                return jsonify_status_code(400, message=msg)
 
         # Getting the list of relations that will be added later
         cols = _get_columns(self.model)
@@ -1308,30 +1309,19 @@ class API(ModelView):
         except (TypeError, ValueError, OverflowError):
             # this also happens when request.data is empty
             return jsonify_status_code(400, message='Unable to decode data')
-        # Get the search parameters; all other keys in the `data` dictionary
-        # indicate a change in the model's field.
-        search_params = data.pop('q', {})
-        # Check for any request parameter naming a column which does not exist
-        # on the current model.
-        for field in data:
-            if not hasattr(self.model, field):
-                msg = "Model does not have field '%s'" % field
-                return jsonify_status_code(400, message=msg)
-
         # Check if the request is to patch many instances of the current model.
         patchmany = instid is None
+        # Perform any necessary preprocessing.
         if patchmany:
             try:
+                # Get the search parameters; all other keys in the `data`
+                # dictionary indicate a change in the model's field.
+                search_params = data.pop('q', {})
                 for preprocessor in self.preprocessors['PATCH_MANY']:
                     search_params, data = preprocessor(search_params, data)
-                # create a SQLALchemy Query from the query parameter `q`
-                query = create_query(self.session, self.model, search_params)
             except ProcessingException, e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
-            except:
-                return jsonify_status_code(400,
-                                           message='Unable to construct query')
         else:
             try:
                 for preprocessor in self.preprocessors['PATCH_SINGLE']:
@@ -1339,6 +1329,22 @@ class API(ModelView):
             except ProcessingException, e:
                 return jsonify_status_code(status_code=e.status_code,
                                            message=e.message)
+
+        # Check for any request parameter naming a column which does not exist
+        # on the current model.
+        for field in data:
+            if not hasattr(self.model, field):
+                msg = "Model does not have field '%s'" % field
+                return jsonify_status_code(400, message=msg)
+
+        if patchmany:
+            try:
+                # create a SQLALchemy Query from the query parameter `q`
+                query = create_query(self.session, self.model, search_params)
+            except:
+                return jsonify_status_code(400,
+                                           message='Unable to construct query')
+        else:
             # create a SQLAlchemy Query which has exactly the specified row
             query = self._query_by_primary_key(instid)
             if query.count() == 0:
@@ -1365,6 +1371,7 @@ class API(ModelView):
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
 
+        # Perform any necessary postprocessing.
         if patchmany:
             result = dict(num_modified=num_modified)
             try:
