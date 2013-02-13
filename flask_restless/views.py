@@ -648,10 +648,14 @@ class API(ModelView):
             self.preprocessors['POST'].append(post_form_preprocessor)
         # postprocessors for PUT are applied to PATCH because PUT is just a
         # redirect to PATCH
-        for postprocessor in self.postprocessors['PUT']:
-            self.postprocessors['PATCH'].append(postprocessor)
-        for preprocessor in self.preprocessors['PUT']:
-            self.preprocessors['PATCH'].append(preprocessor)
+        for postprocessor in self.postprocessors['PUT_SINGLE']:
+            self.postprocessors['PATCH_SINGLE'].append(postprocessor)
+        for preprocessor in self.preprocessors['PUT_SINGLE']:
+            self.preprocessors['PATCH_SINGLE'].append(preprocessor)
+        for postprocessor in self.postprocessors['PUT_MANY']:
+            self.postprocessors['PATCH_MANY'].append(postprocessor)
+        for preprocessor in self.preprocessors['PUT_MANY']:
+            self.preprocessors['PATCH_MANY'].append(preprocessor)
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
