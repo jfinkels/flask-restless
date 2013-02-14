@@ -8,12 +8,14 @@
 #    side to make HTTP requests to the server.
 #
 #    In order to use this script, you must first run the quickstart server
-#    example from this directory:
+#    example from this directory::
 #
 #        PYTHONPATH=.. python quickstart.py
 #
 #    Now run this script from this directory (that is, the ``examples/``
-#    directory) see some example requests made from curl.
+#    directory) to see some example requests made from curl::
+#
+#        ./curl.sh
 #
 #    The important thing to note in this example is that the client must
 #    remember to specify the ``application/json`` MIME type when sending
