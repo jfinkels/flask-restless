@@ -1,0 +1,7 @@
+# Flask-Restless examples #
+
+The `clients/` directory contains examples of using different types of
+clients with Flask-Restless.
+
+The `server_configuration/` directory contains examples of different ways of
+configuring Flask-Restless on the server side.
