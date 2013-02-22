@@ -123,7 +123,7 @@ Flask-Restless will forward messages from raised exceptions to the client in an
 error response.
 
 A reasonable validation framework you might use for this purpose is `SQLAlchemy
-Validation <https://bitbucket.org/rsyring/sqlalchemy-validation>`_. You can
+Validation <https://bitbucket.org/blazelibs/sqlalchemy-validation>`_. You can
 also use the :func:`~sqlalchemy.orm.validates` decorator that comes with
 SQLAlchemy.
 
