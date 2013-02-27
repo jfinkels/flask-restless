@@ -146,7 +146,7 @@ way for users to indicate exceptions to catch. If you wish to test validation
 of SQLAlchemy models with a real external SQLAlchemy validation library,
 install the development version of [SAValidation][sav]:
 
-    pip install -e "hg+http://bitbucket.org/rsyring/sqlalchemy-validation#egg=savlidation-dev"
+    pip install -e "hg+http://bitbucket.org/blazelibs/sqlalchemy-validation#egg=savalidation-dev"
 
 The test suite will automatically skip these tests if it is not installed.
 
