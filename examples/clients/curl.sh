@@ -52,3 +52,17 @@ echo "Making a GET request for the added person..."
 echo
 curl -H "Content-type: application/json" http://$HOST/api/person/1
 echo
+
+echo
+echo
+echo "Searching for all people whose names contain a 'y'..."
+echo
+# Note: don't include spaces when specifying the parameters of the search with
+# the `d` argument. If you want spaces, encode them using URL encoding (that
+# is, use "%20" instead of " ").
+curl \
+  -G \
+  -H "Content-type: application/json" \
+  -d "q={\"filters\":[{\"name\":\"name\",\"op\":\"like\",\"val\":\"%y%\"}]}" \
+  http://$HOST/api/person
+echo

@@ -12,6 +12,55 @@ some criteria, clients can make :http:method:`get` requests with a query
 parameter specifying a search. The search functionality in Flask-Restless is
 relatively simple, but should suffice for many cases.
 
+Quick examples
+--------------
+
+The following are some quick examples of creating search queries with different
+types of clients. Find more complete documentation in subsequent sections. In
+these examples, each client will search for instances of the model ``Person``
+whose names contain the letter "y".
+
+Using the Python `requests <http://docs.python-requests.org/en/latest/>`_
+library::
+
+    import requests
+    import json
+
+    url = 'http://127.0.0.1:5000/api/person'
+    headers = {'Content-Type': 'application/json'}
+
+    filters = [dict(name='name', op='like', val='%y%')]
+    params = dict(q=json.dumps(dict(filters=filters)))
+
+    response = requests.get(url, params=params, headers=headers)
+    assert response.status_code == 200
+    print(response.json())
+
+Using `jQuery <http://jquery.com/>`_:
+
+.. sourcecode:: javascript
+
+   var filters = [{"name": "id", "op": "lte", "val": 5}];
+   $.ajax({
+     url: 'http://127.0.0.1:5000/api/person',
+     data: {"q": JSON.stringify({"filters": filters})},
+     dataType: "json",
+     contentType: "application/json",
+     success: function(data) { console.log(data.objects); }
+   });
+
+Using `curl <http://curl.haxx.se/>`_:
+
+.. sourcecode:: bash
+
+   curl \
+     -G \
+     -H "Content-type: application/json" \
+     -d "q={\"filters\":[{\"name\":\"name\",\"op\":\"like\",\"val\":\"%y%\"}]}" \
+     http://127.0.0.1:5000/api/person
+
+The ``examples/`` directory has more complete versions of these examples.
+
 .. _queryformat:
 
 Query format
@@ -96,14 +145,15 @@ parameter ``q``.
 Attribute greater than a value
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If query parameter ``q`` has the value
+On request:
 
-.. sourcecode:: javascript
+.. sourcecode:: http
 
-   {"filters": [{"name": "age", "op": "ge", "val": 10}]}
+   GET /api/person?q={"filters":[{"name":"age","op":"ge","val":10}]} HTTP/1.1
+   Host: example.com
 
-(represented as a string), then the response will include only those ``Person``
-instances which have ``age`` attribute greater than or equal to 10.
+the response will include only those ``Person`` instances which have ``age``
+attribute greater than or equal to 10:
 
 .. sourcecode:: http
 
@@ -124,20 +174,15 @@ instances which have ``age`` attribute greater than or equal to 10.
 Attribute between two values
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If query parameter ``q`` has the value
+On request:
 
-.. sourcecode:: javascript
+.. sourcecode:: http
 
-   { "filters":
-     [
-       {"name": "age", "op": "ge", "val": 10},
-       {"name": "age", "op": "le", "val": 20}
-     ]
-   }
+   GET /api/person?q={"filters":[{"name":"age","op":"ge","val":10},{"name":"age","op":"le","val":20}]} HTTP/1.1
+   Host: example.com
 
-(represented as a string), then the response will include only those
-``Person`` instances which have ``age`` attribute between 10 and 20,
-inclusive.
+the response will include only those ``Person`` instances which have ``age``
+attribute between 10 and 20, inclusive:
 
 .. sourcecode:: http
 
@@ -157,20 +202,15 @@ inclusive.
 Expecting a single result
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If query parameter ``q`` has the value
+On request:
 
 .. sourcecode:: javascript
 
-   {
-     "single": true,
-     "filters":
-     [
-       {"name": "id", "op": "eq", "val": 1}
-     ]
-   }
+   GET /api/person?q={"filters":[{"name":"id","op":"eq","val":1}],"single":true} HTTP/1.1
+   Host: example.com
 
-(represented as a string), then the response will the sole ``Person`` instance
-with ``id`` equal to 1.
+the response will include only the sole ``Person`` instance with ``id`` equal
+to 1:
 
 .. sourcecode:: http
 
@@ -179,17 +219,12 @@ with ``id`` equal to 1.
    {"id": 1, "name": "Jeffrey", "age": 24}
 
 In the case that the search would return no results or more than one result, an
-error response is returned instead.
+error response is returned instead:
 
-.. sourcecode:: javascript
+.. sourcecode:: http
 
-   {
-     "single": true,
-     "filters":
-     [
-       {"name": "age", "op": "ge", "val": 10}
-     ]
-   }
+   GET /api/person?q={"filters":[{"name":"age","op":"ge","val":10}],"single":true} HTTP/1.1
+   Host: example.com
 
 .. sourcecode:: http
 
@@ -197,15 +232,10 @@ error response is returned instead.
 
    {"message": "Multiple results found"}
 
-.. sourcecode:: javascript
+.. sourcecode:: http
 
-   {
-     "single": true,
-     "filters":
-     [
-       {"name": "id", "op": "eq", "val": -1}
-     ]
-   }
+   GET /api/person?q={"filters":[{"name":"id","op":"eq","val":-1}],"single":true} HTTP/1.1
+   Host: example.com
 
 .. sourcecode:: http
 
@@ -216,15 +246,15 @@ error response is returned instead.
 Comparing two attributes
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-If query parameter ``q`` has the value
+On request:
 
-.. sourcecode:: javascript
+.. sourcecode:: http
 
-   {"filters": [{"name": "age", "op": "ge", "field": "height"}]}
+   GET /api/person?q={"filters":[{"name":"age","op":"ge","field":"height"}]} HTTP/1.1
+   Host: example.com
 
-(represented as a string), then the response will include only those ``Person``
-instances which have ``age`` attribute greater than or equal to the value of
-the ``height`` attribute.
+the response will include only those ``Person`` instances which have ``age``
+attribute greater than or equal to the value of the ``height`` attribute:
 
 .. sourcecode:: http
 
@@ -244,19 +274,15 @@ the ``height`` attribute.
 Comparing attribute of a relation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If query parameter ``q`` has the value
+On request:
 
-.. sourcecode:: javascript
+.. sourcecode:: http
 
-   { "filters":
-     [
-       {"name": "computers__manufacturer", "val": "Apple", "op": "any"}
-     ]
-   }
+   GET /api/person?q={"filters":[{"name":"computers__manufacturer","op":"any","val":"Apple"}],"single":true} HTTP/1.1
+   Host: example.com
 
-(represented as a string), then the response will include only those ``Person``
-instances which are related to any ``Computer`` model which is manufactured by
-Apple.
+response will include only those ``Person`` instances which are related to any
+``Computer`` model which is manufactured by Apple:
 
 .. sourcecode:: http
 

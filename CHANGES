@@ -13,6 +13,7 @@ Version 0.9.4-dev
 
 Not yet released.
 
+- #130: documentation and examples now more clearly show search examples.
 - #113: interpret empty strings for date fields as ``None`` objects.
 - #135: added support for hybrid properties.
 - #141: relax requirement for version of `python-dateutil

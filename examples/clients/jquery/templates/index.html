@@ -25,6 +25,24 @@
           }
         });
       });
+      $("#all-button").click(function() {
+        var filters = [{"name": "id", "op": "lte", "val": 5}];
+        $.ajax({
+          url: SCRIPT_ROOT + '/api/person',
+          data: {"q": JSON.stringify({"filters": filters})},
+          dataType: 'json',
+          contentType: "application/json",
+          success: function(data) {
+            var all_people, new_row, i;
+            all_people = data.objects;
+            for (i = 0; i < data.objects.length; ++i) {
+              new_row = $("<tr><td>" + data.objects[i].id + "</td><td>"
+                          + data.objects[i].name + "</td></tr>");
+              $("#people-with-y").append(new_row);
+            }
+          }
+        });
+      });
     });
   }());
   </script>
@@ -33,6 +51,10 @@
   <input type="button" id="next-button" value="Get next person" />
   <input type="hidden" id="next-id" value="1" />
   <table id="people">
+    <tr><th>ID</th><th>Name</th></tr>
+  </table>
+  <input type="button" id="all-button" value="Show the first 5 people" />
+  <table id="people-with-y">
     <tr><th>ID</th><th>Name</th></tr>
   </table>
 </body>
