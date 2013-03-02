@@ -34,6 +34,7 @@ from flask.ext.restless.views import _get_columns
 from flask.ext.restless.views import _get_or_create
 from flask.ext.restless.views import _get_relations
 from flask.ext.restless.views import _to_dict
+from flask.ext.restless.views import AuthenticationException
 
 from .helpers import FlaskTestBase
 from .helpers import TestSupport
@@ -1094,12 +1095,15 @@ class APITestCase(TestSupport):
         with self.assertRaises(IllegalArgumentError):
             self.manager.create_api(self.Person, methods=['GET', 'POST'],
                                     authentication_required_for=['POST'])
+        # function always raise AuthenticationException
+        def check_permission():
+            raise AuthenticationException(status_code=401, message='Permission denied')
 
         # test for authentication always failing
         self.manager.create_api(self.Person, methods=['GET', 'POST'],
                                 url_prefix='/api/v2',
                                 authentication_required_for=['POST'],
-                                authentication_function=lambda: False)
+                                authentication_function=check_permission)
 
         # a slightly more complicated function; all odd calls are authenticated
         class everyother(object):
@@ -1112,7 +1116,8 @@ class APITestCase(TestSupport):
             def __call__(self):
                 """Increment the call count and return its parity."""
                 self.count += 1
-                return self.count % 2
+                if not self.count % 2:
+                    raise AuthenticationException(status_code=401, message='Permission denied')
 
         self.manager.create_api(self.Person, methods=['GET'],
                                 url_prefix='/api/v3',
