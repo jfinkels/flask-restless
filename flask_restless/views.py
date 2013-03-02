@@ -81,6 +81,25 @@ class ProcessingException(Exception):
         self.status_code = status_code
 
 
+class AuthenticationException(Exception):
+    """Raised when authentication failed for some reason.
+
+    This exception should be raised by functions supplied in the
+    ``authentication_function`` keyword arguments to
+    :class:`APIManager.create_api`.
+
+    `status_code` is the HTTP status code of the response supplied to the
+    client in the case that this exception is raised. `message` is an error
+    message describing the cause of this exception. This message will appear in
+    the JSON object in the body of the response to the client.
+
+    """
+    def __init__(self, message='', status_code=401, *args, **kwargs):
+        super(AuthenticationException, self).__init__(*args, **kwargs)
+        self.message = message
+        self.status_code = status_code
+
+
 def jsonify_status_code(status_code, *args, **kw):
     """Returns a jsonified response with the specified HTTP status code.
 
@@ -1066,15 +1085,15 @@ class API(ModelView):
                     num_results=num_results)
 
     def _check_authentication(self):
+        """FIXME description"""
         """If the specified HTTP method requires authentication (see the
         constructor), this function aborts with :http:statuscode:`401` unless a
         current user is authorized with respect to the authentication function
         specified in the constructor of this class.
 
         """
-        if (request.method in self.authentication_required_for
-            and not self.authentication_function()):
-            abort(401)
+        if (request.method in self.authentication_required_for):
+            self.authentication_function()
 
     def _query_by_primary_key(self, primary_key_value, model=None):
         """Returns a SQLAlchemy query object containing the result of querying
@@ -1140,8 +1159,11 @@ class API(ModelView):
         method responds with :http:status:`404`.
 
         """
-        self._check_authentication()
-
+        try:
+            self._check_authentication()
+        except AuthenticationException, e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
         try:
             if instid is None:
                 return self._search()
@@ -1165,7 +1187,11 @@ class API(ModelView):
 
         """
         is_deleted = False
-        self._check_authentication()
+        try:
+            self._check_authentication()
+        except AuthenticationException, e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
         try:
             for preprocessor in self.preprocessors['DELETE']:
                 preprocessor(instid)
@@ -1207,7 +1233,11 @@ class API(ModelView):
         single level of relationship data.
 
         """
-        self._check_authentication()
+        try:
+            self._check_authentication()
+        except AuthenticationException, e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
         # try to read the parameters for the model from the body of the request
         try:
             params = json.loads(request.data)
@@ -1302,7 +1332,11 @@ class API(ModelView):
         be made in this case.
 
         """
-        self._check_authentication()
+        try:
+            self._check_authentication()
+        except AuthenticationException, e:
+            return jsonify_status_code(status_code=e.status_code,
+                                       message=e.message)
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.data)

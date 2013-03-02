@@ -20,4 +20,4 @@ __version__ = '0.9.4-dev'
 
 # make the following names available as part of the public API
 from .manager import APIManager
-from .views import ProcessingException
+from .views import ProcessingException, AuthenticationException
