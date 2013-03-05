@@ -9,6 +9,7 @@
 
 """
 from sqlalchemy.orm import RelationshipProperty as RelProperty
+from sqlalchemy.ext.associationproxy import AssociationProxy
 
 
 def unicode_keys_to_strings(dictionary):
@@ -65,8 +66,10 @@ def get_columns(model):
 
 def get_relations(model):
     """Returns a list of relation names of `model` (as a list of strings)."""
-    cols = get_columns(model)
-    return [k for k in cols if isinstance(cols[k].property, RelProperty)]
+    return [k for k in dir(model)
+        if not k.startswith('__')
+            and k not in ('query', 'query_class', '_sa_class_manager', '_decl_class_registry')
+            and get_related_model(model, k)]
 
 
 def get_related_model(model, relationname):
@@ -74,4 +77,10 @@ def get_related_model(model, relationname):
     whose name is `relationname`.
 
     """
-    return get_columns(model)[relationname].property.mapper.class_
+    cols = get_columns(model)
+    attr = getattr(model, relationname)
+    if relationname in cols and isinstance(attr.property, RelProperty):
+        return cols[relationname].property.mapper.class_
+    elif isinstance(attr, AssociationProxy):
+        return attr.remote_attr.property.mapper.class_
+    return None

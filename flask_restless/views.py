@@ -218,7 +218,12 @@ def _to_dict(instance, deep=None):
             continue
         # Do some black magic on SQLAlchemy to decide if the related instance
         # should be rendered as a list or as a single object.
-        uselist = instance._sa_class_manager[relation].property.uselist
+        if relation in instance._sa_class_manager:
+            uselist = instance._sa_class_manager[relation].property.uselist
+        elif isinstance(getattr(type(instance), relation, None), AssociationProxy):
+            uselist = True
+        else:
+            uselist = False
         if uselist:
             result[relation] = [_to_dict(inst, rdeep) for inst in relatedvalue]
             continue
@@ -1057,7 +1062,7 @@ class API(ModelView):
 
             # Handling relations, a single level is allowed
             for col in set(relations).intersection(paramkeys):
-                submodel = cols[col].property.mapper.class_
+                submodel = get_related_model(self.model, col)
 
                 if type(params[col]) == list:
                     # model has several related objects
