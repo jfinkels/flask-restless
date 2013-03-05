@@ -42,7 +42,7 @@ import os.path
 
 from flask import Flask, render_template, redirect, url_for
 from flask.ext.login import current_user, login_user, LoginManager, UserMixin
-from flask.ext.restless import APIManager
+from flask.ext.restless import APIManager, AuthenticationException
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.wtf import PasswordField, SubmitField, TextField, Form
 
@@ -79,6 +79,7 @@ user1 = User(username=u'example', password=u'example')
 db.session.add(user1)
 db.session.commit()
 
+
 # Step 5: this is required for Flask-Login.
 @login_manager.user_loader
 def load_user(userid):
@@ -112,8 +113,13 @@ def login():
         return redirect(url_for('index'))
     return render_template('login.html', form=form)
 
+
 # Step 8: create the API for User with the authentication guard.
-auth_func = lambda: current_user.is_authenticated()
+def auth_func():
+    if not current_user.is_authenticated():
+        raise AuthenticationException(message='Not authenticated!')
+
+
 api_manager.create_api(User, authentication_required_for=['GET'],
                        authentication_function=auth_func)
 
