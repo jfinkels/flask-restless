@@ -1115,7 +1115,10 @@ class APITestCase(TestSupport):
                 self.count = 0
 
             def __call__(self):
-                """Increment the call count and return its parity."""
+                """Increment the call count and raise an exception if the count
+                is odd.
+
+                """
                 self.count += 1
                 if not self.count % 2:
                     raise AuthenticationException(status_code=401,
