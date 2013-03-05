@@ -1097,7 +1097,8 @@ class APITestCase(TestSupport):
                                     authentication_required_for=['POST'])
         # function always raise AuthenticationException
         def check_permission():
-            raise AuthenticationException(status_code=401, message='Permission denied')
+            raise AuthenticationException(status_code=401,
+                                          message='Permission denied')
 
         # test for authentication always failing
         self.manager.create_api(self.Person, methods=['GET', 'POST'],
@@ -1117,7 +1118,8 @@ class APITestCase(TestSupport):
                 """Increment the call count and return its parity."""
                 self.count += 1
                 if not self.count % 2:
-                    raise AuthenticationException(status_code=401, message='Permission denied')
+                    raise AuthenticationException(status_code=401,
+                                                  message='Permission denied')
 
         self.manager.create_api(self.Person, methods=['GET'],
                                 url_prefix='/api/v3',
