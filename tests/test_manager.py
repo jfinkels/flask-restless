@@ -275,6 +275,22 @@ class APIManagerTest(TestSupport):
         data = loads(response.data)
         self.assertEqual(15, len(data['objects']))
 
+    def test_expose_relations(self):
+        """Tests that relations are exposed at a URL which is a child of the
+        instance URL.
+
+        """
+        date = datetime.date(1999, 12, 31)
+        person = self.Person(name='Test', age=10, other=20, birth_date=date)
+        computer = self.Computer(name='foo', vendor='bar', buy_date=date)
+        self.session.add(person)
+        person.computers.append(computer)
+        self.session.commit()
+
+        self.manager.create_api(self.Person)
+        response = self.app.get('/api/person/1/computers')
+        self.assertEqual(200, response.status_code)
+
 
 class FSATest(FlaskTestBase):
     """Tests which use models defined using Flask-SQLAlchemy instead of pure

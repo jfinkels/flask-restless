@@ -93,6 +93,24 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       {"id": 1, "name": "Jeffrey", "age": 24}
 
+.. http:get:: /api/person/(int:id)/computers
+
+   Gets a list of all ``Computer`` objects which are owned by the ``Person``
+   object with the specified ID.
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+
+      {
+        "num_results": 2,
+        "total_pages": 1,
+        "page": 1,
+        "objects": [{"id": 1, "vendor": "Apple", "name": "MacBook", ...}, ...]
+      }
+
 .. http:delete:: /api/person/(int:id)
 
    Deletes the instance of ``Person`` with the specified ID.

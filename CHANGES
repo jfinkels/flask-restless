@@ -25,6 +25,8 @@ Not yet released.
 - #139: remove custom code for specifying include and exclude columns as well
    as authentication code in favor of user-defined pre- and postprocessors
    (this supercedes the fix from #154).
+- #2: adds basic :http:method:`get` access to one level of relationship depth
+   for models.
 
 Version 0.9.3
 -------------
