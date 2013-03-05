@@ -1085,11 +1085,15 @@ class API(ModelView):
                     num_results=num_results)
 
     def _check_authentication(self):
-        """FIXME description"""
-        """If the specified HTTP method requires authentication (see the
-        constructor), this function aborts with :http:statuscode:`401` unless a
-        current user is authorized with respect to the authentication function
-        specified in the constructor of this class.
+        """Raises an exception if the current user is not authorized to make a
+        request.
+
+        If the specified HTTP method requires authentication (see the
+        constructor), this function calls the authentication function specified
+        by the ``authentication_function`` keyword argument to the constructor
+        of this class. That function may raise an
+        :exc:`AuthenticationException` if the current user is not authorized to
+        make the request.
 
         """
         if (request.method in self.authentication_required_for):

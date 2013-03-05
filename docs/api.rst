@@ -14,4 +14,6 @@ in Flask-Restless.
 
    .. automethod:: create_api_blueprint
 
+.. autoclass:: AuthenticationException
+
 .. autoclass:: ProcessingException

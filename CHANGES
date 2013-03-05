@@ -20,6 +20,8 @@ Not yet released.
   <http://labix.org/python-dateutil>`_ to be not equal to 2.0 if using Python
   version 2.6 or 2.7.
 - #146: preprocessors now really execute before other code.
+- #154: authentication function now may raise an exception instead of just
+   returning a Boolean.
 
 Version 0.9.3
 -------------

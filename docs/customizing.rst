@@ -261,14 +261,15 @@ former, you must also specify the latter.
 
 ``authentication_required_for`` is the list of HTTP method names which will
 require authentication and ``authentication_function`` is a function with zero
-arguments which returns ``True`` if and only if the client making the request
-has been authenticated. This function can really be anything you like, but
-presumably it will have something to do with your authentication framework.
+arguments which should abort with a :exc:`AuthenticationException` if and only
+if the client making the request has *not* been authenticated. This function
+can really be anything you like, but presumably it will have something to do
+with your authentication framework.
 
 For an example using `Flask-Login <packages.python.org/Flask-Login/>`_, see the
-:file:`examples/authentication` directory in the source distribution, or view
-it online at `GitHub
-<https://github.com/jfinkels/flask-restless/tree/master/examples/authentication>`_.
+:file:`examples/server_configurations/authentication` directory in the source
+distribution, or view it online at `GitHub
+<https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/authentication>`_.
 
 .. _serverpagination:
 
