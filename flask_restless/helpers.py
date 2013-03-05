@@ -8,6 +8,7 @@
     :license: GNU AGPLv3+ or BSD
 
 """
+from sqlalchemy.orm import RelationshipProperty as RelProperty
 
 
 def partition(l, condition):
@@ -64,3 +65,25 @@ def upper_keys(d):
 
     """
     return dict(zip((k.upper() for k in d.keys()), d.values()))
+
+
+def get_columns(model):
+    """Returns a dictionary-like object containing all the columns of the
+    specified `model` class.
+
+    """
+    return model._sa_class_manager
+
+
+def get_relations(model):
+    """Returns a list of relation names of `model` (as a list of strings)."""
+    cols = get_columns(model)
+    return [k for k in cols if isinstance(cols[k].property, RelProperty)]
+
+
+def get_related_model(model, relationname):
+    """Gets the class of the model to which `model` is related by the attribute
+    whose name is `relationname`.
+
+    """
+    return get_columns(model)[relationname].property.mapper.class_

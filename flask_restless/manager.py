@@ -14,6 +14,8 @@
 
 from flask import Blueprint
 
+from .helpers import get_related_model
+from .helpers import get_relations
 from .views import API
 from .views import FunctionAPI
 
@@ -377,6 +379,19 @@ class APIManager(object):
         instance_endpoint = '%s/<instid>' % (collection_endpoint)
         blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
                                    view_func=api_view)
+        # add endpoints which expose related models
+        for relation_name in get_relations(model):
+            relation = get_related_model(model, relation_name)
+            relation_api_name = apiname + '_' + relation_name
+            relation_api_view = API.as_view(relation_api_name, self.session,
+                                            relation, validation_exceptions,
+                                            results_per_page,
+                                            max_results_per_page,
+                                            post_form_preprocessor,
+                                            preprocessors, postprocessors)
+            endpoint_url = '%s/%s' % (instance_endpoint, relation_name)
+            blueprint.add_url_rule(endpoint_url, methods=['GET'],
+                                   view_func=relation_api_view)
         # if function evaluation is allowed, add an endpoint at /api/eval/...
         # which responds only to GET requests and responds with the result of
         # evaluating functions on all instances of the specified model

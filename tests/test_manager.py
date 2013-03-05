@@ -21,7 +21,6 @@ else:
     has_flask_sqlalchemy = True
 
 from flask.ext.restless import APIManager
-from flask.ext.restless.views import _get_columns
 
 from .helpers import FlaskTestBase
 from .helpers import TestSupport

@@ -30,9 +30,7 @@ from sqlalchemy.exc import OperationalError
 from flask.ext.restless.manager import APIManager
 from flask.ext.restless.manager import IllegalArgumentError
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
-from flask.ext.restless.views import _get_columns
 from flask.ext.restless.views import _get_or_create
-from flask.ext.restless.views import _get_relations
 from flask.ext.restless.views import _to_dict
 
 from .helpers import FlaskTestBase
@@ -164,18 +162,6 @@ class ModelTestCase(TestSupport):
     models.
 
     """
-
-    def test_get_columns(self):
-        """Test for getting the names of columns as strings."""
-        columns = _get_columns(self.Person)
-        self.assertEqual(sorted(columns.keys()), sorted(['age', 'birth_date',
-                                                         'computers', 'id',
-                                                         'name', 'other']))
-
-    def test_get_relations(self):
-        """Tests getting the names of the relations of a model as strings."""
-        relations = _get_relations(self.Person)
-        self.assertEqual(relations, ['computers'])
 
     def test_date_serialization(self):
         """Tests that date objects in the database are correctly serialized in
