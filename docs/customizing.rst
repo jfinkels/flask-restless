@@ -247,24 +247,8 @@ relationship field has no effect::
 Requiring authentication for some methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. note::
-
-   The authentication system in Flask-Restless is relatively simple, but since
-   I suspect it is a common requirement for ReSTful APIs, suggestions,
-   comments, and pull requests are much appreciated. Please visit `our issue
-   tracker <https://github.com/jfinkels/flask-restless/issues>`_.
-
-If you want certain HTTP methods to require authentication, use the
-``authentication_required_for`` and ``authentication_function`` keyword
-arguments to the :meth:`APIManager.create_api` method. If you specify the
-former, you must also specify the latter.
-
-``authentication_required_for`` is the list of HTTP method names which will
-require authentication and ``authentication_function`` is a function with zero
-arguments which should abort with a :exc:`AuthenticationException` if and only
-if the client making the request has *not* been authenticated. This function
-can really be anything you like, but presumably it will have something to do
-with your authentication framework.
+If you want certain HTTP methods to require authentication, use preprocessors
+as described in :ref:`processors` below.
 
 For an example using `Flask-Login <packages.python.org/Flask-Login/>`_, see the
 :file:`examples/server_configurations/authentication` directory in the source

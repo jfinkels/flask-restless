@@ -81,25 +81,6 @@ class ProcessingException(Exception):
         self.status_code = status_code
 
 
-class AuthenticationException(Exception):
-    """Raised when authentication failed for some reason.
-
-    This exception should be raised by functions supplied in the
-    ``authentication_function`` keyword arguments to
-    :class:`APIManager.create_api`.
-
-    `status_code` is the HTTP status code of the response supplied to the
-    client in the case that this exception is raised. `message` is an error
-    message describing the cause of this exception. This message will appear in
-    the JSON object in the body of the response to the client.
-
-    """
-    def __init__(self, message='', status_code=401, *args, **kwargs):
-        super(AuthenticationException, self).__init__(*args, **kwargs)
-        self.message = message
-        self.status_code = status_code
-
-
 def jsonify_status_code(status_code, *args, **kw):
     """Returns a jsonified response with the specified HTTP status code.
 
@@ -529,8 +510,7 @@ class API(ModelView):
 
     """
 
-    def __init__(self, session, model, authentication_required_for=None,
-                 authentication_function=None, exclude_columns=None,
+    def __init__(self, session, model, exclude_columns=None,
                  include_columns=None, validation_exceptions=None,
                  results_per_page=10, max_results_per_page=100,
                  post_form_preprocessor=None, preprocessors=None,
@@ -543,19 +523,6 @@ class API(ModelView):
         `model` is the :class:`flask_restless.Entity` class of the database
         model for which this instance of the class is an API. This model should
         live in `database`.
-
-        `authentication_required_for` is a list of HTTP method names (for
-        example, ``['POST', 'PATCH']``) for which authentication must be
-        required before clients can successfully make requests. If this keyword
-        argument is specified, `authentication_function` must also be
-        specified.
-
-        `authentication_function` is a function which accepts no arguments and
-        returns ``True`` if and only if a client is authorized to make a
-        request on an endpoint.
-
-        Pre-condition (callers must satisfy): if `authentication_required_for`
-        is specified, so must `authentication_function`.
 
         `validation_exceptions` is the tuple of exceptions raised by backend
         validation (if any exist). If exceptions are specified here, any
@@ -624,6 +591,14 @@ class API(ModelView):
         other code. For more information on preprocessors and postprocessors,
         see :ref:`processors`.
 
+        .. versionchanged:: 0.10.0
+           Removed the `authentication_required_for` and
+           `authentication_function` keyword arguments.
+
+           Use the `preprocesors` and `postprocessors` keyword arguments
+           instead. For more information, see :ref:`authentication` for more
+           information.
+
         .. versionadded:: 0.9.2
            Added the `preprocessors` and `postprocessors` keyword arguments.
 
@@ -646,11 +621,6 @@ class API(ModelView):
 
         """
         super(API, self).__init__(session, model, *args, **kw)
-        self.authentication_required_for = authentication_required_for or ()
-        self.authentication_function = authentication_function
-        # convert HTTP method names to uppercase
-        self.authentication_required_for = \
-            frozenset([m.upper() for m in self.authentication_required_for])
         self.exclude_columns, self.exclude_relations = \
             _parse_excludes(exclude_columns)
         self.include_columns, self.include_relations = \
@@ -1084,21 +1054,6 @@ class API(ModelView):
         return dict(page=page_num, objects=objects, total_pages=total_pages,
                     num_results=num_results)
 
-    def _check_authentication(self):
-        """Raises an exception if the current user is not authorized to make a
-        request.
-
-        If the specified HTTP method requires authentication (see the
-        constructor), this function calls the authentication function specified
-        by the ``authentication_function`` keyword argument to the constructor
-        of this class. That function may raise an
-        :exc:`AuthenticationException` if the current user is not authorized to
-        make the request.
-
-        """
-        if (request.method in self.authentication_required_for):
-            self.authentication_function()
-
     def _query_by_primary_key(self, primary_key_value, model=None):
         """Returns a SQLAlchemy query object containing the result of querying
         `model` (or ``self.model`` if not specified) for instances whose
@@ -1164,11 +1119,6 @@ class API(ModelView):
 
         """
         try:
-            self._check_authentication()
-        except AuthenticationException, e:
-            return jsonify_status_code(status_code=e.status_code,
-                                       message=e.message)
-        try:
             if instid is None:
                 return self._search()
             for preprocessor in self.preprocessors['GET_SINGLE']:
@@ -1191,11 +1141,6 @@ class API(ModelView):
 
         """
         is_deleted = False
-        try:
-            self._check_authentication()
-        except AuthenticationException, e:
-            return jsonify_status_code(status_code=e.status_code,
-                                       message=e.message)
         try:
             for preprocessor in self.preprocessors['DELETE']:
                 preprocessor(instid)
@@ -1237,11 +1182,6 @@ class API(ModelView):
         single level of relationship data.
 
         """
-        try:
-            self._check_authentication()
-        except AuthenticationException, e:
-            return jsonify_status_code(status_code=e.status_code,
-                                       message=e.message)
         # try to read the parameters for the model from the body of the request
         try:
             params = json.loads(request.data)
@@ -1336,11 +1276,6 @@ class API(ModelView):
         be made in this case.
 
         """
-        try:
-            self._check_authentication()
-        except AuthenticationException, e:
-            return jsonify_status_code(status_code=e.status_code,
-                                       message=e.message)
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.data)

@@ -34,7 +34,6 @@ from flask.ext.restless.views import _get_columns
 from flask.ext.restless.views import _get_or_create
 from flask.ext.restless.views import _get_relations
 from flask.ext.restless.views import _to_dict
-from flask.ext.restless.views import AuthenticationException
 
 from .helpers import FlaskTestBase
 from .helpers import TestSupport
@@ -1087,61 +1086,6 @@ class APITestCase(TestSupport):
         d = dict(filters=[dict(op='==', val='Test')])
         resp = self.app.search('/api/person', dumps(d))
         self.assertEqual(resp.status_code, 400)
-
-    def test_authentication(self):
-        """Tests basic authentication using custom authentication functions."""
-        # must provide authentication function if authentication is required
-        # for some HTTP methods
-        with self.assertRaises(IllegalArgumentError):
-            self.manager.create_api(self.Person, methods=['GET', 'POST'],
-                                    authentication_required_for=['POST'])
-        # function always raise AuthenticationException
-        def check_permission():
-            raise AuthenticationException(status_code=401,
-                                          message='Permission denied')
-
-        # test for authentication always failing
-        self.manager.create_api(self.Person, methods=['GET', 'POST'],
-                                url_prefix='/api/v2',
-                                authentication_required_for=['POST'],
-                                authentication_function=check_permission)
-
-        # a slightly more complicated function; all odd calls are authenticated
-        class everyother(object):
-            """Stores the number of times this object has been called."""
-
-            def __init__(self):
-                """Initialize the number of calls to 0."""
-                self.count = 0
-
-            def __call__(self):
-                """Increment the call count and raise an exception if the count
-                is odd.
-
-                """
-                self.count += 1
-                if not self.count % 2:
-                    raise AuthenticationException(status_code=401,
-                                                  message='Permission denied')
-
-        self.manager.create_api(self.Person, methods=['GET'],
-                                url_prefix='/api/v3',
-                                authentication_required_for=['GET'],
-                                authentication_function=everyother())
-
-        # requests which expect authentication always fails
-        for i in range(3):
-            response = self.app.get('/api/v2/person')
-            self.assertEqual(response.status_code, 200)
-            response = self.app.post('/api/v2/person')
-            self.assertEqual(response.status_code, 401)
-
-        # requests which fail on every odd request
-        for i in range(3):
-            response = self.app.get('/api/v3/person')
-            self.assertEqual(response.status_code, 200)
-            response = self.app.get('/api/v3/person')
-            self.assertEqual(response.status_code, 401)
 
     def test_pagination(self):
         """Tests for pagination of long result sets."""

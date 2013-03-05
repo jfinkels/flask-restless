@@ -188,8 +188,6 @@ class APIManager(object):
     def create_api_blueprint(self, model, methods=READONLY_METHODS,
                              url_prefix='/api', collection_name=None,
                              allow_patch_many=False, allow_functions=False,
-                             authentication_required_for=None,
-                             authentication_function=None,
                              exclude_columns=None, include_columns=None,
                              validation_exceptions=None, results_per_page=10,
                              max_results_per_page=100,
@@ -261,17 +259,6 @@ class APIManager(object):
         if ``False`` by default. Warning: you must not create an API for a
         model whose name is ``'eval'`` if you set this argument to ``True``.
 
-        `authentication_required_for` is a list of HTTP method names (for
-        example, ``['POST', 'PATCH']``) for which authentication must be
-        required before clients can successfully make requests. If this keyword
-        argument is specified, `authentication_function` must also be
-        specified. For more information on requiring authentication, see
-        :ref:`authentication`.
-
-        `authentication_function` is a function which accepts no arguments and
-        returns ``True`` if and only if a client is authorized to make a
-        request on an endpoint.
-
         If either `include_columns` or `exclude_columns` is not ``None``,
         exactly one of them must be specified. If both are not ``None``, then
         this function will raise a :exc:`IllegalArgumentError`.
@@ -333,6 +320,14 @@ class APIManager(object):
         other code. For more information on preprocessors and postprocessors,
         see :ref:`processors`.
 
+        .. versionchanged:: 0.10.0
+           Removed the `authentication_required_for` and
+           `authentication_function` keyword arguments.
+
+           Use the `preprocesors` and `postprocessors` keyword arguments
+           instead. For more information, see :ref:`authentication` for more
+           information.
+
         .. versionadded:: 0.9.2
            Added the `preprocessors` and `postprocessors` keyword arguments.
 
@@ -362,10 +357,6 @@ class APIManager(object):
            Force the model name in the URL to lowercase.
 
         """
-        if authentication_required_for and not authentication_function:
-            msg = ('If authentication_required is specified, so must'
-                   ' authentication_function.')
-            raise IllegalArgumentError(msg)
         if exclude_columns is not None and include_columns is not None:
             msg = ('Cannot simultaneously specify both include columns and'
                    ' exclude columns.')
@@ -388,9 +379,7 @@ class APIManager(object):
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.APINAME_FORMAT % collection_name
         # the view function for the API for this model
-        api_view = API.as_view(apiname, self.session, model,
-                               authentication_required_for,
-                               authentication_function, exclude_columns,
+        api_view = API.as_view(apiname, self.session, model, exclude_columns,
                                include_columns, validation_exceptions,
                                results_per_page, max_results_per_page,
                                post_form_preprocessor, preprocessors,
