@@ -22,8 +22,9 @@ Not yet released.
 - #146: preprocessors now really execute before other code.
 - #154: authentication function now may raise an exception instead of just
    returning a Boolean.
-- Authentication should now be implemented by the user as a preprocessor
-  function.
+- #139: remove custom code for specifying include and exclude columns as well
+   as authentication code in favor of user-defined pre- and postprocessors
+   (this supercedes the fix from #154).
 
 Version 0.9.3
 -------------
