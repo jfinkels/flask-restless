@@ -31,7 +31,12 @@ from flask.ext.restless import APIManager
 
 
 class FlaskTestBase(TestCase):
-    """Base class for tests which use a Flask application."""
+    """Base class for tests which use a Flask application.
+
+    The Flask test client can be accessed at ``self.app``. The Flask
+    application itself is accessible at ``self.flaskapp``.
+
+    """
 
     def setUp(self):
         """Creates the Flask application and the APIManager."""
@@ -48,19 +53,24 @@ class FlaskTestBase(TestCase):
         self.app = app.test_client()
 
 
-class TestSupport(FlaskTestBase):
+class DatabaseTestBase(FlaskTestBase):
     """Base class for tests which use a database and have an
-    :class:`flask_restless.APIManager` with a :class:`flask.Flask` app object.
+    :class:`flask_restless.APIManager`.
 
-    The test client for the :class:`flask.Flask` application is accessible to
-    test functions at ``self.app`` and the :class:`flask_restless.APIManager`
-    is accessible at ``self.manager``.
+    The :meth:`setUp` method does the necessary SQLAlchemy initialization, and
+    the subclasses should populate the database with models and then create the
+    database (by calling ``self.Base.metadata.create_all()``).
+
+    The :class:`flask_restless.APIManager` is accessible at ``self.manager``.
 
     """
 
     def setUp(self):
-        """Creates the Flask application and the APIManager."""
-        super(TestSupport, self).setUp()
+        """Initializes the components necessary for models in a SQLAlchemy
+        database, as well as for Flask-Restless.
+
+        """
+        super(DatabaseTestBase, self).setUp()
 
         # initialize SQLAlchemy and Flask-Restless
         app = self.flaskapp
@@ -73,6 +83,16 @@ class TestSupport(FlaskTestBase):
         self.Base.metadata.bind = engine
         #Base.query = self.session.query_property()
         self.manager = APIManager(app, self.session)
+
+
+class TestSupport(DatabaseTestBase):
+    """Base class for test cases which use a database with some basic models.
+
+    """
+
+    def setUp(self):
+        """Creates some example models and creates the database tables."""
+        super(TestSupport, self).setUp()
 
         # declare the models
         class Computer(self.Base):

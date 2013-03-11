@@ -5,7 +5,7 @@
     Provides unit tests for the :mod:`flask_restless.views` module.
 
     :copyright: 2011 by Lincoln de Sousa <lincoln@comum.org>
-    :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
+    :copyright: 2012, 2013 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
     :license: GNU AGPLv3+ or BSD
 
 """
@@ -23,31 +23,33 @@ except:
     has_flask_sqlalchemy = False
 else:
     has_flask_sqlalchemy = True
-from sqlalchemy import Column, Integer, ForeignKey
-from sqlalchemy import Unicode
+from sqlalchemy import Column
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import Unicode
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.associationproxy import association_proxy as prox
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.orderinglist import ordering_list as ol
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship as rel
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.orderinglist import ordering_list
 
 from flask.ext.restless.manager import APIManager
-from flask.ext.restless.manager import IllegalArgumentError
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
 from flask.ext.restless.views import _get_or_create
 from flask.ext.restless.views import _to_dict
 
+from .helpers import DatabaseTestBase
 from .helpers import FlaskTestBase
 from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
 
 
 __all__ = ['ModelTestCase', 'FunctionEvaluationTest', 'FunctionAPITestCase',
-           'APITestCase', 'FSAModelTest']
+           'APITestCase', 'FSAModelTest', 'AssociationProxyTest']
 
 
 dumps = json.dumps
@@ -677,9 +679,10 @@ class APITestCase(TestSupport):
                          {'name': 'name', 'val': u'Lincoln', 'op': 'equals'}
                      ],
                  }
-        # Changing the birth date field for objects where name field equals Lincoln
+        # Changing the birth date field for objects where name field equals
+        # Lincoln
         day, month, year = 15, 9, 1986
-        birth_date = date(year, month, day).strftime('%d/%m/%Y') # iso8601
+        birth_date = date(year, month, day).strftime('%d/%m/%Y')  # iso8601
         form = {'birth_date': birth_date, 'q': search}
         response = self.app.patch('/api/v2/person', data=dumps(form))
         num_modified = loads(response.data)['num_modified']
@@ -726,7 +729,7 @@ class APITestCase(TestSupport):
                               {'name': u'foo', 'vendor': u'bar'}]}
         response = self.app.patch('/api/person/1', data=dumps(data))
         self.assertEqual(200, response.status_code)
-        data = json.loads(response.data)
+        data = loads(response.data)
         self.assertEqual(2, len(data['computers']))
         self.assertEqual(u'lixeiro', data['computers'][0]['name'])
         self.assertEqual(u'foo', data['computers'][1]['name'])
@@ -735,7 +738,7 @@ class APITestCase(TestSupport):
                               {'name': u'milk', 'vendor': u'chocolate'}]}
         response = self.app.patch('/api/person/1', data=dumps(data))
         self.assertEqual(200, response.status_code)
-        data = json.loads(response.data)
+        data = loads(response.data)
         self.assertEqual(3, len(data['computers']))
         self.assertEqual(u'hey', data['computers'][0]['name'])
         self.assertEqual(u'big', data['computers'][1]['name'])
@@ -1283,43 +1286,45 @@ class APITestCase(TestSupport):
         self.assertEqual(400, response.status_code)
 
 
-class AssociationProxyTest(FlaskTestBase):
+class AssociationProxyTest(DatabaseTestBase):
+    """Unit tests for models which have a relationship involving an association
+    proxy.
+
+    """
 
     def setUp(self):
-        """Creates the Flask application and the APIManager."""
-        super(AssociationProxyTest, self).setUp()
+        """Creates example models which are related by an association proxy
+        table.
 
-        # initialize SQLAlchemy and Flask-Restless
-        app = self.flaskapp
-        engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'],
-                               convert_unicode=True)
-        self.Session = sessionmaker(autocommit=False, autoflush=False,
-                                    bind=engine)
-        self.session = scoped_session(self.Session)
-        self.Base = declarative_base()
-        self.Base.metadata.bind = engine
-        self.manager = APIManager(app, self.session)
+        """
+        super(AssociationProxyTest, self).setUp()
 
         class Image(self.Base):
             __tablename__ = 'image'
             id = Column(Integer, primary_key=True)
-            url = Column(Unicode)
-            products = association_proxy('chosen_product_images', 'product', creator=lambda product: ChosenProductImage(product=product))
+            products = prox('chosen_product_images', 'product',
+                            creator=lambda product:
+                                ChosenProductImage(product=product))
 
         class ChosenProductImage(self.Base):
             __tablename__ = 'chosen_product_image'
-            product_id = Column(Integer, ForeignKey('product.id'), nullable=False, primary_key=True)
-            image_id   = Column(Integer, ForeignKey(  'image.id'), nullable=False, primary_key=True)
-            position = Column(Integer, nullable=True, doc="Position of this image in the set of images chosen for this product.")
-
-            image = relationship('Image', backref=backref(name='chosen_product_images', cascade="all, delete-orphan"), enable_typechecks=False)
+            product_id = Column(Integer, ForeignKey('product.id'),
+                                primary_key=True)
+            image_id = Column(Integer, ForeignKey('image.id'),
+                              primary_key=True)
+            image = rel('Image', backref=backref(name='chosen_product_images',
+                                                 cascade="all, delete-orphan"),
+                        enable_typechecks=False)
 
         class Product(self.Base):
             __tablename__ = 'product'
             id = Column(Integer, primary_key=True)
-            label = Column(Unicode)
-            chosen_product_images = relationship(ChosenProductImage, backref=backref(name='product'), cascade="all, delete-orphan", collection_class=ordering_list('position'), order_by=[ChosenProductImage.position])
-            chosen_images = association_proxy('chosen_product_images', 'image', creator=lambda image: ChosenProductImage(image=image))
+            chosen_product_images = rel(ChosenProductImage,
+                                        backref=backref(name='product'),
+                                        cascade="all, delete-orphan")
+            chosen_images = prox('chosen_product_images', 'image',
+                                 creator=lambda image:
+                                     ChosenProductImage(image=image))
 
         self.Product = Product
         self.Image = Image
@@ -1329,224 +1334,179 @@ class AssociationProxyTest(FlaskTestBase):
         self.Base.metadata.create_all()
 
         # create the API endpoints
-        self.manager.create_api(self.Product, methods=['GET','PUT','POST'], url_prefix='/api')
-        self.manager.create_api(self.Image  , methods=['GET','PUT','POST'], url_prefix='/api')
+        self.manager.create_api(self.Product, methods=['GET', 'PATCH', 'POST'],
+                                url_prefix='/api')
+        self.manager.create_api(self.Image, methods=['GET', 'PATCH', 'POST'],
+                                url_prefix='/api')
 
     def tearDown(self):
         """Drops all tables from the temporary database."""
         self.Base.metadata.drop_all()
 
-    def test_association_proxy_get_keys(self):
-        response = self.app.post('/api/product', data=json.dumps({}))
-        self.assertEqual(response.status_code, 201)
-        product_id = loads(response.data)['id']
+    def _check_relations(self):
+        """Makes :http:method:`get` requests for the product with ID 1 and the
+        image with ID 1, ensuring that each has a relationship with the other
+        via the association proxy table.
 
-        response = self.app.post('/api/image', data=json.dumps({}))
-        self.assertEqual(response.status_code, 201)
-        image_id = loads(response.data)['id']
-
-        response = self.app.get('/api/product/%s' % product_id)
+        """
+        response = self.app.get('/api/product/1')
         data = loads(response.data)
         self.assertIn('chosen_images', data)
+        self.assertIn({'id': 1}, data['chosen_images'])
 
-        response = self.app.get('/api/image/%s' % image_id)
+        response = self.app.get('/api/image/1')
         data = loads(response.data)
         self.assertIn('products', data)
+        self.assertIn({'id': 1}, data['products'])
+
+    def _check_relations_two(self):
+        """Makes :http:method:`get` requests for the product with ID 1 and the
+        images with ID 1 and 2, ensuring that the product has a relationship
+        with each image, and each image has a relationship with the product.
+
+        """
+        response = self.app.get('/api/product/1')
+        data = loads(response.data)
+        self.assertIn('chosen_images', data)
+        self.assertEquals(data['chosen_images'], [{'id': 1}, {'id': 2}])
+        self.assertEquals(data['chosen_product_images'],
+                          [{'image_id': 1, 'product_id': 1},
+                           {'image_id': 2, 'product_id': 1}])
+
+        response = self.app.get('/api/image/1')
+        data = loads(response.data)
+        self.assertIn('products', data)
+        self.assertIn({'id': 1}, data['products'])
+
+        response = self.app.get('/api/image/2')
+        data = loads(response.data)
+        self.assertIn('products', data)
+        self.assertIn({'id': 1}, data['products'])
 
     def test_association_proxy_get_data(self):
-        response = self.app.post('/api/product', data=json.dumps({'label':"My Product"}))
-        self.assertEqual(response.status_code, 201)
-        product_id = loads(response.data)['id']
+        """Tests that a :http:method:`get` request exhibits the correct
+        associations.
 
-        response = self.app.post('/api/image', data=json.dumps({'url':'http://foo/bar.jpg'}))
-        self.assertEqual(response.status_code, 201)
-        image_id = loads(response.data)['id']
-
-        self.session.add(self.ChosenProductImage(image_id=image_id, product_id=product_id))
+        """
+        self.session.add(self.Product())
+        self.session.add(self.Image())
+        self.session.add(self.ChosenProductImage(image_id=1, product_id=1))
         self.session.commit()
 
-        response = self.app.get('/api/product/%s' % product_id)
-        data = loads(response.data)
-        self.assertIn('chosen_images', data)
-        self.assertIn({'id': image_id, 'url': 'http://foo/bar.jpg'}, data['chosen_images'])
-
-        response = self.app.get('/api/image/%s' % image_id)
-        data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': product_id, 'label': "My Product"}, data['products'])
+        self._check_relations()
 
     def test_association_proxy_post(self):
-        response = self.app.post('/api/product', data=json.dumps({'label':"My Product"}))
+        """Tests that a :http:method:`post` request correctly adds an
+        association.
+
+        """
+        self.session.add(self.Product())
+        self.session.commit()
+
+        data = {'products': [{'id': 1}]}
+        response = self.app.post('/api/image', data=dumps(data))
         self.assertEqual(response.status_code, 201)
-        product_id = loads(response.data)['id']
 
-        response = self.app.post('/api/image', data=json.dumps({'url':'http://foo/bar.jpg', 'products':[{'id': product_id},]}))
-        self.assertEqual(response.status_code, 201)
-        image_id = loads(response.data)['id']
+        self._check_relations()
 
-        response = self.app.get('/api/product/%s' % product_id)
-        data = loads(response.data)
-        self.assertIn('chosen_images', data)
-        self.assertIn({'id': image_id, 'url': 'http://foo/bar.jpg'}, data['chosen_images'])
+    def test_association_proxy_patch(self):
+        """Tests that a :http:method:`patch` request correctly sets the
+        appropriate associations.
 
-        response = self.app.get('/api/image/%s' % image_id)
-        data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': product_id, 'label': "My Product"}, data['products'])
+        """
+        self.session.add(self.Product())
+        self.session.add(self.Image())
+        self.session.commit()
 
-    def test_association_proxy_put(self):
-        response = self.app.post('/api/product', data=json.dumps({'label':"My Product"}))
-        self.assertEqual(response.status_code, 201)
-        product_id = loads(response.data)['id']
-
-        response = self.app.post('/api/image', data=json.dumps({'url':'http://foo/bar.jpg'}))
-        self.assertEqual(response.status_code, 201)
-        image_id = loads(response.data)['id']
-
-        response = self.app.put('/api/product/%s' % product_id, data=json.dumps({'chosen_images': [{'id':image_id}]}))
+        data = {'chosen_images': [{'id': 1}]}
+        response = self.app.patch('/api/product/1', data=dumps(data))
         self.assertEqual(response.status_code, 200)
 
-        response = self.app.get('/api/product/%s' % product_id)
-        data = loads(response.data)
-        self.assertIn('chosen_images', data)
-        self.assertIn({'id': image_id, 'url': 'http://foo/bar.jpg'}, data['chosen_images'])
+        self._check_relations()
 
-        response = self.app.get('/api/image/%s' % image_id)
-        data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': product_id, 'label': "My Product"}, data['products'])
+    def test_association_proxy_patch_multiple(self):
+        """Tests that a :http:method:`patch` request correctly adds multiple
+        associations.
 
-    def test_association_proxy_put_multiple(self):
-        response = self.app.post('/api/product', data=json.dumps({'label':"My Product"}))
-        self.assertEqual(response.status_code, 201)
-        product_id = loads(response.data)['id']
+        """
+        self.session.add(self.Product())
+        self.session.add(self.Image())
+        self.session.add(self.Image())
+        self.session.commit()
 
-        response = self.app.post('/api/image', data=json.dumps({'url':'http://foo/bar.jpg'}))
-        self.assertEqual(response.status_code, 201)
-        image1_id = loads(response.data)['id']
-
-        response = self.app.post('/api/image', data=json.dumps({'url':'http://boo/far.jpg'}))
-        self.assertEqual(response.status_code, 201)
-        image2_id = loads(response.data)['id']
-
-        response = self.app.put('/api/product/%s' % product_id, data=json.dumps({'chosen_images': [{'id':image1_id}, {'id':image2_id}]}))
+        data = {'chosen_images': [{'id': 1}, {'id': 2}]}
+        response = self.app.patch('/api/product/1', data=dumps(data))
         self.assertEqual(response.status_code, 200)
 
-        response = self.app.get('/api/product/%s' % product_id)
-        data = loads(response.data)
-        self.assertIn('chosen_images', data)
-        self.assertEquals(data['chosen_images'], [{'id': image1_id, 'url': 'http://foo/bar.jpg'}, {'id': image2_id, 'url': 'http://boo/far.jpg'}])
-        self.assertEquals(data['chosen_product_images'], [{'image_id': 1, 'product_id': 1, 'position': 0}, {'image_id': 2, 'product_id': 1, 'position': 1}])
+        self._check_relations_two()
 
-        response = self.app.get('/api/image/%s' % image1_id)
-        data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': product_id, 'label': "My Product"}, data['products'])
+    def test_association_proxy_patch_with_add(self):
+        """Tests that a :http:method:`patch` request correctly adds an
+        association.
 
-        response = self.app.get('/api/image/%s' % image2_id)
-        data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': product_id, 'label': "My Product"}, data['products'])
+        """
+        self.session.add(self.Product())
+        self.session.add(self.Image())
+        self.session.commit()
 
-    def test_association_proxy_put_with_add(self):
-        response = self.app.post('/api/product', data=json.dumps({'label':"My Product"}))
-        self.assertEqual(response.status_code, 201)
-        product_id = loads(response.data)['id']
-
-        response = self.app.post('/api/image', data=json.dumps({'url':'http://foo/bar.jpg'}))
-        self.assertEqual(response.status_code, 201)
-        image1_id = loads(response.data)['id']
-
-        response = self.app.post('/api/image', data=json.dumps({'url':'http://boo/far.jpg'}))
-        self.assertEqual(response.status_code, 201)
-        image2_id = loads(response.data)['id']
-
-        response = self.app.put('/api/product/%s' % product_id, data=json.dumps({'chosen_images': {'add': {'id':image1_id}}}))
+        data = {'chosen_images': {'add': {'id': 1}}}
+        response = self.app.patch('/api/product/1', data=dumps(data))
         self.assertEqual(response.status_code, 200)
 
-        response = self.app.put('/api/product/%s' % product_id, data=json.dumps({'chosen_images': {'add': {'id':image2_id}}}))
+        self._check_relations()
+
+    def test_association_proxy_patch_with_remove(self):
+        """Tests that a :http:method:`patch` request correctly removes an
+        association.
+
+        """
+        self.session.add(self.Product())
+        self.session.add(self.Image())
+        self.session.add(self.Image())
+        self.session.commit()
+
+        data = {'chosen_images': {'add': {'id': 1}}}
+        response = self.app.patch('/api/product/1', data=dumps(data))
         self.assertEqual(response.status_code, 200)
 
-        response = self.app.get('/api/product/%s' % product_id)
-        data = loads(response.data)
-        self.assertIn('chosen_images', data)
-        self.assertEquals(data['chosen_images'], [{'id': image1_id, 'url': 'http://foo/bar.jpg'}, {'id': image2_id, 'url': 'http://boo/far.jpg'}])
-        self.assertEquals(data['chosen_product_images'], [{'image_id': 1, 'product_id': 1, 'position': 0}, {'image_id': 2, 'product_id': 1, 'position': 1}])
-
-        response = self.app.get('/api/image/%s' % image1_id)
-        data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': product_id, 'label': "My Product"}, data['products'])
-
-        response = self.app.get('/api/image/%s' % image2_id)
-        data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': product_id, 'label': "My Product"}, data['products'])
-
-    def test_association_proxy_put_with_remove(self):
-        response = self.app.post('/api/product', data=json.dumps({'label':"My Product"}))
-        self.assertEqual(response.status_code, 201)
-        product_id = loads(response.data)['id']
-
-        response = self.app.post('/api/image', data=json.dumps({'url':'http://foo/bar.jpg'}))
-        self.assertEqual(response.status_code, 201)
-        image1_id = loads(response.data)['id']
-
-        response = self.app.post('/api/image', data=json.dumps({'url':'http://boo/far.jpg'}))
-        self.assertEqual(response.status_code, 201)
-        image2_id = loads(response.data)['id']
-
-        response = self.app.put('/api/product/%s' % product_id, data=json.dumps({'chosen_images': {'add': {'id':image1_id}}}))
+        data = {'chosen_images': {'add': {'id': 2}}}
+        response = self.app.patch('/api/product/1', data=dumps(data))
         self.assertEqual(response.status_code, 200)
 
-        response = self.app.put('/api/product/%s' % product_id, data=json.dumps({'chosen_images': {'add': {'id':image2_id}}}))
+        data = {'chosen_images': {'remove': [{'id': 2}]}}
+        response = self.app.patch('/api/product/1', data=dumps(data))
         self.assertEqual(response.status_code, 200)
 
-        response = self.app.put('/api/product/%s' % product_id, data=json.dumps({'chosen_images': {'remove': [{'id':image1_id}]}}))
-        self.assertEqual(response.status_code, 200)
-
-        response = self.app.get('/api/product/%s' % product_id)
-        data = loads(response.data)
-        self.assertIn('chosen_images', data)
-        self.assertEquals(data['chosen_images'], [{'id': image2_id, 'url': 'http://boo/far.jpg'}])
-        self.assertEquals(data['chosen_product_images'], [{'image_id': 2, 'product_id': 1, 'position': 0}])
-
-        response = self.app.get('/api/image/%s' % image1_id)
-        data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertEquals([], data['products'])
-
-        response = self.app.get('/api/image/%s' % image2_id)
-        data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': product_id, 'label': "My Product"}, data['products'])
-
+        self._check_relations()
 
     def test_association_proxy_any(self):
-        response = self.app.post('/api/product', data=json.dumps({'label':"My Product"}))
-        self.assertEqual(response.status_code, 201)
-        product_id = loads(response.data)['id']
+        """Tests that a search query correctly searches fields on an associated
+        model.
 
-        response = self.app.post('/api/image', data=json.dumps({'url':'http://foo/bar.jpg'}))
-        self.assertEqual(response.status_code, 201)
-        image1_id = loads(response.data)['id']
+        """
+        self.session.add(self.Product())
+        self.session.add(self.Image())
+        self.session.add(self.Image())
+        self.session.commit()
 
-        response = self.app.post('/api/image', data=json.dumps({'url':'http://boo/far.jpg'}))
-        self.assertEqual(response.status_code, 201)
-        image2_id = loads(response.data)['id']
-
-        response = self.app.put('/api/product/%s' % product_id, data=json.dumps({'chosen_images': [{'id':image1_id}, {'id':image2_id}]}))
+        data = {'chosen_images': [{'id': 1}, {'id': 2}]}
+        response = self.app.patch('/api/product/1', data=dumps(data))
         self.assertEqual(response.status_code, 200)
 
-        response = self.app.get('/api/product?q=' + json.dumps({'filters': [{'name':'chosen_images__url', 'op':'any', 'val':'http://foo/bar.jpg'}]}))
+        filters = {'filters':
+                       [{'name': 'chosen_images__id', 'op': 'any', 'val': 1}]}
+        response = self.app.get('/api/product?q=' + dumps(filters))
         self.assertEqual(response.status_code, 200)
         data = loads(response.data)
-        self.assertIn({'id':image1_id, 'url': 'http://foo/bar.jpg'}, data['objects'][0]['chosen_images'])
+        self.assertIn({'id': 1}, data['objects'][0]['chosen_images'])
 
-        response = self.app.put('/api/product/%s' % product_id, data=json.dumps({'chosen_images': {'remove': [{'id':image1_id}]}}))
+        data = {'chosen_images': {'remove': [{'id': 1}]}}
+        response = self.app.patch('/api/product/1', data=dumps(data))
         self.assertEqual(response.status_code, 200)
 
-        response = self.app.get('/api/product?q=' + json.dumps({'filters': [{'name':'chosen_images__url', 'op':'any', 'val':'http://foo/bar.jpg'}]}))
+        filters = {'filters':
+                       [{'name': 'chosen_images__id', 'op': 'any', 'val': 1}]}
+        response = self.app.get('/api/product?q=' + dumps(filters))
         self.assertEqual(response.status_code, 200)
         data = loads(response.data)
         self.assertEqual(data['num_results'], 0)
