@@ -13,7 +13,6 @@ from unittest2 import TestSuite
 
 from flask.ext.restless.helpers import get_columns
 from flask.ext.restless.helpers import get_relations
-from flask.ext.restless.helpers import partition
 from flask.ext.restless.helpers import unicode_keys_to_strings
 from flask.ext.restless.helpers import upper_keys
 
@@ -25,16 +24,6 @@ __all__ = ['HelpersTest']
 
 class HelpersTest(TestCase):
     """Unit tests for the helper functions."""
-
-    def test_partition(self):
-        """Test for partitioning a list into two lists based on a given
-        condition.
-
-        """
-        l = range(10)
-        left, right = partition(l, lambda x: x < 5)
-        self.assertEqual(list(range(5)), left)
-        self.assertEqual(list(range(5, 10)), right)
 
     def test_unicode_keys_to_strings(self):
         """Test for converting keys of a dictionary from ``unicode`` to

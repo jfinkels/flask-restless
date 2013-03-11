@@ -54,7 +54,6 @@ from sqlalchemy.ext.associationproxy import AssociationProxy
 from .helpers import get_columns
 from .helpers import get_related_model
 from .helpers import get_relations
-from .helpers import partition
 from .helpers import session_query
 from .helpers import unicode_keys_to_strings
 from .helpers import upper_keys
