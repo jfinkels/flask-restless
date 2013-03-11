@@ -190,12 +190,14 @@ def _to_dict(instance, deep=None):
     related instances.
 
     """
-    # create an iterable of names of columns, including hybrid properties
-    columns = itertools.chain(
-        (p.key for p in object_mapper(instance).iterate_properties
-            if isinstance(p, ColumnProperty)),
-        (key for key, value in instance.__class__.__dict__.iteritems()
-            if isinstance(value, hybrid_property)))
+    # create a list of names of columns, including hybrid properties
+    columns = [p.key for p in object_mapper(instance).iterate_properties
+            if isinstance(p, ColumnProperty)]
+    for parent in type(instance).mro():
+        columns.extend(
+            [key for key,value in parent.__dict__.iteritems()
+            if isinstance(value, hybrid_property)]
+        )
     # create a dictionary mapping column name to value
     result = dict((col, getattr(instance, col)) for col in columns)
     # Convert datetime and date objects to ISO 8601 format.
