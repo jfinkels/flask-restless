@@ -141,7 +141,12 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       HTTP/1.1 201 Created
 
-      {"id": 1}
+      {
+        "id": 1,
+        "name": "Jeffrey",
+        "age" 24,
+        "computers": []
+      }
 
    The server will respond with :http:statuscode:`400` if the request specifies
    a field which does not exist on the model.
@@ -163,7 +168,7 @@ Also suppose we have registered an API for these models at ``/api/person`` and
         "computers":
           [
             {"manufacturer": "Dell", "model": "Inspiron"},
-            {"manufacturer": "Apple", "model": "MacBook"},
+            {"manufacturer": "Apple", "model": "MacBook"}
           ]
       }
 
@@ -173,7 +178,16 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       HTTP/1.1 201 Created
 
-      {"id": 1}
+      {
+        "id": 1,
+        "name": "Jeffrey",
+        "age": 24,
+        "computers":
+          [
+            {"id": 1, "manufacturer": "Dell", "model": "Inspiron"},
+            {"id": 2, "manufacturer": "Apple", "model": "MacBook"}
+          ]
+      }
 
    .. warning::
 
@@ -203,7 +217,12 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       HTTP/1.1 201 Created
 
-      {"id": 1}
+      {
+        "name": "Jeffrey",
+        "age": 24,
+        "id": 1,
+        "computer": {"id": 1, "manufacturer": "Dell", "model": "Inspiron"}
+      }
 
    .. warning::
 
@@ -233,7 +252,16 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       HTTP/1.1 201 Created
 
-      {"id": 1}
+      {
+        "id": 1,
+        "name": "Jeffrey",
+        "age": 24,
+        "computers":
+          [
+            {"id": 1, "manufacturer": "Dell", "model": "Inspiron"},
+            {"id": 2, "manufacturer": "Apple", "model": "MacBook"}
+          ]
+      }
 
    To create a new person which includes a single related **existing** computer
    instance (via a one-to-one relationship), a request must take the following
@@ -258,7 +286,12 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       HTTP/1.1 201 Created
 
-      {"id": 1}
+      {
+        "name": "Jeffrey",
+        "age": 24,
+        "id": 1,
+        "computer": {"id": 1, "manufacturer": "Dell", "model": "Inspiron"}
+      }
 
 .. http:patch:: /api/person
 .. http:put:: /api/person
