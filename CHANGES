@@ -29,6 +29,7 @@ Not yet released.
    for models.
 - #157: :http:method:`post` requests now receive a response containing all
    fields of the created instance.
+- #148: adds support for SQLAlchemy `association proxies <http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html>`_.
 
 Version 0.9.3
 -------------
