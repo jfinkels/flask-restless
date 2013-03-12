@@ -11,6 +11,11 @@
 from sqlalchemy.orm import RelationshipProperty as RelProperty
 from sqlalchemy.ext.associationproxy import AssociationProxy
 
+#: Names of attributes which should definitely not be considered relations when
+#: dynamically computing a list of relations of a SQLAlchemy model.
+BLACKLIST = ('query', 'query_class', '_sa_class_manager',
+             '_decl_class_registry')
+
 
 def unicode_keys_to_strings(dictionary):
     """Returns a new dictionary with the same mappings as `dictionary`, but
@@ -66,9 +71,7 @@ def get_columns(model):
 
 def get_relations(model):
     """Returns a list of relation names of `model` (as a list of strings)."""
-    return [k for k in dir(model)
-        if not k.startswith('__')
-            and k not in ('query', 'query_class', '_sa_class_manager', '_decl_class_registry')
+    return [k for k in dir(model) if not (k.startswith('__') or k in BLACKLIST)
             and get_related_model(model, k)]
 
 
