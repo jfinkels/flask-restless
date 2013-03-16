@@ -15,7 +15,7 @@ from datetime import date
 from unittest2 import TestSuite
 
 from flask import json
-from flask.ext.restless.views import ProcessingException
+from flask.ext.restless.views import ProcessingException, NO_CHANGE
 from .helpers import TestSupport
 
 __all__ = ['ProcessorsTestCase']
@@ -248,6 +248,43 @@ class ProcessorsTest(TestSupport):
             self.assertEqual(i['birth_date'], ('%s-%s-%s' % (
                     year, str(month).zfill(2), str(day).zfill(2))))
             self.assertEqual(i['other'], 27)
+
+    def test_processor_no_change(self):
+        """Tests :http:method:`post` requests with a preprocessor function.
+        that makes no change to the data"""
+        def no_change(*args):
+            return NO_CHANGE
+
+        self.manager.create_api(self.Person, methods=['GET', 'POST'],
+                                url_prefix='/api/v2',
+                                preprocessors=dict(POST=[no_change],
+                                                   GET_SINGLE=[no_change],
+                                                   GET_MANY=[no_change]))
+
+        response = self.app.post('/api/v2/person',
+                                 data=dumps({'name': u'Lincoln', 'age': 23}))
+        self.assertEqual(response.status_code, 201)
+
+        personid = loads(response.data)['id']
+        person = self.session.query(self.Person).filter_by(id=personid).first()
+        self.assertEquals(person.name, u'Lincoln')
+        self.assertEquals(person.age, 23)
+
+        # Test for GET_SINGLE
+        response = self.app.get('/api/v2/person/%d' % personid)
+        self.assertEqual(response.status_code, 200)
+
+        person_response = loads(response.data)
+        self.assertEquals(person_response['name'], person.name)
+        self.assertEquals(person_response['age'], person.age)
+
+        # Test for GET_MANY
+        response = self.app.get('/api/v2/person')
+        self.assertEqual(response.status_code, 200)
+
+        person_response = loads(response.data)["objects"][0]
+        self.assertEquals(person_response['name'], person.name)
+        self.assertEquals(person_response['age'], person.age)
 
 
 def load_tests(loader, standard_tests, pattern):
