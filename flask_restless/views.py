@@ -942,7 +942,7 @@ class API(ModelView):
             abort(404)
         return self._inst_to_dict(inst)
 
-    def get(self, instid):
+    def get(self, instid, relationname):
         """Returns a JSON representation of an instance of model with the
         specified name.
 
@@ -961,7 +961,25 @@ class API(ModelView):
                 return self._search()
             for preprocessor in self.preprocessors['GET_SINGLE']:
                 preprocessor(instid)
-            result = self._instid_to_dict(instid)
+            # get the instance of the "main" model whose ID is instid
+            instance = self._get_by(instid)
+            if instance is None:
+                abort(404)
+            # If no relation is requested, just return the instance. Otherwise,
+            # get the value of the relation specified by `relationname`.
+            if relationname is None:
+                result = self._inst_to_dict(instance)
+            else:
+                result = getattr(instance, relationname)
+                related_model = get_related_model(self.model, relationname)
+                # create a placeholder for the relations of the returned models
+                relations = frozenset(get_relations(related_model))
+                deep = dict((r, {}) for r in relations)
+                # for security purposes, don't transmit list as top-level JSON
+                if isinstance(result, list):
+                    result = self._paginated(result, deep)
+                else:
+                    result = _to_dict(result, deep)
             for postprocessor in self.postprocessors['GET_SINGLE']:
                 result = postprocessor(result)
             return jsonpify(result)
@@ -969,13 +987,18 @@ class API(ModelView):
             return jsonify_status_code(status_code=e.status_code,
                                        message=e.message)
 
-    def delete(self, instid):
+    def delete(self, instid, relationname):
         """Removes the specified instance of the model with the specified name
         from the database.
 
         Since :http:method:`delete` is an idempotent method according to the
         :rfc:`2616`, this method responds with :http:status:`204` regardless of
         whether an object was deleted.
+
+        This function ignores the `relationname` keyword argument.
+
+        .. versionadded:: 0.10
+           Added the `relationname` keyword argument.
 
         """
         is_deleted = False
@@ -1094,7 +1117,7 @@ class API(ModelView):
         except IntegrityError, error:
             return jsonify_status_code(400, message=error.message)
 
-    def patch(self, instid):
+    def patch(self, instid, relationname):
         """Updates the instance specified by ``instid`` of the named model, or
         updates multiple instances if ``instid`` is ``None``.
 
@@ -1108,6 +1131,11 @@ class API(ModelView):
         See the :func:`_search` documentation on more information about search
         parameters for restricting the set of instances on which updates will
         be made in this case.
+
+        This function ignores the `relationname` keyword argument.
+
+        .. versionadded:: 0.10
+           Added the `relationname` keyword argument.
 
         """
         # try to load the fields/values to update from the body of the request
@@ -1200,6 +1228,6 @@ class API(ModelView):
 
         return jsonify(result)
 
-    def put(self, instid):
+    def put(self, instid, relationname):
         """Alias for :meth:`patch`."""
-        return self.patch(instid)
+        return self.patch(instid, relationname)

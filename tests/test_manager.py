@@ -290,6 +290,10 @@ class APIManagerTest(TestSupport):
         self.manager.create_api(self.Person)
         response = self.app.get('/api/person/1/computers')
         self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertIn('objects', data)
+        self.assertEqual(1, len(data['objects']))
+        self.assertEqual('foo', data['objects'][0]['name'])
 
 
 class FSATest(FlaskTestBase):

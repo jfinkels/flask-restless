@@ -371,27 +371,21 @@ class APIManager(object):
         blueprint = Blueprint(blueprintname, __name__, url_prefix=url_prefix)
         blueprint.add_url_rule(collection_endpoint,
                                methods=no_instance_methods, view_func=api_view)
-        blueprint.add_url_rule(collection_endpoint, defaults={'instid': None},
+        blueprint.add_url_rule(collection_endpoint,
+                               defaults={'instid': None, 'relationname': None},
                                methods=possibly_empty_instance_methods,
                                view_func=api_view)
         # the per-instance endpoints will allow both integer and string primary
         # key accesses
         instance_endpoint = '%s/<instid>' % (collection_endpoint)
         blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
-                                   view_func=api_view)
+                               defaults={'relationname': None},
+                               view_func=api_view)
         # add endpoints which expose related models
-        for relation_name in get_relations(model):
-            relation = get_related_model(model, relation_name)
-            relation_api_name = apiname + '_' + relation_name
-            relation_api_view = API.as_view(relation_api_name, self.session,
-                                            relation, validation_exceptions,
-                                            results_per_page,
-                                            max_results_per_page,
-                                            post_form_preprocessor,
-                                            preprocessors, postprocessors)
-            endpoint_url = '%s/%s' % (instance_endpoint, relation_name)
-            blueprint.add_url_rule(endpoint_url, methods=['GET'],
-                                   view_func=relation_api_view)
+        relation_endpoint = '%s/<relationname>' % (instance_endpoint)
+        blueprint.add_url_rule(relation_endpoint,
+                               methods=methods & frozenset(['GET']),
+                               view_func=api_view)
         # if function evaluation is allowed, add an endpoint at /api/eval/...
         # which responds only to GET requests and responds with the result of
         # evaluating functions on all instances of the specified model
