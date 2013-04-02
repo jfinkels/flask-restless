@@ -823,9 +823,9 @@ class API(ModelView):
         try:
             result = search(self.session, self.model, data)
         except NoResultFound:
-            return jsonify(message='No result found')
+            return jsonify_status_code(400, message='No result found')
         except MultipleResultsFound:
-            return jsonify(message='Multiple results found')
+            return jsonify_status_code(400, message='Multiple results found')
         except:
             return jsonify_status_code(400,
                                        message='Unable to construct query')
