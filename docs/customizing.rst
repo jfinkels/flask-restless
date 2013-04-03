@@ -429,11 +429,11 @@ Note: for more information about search parameters, see :ref:`searchformat`,
 and for more information about request and response formats, see
 :ref:`requestformat`.
 
-Finally, in order to halt the preprocessing or postprocessing and return an
-error response directly to the client, your preprocessor or postprocessor
-functions can raise a :exc:`ProcessingException`. If a function raises this
-exception, no preprocessing or postprocessing functions that appear later in
-the list specified when the API was created will be invoked. For example, an
+In order to halt the preprocessing or postprocessing and return an error
+response directly to the client, your preprocessor or postprocessor functions
+can raise a :exc:`ProcessingException`. If a function raises this exception, no
+preprocessing or postprocessing functions that appear later in the list
+specified when the API was created will be invoked. For example, an
 authentication function can be implemented like this::
 
     def check_auth(instid):
@@ -449,6 +449,25 @@ authentication function can be implemented like this::
 The :exc:`ProcessingException` allows you to specify an HTTP status code for
 the generated response and an error message which the client will receive as
 part of the JSON in the body of the response.
+
+Finally, if your preprocessor or postprocessor function makes no change to the
+input, return :data:`NO_CHANGE` instead of the dictionary that it would have
+returned as specified above. This is useful if you wish to define a single
+preprocessor which checks that the client is authenticated::
+
+    from flask.ext.restless import NO_CHANGE
+    from flask.ext.restless import ProcessingException
+
+    def check_auth(data):
+        # Here, get the current user from the session.
+        current_user = ...
+        # Next, check if the user is authorized to modify the specified
+        # instance of the model.
+        if not is_authorized_to_modify(current_user, data['id']):
+            raise ProcessingException(message='Not Authorized',
+                                      status_code=401)
+        # Indicate that no change to the inputs has occurred.
+        return NO_CHANGE
 
 .. _includes:
 

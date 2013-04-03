@@ -31,6 +31,7 @@ Not yet released.
    fields of the created instance.
 - #148: adds support for SQLAlchemy `association proxies <http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html>`_.
 - #165: fixed bug in automatic exposing of URLs for related instances.
+- #162: allow pre- and postprocessors to indicate that no change has occurred.
 
 Version 0.9.3
 -------------

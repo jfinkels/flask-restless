@@ -61,6 +61,13 @@ from .search import create_query
 from .search import search
 
 
+#: A sentinel object which preprocessors or postprocessors may return if they
+#: make no change to the input parameters.
+#:
+#: For more information, see :ref:`processors`.
+NO_CHANGE = object()
+
+
 class ProcessingException(Exception):
     """Raised when a preprocessor or postprocessor encounters a problem.
 
@@ -81,7 +88,6 @@ class ProcessingException(Exception):
         self.message = message
         self.status_code = status_code
 
-NO_CHANGE = object()
 
 def jsonify_status_code(status_code, *args, **kw):
     """Returns a jsonified response with the specified HTTP status code.
