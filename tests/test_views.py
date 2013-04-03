@@ -474,6 +474,9 @@ class APITestCase(TestSupport):
         response = self.app.post('/api/person', data=dumps(dict(bogus=0)))
         self.assertEqual(400, response.status_code)
 
+        response = self.app.post('/api/person', data=dumps(dict(is_minor=True)))
+        self.assertEqual(400, response.status_code)
+
     def test_post_nullable_date(self):
         """Tests the creation of a model with a nullable date field."""
         self.manager.create_api(self.Star, methods=['GET', 'POST'])
