@@ -146,35 +146,19 @@ def _is_date_field(model, fieldname):
     return isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime)
 
 
-def _get_or_create(session, model, **kwargs):
-    """Returns the first instance of the specified model filtered by the
-    keyword arguments, or creates a new instance of the model and returns that.
-
-    This function returns a two-tuple in which the first element is the created
-    or retrieved instance and the second is a boolean value which is ``True``
-    if and only if an instance was created.
-
-    The idea for this function is based on Django's ``Model.get_or_create()``
-    method.
-
-    `session` is the session in which all database transactions are made (this
-    should be :attr:`flask.ext.sqlalchemy.SQLAlchemy.session`).
-
-    `model` is the SQLAlchemy model to get or create (this should be a subclass
-    of :class:`~flask.ext.restless.model.Entity`).
-
-    `kwargs` are the keyword arguments which will be passed to the
-    :func:`sqlalchemy.orm.query.Query.filter_by` function.
+def _assign_attributes(model, **kwargs):
+    """Assign all attributes from the supplied `kwargs` dictionary to the
+    model. This does the same thing as the default declarative constructor,
+    when provided a dictionary of attributes and values.
 
     """
-    query = session_query(session, model)
-    instance = query.filter_by(**kwargs).first()
-    if instance:
-        return instance, False
-    instance = model(**kwargs)
-    session.add(instance)
-    session.flush()
-    return instance, True
+    cls_ = type(model)
+    for k in kwargs:
+        if not hasattr(cls_, k):
+            raise TypeError(
+                "%r is an invalid keyword argument for %s" %
+                (k, cls_.__name__))
+        setattr(model, k, kwargs[k])
 
 
 def _primary_key_name(model_or_instance):
@@ -562,11 +546,7 @@ class API(ModelView):
         if isinstance(toadd, dict):
             toadd = [toadd]
         for dictionary in toadd or []:
-            if 'id' in dictionary:
-                subinst = self._get_by(dictionary['id'], submodel)
-            else:
-                kw = unicode_keys_to_strings(dictionary)
-                subinst = _get_or_create(self.session, submodel, **kw)[0]
+            subinst = self._get_or_create(dictionary, submodel)
             try:
                 for instance in query:
                     getattr(instance, relationname).append(subinst)
@@ -635,20 +615,19 @@ class API(ModelView):
 
         """
         submodel = get_related_model(self.model, relationname)
-        subinst_list = []
-        for dictionary in toset or []:
-            if 'id' in dictionary:
-                subinst = self._get_by(dictionary['id'], submodel)
-                # If fields other than `id` are specified in this request,
-                # update those fields on the related instance as well.
-                for field, value in dictionary.iteritems():
-                    setattr(subinst, field, value)
-            else:
-                kw = unicode_keys_to_strings(dictionary)
-                subinst = _get_or_create(self.session, submodel, **kw)[0]
-            subinst_list.append(subinst)
-        for instance in query:
-            setattr(instance, relationname, subinst_list)
+
+        if isinstance(toset, list):
+            subinst_list = []
+            for dictionary in toset:
+                subinst = self._get_or_create(dictionary, submodel)
+                subinst_list.append(subinst)
+            for instance in query:
+                setattr(instance, relationname, subinst_list)
+        elif isinstance(toset, dict):
+            subinst = self._get_or_create(toset, submodel)
+
+            for instance in query:
+                setattr(instance, relationname, subinst)
 
     # TODO change this to have more sensible arguments
     def _update_relations(self, query, params):
@@ -690,15 +669,19 @@ class API(ModelView):
         relations = get_relations(self.model)
         tochange = frozenset(relations) & frozenset(params)
         for columnname in tochange:
-            if isinstance(params[columnname], list):
-                toset = params[columnname]
-                self._set_on_relation(query, columnname, toset=toset)
-            else:
+            # Check if 'add' or 'remove' is being used
+            if (isinstance(params[columnname], dict) and
+                any(k in params[columnname] for k in ['add', 'remove'])):
+
                 toadd = params[columnname].get('add', [])
                 toremove = params[columnname].get('remove', [])
                 self._add_to_relation(query, columnname, toadd=toadd)
                 self._remove_from_relation(query, columnname,
                                            toremove=toremove)
+            else:
+                toset = params[columnname]
+                self._set_on_relation(query, columnname, toset=toset)
+
         return tochange
 
     def _handle_validation_exception(self, exception):
@@ -955,6 +938,29 @@ class API(ModelView):
         """
         return self._query_by_primary_key(primary_key_value, model).first()
 
+    def _get_or_create(self, attrs, model=None):
+        """Returns the single instance of `model` (or ``self.model`` if not
+        specified) whose primary key has the value found in `attrs`, or initializes
+        a new instance if no primary key is specified.
+
+        Before returning the new or existing instance, its attributes are assigned
+        to the values supplied in the `attrs` dictionary.
+
+        """
+        the_model = model or self.model
+        # force unicode primary key name to string; see unicode_keys_to_strings
+        pk_name = str(_primary_key_name(the_model))
+
+        str_attrs = unicode_keys_to_strings(attrs)
+
+        if pk_name in str_attrs:
+            inst = self._get_by(str_attrs[pk_name], the_model)
+            _assign_attributes(inst, **str_attrs)
+        else:
+            inst = the_model(**str_attrs)
+
+        return inst
+
     def _inst_to_dict(self, inst):
         """Returns the dictionary representation of the specified instance.
         """
@@ -1128,14 +1134,11 @@ class API(ModelView):
                 if type(params[col]) == list:
                     # model has several related objects
                     for subparams in params[col]:
-                        kw = unicode_keys_to_strings(subparams)
-                        subinst = _get_or_create(self.session, submodel,
-                                                 **kw)[0]
+                        subinst = self._get_or_create(subparams, submodel)
                         getattr(instance, col).append(subinst)
                 else:
                     # model has single related object
-                    kw = unicode_keys_to_strings(params[col])
-                    subinst = _get_or_create(self.session, submodel, **kw)[0]
+                    subinst = self._get_or_create(params[col], submodel)
                     setattr(instance, col, subinst)
 
             # add the created model to the session

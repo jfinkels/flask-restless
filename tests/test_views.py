@@ -39,7 +39,6 @@ from sqlalchemy.orm import sessionmaker
 
 from flask.ext.restless.manager import APIManager
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
-from flask.ext.restless.views import _get_or_create
 from flask.ext.restless.views import _to_dict
 from flask.ext.restless.views import _primary_key_name
 
@@ -273,23 +272,6 @@ class ModelTestCase(TestSupport):
         self.assertTrue(_to_dict(young)['is_minor'])
         self.assertFalse(_to_dict(old)['is_minor'])
 
-    def test_get_or_create(self):
-        """Test for :meth:`flask_restless.model.Entity.get_or_create()`."""
-        # Here we're sure that we have a fresh table with no rows, so
-        # let's create the first one:
-        instance, created = _get_or_create(self.session, self.Person,
-                                           name=u'Lincoln', age=24)
-        self.assertTrue(created)
-        self.assertEqual(instance.name, u'Lincoln')
-        self.assertEqual(instance.age, 24)
-
-        # Now that we have a row, let's try to get it again
-        second_instance, created = _get_or_create(self.session, self.Person,
-                                                  name=u'Lincoln')
-        self.assertFalse(created)
-        self.assertEqual(second_instance.name, u'Lincoln')
-        self.assertEqual(second_instance.age, 24)
-
 
 class FunctionEvaluationTest(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.view._evaluate_functions`
@@ -440,7 +422,12 @@ class APITestCase(TestSupport):
         # setup the URLs for the Person and Computer API
         self.manager.create_api(self.Person,
                                 methods=['GET', 'PATCH', 'POST', 'DELETE'])
-        self.manager.create_api(self.Computer, methods=['GET', 'POST'])
+        self.manager.create_api(self.Computer, methods=['GET', 'POST', 'PATCH'])
+
+        # setup the URLs for the Car manufacturer API
+        self.manager.create_api(self.CarManufacturer,
+                                methods=['GET', 'PATCH', 'POST', 'DELETE'])
+        self.manager.create_api(self.CarModel, methods=['GET', 'PATCH', 'POST', 'DELETE'])
 
         # to facilitate searching
         self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
@@ -755,13 +742,36 @@ class APITestCase(TestSupport):
         resp = self.app.patch('/api/person/1', data=dumps(dict(name='foo')))
         self.assertEqual(resp.status_code, 404)
 
+    def test_post_with_single_submodel(self):
+        # Create a new object with a single submodel
+        data = {'vendor': u'Apple', 'name': u'iMac',
+                'owner': {'name': u'John', 'age': 2041}}
+        response = self.app.post('/api/computer', data=dumps(data))
+        self.assertEqual(response.status_code, 201)
+        data = loads(response.data)
+        self.assertEqual(1, data['owner']['id'])
+        self.assertEqual(u'John', data['owner']['name'])
+        self.assertEqual(2041, data['owner']['age'])
+
+        # Update the submodel
+        data = {'id': 1, 'owner': {'id': 1, 'age': 29}}
+        response = self.app.patch('/api/computer/1', data=dumps(data))
+        self.assertEqual(response.status_code, 200)
+        data = loads(response.data)
+
+        self.assertEqual(u'John', data['owner']['name'])
+        self.assertEqual(29, data['owner']['age'])
+
     def test_patch_set_submodel(self):
         """Test for assigning a list to a relation of a model using
         :http:method:`patch`.
 
         """
+        # create the person
         response = self.app.post('/api/person', data=dumps({}))
         self.assertEqual(response.status_code, 201)
+
+        # patch the person with some computers
         data = {'computers': [{'name': u'lixeiro', 'vendor': u'Lemote'},
                               {'name': u'foo', 'vendor': u'bar'}]}
         response = self.app.patch('/api/person/1', data=dumps(data))
@@ -769,7 +779,23 @@ class APITestCase(TestSupport):
         data = loads(response.data)
         self.assertEqual(2, len(data['computers']))
         self.assertEqual(u'lixeiro', data['computers'][0]['name'])
+        self.assertEqual(u'Lemote', data['computers'][0]['vendor'])
         self.assertEqual(u'foo', data['computers'][1]['name'])
+        self.assertEqual(u'bar', data['computers'][1]['vendor'])
+
+        # change one of the computers
+        data = {'computers': [{'id': data['computers'][0]['id']},
+                              {'id': data['computers'][1]['id'], 'vendor': u'Apple'}]}
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertEqual(2, len(data['computers']))
+        self.assertEqual(u'lixeiro', data['computers'][0]['name'])
+        self.assertEqual(u'Lemote', data['computers'][0]['vendor'])
+        self.assertEqual(u'foo', data['computers'][1]['name'])
+        self.assertEqual(u'Apple', data['computers'][1]['vendor'])
+
+        # patch the person with some new computers
         data = {'computers': [{'name': u'hey', 'vendor': u'you'},
                               {'name': u'big', 'vendor': u'money'},
                               {'name': u'milk', 'vendor': u'chocolate'}]}
@@ -780,6 +806,34 @@ class APITestCase(TestSupport):
         self.assertEqual(u'hey', data['computers'][0]['name'])
         self.assertEqual(u'big', data['computers'][1]['name'])
         self.assertEqual(u'milk', data['computers'][2]['name'])
+
+    def test_patch_duplicate(self):
+        """Test for assigning a list containing duplicate items
+        to a relation of a model using :http:method:`patch`.
+
+        """
+        # create the manufacturer with a duplicate car
+        data = {'name': u'Ford', 'models': [{'name': u'Maverick', 'seats': 2},
+                                            {'name': u'Mustang', 'seats': 4},
+                                            {'name': u'Maverick', 'seats': 2}]}
+        response = self.app.post('/api/car_manufacturer', data=dumps(data))
+        self.assertEqual(response.status_code, 201)
+        data = loads(response.data)
+        self.assertEqual(3, len(data['models']))
+        self.assertEqual(u'Maverick', data['models'][0]['name'])
+        self.assertEqual(u'Mustang', data['models'][1]['name'])
+        self.assertEqual(u'Maverick', data['models'][2]['name'])
+
+        # add another duplicate car
+        data['models'].append({'name': u'Mustang', 'seats': 4})
+        response = self.app.patch('/api/car_manufacturer/1', data=dumps(data))
+        self.assertEqual(response.status_code, 200)
+        data = loads(response.data)
+        self.assertEqual(4, len(data['models']))
+        self.assertEqual(u'Maverick', data['models'][0]['name'])
+        self.assertEqual(u'Mustang', data['models'][1]['name'])
+        self.assertEqual(u'Maverick', data['models'][2]['name'])
+        self.assertEqual(u'Mustang', data['models'][3]['name'])
 
     def test_patch_new_single(self):
         """Test for adding a single new object to a one-to-one relationship
