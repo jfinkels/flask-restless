@@ -199,12 +199,10 @@ def _to_dict(instance, deep=None):
     """
     # create a list of names of columns, including hybrid properties
     columns = [p.key for p in object_mapper(instance).iterate_properties
-            if isinstance(p, ColumnProperty)]
+               if isinstance(p, ColumnProperty)]
     for parent in type(instance).mro():
-        columns.extend(
-            [key for key,value in parent.__dict__.iteritems()
-            if isinstance(value, hybrid_property)]
-        )
+        columns += [key for key,value in parent.__dict__.iteritems()
+                    if isinstance(value, hybrid_property)]
     # create a dictionary mapping column name to value
     result = dict((col, getattr(instance, col)) for col in columns)
     # Convert datetime and date objects to ISO 8601 format.
@@ -227,7 +225,8 @@ def _to_dict(instance, deep=None):
         # should be rendered as a list or as a single object.
         if relation in instance._sa_class_manager:
             uselist = instance._sa_class_manager[relation].property.uselist
-        elif isinstance(getattr(type(instance), relation, None), AssociationProxy):
+        elif isinstance(getattr(type(instance), relation, None),
+                        AssociationProxy):
             uselist = True
         else:
             uselist = False
