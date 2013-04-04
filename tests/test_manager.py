@@ -295,6 +295,26 @@ class APIManagerTest(TestSupport):
         self.assertEqual(1, len(data['objects']))
         self.assertEqual('foo', data['objects'][0]['name'])
 
+    def test_expose_lazy_relations(self):
+        """Tests that lazy relations are exposed at a URL which is a child of
+        the instance URL.
+
+        """
+        date = datetime.date(1999, 12, 31)
+        person = self.LazyPerson(name='Test')
+        computer = self.LazyComputer(name='foo')
+        self.session.add(person)
+        person.computers.append(computer)
+        self.session.commit()
+
+        self.manager.create_api(self.LazyPerson)
+        response = self.app.get('/api/lazyperson/1/computers')
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)
+        self.assertIn('objects', data)
+        self.assertEqual(1, len(data['objects']))
+        self.assertEqual('foo', data['objects'][0]['name'])
+
 
 class FSATest(FlaskTestBase):
     """Tests which use models defined using Flask-SQLAlchemy instead of pure

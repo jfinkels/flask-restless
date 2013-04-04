@@ -183,6 +183,20 @@ def _primary_key_name(model_or_instance):
     return 'id' if 'id' in primary_key_names else primary_key_names[0]
 
 
+def _is_like_list(instance, relation):
+    """Returns ``True`` if and only if the relation of `instance` whose name is
+    `relation` is list-like.
+
+    A relation may be like a list if, for example, it is a non-lazy one-to-many
+    relation, or it is a dynamically loaded one-to-many.
+
+    """
+    if relation in instance._sa_class_manager:
+        return instance._sa_class_manager[relation].property.uselist
+    related_value = getattr(type(instance), relation, None)
+    return isinstance(related_value, AssociationProxy)
+
+
 # This code was adapted from :meth:`elixir.entity.Entity.to_dict` and
 # http://stackoverflow.com/q/1958219/108197.
 def _to_dict(instance, deep=None):
@@ -221,16 +235,7 @@ def _to_dict(instance, deep=None):
         if relatedvalue is None:
             result[relation] = None
             continue
-        # Do some black magic on SQLAlchemy to decide if the related instance
-        # should be rendered as a list or as a single object.
-        if relation in instance._sa_class_manager:
-            uselist = instance._sa_class_manager[relation].property.uselist
-        elif isinstance(getattr(type(instance), relation, None),
-                        AssociationProxy):
-            uselist = True
-        else:
-            uselist = False
-        if uselist:
+        if _is_like_list(instance, relation):
             result[relation] = [_to_dict(inst, rdeep) for inst in relatedvalue]
             continue
         # If the related value is dynamically loaded, resolve the query to get
@@ -980,16 +985,16 @@ class API(ModelView):
             if relationname is None:
                 result = self._inst_to_dict(instance)
             else:
-                result = getattr(instance, relationname)
-                related_model = get_related_model(self.model, relationname)
+                related_value = getattr(instance, relationname)
                 # create a placeholder for the relations of the returned models
+                related_model = get_related_model(self.model, relationname)
                 relations = frozenset(get_relations(related_model))
                 deep = dict((r, {}) for r in relations)
                 # for security purposes, don't transmit list as top-level JSON
-                if isinstance(result, list):
-                    result = self._paginated(result, deep)
+                if _is_like_list(instance, relationname):
+                    result = self._paginated(list(related_value), deep)
                 else:
-                    result = _to_dict(result, deep)
+                    result = _to_dict(related_value, deep)
             for postprocessor in self.postprocessors['GET_SINGLE']:
                 new_result = postprocessor(result)
                 if new_result is not NO_CHANGE:
