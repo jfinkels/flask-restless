@@ -50,6 +50,7 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import func
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.associationproxy import AssociationProxy
+from sqlalchemy.sql.expression import _BinaryExpression
 
 from .helpers import get_columns
 from .helpers import get_related_model
@@ -117,6 +118,15 @@ def jsonpify(*args, **kw):
         mimetype = 'application/javascript'
         return current_app.response_class(content, mimetype=mimetype)
     return response
+
+
+def _has_field(model, fieldname):
+    """Returns ``True`` if the `model` has the specified field, and it is not
+    a hybrid property.
+
+    """
+    return (hasattr(model, fieldname) and
+            not isinstance(getattr(model, fieldname), _BinaryExpression))
 
 
 def _is_date_field(model, fieldname):
@@ -1079,7 +1089,7 @@ class API(ModelView):
         # Check for any request parameter naming a column which does not exist
         # on the current model.
         for field in params:
-            if not hasattr(self.model, field):
+            if not _has_field(self.model, field):
                 msg = "Model does not have field '%s'" % field
                 return jsonify_status_code(400, message=msg)
 
@@ -1193,7 +1203,7 @@ class API(ModelView):
         # Check for any request parameter naming a column which does not exist
         # on the current model.
         for field in data:
-            if not hasattr(self.model, field):
+            if not _has_field(self.model, field):
                 msg = "Model does not have field '%s'" % field
                 return jsonify_status_code(400, message=msg)
 
