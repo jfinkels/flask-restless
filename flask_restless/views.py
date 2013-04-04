@@ -113,7 +113,6 @@ def jsonpify(*args, **kw):
     return response
 
 
-# TODO: On SQLAlchemy 0.8, this should use the new inspection API
 def _has_field(model, fieldname):
     """Returns ``True`` if the `model` has the specified field, and it is not
     a hybrid property.
