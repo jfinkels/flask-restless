@@ -41,6 +41,7 @@ from flask.ext.restless.manager import APIManager
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
 from flask.ext.restless.views import _get_or_create
 from flask.ext.restless.views import _to_dict
+from flask.ext.restless.views import _primary_key_name
 
 from .helpers import DatabaseTestBase
 from .helpers import FlaskTestBase
@@ -210,6 +211,15 @@ class ModelTestCase(TestSupport):
         self.assertEqual(me_dict['name'], u'Lincoln')
         self.assertEqual(me_dict['age'], 24)
         self.assertEqual(me_dict['birth_date'], me.birth_date.isoformat())
+
+    def test_primary_key_name(self):
+        """Test for determining the primary attribute of a model or instance.
+
+        """
+        me = self.Person(name=u'Lincoln', age=24, birth_date=date(1986, 9, 15))
+        self.assertEqual('id', _primary_key_name(me))
+        self.assertEqual('id', _primary_key_name(self.Person))
+        self.assertEqual('id', _primary_key_name(self.Star))
 
     def test_to_dict_dynamic_relation(self):
         """Tests that a dynamically queried relation is resolved when getting

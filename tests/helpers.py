@@ -136,7 +136,7 @@ class TestSupport(DatabaseTestBase):
 
         class Star(self.Base):
             __tablename__ = 'star'
-            id = Column(Integer, primary_key=True)
+            id = Column("star_id", Integer, primary_key=True)
             inception_time = Column(DateTime, nullable=True)
 
         self.Person = Person

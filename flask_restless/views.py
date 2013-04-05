@@ -28,6 +28,7 @@ import itertools
 import datetime
 import math
 import warnings
+import inspect
 
 from dateutil.parser import parse as parse_datetime
 from flask import abort
@@ -40,10 +41,10 @@ from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import ColumnProperty
 from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm import RelationshipProperty
+from sqlalchemy.orm.attributes import QueryableAttribute
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
@@ -187,9 +188,13 @@ def _primary_key_name(model_or_instance):
 
     """
     its_a_model = isinstance(model_or_instance, type)
-    mapper = class_mapper if its_a_model else object_mapper
-    mapped = mapper(model_or_instance)
-    primary_key_names = [key.name for key in mapped.primary_key]
+    model = model_or_instance if its_a_model else model_or_instance.__class__
+
+    primary_key_names = [key for key, field in inspect.getmembers(model)
+                         if isinstance(field, QueryableAttribute)
+                         and isinstance(field.property, ColumnProperty)
+                         and field.property.columns[0].primary_key]
+
     return 'id' if 'id' in primary_key_names else primary_key_names[0]
 
 
