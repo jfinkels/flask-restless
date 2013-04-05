@@ -36,6 +36,8 @@ Not yet released.
    instance results in none or multiple instances.
 - #174: allow dynamically loaded relationships for automatically exposed URLs
    of related instances.
+- #176: get model attribute instead of column name when getting name of primary
+   key.
 
 Version 0.9.3
 -------------
