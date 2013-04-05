@@ -531,6 +531,30 @@ class APITestCase(TestSupport):
         response = self.app.get('/api/person')
         self.assertEqual(len(loads(response.data)['objects']), 1)
 
+    def test_patch_update_relations(self):
+        """Test for posting a new model and simultaneously adding related
+        instances *and* updating information on those instances.
+
+        For more information see issue #164.
+
+        """
+        # First, create a new computer object with an empty `name` field and a
+        # new person with no related computers.
+        response = self.app.post('/api/computer', data=dumps({}))
+        self.assertEqual(201, response.status_code)
+        response = self.app.post('/api/person', data=dumps({}))
+        self.assertEqual(201, response.status_code)
+        # Second, patch the person by setting its list of related computer
+        # instances to include the previously created computer, *and*
+        # simultaneously update the `name` attribute of that computer.
+        data = dict(computers=[dict(id=1, name='foo')])
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        self.assertEqual(200, response.status_code)
+        # Check that the computer now has its `name` field set.
+        response = self.app.get('/api/computer/1')
+        self.assertEqual(200, response.status_code)
+        self.assertEqual('foo', loads(response.data)['name'])
+
     def test_delete(self):
         """Test for deleting an instance of the database using the
         :http:method:`delete` method.

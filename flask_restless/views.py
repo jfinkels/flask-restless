@@ -639,6 +639,10 @@ class API(ModelView):
         for dictionary in toset or []:
             if 'id' in dictionary:
                 subinst = self._get_by(dictionary['id'], submodel)
+                # If fields other than `id` are specified in this request,
+                # update those fields on the related instance as well.
+                for field, value in dictionary.iteritems():
+                    setattr(subinst, field, value)
             else:
                 kw = unicode_keys_to_strings(dictionary)
                 subinst = _get_or_create(self.session, submodel, **kw)[0]

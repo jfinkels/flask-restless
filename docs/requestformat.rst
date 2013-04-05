@@ -560,6 +560,57 @@ Also suppose we have registered an API for these models at ``/api/person`` and
         ]
       }
 
+   To set the value of a one-to-many relationship *and* update fields on
+   existing instances of the related model, a request must take the following
+   form.
+
+   Suppose the ``Person`` instance looked like this before the sample
+   :http:method:`patch` request below:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+
+      {
+        "id": 1,
+        "name": "Jeffrey",
+        "age": 24,
+        "computers": [
+          {"id": 1, "manufacturer": "Apple", "model": "MacBook"}
+        ]
+      }
+
+   **Sample request**:
+
+   .. sourcecode:: http
+
+      PATCH /api/person/1 HTTP/1.1
+      Host: example.com
+
+      { "computers":
+          [
+            {"id": 1, "manufacturer": "Lenovo", "model": "ThinkPad"}
+          ]
+      }
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 200 OK
+
+      {
+        "id": 1,
+        "name": "Jeffrey",
+        "age": 24,
+        "computers": [
+          {"id": 1, "manufacturer": "Lenovo", "model": "ThinkPad"}
+        ]
+      }
+
+   The changes reflected in this response have been made to the ``Computer``
+   instance with ID 1.
+
 Error messages
 --------------
 
