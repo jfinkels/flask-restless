@@ -20,16 +20,15 @@ Not yet released.
 - #113: interpret empty strings for date fields as ``None`` objects.
 - #130: documentation and examples now more clearly show search examples.
 - #135: added support for hybrid properties.
-- #139: remove custom code for specifying include and exclude columns as well
-  as authentication code in favor of user-defined pre- and postprocessors
-  (this supercedes the fix from #154).
+- #139: remove custom code for authentication in favor of user-defined pre- and
+  postprocessors (this supercedes the fix from #154).
 - #141: relax requirement for version of `python-dateutil
   <http://labix.org/python-dateutil>`_ to be not equal to 2.0 if using Python
   version 2.6 or 2.7.
 - #146: preprocessors now really execute before other code.
 - #148: adds support for SQLAlchemy `association proxies <http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html>`_.
-- #154: authentication function now may raise an exception instead of just
-  returning a Boolean.
+- #154 (*this fix is irrelevant due to #139*): authentication function now may
+  raise an exception instead of just returning a Boolean.
 - #157: :http:method:`post` requests now receive a response containing all
   fields of the created instance.
 - #162: allow pre- and postprocessors to indicate that no change has occurred.

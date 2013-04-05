@@ -17,6 +17,18 @@ BLACKLIST = ('query', 'query_class', '_sa_class_manager',
              '_decl_class_registry')
 
 
+def partition(l, condition):
+    """Returns a pair of lists, the left one containing all elements of `l` for
+    which `condition` is ``True`` and the right one containing all elements of
+    `l` for which `condition` is ``False``.
+
+    `condition` is a function that takes a single argument (each individual
+    element of the list `l`) and returns either ``True`` or ``False``.
+
+    """
+    return filter(condition, l), filter(lambda x: not condition(x), l)
+
+ 
 def unicode_keys_to_strings(dictionary):
     """Returns a new dictionary with the same mappings as `dictionary`, but
     with each of the keys coerced to a string (by calling :func:`str(key)`).

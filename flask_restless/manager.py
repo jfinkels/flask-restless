@@ -190,6 +190,7 @@ class APIManager(object):
     def create_api_blueprint(self, model, methods=READONLY_METHODS,
                              url_prefix='/api', collection_name=None,
                              allow_patch_many=False, allow_functions=False,
+                             exclude_columns=None, include_columns=None,
                              validation_exceptions=None, results_per_page=10,
                              max_results_per_page=100,
                              post_form_preprocessor=None,
@@ -260,6 +261,27 @@ class APIManager(object):
         if ``False`` by default. Warning: you must not create an API for a
         model whose name is ``'eval'`` if you set this argument to ``True``.
 
+        If either `include_columns` or `exclude_columns` is not ``None``,
+        exactly one of them must be specified. If both are not ``None``, then
+        this function will raise a :exc:`IllegalArgumentError`.
+        `exclude_columns` must be an iterable of strings specifying the columns
+        of `model` which will *not* be present in the JSON representation of
+        the model provided in response to :http:method:`get` requests.
+        Similarly, `include_columns` specifies the *only* columns which will be
+        present in the returned dictionary. In other words, `exclude_columns`
+        is a blacklist and `include_columns` is a whitelist; you can only use
+        one of them per API endpoint. If either `include_columns` or
+        `exclude_columns` contains a string which does not name a column in
+        `model`, it will be ignored.
+
+        If `include_columns` is an iterable of length zero (like the empty
+        tuple or the empty list), then the returned dictionary will be
+        empty. If `include_columns` is ``None``, then the returned dictionary
+        will include all columns not excluded by `exclude_columns`.
+
+        See :ref:`includes` for information on specifying included or excluded
+        columns on fields of related models.
+ 
         `results_per_page` is a positive integer which represents the default
         number of results which are returned per page. Requests made by clients
         may override this default by specifying ``results_per_page`` as a query
@@ -302,12 +324,10 @@ class APIManager(object):
 
         .. versionchanged:: 0.10.0
            Removed `authentication_required_for` and `authentication_function`
-           as well as the `include_columns` and `exclude_columns` keyword
-           arguments.
+           keyword arguments.
 
            Use the `preprocesors` and `postprocessors` keyword arguments
-           instead. For more information, see :ref:`authentication` and
-           :ref:`includes` for more information.
+           instead. For more information, see :ref:`authentication`.
 
         .. versionadded:: 0.9.2
            Added the `preprocessors` and `postprocessors` keyword arguments.
@@ -338,6 +358,10 @@ class APIManager(object):
            Force the model name in the URL to lowercase.
 
         """
+        if exclude_columns is not None and include_columns is not None:
+            msg = ('Cannot simultaneously specify both include columns and'
+                   ' exclude columns.')
+            raise IllegalArgumentError(msg) 
         if collection_name is None:
             collection_name = model.__tablename__
         # convert all method names to upper case
@@ -356,10 +380,11 @@ class APIManager(object):
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.APINAME_FORMAT % collection_name
         # the view function for the API for this model
-        api_view = API.as_view(apiname, self.session, model,
-                               validation_exceptions, results_per_page,
-                               max_results_per_page, post_form_preprocessor,
-                               preprocessors, postprocessors)
+        api_view = API.as_view(apiname, self.session, model, exclude_columns,
+                               include_columns, validation_exceptions,
+                               results_per_page, max_results_per_page,
+                               post_form_preprocessor, preprocessors,
+                               postprocessors)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the
