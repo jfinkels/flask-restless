@@ -362,7 +362,7 @@ Also suppose we have registered an API for these models at ``/api/person`` and
    The server will respond with :http:statuscode:`400` if the request specifies
    a field which does not exist on the model.
 
-   To add a list of existing object to a one-to-many relationship, a request
+   To add a list of existing objects to a one-to-many relationship, a request
    must take the following form.
 
    **Sample request**:
