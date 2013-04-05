@@ -2,6 +2,8 @@ Changelog
 =========
 
 Here you can see the full list of changes between each Flask-Restless release.
+Numbers following a pound sign (#) refer to `GitHub issues
+<https://github.com/jfinkels/flask-restless/issues>`_.
 
 .. note::
 
@@ -13,31 +15,31 @@ Version 0.10.0-dev
 
 Not yet released.
 
-- #130: documentation and examples now more clearly show search examples.
+- #2: adds basic :http:method:`get` access to one level of relationship depth
+  for models.
 - #113: interpret empty strings for date fields as ``None`` objects.
+- #130: documentation and examples now more clearly show search examples.
 - #135: added support for hybrid properties.
+- #139: remove custom code for specifying include and exclude columns as well
+  as authentication code in favor of user-defined pre- and postprocessors
+  (this supercedes the fix from #154).
 - #141: relax requirement for version of `python-dateutil
   <http://labix.org/python-dateutil>`_ to be not equal to 2.0 if using Python
   version 2.6 or 2.7.
 - #146: preprocessors now really execute before other code.
-- #154: authentication function now may raise an exception instead of just
-   returning a Boolean.
-- #139: remove custom code for specifying include and exclude columns as well
-   as authentication code in favor of user-defined pre- and postprocessors
-   (this supercedes the fix from #154).
-- #2: adds basic :http:method:`get` access to one level of relationship depth
-   for models.
-- #157: :http:method:`post` requests now receive a response containing all
-   fields of the created instance.
 - #148: adds support for SQLAlchemy `association proxies <http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html>`_.
-- #165: fixed bug in automatic exposing of URLs for related instances.
+- #154: authentication function now may raise an exception instead of just
+  returning a Boolean.
+- #157: :http:method:`post` requests now receive a response containing all
+  fields of the created instance.
 - #162: allow pre- and postprocessors to indicate that no change has occurred.
+- #165: fixed bug in automatic exposing of URLs for related instances.
 - #170: respond with correct HTTP status codes when a query for a single
-   instance results in none or multiple instances.
+  instance results in none or multiple instances.
 - #174: allow dynamically loaded relationships for automatically exposed URLs
-   of related instances.
+  of related instances.
 - #176: get model attribute instead of column name when getting name of primary
-   key.
+  key.
 
 Version 0.9.3
 -------------
@@ -68,31 +70,29 @@ Version 0.9.0
 
 Released on January 16, 2013.
 
-- Fixed issue #123: :http:method:`patch` requests to instances which do not
-  exist result in a :http:statuscode:`404` response.
 - Removed ability to provide a :class:`~sqlalchemy.orm.session.Session` class
   when initializing :class:`APIManager`; provide an instance of the class
   instead.
 - Changes some dynamically loaded relationships used for testing and in
   examples to be many-to-one instead of the incorrect one-to-many. Versions of
   SQLAlchemy after 0.8.0b2 raise an exception when the latter is used.
-- Fixed issue #117: allow adding related instances on :http:method:`patch`
-  requests for one-to-one relationships.
-- Fixed issue #114: fix bug where string representations of integers were
-  converted to integers.
-- Fixed issue #110: enable ``results_per_page`` query parameter for clients,
-  and added ``max_results_per_page`` keyword argument to
-  :meth:`APIManager.create_api`.
-- Fixed issue #109: use `sphinxcontrib-issuetracker`_ to render links to GitHub
-  issues in documentation.
-- Fixed issue #105: added ability to set a list of related model instances on a
+- #105: added ability to set a list of related model instances on a model.
+- #107: server responds with an error code when a :http:method:`patch` or
+  :http:method:`post` request specifies a field which does not exist on the
   model.
-- Fixed issue #107: server responds with an error code when a
-  :http:method:`patch` or :http:method:`post` request specifies a field which
-  does not exist on the model.
-- Fixed issue #108: dynamically loaded relationships should now be rendered
-  correctly by the :func:`views._to_dict` function regardless of whether they
-  are a list or a single object.
+- #108: dynamically loaded relationships should now be rendered correctly by
+  the :func:`views._to_dict` function regardless of whether they are a list or
+  a single object.
+- #109: use `sphinxcontrib-issuetracker`_ to render links to GitHub issues in
+  documentation.
+- #110: enable ``results_per_page`` query parameter for clients, and added
+  ``max_results_per_page`` keyword argument to :meth:`APIManager.create_api`.
+- #114: fix bug where string representations of integers were converted to
+  integers.
+- #117: allow adding related instances on :http:method:`patch` requests for
+  one-to-one relationships.
+- #123: :http:method:`patch` requests to instances which do not exist result in
+  a :http:statuscode:`404` response.
 
 .. _sphinxcontrib-issuetracker: https://sphinxcontrib-issuetracker.readthedocs.org/en/latest
 
@@ -101,41 +101,35 @@ Version 0.8.0
 
 Released on November 19, 2012.
 
-- Fixed issue #104: added ``num_results`` key to paginated JSON responses.
-- Fixed issue #94: :func:`views._to_dict` should return a single object instead
-  of a list when resolving dynamically loaded many-to-one relationships.
+- #94: :func:`views._to_dict` should return a single object instead of a list
+  when resolving dynamically loaded many-to-one relationships.
+- #104: added ``num_results`` key to paginated JSON responses.
 
 Version 0.7.0
 -------------
 
 Released on October 9, 2012.
 
-- Fixed issue #86 allow specifying include and exclude for related models.
-- Added ``exclude_columns`` keyword argument to :meth:`APIManager.create_api`.
-- Fixed issue #101: ``exclude`` in :func:`views._to_dict` function now
-  correctly excludes requested fields from the returned dictionary.
 - Added working ``include`` and ``exclude`` functionality to the
   :func:`views._to_dict` function.
-- Fixed issue #98: :http:method:`get` requests to the function evaluation
-  endpoint should not have a data payload.
-- Added a ``total_pages`` mapping to the JSON response according to pull
-  request #93.
-- Fixed issue #91: correctly handle :http:method:`post` requests to nullable
-  :class:`~sqlalchemy.DateTime` columns.
-- Fixed issue #83: allow :http:method:`post` requests with one-to-one related
-  instances.
-- Fixed issue #79: attempted to access attribute of ``None`` in constructor of
+- Added ``exclude_columns`` keyword argument to :meth:`APIManager.create_api`.
+- #79: attempted to access attribute of ``None`` in constructor of
   :class:`APIManager`.
+- #83: allow :http:method:`post` requests with one-to-one related instances.
+- #86: allow specifying include and exclude for related models.
+- #91: correctly handle :http:method:`post` requests to nullable
+  :class:`~sqlalchemy.DateTime` columns.
+- #93: Added a ``total_pages`` mapping to the JSON response.
+- #98: :http:method:`get` requests to the function evaluation endpoint should
+  not have a data payload.
+- #101: ``exclude`` in :func:`views._to_dict` function now correctly excludes
+  requested fields from the returned dictionary.
 
 Version 0.6
 -----------
 
 Released on June 20, 2012.
 
-- Added ``post_form_preprocessor`` keyword argument to
-  :meth:`APIManager.create_api`; see issue #74.
-- Fixed issue #77: validation errors are now correctly handled on
-  :http:method:`PATCH` requests.
 - Added support for accessing model instances via arbitrary primary keys,
   instead of requiring an integer column named ``id``.
 - Added example which uses curl as a client.
@@ -145,6 +139,10 @@ Released on June 20, 2012.
 - Separated API blueprint creation from registration, using
   :meth:`APIManager.create_api` and :meth:`APIManager.create_api_blueprint`.
 - Added support for pure SQLAlchemy in addition to Flask-SQLAlchemy.
+- #74: Added ``post_form_preprocessor`` keyword argument to
+  :meth:`APIManager.create_api`.
+- #77: validation errors are now correctly handled on :http:method:`PATCH`
+  requests.
 
 Version 0.5
 -----------
