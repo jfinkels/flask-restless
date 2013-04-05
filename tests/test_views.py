@@ -1422,6 +1422,21 @@ class AssociationProxyTest(DatabaseTestBase):
 
         self._check_relations()
 
+    def test_association_proxy_post_many(self):
+        """Tests that a :http:method:`post` request correctly adds multiple
+        associations.
+
+        """
+        self.session.add(self.Image())
+        self.session.add(self.Image())
+        self.session.commit()
+
+        data = {'chosen_images': [{'id': 1}, {'id': 2}]}
+        response = self.app.post('/api/product', data=dumps(data))
+        self.assertEqual(response.status_code, 201)
+
+        self._check_relations_two()
+
     def test_association_proxy_patch(self):
         """Tests that a :http:method:`patch` request correctly sets the
         appropriate associations.
