@@ -152,13 +152,12 @@ def _assign_attributes(model, **kwargs):
     when provided a dictionary of attributes and values.
 
     """
-    cls_ = type(model)
-    for k in kwargs:
-        if not hasattr(cls_, k):
-            raise TypeError(
-                "%r is an invalid keyword argument for %s" %
-                (k, cls_.__name__))
-        setattr(model, k, kwargs[k])
+    cls = type(model)
+    for field, value in kwargs.iteritems():
+        if not hasattr(cls, field):
+            msg = '%s has no field named "%r"' % (cls_.__name__, field)
+            raise TypeError(msg)
+        setattr(model, field, value)
 
 
 def _primary_key_name(model_or_instance):
@@ -607,27 +606,20 @@ class API(ModelView):
         `relationname` is the name of a one-to-many relationship which exists
         on each model specified in `query`.
 
-        `toset` is a list of dictionaries, each representing the attributes of
-        an existing or new related model to set. If a dictionary contains the
-        key ``'id'``, that instance of the related model will be added.
-        Otherwise, the :classmethod:`~flask.ext.restless.model.get_or_create`
-        class method will be used to get or create a model to set.
+        `toset` is either a dictionary or a list of dictionaries, each
+        representing the attributes of an existing or new related model to
+        set. If a dictionary contains the key ``'id'``, that instance of the
+        related model will be added. Otherwise, the :method:`_get_or_create`
+        method will be used to get or create a model to set.
 
         """
         submodel = get_related_model(self.model, relationname)
-
         if isinstance(toset, list):
-            subinst_list = []
-            for dictionary in toset:
-                subinst = self._get_or_create(dictionary, submodel)
-                subinst_list.append(subinst)
-            for instance in query:
-                setattr(instance, relationname, subinst_list)
-        elif isinstance(toset, dict):
-            subinst = self._get_or_create(toset, submodel)
-
-            for instance in query:
-                setattr(instance, relationname, subinst)
+            value = [self._get_or_create(d, submodel) for d in toset]
+        else:
+            value = self._get_or_create(toset, submodel)
+        for instance in query:
+            setattr(instance, relationname, value)
 
     # TODO change this to have more sensible arguments
     def _update_relations(self, query, params):
@@ -938,28 +930,27 @@ class API(ModelView):
         """
         return self._query_by_primary_key(primary_key_value, model).first()
 
-    def _get_or_create(self, attrs, model=None):
-        """Returns the single instance of `model` (or ``self.model`` if not
-        specified) whose primary key has the value found in `attrs`, or initializes
-        a new instance if no primary key is specified.
+    def _get_or_create(self, attrs, model):
+        """Returns the single instance of `model` whose primary key has the
+        value found in `attrs`, or initializes a new instance if no primary key
+        is specified.
 
-        Before returning the new or existing instance, its attributes are assigned
-        to the values supplied in the `attrs` dictionary.
+        Before returning the new or existing instance, its attributes are
+        assigned to the values supplied in the `attrs` dictionary.
+
+        This method does not commit the changes made to the session; the
+        calling function has that responsibility.
 
         """
-        the_model = model or self.model
         # force unicode primary key name to string; see unicode_keys_to_strings
-        pk_name = str(_primary_key_name(the_model))
-
-        str_attrs = unicode_keys_to_strings(attrs)
-
-        if pk_name in str_attrs:
-            inst = self._get_by(str_attrs[pk_name], the_model)
-            _assign_attributes(inst, **str_attrs)
+        primary_key_name = str(_primary_key_name(model))
+        attrs = unicode_keys_to_strings(attrs)
+        if primary_key_name in attrs:
+            instance = self._get_by(attrs[primary_key_name], model)
+            _assign_attributes(instance, **attrs)
         else:
-            inst = the_model(**str_attrs)
-
-        return inst
+            instance = model(**attrs)
+        return instance
 
     def _inst_to_dict(self, inst):
         """Returns the dictionary representation of the specified instance.
