@@ -33,6 +33,8 @@ Not yet released.
 - #157: :http:method:`post` requests now receive a response containing all
   fields of the created instance.
 - #162: allow pre- and postprocessors to indicate that no change has occurred.
+- #164, #172, and #173: :http:method:`patch` requests update fields on related
+  instances.
 - #165: fixed bug in automatic exposing of URLs for related instances.
 - #170: respond with correct HTTP status codes when a query for a single
   instance results in none or multiple instances.
@@ -40,7 +42,6 @@ Not yet released.
   of related instances.
 - #176: get model attribute instead of column name when getting name of primary
   key.
-- #164: :http:method:`patch` requests update fields on related instances.
 
 Version 0.9.3
 -------------
