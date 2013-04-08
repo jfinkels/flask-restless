@@ -145,7 +145,8 @@ class TestSupport(DatabaseTestBase):
             name = Column(Unicode)
             seats = Column(Integer)
 
-            manufacturer_id = Column(Integer, ForeignKey('car_manufacturer.id'))
+            manufacturer_id = Column(Integer,
+                                     ForeignKey('car_manufacturer.id'))
             manufacturer = relationship('CarManufacturer')
 
         class CarManufacturer(self.Base):
