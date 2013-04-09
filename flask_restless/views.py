@@ -24,41 +24,38 @@
 from __future__ import division
 
 from collections import defaultdict
-import datetime
 from functools import wraps
 import math
 import warnings
-import inspect
 
-from dateutil.parser import parse as parse_datetime
 from flask import abort
 from flask import current_app
 from flask import json
 from flask import jsonify
 from flask import request
 from flask.views import MethodView
-from sqlalchemy import Date
-from sqlalchemy import DateTime
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import ColumnProperty
-from sqlalchemy.orm import object_mapper
-from sqlalchemy.orm import RelationshipProperty
-from sqlalchemy.orm.attributes import QueryableAttribute
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.orm.query import Query
-from sqlalchemy.sql import func
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.ext.associationproxy import AssociationProxy
-from sqlalchemy.sql.expression import _BinaryExpression
 
+from .helpers import assign_attributes
+from .helpers import evaluate_functions
+from .helpers import get_by
 from .helpers import get_columns
+from .helpers import get_or_create
 from .helpers import get_related_model
 from .helpers import get_relations
+from .helpers import has_field
+from .helpers import is_date_field
+from .helpers import is_like_list
 from .helpers import partition
+from .helpers import primary_key_name
+from .helpers import query_by_primary_key
 from .helpers import session_query
+from .helpers import strings_to_dates
+from .helpers import to_dict
 from .helpers import unicode_keys_to_strings
 from .helpers import upper_keys
 from .search import create_query
@@ -138,178 +135,6 @@ def jsonpify(*args, **kw):
     return response
 
 
-def _has_field(model, fieldname):
-    """Returns ``True`` if the `model` has the specified field, and it is not
-    a hybrid property.
-
-    """
-    return (hasattr(model, fieldname) and
-            not isinstance(getattr(model, fieldname), _BinaryExpression))
-
-
-def _is_date_field(model, fieldname):
-    """Returns ``True`` if and only if the field of `model` with the specified
-    name corresponds to either a :class:`datetime.date` object or a
-    :class:`datetime.datetime` object.
-
-    """
-    field = getattr(model, fieldname)
-    if isinstance(field, AssociationProxy):
-        field = field.remote_attr
-    prop = field.property
-    if isinstance(prop, RelationshipProperty):
-        return False
-    fieldtype = prop.columns[0].type
-    return isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime)
-
-
-def _assign_attributes(model, **kwargs):
-    """Assign all attributes from the supplied `kwargs` dictionary to the
-    model. This does the same thing as the default declarative constructor,
-    when provided a dictionary of attributes and values.
-
-    """
-    cls = type(model)
-    for field, value in kwargs.iteritems():
-        if not hasattr(cls, field):
-            msg = '%s has no field named "%r"' % (cls.__name__, field)
-            raise TypeError(msg)
-        setattr(model, field, value)
-
-
-def _primary_key_names(model):
-    """Returns all the primary keys for a model."""
-    return [key for key, field in inspect.getmembers(model)
-           if isinstance(field, QueryableAttribute)
-           and isinstance(field.property, ColumnProperty)
-           and field.property.columns[0].primary_key]
-
-
-def _primary_key_name(model_or_instance):
-    """Returns the name of the primary key of the specified model or instance
-    of a model, as a string.
-
-    If `model_or_instance` specifies multiple primary keys and ``'id'`` is one
-    of them, ``'id'`` is returned. If `model_or_instance` specifies multiple
-    primary keys and ``'id'`` is not one of them, only the name of the first
-    one in the list of primary keys is returned.
-
-    """
-    its_a_model = isinstance(model_or_instance, type)
-    model = model_or_instance if its_a_model else model_or_instance.__class__
-
-    primary_key_names = _primary_key_names(model)
-
-    return 'id' if 'id' in primary_key_names else primary_key_names[0]
-
-
-def _is_like_list(instance, relation):
-    """Returns ``True`` if and only if the relation of `instance` whose name is
-    `relation` is list-like.
-
-    A relation may be like a list if, for example, it is a non-lazy one-to-many
-    relation, or it is a dynamically loaded one-to-many.
-
-    """
-    if relation in instance._sa_class_manager:
-        return instance._sa_class_manager[relation].property.uselist
-    related_value = getattr(type(instance), relation, None)
-    return isinstance(related_value, AssociationProxy)
-
-
-# This code was adapted from :meth:`elixir.entity.Entity.to_dict` and
-# http://stackoverflow.com/q/1958219/108197.
-def _to_dict(instance, deep=None, exclude=None, include=None,
-             exclude_relations=None, include_relations=None):
-    """Returns a dictionary representing the fields of the specified `instance`
-    of a SQLAlchemy model.
-
-    `deep` is a dictionary containing a mapping from a relation name (for a
-    relation of `instance`) to either a list or a dictionary. This is a
-    recursive structure which represents the `deep` argument when calling
-    :func:`!_to_dict` on related instances. When an empty list is encountered,
-    :func:`!_to_dict` returns a list of the string representations of the
-    related instances.
-
-    If either `include` or `exclude` is not ``None``, exactly one of them must
-    be specified. If both are not ``None``, then this function will raise a
-    :exc:`ValueError`. `exclude` must be a list of strings specifying the
-    columns which will *not* be present in the returned dictionary
-    representation of the object (in other words, it is a
-    blacklist). Similarly, `include` specifies the only columns which will be
-    present in the returned dictionary (in other words, it is a whitelist).
-
-    .. note::
-
-       If `include` is an iterable of length zero (like the empty tuple or the
-       empty list), then the returned dictionary will be empty. If `include` is
-       ``None``, then the returned dictionary will include all columns not
-       excluded by `exclude`.
-
-    `include_relations` is a dictionary mapping strings representing relation
-    fields on the specified `instance` to a list of strings representing the
-    names of fields on the related model which should be included in the
-    returned dictionary; `exclude_relations` is similar.
-
-    """
-    if (exclude is not None or exclude_relations is not None) and \
-            (include is not None or include_relations is not None):
-        raise ValueError('Cannot specify both include and exclude.')
-    # create a list of names of columns, including hybrid properties
-    try:
-        columns = [p.key for p in object_mapper(instance).iterate_properties
-                   if isinstance(p, ColumnProperty)]
-    except UnmappedInstanceError:
-        return instance
-
-    for parent in type(instance).mro():
-        columns += [key for key, value in parent.__dict__.iteritems()
-                    if isinstance(value, hybrid_property)]
-    # filter the columns based on exclude and include values
-    if exclude is not None:
-        columns = (c for c in columns if c not in exclude)
-    elif include is not None:
-        columns = (c for c in columns if c in include)
-    # create a dictionary mapping column name to value
-    result = dict((col, getattr(instance, col)) for col in columns)
-    # Convert datetime and date objects to ISO 8601 format.
-    #
-    # TODO We can get rid of this when issue #33 is resolved.
-    for key, value in result.items():
-        if isinstance(value, datetime.date):
-            result[key] = value.isoformat()
-    # recursively call _to_dict on each of the `deep` relations
-    deep = deep or {}
-    for relation, rdeep in deep.iteritems():
-        # Get the related value so we can see if it is None, a list, a query
-        # (as specified by a dynamic relationship loader), or an actual
-        # instance of a model.
-        relatedvalue = getattr(instance, relation)
-        if relatedvalue is None:
-            result[relation] = None
-            continue
-        # Determine the included and excluded fields for the related model.
-        newexclude = None
-        newinclude = None
-        if exclude_relations is not None and relation in exclude_relations:
-            newexclude = exclude_relations[relation]
-        elif (include_relations is not None and
-              relation in include_relations):
-            newinclude = include_relations[relation]
-        if _is_like_list(instance, relation):
-            result[relation] = [_to_dict(inst, rdeep, exclude=newexclude,
-                                         include=newinclude)
-                                for inst in relatedvalue]
-            continue
-        # If the related value is dynamically loaded, resolve the query to get
-        # the single instance.
-        if isinstance(relatedvalue, Query):
-            relatedvalue = relatedvalue.one()
-        result[relation] = _to_dict(relatedvalue, rdeep, exclude=newexclude,
-                                    include=newinclude)
-    return result
-
-
 def _parse_includes(column_names):
     """Returns a pair, consisting of a list of column names to include on the
     left and a dictionary mapping relation name to a list containing the names
@@ -370,82 +195,6 @@ def _parse_excludes(column_names):
         if column in relations:
             del relations[column]
     return columns, relations
-
-
-def _evaluate_functions(session, model, functions):
-    """Executes each of the SQLAlchemy functions specified in ``functions``, a
-    list of dictionaries of the form described below, on the given model and
-    returns a dictionary mapping function name (slightly modified, see below)
-    to result of evaluation of that function.
-
-    `session` is the SQLAlchemy session in which all database transactions will
-    be performed.
-
-    `model` is the :class:`flask.ext.restless.Entity` object on which the
-    specified functions will be evaluated.
-
-    ``functions`` is a list of dictionaries of the form::
-
-        {'name': 'avg', 'field': 'amount'}
-
-    For example, if you want the sum and the average of the field named
-    "amount"::
-
-        >>> # assume instances of Person exist in the database...
-        >>> f1 = dict(name='sum', field='amount')
-        >>> f2 = dict(name='avg', field='amount')
-        >>> evaluate_functions(Person, [f1, f2])
-        {'avg__amount': 456, 'sum__amount': 123}
-
-    The return value is a dictionary mapping ``'<funcname>__<fieldname>'`` to
-    the result of evaluating that function on that field. If `model` is
-    ``None`` or `functions` is empty, this function returns the empty
-    dictionary.
-
-    If a field does not exist on a given model, :exc:`AttributeError` is
-    raised. If a function does not exist,
-    :exc:`sqlalchemy.exc.OperationalError` is raised. The former exception will
-    have a ``field`` attribute which is the name of the field which does not
-    exist. The latter exception will have a ``function`` attribute which is the
-    name of the function with does not exist.
-
-    """
-    if not model or not functions:
-        return {}
-    processed = []
-    funcnames = []
-    for function in functions:
-        funcname, fieldname = function['name'], function['field']
-        # We retrieve the function by name from the SQLAlchemy ``func``
-        # module and the field by name from the model class.
-        #
-        # If the specified field doesn't exist, this raises AttributeError.
-        funcobj = getattr(func, funcname)
-        try:
-            field = getattr(model, fieldname)
-        except AttributeError, exception:
-            exception.field = fieldname
-            raise exception
-        # Time to store things to be executed. The processed list stores
-        # functions that will be executed in the database and funcnames
-        # contains names of the entries that will be returned to the
-        # caller.
-        funcnames.append('%s__%s' % (funcname, fieldname))
-        processed.append(funcobj(field))
-    # Evaluate all the functions at once and get an iterable of results.
-    #
-    # If any of the functions
-    try:
-        evaluated = session.query(*processed).one()
-    except OperationalError, exception:
-        # HACK original error message is of the form:
-        #
-        #    '(OperationalError) no such function: bogusfuncname'
-        original_error_msg = exception.args[0]
-        bad_function = original_error_msg[37:]
-        exception.function = bad_function
-        raise exception
-    return dict(zip(funcnames, evaluated))
 
 
 class ModelView(MethodView):
@@ -510,8 +259,8 @@ class FunctionAPI(ModelView):
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
         try:
-            result = _evaluate_functions(self.session, self.model,
-                                         data.get('functions'))
+            result = evaluate_functions(self.session, self.model,
+                                        data.get('functions'))
             if not result:
                 return jsonify_status_code(204)
             return jsonpify(result)
@@ -690,16 +439,15 @@ class API(ModelView):
         `toadd` is a list of dictionaries, each representing the attributes of
         an existing or new related model to add. If a dictionary contains the
         key ``'id'``, that instance of the related model will be
-        added. Otherwise, the
-        :classmethod:`~flask.ext.restless.model.get_or_create` class method
-        will be used to get or create a model to add.
+        added. Otherwise, the :func:`helpers.get_or_create` class method will
+        be used to get or create a model to add.
 
         """
         submodel = get_related_model(self.model, relationname)
         if isinstance(toadd, dict):
             toadd = [toadd]
         for dictionary in toadd or []:
-            subinst = self._get_or_create(dictionary, submodel)
+            subinst = get_or_create(self.session, submodel, dictionary)
             try:
                 for instance in query:
                     getattr(instance, relationname).append(subinst)
@@ -736,7 +484,7 @@ class API(ModelView):
         for dictionary in toremove or []:
             remove = dictionary.pop('__delete__', False)
             if 'id' in dictionary:
-                subinst = self._get_by(dictionary['id'], submodel)
+                subinst = get_by(self.session, submodel, dictionary['id'])
             else:
                 kw = unicode_keys_to_strings(dictionary)
                 subinst = self.query(submodel).filter_by(**kw).first()
@@ -763,15 +511,16 @@ class API(ModelView):
         `toset` is either a dictionary or a list of dictionaries, each
         representing the attributes of an existing or new related model to
         set. If a dictionary contains the key ``'id'``, that instance of the
-        related model will be added. Otherwise, the :method:`_get_or_create`
-        method will be used to get or create a model to set.
+        related model will be added. Otherwise, the
+        :func:`helpers.get_or_create` method will be used to get or create a
+        model to set.
 
         """
         submodel = get_related_model(self.model, relationname)
         if isinstance(toset, list):
-            value = [self._get_or_create(d, submodel) for d in toset]
+            value = [get_or_create(self.session, submodel, d) for d in toset]
         else:
-            value = self._get_or_create(toset, submodel)
+            value = get_or_create(self.session, submodel, toset)
         for instance in query:
             setattr(instance, relationname, value)
 
@@ -874,33 +623,6 @@ class API(ModelView):
             fieldname = left[left_bracket + 1:].strip()
             return {fieldname: msg}
         return None
-
-    def _strings_to_dates(self, dictionary):
-        """Returns a new dictionary with all the mappings of `dictionary` but
-        with date strings mapped to :class:`datetime.datetime` objects.
-
-        The keys of `dictionary` are names of fields in the model specified in
-        the constructor of this class. The values are values to set on these
-        fields. If a field name corresponds to a field in the model which is a
-        :class:`sqlalchemy.types.Date` or :class:`sqlalchemy.types.DateTime`,
-        then the returned dictionary will have the corresponding
-        :class:`datetime.datetime` Python object as the value of that mapping
-        in place of the string.
-
-        This function outputs a new dictionary; it does not modify the
-        argument.
-
-        """
-        result = {}
-        for fieldname, value in dictionary.iteritems():
-            if _is_date_field(self.model, fieldname) and value is not None:
-                if value.strip() == '':
-                    result[fieldname] = None
-                else:
-                    result[fieldname] = parse_datetime(value)
-            else:
-                result[fieldname] = value
-        return result
 
     def _search(self):
         """Defines a generic search function for the database model.
@@ -1007,10 +729,10 @@ class API(ModelView):
         if isinstance(result, list):
             result = self._paginated(result, deep)
         else:
-            result = _to_dict(result, deep, exclude=self.exclude_columns,
-                              exclude_relations=self.exclude_relations,
-                              include=self.include_columns,
-                              include_relations=self.include_relations)
+            result = to_dict(result, deep, exclude=self.exclude_columns,
+                             exclude_relations=self.exclude_relations,
+                             include=self.include_columns,
+                             include_relations=self.include_relations)
 
         for postprocessor in self.postprocessors['GET_MANY']:
             new_result = postprocessor(result)
@@ -1043,7 +765,7 @@ class API(ModelView):
 
         `deep` is the dictionary which defines the depth of submodels to output
         in the JSON format of the model instances in `instances`; it is passed
-        directly to :func:`_to_dict`.
+        directly to :func:`helpers.to_dict`.
 
         The response data is JSON of the form:
 
@@ -1070,65 +792,13 @@ class API(ModelView):
             start = 0
             end = num_results
             total_pages = 1
-        objects = [_to_dict(x, deep, exclude=self.exclude_columns,
-                            exclude_relations=self.exclude_relations,
-                            include=self.include_columns,
-                            include_relations=self.include_relations)
+        objects = [to_dict(x, deep, exclude=self.exclude_columns,
+                           exclude_relations=self.exclude_relations,
+                           include=self.include_columns,
+                           include_relations=self.include_relations)
                    for x in instances[start:end]]
         return dict(page=page_num, objects=objects, total_pages=total_pages,
                     num_results=num_results)
-
-    def _query_by_primary_key(self, primary_key_value, model=None):
-        """Returns a SQLAlchemy query object containing the result of querying
-        `model` (or ``self.model`` if not specified) for instances whose
-        primary key has the value `primary_key_value`.
-
-        Presumably, the returned query should have at most one element.
-
-        """
-        the_model = model or self.model
-        # force unicode primary key name to string; see unicode_keys_to_strings
-        pk_name = str(_primary_key_name(the_model))
-        return self.query(the_model).filter_by(**{pk_name: primary_key_value})
-
-    def _get_by(self, primary_key_value, model=None):
-        """Returns the single instance of `model` (or ``self.model`` if not
-        specified) whose primary key has the value `primary_key_value`, or
-        ``None`` if no such instance exists.
-
-        """
-        return self._query_by_primary_key(primary_key_value, model).first()
-
-    def _get_or_create(self, attrs, model):
-        """Returns the single instance of `model` whose primary key has the
-        value found in `attrs`, or initializes a new instance if no primary key
-        is specified.
-
-        Before returning the new or existing instance, its attributes are
-        assigned to the values supplied in the `attrs` dictionary.
-
-        This method does not commit the changes made to the session; the
-        calling function has that responsibility.
-
-        """
-        if isinstance(attrs, dict):
-            primary_key_names = _primary_key_names(model)
-            pks = dict((k, attrs[k]) for k in attrs if k in primary_key_names)
-            instance = None
-            query = session_query(self.session, model)
-            if len(pks) == len(primary_key_names):
-                # Only query if *all* the primary keys on this model
-                # were included
-                instance = query.filter_by(**pks).first()
-            if instance is not None:
-                _assign_attributes(instance, **attrs)
-            else:
-                instance = model(**attrs)
-        else:
-            # Not a full relation, probably just an association proxy
-            # to a scalar attribute on the remote model
-            instance = attrs
-        return instance
 
     def _inst_to_dict(self, inst):
         """Returns the dictionary representation of the specified instance.
@@ -1147,10 +817,10 @@ class API(ModelView):
         elif self.exclude_columns is not None:
             relations -= frozenset(self.exclude_columns)
         deep = dict((r, {}) for r in relations)
-        return _to_dict(inst, deep, exclude=self.exclude_columns,
-                        exclude_relations=self.exclude_relations,
-                        include=self.include_columns,
-                        include_relations=self.include_relations)
+        return to_dict(inst, deep, exclude=self.exclude_columns,
+                       exclude_relations=self.exclude_relations,
+                       include=self.include_columns,
+                       include_relations=self.include_relations)
 
     def _instid_to_dict(self, instid):
         """Returns the dictionary representation of the instance specified by
@@ -1160,7 +830,7 @@ class API(ModelView):
         :http:statuscode:`404`.
 
         """
-        inst = self._get_by(instid)
+        inst = get_by(self.session, self.model, instid)
         if inst is None:
             abort(404)
         return self._inst_to_dict(inst)
@@ -1184,7 +854,7 @@ class API(ModelView):
         for preprocessor in self.preprocessors['GET_SINGLE']:
             preprocessor(instid)
         # get the instance of the "main" model whose ID is instid
-        instance = self._get_by(instid)
+        instance = get_by(self.session, self.model, instid)
         if instance is None:
             abort(404)
         # If no relation is requested, just return the instance. Otherwise,
@@ -1198,10 +868,10 @@ class API(ModelView):
             relations = frozenset(get_relations(related_model))
             deep = dict((r, {}) for r in relations)
             # for security purposes, don't transmit list as top-level JSON
-            if _is_like_list(instance, relationname):
+            if is_like_list(instance, relationname):
                 result = self._paginated(list(related_value), deep)
             else:
-                result = _to_dict(related_value, deep)
+                result = to_dict(related_value, deep)
         for postprocessor in self.postprocessors['GET_SINGLE']:
             new_result = postprocessor(result)
             if new_result is not NO_CHANGE:
@@ -1225,7 +895,7 @@ class API(ModelView):
         is_deleted = False
         for preprocessor in self.preprocessors['DELETE']:
             preprocessor(instid)
-        inst = self._get_by(instid)
+        inst = get_by(self.session, self.model, instid)
         if inst is not None:
             self.session.delete(inst)
             self.session.commit()
@@ -1270,7 +940,7 @@ class API(ModelView):
         # Check for any request parameter naming a column which does not exist
         # on the current model.
         for field in params:
-            if not _has_field(self.model, field):
+            if not has_field(self.model, field):
                 msg = "Model does not have field '%s'" % field
                 return jsonify_status_code(400, message=msg)
 
@@ -1285,7 +955,7 @@ class API(ModelView):
 
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
-        params = self._strings_to_dates(params)
+        params = strings_to_dates(self.model, params)
 
         try:
             # Instantiate the model with the parameters.
@@ -1300,11 +970,13 @@ class API(ModelView):
                 if type(params[col]) == list:
                     # model has several related objects
                     for subparams in params[col]:
-                        subinst = self._get_or_create(subparams, submodel)
+                        subinst = get_or_create(self.session, submodel,
+                                                subparams)
                         getattr(instance, col).append(subinst)
                 else:
                     # model has single related object
-                    subinst = self._get_or_create(params[col], submodel)
+                    subinst = get_or_create(self.session, submodel,
+                                            params[col])
                     setattr(instance, col, subinst)
 
             # add the created model to the session
@@ -1369,7 +1041,7 @@ class API(ModelView):
         # Check for any request parameter naming a column which does not exist
         # on the current model.
         for field in data:
-            if not _has_field(self.model, field):
+            if not has_field(self.model, field):
                 msg = "Model does not have field '%s'" % field
                 return jsonify_status_code(400, message=msg)
 
@@ -1382,7 +1054,7 @@ class API(ModelView):
                                            message='Unable to construct query')
         else:
             # create a SQLAlchemy Query which has exactly the specified row
-            query = self._query_by_primary_key(instid)
+            query = query_by_primary_key(self.session, self.model, instid)
             if query.count() == 0:
                 abort(404)
             assert query.count() == 1, 'Multiple rows with same ID'
@@ -1393,7 +1065,7 @@ class API(ModelView):
 
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
-        data = self._strings_to_dates(data)
+        data = strings_to_dates(self.model, data)
 
         try:
             # Let's update all instances present in the query

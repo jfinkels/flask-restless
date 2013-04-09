@@ -9,8 +9,6 @@
     :license: GNU AGPLv3+ or BSD
 
 """
-from __future__ import with_statement
-
 from datetime import date
 from datetime import datetime
 from unittest2 import TestSuite
@@ -28,15 +26,12 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Table
 from sqlalchemy import Unicode
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.associationproxy import association_proxy as prox
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship as rel
 
+from flask.ext.restless.helpers import to_dict
 from flask.ext.restless.manager import APIManager
-from flask.ext.restless.views import _evaluate_functions as evaluate_functions
-from flask.ext.restless.views import _to_dict
-from flask.ext.restless.views import _primary_key_name
 
 from .helpers import DatabaseTestBase
 from .helpers import FlaskTestBase
@@ -44,8 +39,8 @@ from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
 
 
-__all__ = ['ModelTestCase', 'FunctionEvaluationTest', 'FunctionAPITestCase',
-           'APITestCase', 'FSAModelTest', 'AssociationProxyTest', 'SearchTest']
+__all__ = ['FunctionAPITestCase', 'APITestCase', 'FSAModelTest',
+           'AssociationProxyTest', 'SearchTest']
 
 
 dumps = json.dumps
@@ -161,163 +156,6 @@ class FSAModelTest(FlaskTestBase):
 # decorators.
 FSATest = skipUnless(has_flask_sqlalchemy,
                      'Flask-SQLAlchemy not found.')(FSAModelTest)
-
-
-class ModelTestCase(TestSupport):
-    """Provides tests for helper functions which operate on pure SQLAlchemy
-    models.
-
-    """
-
-    def test_date_serialization(self):
-        """Tests that date objects in the database are correctly serialized in
-        the :meth:`flask_restless.model.Entity.to_dict` method.
-
-        """
-        person = self.Person(birth_date=date(1986, 9, 15))
-        self.session.commit()
-        d = _to_dict(person)
-        self.assertIn('birth_date', d)
-        self.assertEqual(d['birth_date'], person.birth_date.isoformat())
-
-    def test_datetime_serialization(self):
-        """Tests that datetime objects in the database are correctly serialized
-        in the :meth:`flask_restless.model.Entity.to_dict` method.
-
-        """
-        computer = self.Computer(buy_date=datetime.now())
-        self.session.commit()
-        d = _to_dict(computer)
-        self.assertIn('buy_date', d)
-        self.assertEqual(d['buy_date'], computer.buy_date.isoformat())
-
-    def test_to_dict(self):
-        """Test for serializing attributes of an instance of the model by the
-        :meth:`flask_restless.model.Entity.to_dict` method.
-
-        """
-        me = self.Person(name=u'Lincoln', age=24, birth_date=date(1986, 9, 15))
-        self.session.commit()
-
-        me_dict = _to_dict(me)
-        expectedfields = sorted(['birth_date', 'age', 'id', 'name',
-            'other', 'is_minor'])
-        self.assertEqual(sorted(me_dict), expectedfields)
-        self.assertEqual(me_dict['name'], u'Lincoln')
-        self.assertEqual(me_dict['age'], 24)
-        self.assertEqual(me_dict['birth_date'], me.birth_date.isoformat())
-
-    def test_primary_key_name(self):
-        """Test for determining the primary attribute of a model or instance.
-
-        """
-        me = self.Person(name=u'Lincoln', age=24, birth_date=date(1986, 9, 15))
-        self.assertEqual('id', _primary_key_name(me))
-        self.assertEqual('id', _primary_key_name(self.Person))
-        self.assertEqual('id', _primary_key_name(self.Star))
-
-    def test_to_dict_dynamic_relation(self):
-        """Tests that a dynamically queried relation is resolved when getting
-        the dictionary representation of an instance of a model.
-
-        """
-        person = self.LazyPerson(name='Lincoln')
-        self.session.add(person)
-        computer = self.LazyComputer(name='lixeiro')
-        self.session.add(computer)
-        person.computers.append(computer)
-        self.session.commit()
-        person_dict = _to_dict(person, deep={'computers': []})
-        computer_dict = _to_dict(computer, deep={'owner': None})
-        self.assertEqual(sorted(person_dict), ['computers', 'id', 'name'])
-        self.assertFalse(isinstance(computer_dict['owner'], list))
-        self.assertEqual(sorted(computer_dict), ['id', 'name', 'owner',
-                                                 'ownerid'])
-        expected_person = _to_dict(person)
-        expected_computer = _to_dict(computer)
-        self.assertEqual(person_dict['computers'], [expected_computer])
-        self.assertEqual(computer_dict['owner'], expected_person)
-
-    def test_to_dict_deep(self):
-        """Tests that fields corresponding to related model instances are
-        correctly serialized by the
-        :meth:`flask_restless.model.Entity.to_dict` method.
-
-        """
-        now = datetime.now()
-        someone = self.Person(name=u'John', age=25)
-        computer = self.Computer(name=u'lixeiro', vendor=u'Lemote',
-                                 buy_date=now)
-        someone.computers.append(computer)
-        self.session.commit()
-
-        deep = {'computers': []}
-        computers = _to_dict(someone, deep)['computers']
-        self.assertEqual(len(computers), 1)
-        self.assertEqual(computers[0]['name'], u'lixeiro')
-        self.assertEqual(computers[0]['vendor'], u'Lemote')
-        self.assertEqual(computers[0]['buy_date'], now.isoformat())
-        self.assertEqual(computers[0]['owner_id'], someone.id)
-
-    def test_to_dict_hybrid_property(self):
-        """Tests that hybrid properties are correctly serialized."""
-        young = self.Person(name=u'John', age=15)
-        old = self.Person(name=u'Sally', age=25)
-        self.session.commit()
-
-        self.assertTrue(_to_dict(young)['is_minor'])
-        self.assertFalse(_to_dict(old)['is_minor'])
-
-
-class FunctionEvaluationTest(TestSupportPrefilled):
-    """Unit tests for the :func:`flask_restless.view._evaluate_functions`
-    function.
-
-    """
-
-    def test_basic_evaluation(self):
-        """Tests for basic function evaluation."""
-        # test for no model
-        result = evaluate_functions(self.session, None, [])
-        self.assertEqual(result, {})
-
-        # test for no functions
-        result = evaluate_functions(self.session, self.Person, [])
-        self.assertEqual(result, {})
-
-        # test for summing ages
-        functions = [{'name': 'sum', 'field': 'age'}]
-        result = evaluate_functions(self.session, self.Person, functions)
-        self.assertIn('sum__age', result)
-        self.assertEqual(result['sum__age'], 102.0)
-
-        # test for multiple functions
-        functions = [{'name': 'sum', 'field': 'age'},
-                     {'name': 'avg', 'field': 'other'}]
-        result = evaluate_functions(self.session, self.Person, functions)
-        self.assertIn('sum__age', result)
-        self.assertEqual(result['sum__age'], 102.0)
-        self.assertIn('avg__other', result)
-        self.assertEqual(result['avg__other'], 16.2)
-
-    def test_count(self):
-        """Tests for counting the number of rows in a query."""
-        functions = [{'name': 'count', 'field': 'id'}]
-        result = evaluate_functions(self.session, self.Person, functions)
-        self.assertIn('count__id', result)
-        self.assertEqual(result['count__id'], 5)
-
-    def test_poorly_defined_functions(self):
-        """Tests that poorly defined functions raise errors."""
-        # test for unknown field
-        functions = [{'name': 'sum', 'field': 'bogus'}]
-        with self.assertRaises(AttributeError):
-            evaluate_functions(self.session, self.Person, functions)
-
-        # test for unknown function
-        functions = [{'name': 'bogus', 'field': 'age'}]
-        with self.assertRaises(OperationalError):
-            evaluate_functions(self.session, self.Person, functions)
 
 
 class FunctionAPITestCase(TestSupportPrefilled):
@@ -457,7 +295,7 @@ class APITestCase(TestSupport):
 
         deep = {'computers': []}
         person = self.session.query(self.Person).filter_by(id=1).first()
-        inst = _to_dict(person, deep)
+        inst = to_dict(person, deep)
         self.assertEqual(loads(response.data), inst)
 
     def test_post_bad_parameter(self):
@@ -555,7 +393,7 @@ class APITestCase(TestSupport):
         # Making sure it has been created
         deep = {'computers': []}
         person = self.session.query(self.Person).filter_by(id=1).first()
-        inst = _to_dict(person, deep)
+        inst = to_dict(person, deep)
         response = self.app.get('/api/person/1')
         self.assertEqual(loads(response.data), inst)
 
@@ -1678,10 +1516,8 @@ class AssociationProxyTest(DatabaseTestBase):
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
     suite = TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(ModelTestCase))
     suite.addTest(loader.loadTestsFromTestCase(FSAModelTest))
     suite.addTest(loader.loadTestsFromTestCase(FunctionAPITestCase))
-    suite.addTest(loader.loadTestsFromTestCase(FunctionEvaluationTest))
     suite.addTest(loader.loadTestsFromTestCase(APITestCase))
     suite.addTest(loader.loadTestsFromTestCase(AssociationProxyTest))
     suite.addTest(loader.loadTestsFromTestCase(SearchTest))
