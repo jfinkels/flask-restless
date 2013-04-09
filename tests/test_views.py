@@ -740,7 +740,7 @@ class APITestCase(TestSupport):
         resp = self.app.patch('/api/person/1', data=dumps(dict(name='foo')))
         self.assertEqual(resp.status_code, 404)
 
-    def test_post_with_single_submodel(self):
+    def test_patch_with_single_submodel(self):
         # Create a new object with a single submodel
         data = {'vendor': u'Apple', 'name': u'iMac',
                 'owner': {'name': u'John', 'age': 2041}}
