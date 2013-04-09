@@ -59,10 +59,7 @@ def session_query(session, model):
     Otherwise a query will be created and returned based on `session`.
 
     """
-    if hasattr(model, 'query'):
-        return model.query
-    else:
-        return session.query(model)
+    return model.query if hasattr(model, 'query') else session.query(model)
 
 
 def upper_keys(d):
