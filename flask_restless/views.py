@@ -161,6 +161,14 @@ def _assign_attributes(model, **kwargs):
         setattr(model, field, value)
 
 
+def _primary_key_names(model):
+    """Returns all the primary keys for a model."""
+    return [key for key, field in inspect.getmembers(model)
+           if isinstance(field, QueryableAttribute)
+           and isinstance(field.property, ColumnProperty)
+           and field.property.columns[0].primary_key]
+
+
 def _primary_key_name(model_or_instance):
     """Returns the name of the primary key of the specified model or instance
     of a model, as a string.
@@ -174,10 +182,7 @@ def _primary_key_name(model_or_instance):
     its_a_model = isinstance(model_or_instance, type)
     model = model_or_instance if its_a_model else model_or_instance.__class__
 
-    primary_key_names = [key for key, field in inspect.getmembers(model)
-                         if isinstance(field, QueryableAttribute)
-                         and isinstance(field.property, ColumnProperty)
-                         and field.property.columns[0].primary_key]
+    primary_key_names = _primary_key_names(model)
 
     return 'id' if 'id' in primary_key_names else primary_key_names[0]
 
@@ -1082,11 +1087,14 @@ class API(ModelView):
         calling function has that responsibility.
 
         """
-        # force unicode primary key name to string; see unicode_keys_to_strings
-        primary_key_name = str(_primary_key_name(model))
-        attrs = unicode_keys_to_strings(attrs)
-        if primary_key_name in attrs:
-            instance = self._get_by(attrs[primary_key_name], model)
+        primary_key_names = _primary_key_names(model)
+        pks = dict((k,attrs[k]) for k in attrs if k in primary_key_names)
+        instance = None
+        query = session_query(self.session, model)
+        if len(pks) == len(primary_key_names):
+            # Only query if *all* the primary keys on this model were included
+            instance = query.filter_by(**pks).first()
+        if instance is not None:
             _assign_attributes(instance, **attrs)
         else:
             instance = model(**attrs)
