@@ -18,7 +18,7 @@ from flask import json
 from flask.ext.restless.views import ProcessingException, NO_CHANGE
 from .helpers import TestSupport
 
-__all__ = ['ProcessorsTestCase']
+__all__ = ['ProcessorsTest']
 
 dumps = json.dumps
 loads = json.loads
@@ -177,7 +177,6 @@ class ProcessorsTest(TestSupport):
         response = self.app.patch('/api/person/1', data=dumps({'age': 27}))
         self.assertEqual(response.status_code, 403)
 
-
     def test_patch_single_preprocessor2(self):
         """Tests for using a preprocessor with :http:method:`patch` requests.
 
@@ -233,7 +232,6 @@ class ProcessorsTest(TestSupport):
                       data=dumps({'name': u'Lucy', 'age': 23}))
         self.app.post('/api/person',
                       data=dumps({'name': u'Mary', 'age': 25}))
-
 
         # Changing the birth date field of the entire collection
         day, month, year = 15, 9, 1986

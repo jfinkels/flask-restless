@@ -156,7 +156,7 @@ class APIManagerTest(TestSupport):
         self.assertEqual(response.status_code, 404)
 
     def test_include_related(self):
-        """Test for specifying included columns on related models.""" 
+        """Test for specifying included columns on related models."""
         date = datetime.date(1999, 12, 31)
         person = self.Person(name='Test', age=10, other=20, birth_date=date)
         computer = self.Computer(name='foo', vendor='bar', buy_date=date)
@@ -169,7 +169,7 @@ class APIManagerTest(TestSupport):
         self.manager.create_api(self.Person, include_columns=include)
         include = frozenset(['name', 'age', 'computers.id', 'computers.name'])
         self.manager.create_api(self.Person, url_prefix='/api2',
-                                include_columns=include) 
+                                include_columns=include)
 
         response = self.app.get('/api/person/%s' % person.id)
         person_dict = loads(response.data)
@@ -310,7 +310,6 @@ class APIManagerTest(TestSupport):
         response = self.app.get('/none/person/%s' % personid)
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
             self.assertNotIn(column, loads(response.data))
- 
 
     def test_different_urls(self):
         """Tests that establishing different URL endpoints for the same model
@@ -420,7 +419,6 @@ class APIManagerTest(TestSupport):
         the instance URL.
 
         """
-        date = datetime.date(1999, 12, 31)
         person = self.LazyPerson(name='Test')
         computer = self.LazyComputer(name='foo')
         self.session.add(person)

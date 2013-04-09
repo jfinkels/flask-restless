@@ -43,7 +43,7 @@ class HelpersTest(TestCase):
         left, right = partition(l, lambda x: x < 5)
         self.assertEqual(list(range(5)), left)
         self.assertEqual(list(range(5, 10)), right)
- 
+
     def test_upper_keys(self):
         """Test for converting keys in a dictionary to upper case."""
         for k, v in upper_keys(dict(zip('abc', 'xyz'))).items():

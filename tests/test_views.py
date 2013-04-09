@@ -24,18 +24,13 @@ except:
 else:
     has_flask_sqlalchemy = True
 from sqlalchemy import Column
-from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Unicode
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.associationproxy import association_proxy as prox
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.orderinglist import ordering_list as ol
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship as rel
-from sqlalchemy.orm import scoped_session
-from sqlalchemy.orm import sessionmaker
 
 from flask.ext.restless.manager import APIManager
 from flask.ext.restless.views import _evaluate_functions as evaluate_functions
@@ -422,12 +417,14 @@ class APITestCase(TestSupport):
         # setup the URLs for the Person and Computer API
         self.manager.create_api(self.Person,
                                 methods=['GET', 'PATCH', 'POST', 'DELETE'])
-        self.manager.create_api(self.Computer, methods=['GET', 'POST', 'PATCH'])
+        self.manager.create_api(self.Computer,
+                                methods=['GET', 'POST', 'PATCH'])
 
         # setup the URLs for the Car manufacturer API
         self.manager.create_api(self.CarManufacturer,
                                 methods=['GET', 'PATCH', 'POST', 'DELETE'])
-        self.manager.create_api(self.CarModel, methods=['GET', 'PATCH', 'POST', 'DELETE'])
+        self.manager.create_api(self.CarModel,
+                                methods=['GET', 'PATCH', 'POST', 'DELETE'])
 
         # to facilitate searching
         self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
@@ -471,7 +468,8 @@ class APITestCase(TestSupport):
         response = self.app.post('/api/person', data=dumps(dict(bogus=0)))
         self.assertEqual(400, response.status_code)
 
-        response = self.app.post('/api/person', data=dumps(dict(is_minor=True)))
+        response = self.app.post('/api/person',
+                                 data=dumps(dict(is_minor=True)))
         self.assertEqual(400, response.status_code)
 
     def test_post_nullable_date(self):
@@ -785,7 +783,8 @@ class APITestCase(TestSupport):
 
         # change one of the computers
         data = {'computers': [{'id': data['computers'][0]['id']},
-                              {'id': data['computers'][1]['id'], 'vendor': u'Apple'}]}
+                              {'id': data['computers'][1]['id'],
+                               'vendor': u'Apple'}]}
         response = self.app.patch('/api/person/1', data=dumps(data))
         self.assertEqual(200, response.status_code)
         data = loads(response.data)
