@@ -24,7 +24,6 @@
 from __future__ import division
 
 from collections import defaultdict
-import itertools
 import datetime
 import math
 import warnings
@@ -204,7 +203,7 @@ def _is_like_list(instance, relation):
 # This code was adapted from :meth:`elixir.entity.Entity.to_dict` and
 # http://stackoverflow.com/q/1958219/108197.
 def _to_dict(instance, deep=None, exclude=None, include=None,
-             exclude_relations=None, include_relations=None): 
+             exclude_relations=None, include_relations=None):
     """Returns a dictionary representing the fields of the specified `instance`
     of a SQLAlchemy model.
 
@@ -238,18 +237,18 @@ def _to_dict(instance, deep=None, exclude=None, include=None,
     """
     if (exclude is not None or exclude_relations is not None) and \
             (include is not None or include_relations is not None):
-        raise ValueError('Cannot specify both include and exclude.') 
+        raise ValueError('Cannot specify both include and exclude.')
     # create a list of names of columns, including hybrid properties
     columns = [p.key for p in object_mapper(instance).iterate_properties
                if isinstance(p, ColumnProperty)]
     for parent in type(instance).mro():
-        columns += [key for key,value in parent.__dict__.iteritems()
+        columns += [key for key, value in parent.__dict__.iteritems()
                     if isinstance(value, hybrid_property)]
     # filter the columns based on exclude and include values
     if exclude is not None:
         columns = (c for c in columns if c not in exclude)
     elif include is not None:
-        columns = (c for c in columns if c in include) 
+        columns = (c for c in columns if c in include)
     # create a dictionary mapping column name to value
     result = dict((col, getattr(instance, col)) for col in columns)
     # Convert datetime and date objects to ISO 8601 format.
@@ -275,7 +274,7 @@ def _to_dict(instance, deep=None, exclude=None, include=None,
             newexclude = exclude_relations[relation]
         elif (include_relations is not None and
               relation in include_relations):
-            newinclude = include_relations[relation] 
+            newinclude = include_relations[relation]
         if _is_like_list(instance, relation):
             result[relation] = [_to_dict(inst, rdeep, exclude=newexclude,
                                          include=newinclude)
@@ -351,7 +350,7 @@ def _parse_excludes(column_names):
             del relations[column]
     return columns, relations
 
- 
+
 def _evaluate_functions(session, model, functions):
     """Executes each of the SQLAlchemy functions specified in ``functions``, a
     list of dictionaries of the form described below, on the given model and
@@ -551,7 +550,7 @@ class API(ModelView):
 
         See :ref:`includes` for information on specifying included or excluded
         columns on fields of related models.
- 
+
         `results_per_page` is a positive integer which represents the default
         number of results which are returned per page. Requests made by clients
         may override this default by specifying ``results_per_page`` as a query
@@ -624,7 +623,7 @@ class API(ModelView):
         self.exclude_columns, self.exclude_relations = \
             _parse_excludes(exclude_columns)
         self.include_columns, self.include_relations = \
-            _parse_includes(include_columns) 
+            _parse_includes(include_columns)
         self.validation_exceptions = tuple(validation_exceptions or ())
         self.results_per_page = results_per_page
         self.max_results_per_page = max_results_per_page
@@ -976,7 +975,7 @@ class API(ModelView):
             rels = frozenset(self.include_relations)
             relations &= (cols | rels)
         elif self.exclude_columns is not None:
-            relations -= frozenset(self.exclude_columns) 
+            relations -= frozenset(self.exclude_columns)
         deep = dict((r, {}) for r in relations)
 
         # for security purposes, don't transmit list as top-level JSON
@@ -986,7 +985,7 @@ class API(ModelView):
             result = _to_dict(result, deep, exclude=self.exclude_columns,
                               exclude_relations=self.exclude_relations,
                               include=self.include_columns,
-                              include_relations=self.include_relations) 
+                              include_relations=self.include_relations)
 
         for postprocessor in self.postprocessors['GET_MANY']:
             new_result = postprocessor(result)
@@ -1050,7 +1049,7 @@ class API(ModelView):
                             exclude_relations=self.exclude_relations,
                             include=self.include_columns,
                             include_relations=self.include_relations)
-                   for x in instances[start:end]] 
+                   for x in instances[start:end]]
         return dict(page=page_num, objects=objects, total_pages=total_pages,
                     num_results=num_results)
 
@@ -1088,7 +1087,7 @@ class API(ModelView):
 
         """
         primary_key_names = _primary_key_names(model)
-        pks = dict((k,attrs[k]) for k in attrs if k in primary_key_names)
+        pks = dict((k, attrs[k]) for k in attrs if k in primary_key_names)
         instance = None
         query = session_query(self.session, model)
         if len(pks) == len(primary_key_names):
@@ -1104,7 +1103,7 @@ class API(ModelView):
         """Returns the dictionary representation of the specified instance.
 
         This method respects the include and exclude columns specified in the
-        constructor of this class. 
+        constructor of this class.
 
         """
         # create a placeholder for the relations of the returned models
@@ -1115,12 +1114,12 @@ class API(ModelView):
             rels = frozenset(self.include_relations)
             relations &= (cols | rels)
         elif self.exclude_columns is not None:
-            relations -= frozenset(self.exclude_columns) 
+            relations -= frozenset(self.exclude_columns)
         deep = dict((r, {}) for r in relations)
         return _to_dict(inst, deep, exclude=self.exclude_columns,
                         exclude_relations=self.exclude_relations,
                         include=self.include_columns,
-                        include_relations=self.include_relations) 
+                        include_relations=self.include_relations)
 
     def _instid_to_dict(self, instid):
         """Returns the dictionary representation of the instance specified by
