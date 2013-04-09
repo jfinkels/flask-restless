@@ -156,7 +156,7 @@ def _assign_attributes(model, **kwargs):
     cls = type(model)
     for field, value in kwargs.iteritems():
         if not hasattr(cls, field):
-            msg = '%s has no field named "%r"' % (cls_.__name__, field)
+            msg = '%s has no field named "%r"' % (cls.__name__, field)
             raise TypeError(msg)
         setattr(model, field, value)
 
