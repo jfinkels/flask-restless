@@ -44,7 +44,7 @@ from .helpers import TestSupportPrefilled
 
 
 __all__ = ['ModelTestCase', 'FunctionEvaluationTest', 'FunctionAPITestCase',
-           'APITestCase', 'FSAModelTest', 'AssociationProxyTest']
+           'APITestCase', 'FSAModelTest', 'AssociationProxyTest', 'SearchTest']
 
 
 dumps = json.dumps
@@ -1007,173 +1007,6 @@ class APITestCase(TestSupport):
         resp = self.app.get('/api/computer/1')
         self.assertEqual(resp.status_code, 404)
 
-    def test_search(self):
-        """Tests basic search using the :http:method:`get` method."""
-        # Trying to pass invalid params to the search method
-        resp = self.app.get('/api/person?q=Test')
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(loads(resp.data)['message'], 'Unable to decode data')
-
-        create = lambda x: self.app.post('/api/person', data=dumps(x))
-        create({'name': u'Lincoln', 'age': 23, 'other': 22})
-        create({'name': u'Mary', 'age': 19, 'other': 19})
-        create({'name': u'Lucy', 'age': 25, 'other': 20})
-        create({'name': u'Katy', 'age': 7, 'other': 10})
-        create({'name': u'John', 'age': 28, 'other': 10})
-
-        search = {
-            'filters': [
-                {'name': 'name', 'val': '%y%', 'op': 'like'}
-             ]
-        }
-
-        # Let's search for users with that above filter
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        loaded = loads(resp.data)
-        self.assertEqual(len(loaded['objects']), 3)  # Mary, Lucy and Katy
-
-        # Tests searching for a single row
-        search = {
-            'single': True,      # I'm sure we have only one row here
-            'filters': [
-                {'name': 'name', 'val': u'Lincoln', 'op': 'equals'}
-            ],
-        }
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(loads(resp.data)['name'], u'Lincoln')
-
-        # Looking for something that does not exist on the database
-        search['filters'][0]['val'] = 'Sammy'
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(loads(resp.data)['message'], 'No result found')
-
-        # We have to receive an error if the user provides an invalid
-        # data to the search, like this:
-        search = {
-            'filters': [
-                {'name': 'age', 'val': 'It should not be a string', 'op': 'gt'}
-            ]
-        }
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        #assert loads(resp.data)['error_list'][0] == \
-        #    {'age': 'Please enter a number'}
-        self.assertEqual(len(loads(resp.data)['objects']), 0)
-
-        # Testing the order_by stuff
-        search = {'order_by': [{'field': 'age', 'direction': 'asc'}]}
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        loaded = loads(resp.data)['objects']
-        self.assertEqual(loaded[0][u'age'], 7)
-        self.assertEqual(loaded[1][u'age'], 19)
-        self.assertEqual(loaded[2][u'age'], 23)
-        self.assertEqual(loaded[3][u'age'], 25)
-        self.assertEqual(loaded[4][u'age'], 28)
-
-        # Test the IN operation
-        search = {
-            'filters': [
-                {'name': 'age', 'val': [7, 28], 'op': 'in'}
-            ]
-        }
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        loaded = loads(resp.data)['objects']
-        self.assertEqual(loaded[0][u'age'], 7)
-        self.assertEqual(loaded[1][u'age'], 28)
-
-        # Testing related search
-        update = {
-            'computers': {
-                'add': [{'name': u'lixeiro', 'vendor': u'Lenovo'}]
-            }
-        }
-        resp = self.app.patch('/api/person/1', data=dumps(update))
-        self.assertEqual(resp.status_code, 200)
-
-        # TODO document this
-        search = {
-            'single': True,
-            'filters': [
-                {'name': 'computers__name',
-                 'val': u'lixeiro',
-                 'op': 'any'}
-            ]
-        }
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(loads(resp.data)['computers'][0]['name'], 'lixeiro')
-
-        # Testing the comparation for two fields. We want to compare
-        # `age' and `other' fields. If the first one is lower than or
-        # equals to the second one, we want the object
-        search = {
-            'filters': [
-                {'name': 'age', 'op': 'lte', 'field': 'other'}
-            ],
-            'order_by': [
-                {'field': 'other'}
-            ]
-        }
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        loaded = loads(resp.data)['objects']
-        self.assertEqual(len(loaded), 2)
-        self.assertEqual(loaded[0]['other'], 10)
-        self.assertEqual(loaded[1]['other'], 19)
-
-    def test_search2(self):
-        """Testing more search functionality."""
-        create = lambda x: self.app.post('/api/person', data=dumps(x))
-        create({'name': u'Fuxu', 'age': 32})
-        create({'name': u'Everton', 'age': 33})
-        create({'name': u'Lincoln', 'age': 24})
-
-        # Let's test the search using an id
-        search = {
-            'single': True,
-            'filters': [{'name': 'id', 'op': 'equal_to', 'val': 1}]
-        }
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(loads(resp.data)['name'], u'Fuxu')
-
-        # Testing limit and offset
-        search = {'limit': 1, 'offset': 1}
-        resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(1, len(loads(resp.data)['objects']))
-        self.assertEqual(loads(resp.data)['objects'][0]['name'], u'Everton')
-
-        # Testing multiple results when calling .one()
-        resp = self.app.search('/api/person', dumps({'single': True}))
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(loads(resp.data)['message'], 'Multiple results found')
-
-    def test_search_bad_arguments(self):
-        """Tests that search requests with bad parameters respond with an error
-        message.
-
-        """
-        # missing argument
-        d = dict(filters=[dict(name='name', op='==')])
-        resp = self.app.search('/api/person', dumps(d))
-        self.assertEqual(resp.status_code, 400)
-
-        # missing operator
-        d = dict(filters=[dict(name='name', val='Test')])
-        resp = self.app.search('/api/person', dumps(d))
-        self.assertEqual(resp.status_code, 400)
-
-        # missing fieldname
-        d = dict(filters=[dict(op='==', val='Test')])
-        resp = self.app.search('/api/person', dumps(d))
-        self.assertEqual(resp.status_code, 400)
-
     def test_pagination(self):
         """Tests for pagination of long result sets."""
         self.manager.create_api(self.Person, url_prefix='/api/v2',
@@ -1374,6 +1207,189 @@ class APITestCase(TestSupport):
         self.assertEqual(201, response.status_code)
         response = self.app.post('/api/person', data=dumps(data))
         self.assertEqual(400, response.status_code)
+
+
+class SearchTest(TestSupportPrefilled):
+    """Unit tests for the search query functionality."""
+
+
+    def setUp(self):
+        """Creates the database, the :class:`~flask.Flask` object, the
+        :class:`~flask_restless.manager.APIManager` for that application, and
+        creates the ReSTful API endpoints for the :class:`testapp.Person` and
+        :class:`testapp.Computer` models.
+
+        """
+        super(SearchTest, self).setUp()
+        self.manager.create_api(self.Person, methods=['GET', 'PATCH'])
+        self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
+
+    def test_search(self):
+        """Tests basic search using the :http:method:`get` method."""
+        # Trying to pass invalid params to the search method
+        resp = self.app.get('/api/person?q=Test')
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(loads(resp.data)['message'], 'Unable to decode data')
+
+        search = {
+            'filters': [
+                {'name': 'name', 'val': '%y%', 'op': 'like'}
+             ]
+        }
+
+        # Let's search for users with that above filter
+        resp = self.app.search('/api/person', dumps(search))
+        self.assertEqual(resp.status_code, 200)
+        loaded = loads(resp.data)
+        self.assertEqual(len(loaded['objects']), 3)  # Mary, Lucy and Katy
+
+        # Tests searching for a single row
+        search = {
+            'single': True,      # I'm sure we have only one row here
+            'filters': [
+                {'name': 'name', 'val': u'Lincoln', 'op': 'equals'}
+            ],
+        }
+        resp = self.app.search('/api/person', dumps(search))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['name'], u'Lincoln')
+
+        # Looking for something that does not exist on the database
+        search['filters'][0]['val'] = 'Sammy'
+        resp = self.app.search('/api/person', dumps(search))
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(loads(resp.data)['message'], 'No result found')
+
+        # We have to receive an error if the user provides an invalid
+        # data to the search, like this:
+        search = {
+            'filters': [
+                {'name': 'age', 'val': 'It should not be a string', 'op': 'gt'}
+            ]
+        }
+        resp = self.app.search('/api/person', dumps(search))
+        self.assertEqual(resp.status_code, 200)
+        #assert loads(resp.data)['error_list'][0] == \
+        #    {'age': 'Please enter a number'}
+        self.assertEqual(len(loads(resp.data)['objects']), 0)
+
+        # Testing the order_by stuff
+        search = {'order_by': [{'field': 'age', 'direction': 'asc'}]}
+        resp = self.app.search('/api/person', dumps(search))
+        self.assertEqual(resp.status_code, 200)
+        loaded = loads(resp.data)['objects']
+        self.assertEqual(loaded[0][u'age'], 7)
+        self.assertEqual(loaded[1][u'age'], 19)
+        self.assertEqual(loaded[2][u'age'], 23)
+        self.assertEqual(loaded[3][u'age'], 25)
+        self.assertEqual(loaded[4][u'age'], 28)
+
+        # Test the IN operation
+        search = {
+            'filters': [
+                {'name': 'age', 'val': [7, 28], 'op': 'in'}
+            ]
+        }
+        resp = self.app.search('/api/person', dumps(search))
+        self.assertEqual(resp.status_code, 200)
+        loaded = loads(resp.data)['objects']
+        self.assertEqual(loaded[0][u'age'], 7)
+        self.assertEqual(loaded[1][u'age'], 28)
+
+        # Testing related search
+        update = {
+            'computers': {
+                'add': [{'name': u'lixeiro', 'vendor': u'Lenovo'}]
+            }
+        }
+        resp = self.app.patch('/api/person/1', data=dumps(update))
+        self.assertEqual(resp.status_code, 200)
+
+        # TODO document this
+        search = {
+            'single': True,
+            'filters': [
+                {'name': 'computers__name',
+                 'val': u'lixeiro',
+                 'op': 'any'}
+            ]
+        }
+        resp = self.app.search('/api/person', dumps(search))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['computers'][0]['name'], 'lixeiro')
+
+        # Testing the comparation for two fields. We want to compare
+        # `age' and `other' fields. If the first one is lower than or
+        # equals to the second one, we want the object
+        search = {
+            'filters': [
+                {'name': 'age', 'op': 'lte', 'field': 'other'}
+            ],
+            'order_by': [
+                {'field': 'other'}
+            ]
+        }
+        resp = self.app.search('/api/person', dumps(search))
+        self.assertEqual(resp.status_code, 200)
+        loaded = loads(resp.data)['objects']
+        self.assertEqual(len(loaded), 2)
+        self.assertEqual(loaded[0]['other'], 10)
+        self.assertEqual(loaded[1]['other'], 19)
+
+    def test_search2(self):
+        """Testing more search functionality."""
+        # Let's test the search using an id
+        search = {
+            'single': True,
+            'filters': [{'name': 'id', 'op': 'equal_to', 'val': 1}]
+        }
+        resp = self.app.search('/api/person', dumps(search))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(loads(resp.data)['name'], u'Lincoln')
+
+        # Testing limit and offset
+        search = {'limit': 1, 'offset': 1}
+        resp = self.app.search('/api/person', dumps(search))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(1, len(loads(resp.data)['objects']))
+        self.assertEqual(loads(resp.data)['objects'][0]['name'], u'Mary')
+
+        # Testing multiple results when calling .one()
+        resp = self.app.search('/api/person', dumps({'single': True}))
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(loads(resp.data)['message'], 'Multiple results found')
+
+    def test_search_disjunction(self):
+        """Tests for search with disjunctive filters."""
+        data = dict(filters=[dict(name='age', op='le', val=10),
+                             dict(name='age', op='ge', val=25)],
+                    disjunction=True)
+        response = self.app.search('/api/person', dumps(data))
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)['objects']
+        self.assertEqual(3, len(data))
+        self.assertEqual(set(['Lucy', 'Katy', 'John']),
+                         set([person['name'] for person in data]))
+
+    def test_search_bad_arguments(self):
+        """Tests that search requests with bad parameters respond with an error
+        message.
+
+        """
+        # missing argument
+        d = dict(filters=[dict(name='name', op='==')])
+        resp = self.app.search('/api/person', dumps(d))
+        self.assertEqual(resp.status_code, 400)
+
+        # missing operator
+        d = dict(filters=[dict(name='name', val='Test')])
+        resp = self.app.search('/api/person', dumps(d))
+        self.assertEqual(resp.status_code, 400)
+
+        # missing fieldname
+        d = dict(filters=[dict(op='==', val='Test')])
+        resp = self.app.search('/api/person', dumps(d))
+        self.assertEqual(resp.status_code, 400)
 
 
 class AssociationProxyTest(DatabaseTestBase):
@@ -1626,4 +1642,5 @@ def load_tests(loader, standard_tests, pattern):
     suite.addTest(loader.loadTestsFromTestCase(FunctionEvaluationTest))
     suite.addTest(loader.loadTestsFromTestCase(APITestCase))
     suite.addTest(loader.loadTestsFromTestCase(AssociationProxyTest))
+    suite.addTest(loader.loadTestsFromTestCase(SearchTest))
     return suite

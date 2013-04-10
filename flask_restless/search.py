@@ -15,6 +15,9 @@
 """
 import inspect
 
+from sqlalchemy import and_ as AND
+from sqlalchemy import or_ as OR
+
 from .helpers import unicode_keys_to_strings
 from .helpers import session_query
 
@@ -164,7 +167,8 @@ class SearchParameters(object):
 
     """
 
-    def __init__(self, filters=None, limit=None, offset=None, order_by=None):
+    def __init__(self, filters=None, limit=None, offset=None, order_by=None,
+                 junction=None):
         """Instantiates this object with the specified attributes.
 
         `filters` is a list of :class:`Filter` objects, representing filters to
@@ -180,17 +184,24 @@ class SearchParameters(object):
         ordering directives to apply to the result set which matches the
         search.
 
+        `junction` is either :func:`sqlalchemy.or_` or :func:`sqlalchemy.and_`
+        (if ``None``, this will default to :func:`sqlalchemy.and_`), specifying
+        how the filters should be interpreted (that is, as a disjunction or a
+        conjunction).
+
         """
         self.filters = filters or []
         self.limit = limit
         self.offset = offset
         self.order_by = order_by or []
+        self.junction = junction or AND
 
     def __repr__(self):
         """Returns a string representation of the search parameters."""
-        return ('<SearchParameters filters={}, order_by={}, limit={},'
-                ' offset={}>').format(self.filters, self.order_by, self.limit,
-                                      self.offset)
+        template = ('<SearchParameters filters={}, order_by={}, limit={},'
+                    ' offset={}, junction={}>')
+        return template.format(self.filters, self.order_by, self.limit,
+                               self.offset, self.junction.__name__)
 
     @staticmethod
     def from_dictionary(dictionary):
@@ -203,15 +214,17 @@ class SearchParameters(object):
               'filters': [{'name': 'age', 'op': 'lt', 'val': 20}, ...],
               'order_by': [{'field': 'age', 'direction': 'desc'}, ...]
               'limit': 10,
-              'offset': 3
+              'offset': 3,
+              'disjunction': True
             }
 
         where ``dictionary['filters']`` is the list of :class:`Filter` objects
         (in dictionary form), ``dictionary['order_by']`` is the list of
         :class:`OrderBy` objects (in dictionary form), ``dictionary['limit']``
-        is the maximum number of matching entries to return, and
+        is the maximum number of matching entries to return,
         ``dictionary['offset']`` is the number of initial entries to skip in
-        the matching result set.
+        the matching result set, and ``dictionary['disjunction']`` is whether
+        the filters should be joined as a disjunction or conjunction.
 
         The provided dictionary may have other key/value pairs, but they are
         ignored.
@@ -226,8 +239,10 @@ class SearchParameters(object):
         order_by = [OrderBy(**o) for o in order_by_list]
         limit = dictionary.get('limit')
         offset = dictionary.get('offset')
+        disjunction = dictionary.get('disjunction')
+        junction = OR if disjunction else AND
         return SearchParameters(filters=filters, limit=limit, offset=offset,
-                                order_by=order_by)
+                                order_by=order_by, junction=junction)
 
 
 class QueryBuilder(object):
@@ -357,8 +372,7 @@ class QueryBuilder(object):
         query = session_query(session, model)
         # may raise exception here
         filters = QueryBuilder._create_filters(model, search_params)
-        for filt in filters:
-            query = query.filter(filt)
+        query = query.filter(search_params.junction(*filters))
 
         # Order the search
         for val in search_params.order_by:

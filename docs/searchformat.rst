@@ -91,6 +91,14 @@ mappings, all of which are optional:
   The returned list of matching instances will include only those instances
   which satisfy all of the given filters.
 
+``disjunction``
+  A Boolean that specifies whether the list of filters should be treated as a
+  disjunction or a conjunction. If this is ``true``, the response will include
+  all instances of the model that match *any* of the filters. If this is
+  ``false`` the response will include all instances of the model that match
+  *all* of the filters. This will be treated as ``false`` if not specified by
+  the client (in other words, the default is conjunction).
+
 ``limit`` 
   A positive integer which specified the maximum number of objects to return.
 
@@ -168,6 +176,35 @@ attribute greater than or equal to 10:
        {"id": 1, "name": "Jeffrey", "age": 24},
        {"id": 2, "name": "John", "age": 13},
        {"id": 3, "name": "Mary", "age": 18}
+     ]
+   }
+
+Disjunction of filters
+~~~~~~~~~~~~~~~~~~~~~~
+
+On request:
+
+.. sourcecode:: http
+
+   GET /api/person?q={"filters":[{"name":"age","op":"le","val":10},{"name":"age","op":"ge","val":20}],"disjunction":true} HTTP/1.1
+   Host: example.com
+
+the response will include only those ``Person`` instances that have ``age``
+attribute either less than 10 or greater than 20:
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+
+   {
+     "num_results": 3,
+     "total_pages": 1,
+     "page": 1,
+     "objects":
+     [
+       {"id": 4, "name": "Abraham", "age": 11},
+       {"id": 5, "name": "Isaac", "age": 15},
+       {"id": 6, "name": "Job", "age": 13}
      ]
    }
 

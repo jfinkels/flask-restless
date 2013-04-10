@@ -18,6 +18,7 @@ Not yet released.
 - #2: adds basic :http:method:`get` access to one level of relationship depth
   for models.
 - #113: interpret empty strings for date fields as ``None`` objects.
+- #128: allow disjunctions when filtering search queries.
 - #130: documentation and examples now more clearly show search examples.
 - #135: added support for hybrid properties.
 - #139: remove custom code for authentication in favor of user-defined pre- and

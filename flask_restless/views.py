@@ -946,10 +946,11 @@ class API(ModelView):
         .. sourcecode:: javascript
 
            {
-             "single": "True",
+             "single": true,
              "order_by": [{"field": "age", "direction": "asc"}],
              "limit": 2,
              "offset": 1,
+             "disjunction": true,
              "filters":
                [
                  {"name": "name", "val": "%y%", "op": "like"},
