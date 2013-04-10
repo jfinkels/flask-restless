@@ -94,5 +94,8 @@ def get_related_model(model, relationname):
     if relationname in cols and isinstance(attr.property, RelProperty):
         return cols[relationname].property.mapper.class_
     elif isinstance(attr, AssociationProxy):
-        return attr.remote_attr.property.mapper.class_
+        if hasattr(attr.remote_attr.property, 'mapper'):
+            return attr.remote_attr.property.mapper.class_
+        elif hasattr(attr.remote_attr.property, 'parent'):
+            return attr.remote_attr.property.parent.class_
     return None

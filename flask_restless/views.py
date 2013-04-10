@@ -45,6 +45,7 @@ from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.orm.attributes import QueryableAttribute
 from sqlalchemy.orm.exc import MultipleResultsFound
+from sqlalchemy.orm.exc import UnmappedInstanceError
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import func
@@ -239,8 +240,12 @@ def _to_dict(instance, deep=None, exclude=None, include=None,
             (include is not None or include_relations is not None):
         raise ValueError('Cannot specify both include and exclude.')
     # create a list of names of columns, including hybrid properties
-    columns = [p.key for p in object_mapper(instance).iterate_properties
-               if isinstance(p, ColumnProperty)]
+    try:
+        columns = [p.key for p in object_mapper(instance).iterate_properties
+                   if isinstance(p, ColumnProperty)]
+    except UnmappedInstanceError:
+        return instance
+
     for parent in type(instance).mro():
         columns += [key for key, value in parent.__dict__.iteritems()
                     if isinstance(value, hybrid_property)]
@@ -1086,17 +1091,23 @@ class API(ModelView):
         calling function has that responsibility.
 
         """
-        primary_key_names = _primary_key_names(model)
-        pks = dict((k, attrs[k]) for k in attrs if k in primary_key_names)
-        instance = None
-        query = session_query(self.session, model)
-        if len(pks) == len(primary_key_names):
-            # Only query if *all* the primary keys on this model were included
-            instance = query.filter_by(**pks).first()
-        if instance is not None:
-            _assign_attributes(instance, **attrs)
+        if isinstance(attrs, dict):
+            primary_key_names = _primary_key_names(model)
+            pks = dict((k, attrs[k]) for k in attrs if k in primary_key_names)
+            instance = None
+            query = session_query(self.session, model)
+            if len(pks) == len(primary_key_names):
+                # Only query if *all* the primary keys on this model
+                # were included
+                instance = query.filter_by(**pks).first()
+            if instance is not None:
+                _assign_attributes(instance, **attrs)
+            else:
+                instance = model(**attrs)
         else:
-            instance = model(**attrs)
+            # Not a full relation, probably just an association proxy
+            # to a scalar attribute on the remote model
+            instance = attrs
         return instance
 
     def _inst_to_dict(self, inst):
