@@ -30,13 +30,48 @@ class IllegalArgumentError(Exception):
 
 
 class APIManager(object):
-    """Provides a method for creating a public ReSTful JSOn API with respect to
+    """Provides a method for creating a public ReSTful JSON API with respect to
     a given :class:`~flask.Flask` application object.
 
     The :class:`~flask.Flask` object can be specified in the constructor, or
     after instantiation time by calling the :meth:`init_app` method. In any
     case, the application object must be specified before calling the
     :meth:`create_api` method.
+
+    `app` is the :class:`flask.Flask` object containing the user's Flask
+    application.
+
+    `session` is the :class:`sqlalchemy.orm.session.Session` object in which
+    changes to the database will be made.
+
+    `flask_sqlalchemy_db` is the :class:`flask.ext.sqlalchemy.SQLAlchemy`
+    object with which `app` has been registered and which contains the
+    database models for which API endpoints will be created.
+
+    If `flask_sqlalchemy_db` is not ``None``, `session` will be ignored.
+
+    For example, to use this class with models defined in pure SQLAlchemy::
+
+        from flask import Flask
+        from flask.ext.restless import APIManager
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm.session import sessionmaker
+
+        engine = create_engine('sqlite:////tmp/mydb.sqlite')
+        Session = sessionmaker(bind=engine)
+        mysession = Session()
+        app = Flask(__name__)
+        apimanager = APIManager(app, session=mysession)
+
+    and with models defined with Flask-SQLAlchemy::
+
+        from flask import Flask
+        from flask.ext.restless import APIManager
+        from flask.ext.sqlalchemy import SQLAlchemy
+
+        app = Flask(__name__)
+        db = SQLALchemy(app)
+        apimanager = APIManager(app, flask_sqlalchemy_db=db)
 
     """
 
@@ -57,51 +92,6 @@ class APIManager(object):
     BLUEPRINTNAME_FORMAT = '%s%s'
 
     def __init__(self, app=None, session=None, flask_sqlalchemy_db=None):
-        """Stores the specified :class:`flask.Flask` application object on
-        which API endpoints will be registered.
-
-        If `app` is ``None`` or one of `session` and `flask_sqlalchemy_db_` is
-        ``None``, the user must call the :meth:`init_app` method before calling
-        the :meth:`create_api` method.
-
-        `app` is the :class:`flask.Flask` object containing the user's Flask
-        application.
-
-        `session` is the :class:`session.orm.session.Session` object in which
-        changes to the database will be made. It may also be a
-        :class:`session.orm.session.Session` class, in which case a new
-        :class:`sqlalchemy.orm.scoped_session` will be created from it.
-
-        `flask_sqlalchemy_db` is the :class:`flask.ext.sqlalchemy.SQLAlchemy`
-        object with which `app` has been registered and which contains the
-        database models for which API endpoints will be created.
-
-        If `flask_sqlalchemy_db` is not ``None``, `session` will be ignored.
-
-        For example, to use this class with models defined in pure SQLAlchemy::
-
-            from flask import Flask
-            from flask.ext.restless import APIManager
-            from sqlalchemy import create_engine
-            from sqlalchemy.orm.session import sessionmaker
-
-            engine = create_engine('sqlite:////tmp/mydb.sqlite')
-            Session = sessionmaker(bind=engine)
-            mysession = Session()
-            app = Flask(__name__)
-            apimanager = APIManager(app, session=mysession)
-
-        and with models defined with Flask-SQLAlchemy::
-
-            from flask import Flask
-            from flask.ext.restless import APIManager
-            from flask.ext.sqlalchemy import SQLAlchemy
-
-            app = Flask(__name__)
-            db = SQLALchemy(app)
-            apimanager = APIManager(app, flask_sqlalchemy_db=db)
-
-        """
         self.init_app(app, session, flask_sqlalchemy_db)
 
     def _next_blueprint_name(self, basename):
@@ -137,8 +127,8 @@ class APIManager(object):
         :class:`sqlalchemy.orm.session.Session` object in which all database
         changes will be made.
 
-        `session` is the :class:`session.orm.session.Session` object in which
-        changes to the database will be made.
+        `session` is the :class:`sqlalchemy.orm.session.Session` object in
+        which changes to the database will be made.
 
         `flask_sqlalchemy_db` is the :class:`flask.ext.sqlalchemy.SQLAlchemy`
         object with which `app` has been registered and which contains the
