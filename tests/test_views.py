@@ -1659,9 +1659,10 @@ class AssociationProxyTest(DatabaseTestBase):
         """Tests that association proxies to remote scalar attributes work
         correctly.
 
-        This is also somewhat tested indirectly through the
-        other tests here for the chosen product image names but this is
-        a direct test with the Tags and a different type of relation
+        This is also somewhat tested indirectly through the other tests here
+        for the chosen product image names but this is a direct test with the
+        Tags and a different type of relation
+
         """
         self.session.add(self.Product())
         self.session.commit()
