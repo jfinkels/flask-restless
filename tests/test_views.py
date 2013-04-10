@@ -26,6 +26,7 @@ else:
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import Table
 from sqlalchemy import Unicode
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.associationproxy import association_proxy as prox
@@ -1405,6 +1406,14 @@ class AssociationProxyTest(DatabaseTestBase):
         """
         super(AssociationProxyTest, self).setUp()
 
+        tag_product = Table('tag_product', self.Base.metadata,
+                            Column('tag_id', Integer,
+                                   ForeignKey('tag.id'),
+                                   primary_key=True),
+                            Column('product_id', Integer,
+                                   ForeignKey('product.id'),
+                                   primary_key=True))
+
         class Image(self.Base):
             __tablename__ = 'image'
             id = Column(Integer, primary_key=True)
@@ -1421,6 +1430,12 @@ class AssociationProxyTest(DatabaseTestBase):
             image = rel('Image', backref=backref(name='chosen_product_images',
                                                  cascade="all, delete-orphan"),
                         enable_typechecks=False)
+            name = Column(Unicode, default=lambda: "default name")
+
+        class Tag(self.Base):
+            __tablename__ = 'tag'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode, nullable=False)
 
         class Product(self.Base):
             __tablename__ = 'product'
@@ -1431,10 +1446,16 @@ class AssociationProxyTest(DatabaseTestBase):
             chosen_images = prox('chosen_product_images', 'image',
                                  creator=lambda image:
                                      ChosenProductImage(image=image))
+            image_names = prox('chosen_product_images', 'name')
+            tags = rel(Tag, secondary=tag_product,
+                       backref=backref(name='products', lazy='dynamic'))
+            tag_names = prox('tags', 'name',
+                             creator=lambda tag_name: Tag(name=tag_name))
 
         self.Product = Product
         self.Image = Image
         self.ChosenProductImage = ChosenProductImage
+        self.Tag = Tag
 
         # create all the tables required for the models
         self.Base.metadata.create_all()
@@ -1476,8 +1497,10 @@ class AssociationProxyTest(DatabaseTestBase):
         self.assertIn('chosen_images', data)
         self.assertEquals(data['chosen_images'], [{'id': 1}, {'id': 2}])
         self.assertEquals(data['chosen_product_images'],
-                          [{'image_id': 1, 'product_id': 1},
-                           {'image_id': 2, 'product_id': 1}])
+                          [{'image_id': 1, 'product_id': 1,
+                            'name': 'default name'},
+                           {'image_id': 2, 'product_id': 1,
+                            'name': 'default name'}])
 
         response = self.app.get('/api/image/1')
         data = loads(response.data)
@@ -1631,6 +1654,24 @@ class AssociationProxyTest(DatabaseTestBase):
         self.assertEqual(response.status_code, 200)
         data = loads(response.data)
         self.assertEqual(data['num_results'], 0)
+
+    def test_association_proxy_scalar(self):
+        """Tests that association proxies to remote scalar attributes work
+        correctly.
+
+        This is also somewhat tested indirectly through the
+        other tests here for the chosen product image names but this is
+        a direct test with the Tags and a different type of relation
+        """
+        self.session.add(self.Product())
+        self.session.commit()
+
+        data = {'tag_names': ['tag1', 'tag2']}
+        response = self.app.patch('/api/product/1', data=dumps(data))
+        self.assertEqual(response.status_code, 200)
+        data = loads(response.data)
+
+        self.assertEqual(sorted(data['tag_names']), sorted(['tag1', 'tag2']))
 
 
 def load_tests(loader, standard_tests, pattern):
