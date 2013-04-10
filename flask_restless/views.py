@@ -25,6 +25,7 @@ from __future__ import division
 
 from collections import defaultdict
 import datetime
+from functools import wraps
 import math
 import warnings
 import inspect
@@ -89,6 +90,21 @@ class ProcessingException(Exception):
         super(ProcessingException, self).__init__(*args, **kwargs)
         self.message = message
         self.status_code = status_code
+
+
+def catch_processing_exceptions(func):
+    """Decorator that catches :exc:`ProcessingException`s and subsequently
+    returns a JSON-ified error response.
+
+    """
+    @wraps(func)
+    def decorator(*args, **kw):
+        try:
+            return func(*args, **kw)
+        except ProcessingException, exception:
+            status, message = exception.status_code, exception.message
+            return jsonify_status_code(status_code=status, message=message)
+    return decorator
 
 
 def jsonify_status_code(status_code, *args, **kw):
@@ -509,6 +525,9 @@ class API(ModelView):
     individual models.
 
     """
+
+    #: List of decorators applied to every method of this class.
+    decorators = [catch_processing_exceptions]
 
     def __init__(self, session, model, exclude_columns=None,
                  include_columns=None, validation_exceptions=None,
@@ -1148,38 +1167,34 @@ class API(ModelView):
         method responds with :http:status:`404`.
 
         """
-        try:
-            if instid is None:
-                return self._search()
-            for preprocessor in self.preprocessors['GET_SINGLE']:
-                preprocessor(instid)
-            # get the instance of the "main" model whose ID is instid
-            instance = self._get_by(instid)
-            if instance is None:
-                abort(404)
-            # If no relation is requested, just return the instance. Otherwise,
-            # get the value of the relation specified by `relationname`.
-            if relationname is None:
-                result = self._inst_to_dict(instance)
+        if instid is None:
+            return self._search()
+        for preprocessor in self.preprocessors['GET_SINGLE']:
+            preprocessor(instid)
+        # get the instance of the "main" model whose ID is instid
+        instance = self._get_by(instid)
+        if instance is None:
+            abort(404)
+        # If no relation is requested, just return the instance. Otherwise,
+        # get the value of the relation specified by `relationname`.
+        if relationname is None:
+            result = self._inst_to_dict(instance)
+        else:
+            related_value = getattr(instance, relationname)
+            # create a placeholder for the relations of the returned models
+            related_model = get_related_model(self.model, relationname)
+            relations = frozenset(get_relations(related_model))
+            deep = dict((r, {}) for r in relations)
+            # for security purposes, don't transmit list as top-level JSON
+            if _is_like_list(instance, relationname):
+                result = self._paginated(list(related_value), deep)
             else:
-                related_value = getattr(instance, relationname)
-                # create a placeholder for the relations of the returned models
-                related_model = get_related_model(self.model, relationname)
-                relations = frozenset(get_relations(related_model))
-                deep = dict((r, {}) for r in relations)
-                # for security purposes, don't transmit list as top-level JSON
-                if _is_like_list(instance, relationname):
-                    result = self._paginated(list(related_value), deep)
-                else:
-                    result = _to_dict(related_value, deep)
-            for postprocessor in self.postprocessors['GET_SINGLE']:
-                new_result = postprocessor(result)
-                if new_result is not NO_CHANGE:
-                    result = new_result
-            return jsonpify(result)
-        except ProcessingException, e:
-            return jsonify_status_code(status_code=e.status_code,
-                                       message=e.message)
+                result = _to_dict(related_value, deep)
+        for postprocessor in self.postprocessors['GET_SINGLE']:
+            new_result = postprocessor(result)
+            if new_result is not NO_CHANGE:
+                result = new_result
+        return jsonpify(result)
 
     def delete(self, instid, relationname):
         """Removes the specified instance of the model with the specified name
@@ -1196,25 +1211,15 @@ class API(ModelView):
 
         """
         is_deleted = False
-        try:
-            for preprocessor in self.preprocessors['DELETE']:
-                preprocessor(instid)
-        except ProcessingException, e:
-            return jsonify_status_code(status_code=e.status_code,
-                                       message=e.message)
-
+        for preprocessor in self.preprocessors['DELETE']:
+            preprocessor(instid)
         inst = self._get_by(instid)
         if inst is not None:
             self.session.delete(inst)
             self.session.commit()
             is_deleted = True
-        try:
-            for postprocessor in self.postprocessors['DELETE']:
-                postprocessor(is_deleted)
-        except ProcessingException, e:
-            return jsonify_status_code(status_code=e.status_code,
-                                       message=e.message)
-
+        for postprocessor in self.postprocessors['DELETE']:
+            postprocessor(is_deleted)
         return jsonify_status_code(204)
 
     def post(self):
@@ -1244,14 +1249,11 @@ class API(ModelView):
             return jsonify_status_code(400, message='Unable to decode data')
 
         # apply any preprocessors to the POST arguments
-        try:
-            for preprocessor in self.preprocessors['POST']:
-                new_params = preprocessor(params)
-                if new_params is not NO_CHANGE:
-                    params = new_params
-        except ProcessingException, e:
-            return jsonify_status_code(status_code=e.status_code,
-                                       message=e.message)
+        for preprocessor in self.preprocessors['POST']:
+            new_params = preprocessor(params)
+            if new_params is not NO_CHANGE:
+                params = new_params
+
 
         # Check for any request parameter naming a column which does not exist
         # on the current model.
@@ -1298,14 +1300,10 @@ class API(ModelView):
             self.session.commit()
             result = self._inst_to_dict(instance)
 
-            try:
-                for postprocessor in self.postprocessors['POST']:
-                    new_result = postprocessor(result)
-                    if new_result is not NO_CHANGE:
-                        result = new_result
-            except ProcessingException, e:
-                return jsonify_status_code(status_code=e.status_code,
-                                           message=e.message)
+            for postprocessor in self.postprocessors['POST']:
+                new_result = postprocessor(result)
+                if new_result is not NO_CHANGE:
+                    result = new_result
             return jsonify_status_code(201, **result)
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
@@ -1343,26 +1341,18 @@ class API(ModelView):
         patchmany = instid is None
         # Perform any necessary preprocessing.
         if patchmany:
-            try:
-                # Get the search parameters; all other keys in the `data`
-                # dictionary indicate a change in the model's field.
-                search_params = data.pop('q', {})
-                for preprocessor in self.preprocessors['PATCH_MANY']:
-                    result = preprocessor(search_params, data)
-                    if result is not NO_CHANGE:
-                        search_params, data = result
-            except ProcessingException, e:
-                return jsonify_status_code(status_code=e.status_code,
-                                           message=e.message)
+            # Get the search parameters; all other keys in the `data`
+            # dictionary indicate a change in the model's field.
+            search_params = data.pop('q', {})
+            for preprocessor in self.preprocessors['PATCH_MANY']:
+                result = preprocessor(search_params, data)
+                if result is not NO_CHANGE:
+                    search_params, data = result
         else:
-            try:
-                for preprocessor in self.preprocessors['PATCH_SINGLE']:
-                    new_data = preprocessor(instid, data)
-                    if new_data is not NO_CHANGE:
-                        data = new_data
-            except ProcessingException, e:
-                return jsonify_status_code(status_code=e.status_code,
-                                           message=e.message)
+            for preprocessor in self.preprocessors['PATCH_SINGLE']:
+                new_data = preprocessor(instid, data)
+                if new_data is not NO_CHANGE:
+                    data = new_data
 
         # Check for any request parameter naming a column which does not exist
         # on the current model.
@@ -1410,24 +1400,16 @@ class API(ModelView):
         # Perform any necessary postprocessing.
         if patchmany:
             result = dict(num_modified=num_modified)
-            try:
-                for postprocessor in self.postprocessors['PATCH_MANY']:
-                    new_result = postprocessor(query, result)
-                    if new_result is not NO_CHANGE:
-                        result = new_result
-            except ProcessingException, e:
-                return jsonify_status_code(status_code=e.status_code,
-                                           message=e.message)
+            for postprocessor in self.postprocessors['PATCH_MANY']:
+                new_result = postprocessor(query, result)
+                if new_result is not NO_CHANGE:
+                    result = new_result
         else:
             result = self._instid_to_dict(instid)
-            try:
-                for postprocessor in self.postprocessors['PATCH_SINGLE']:
-                    new_result = postprocessor(result)
-                    if new_result is not NO_CHANGE:
-                        result = new_result
-            except ProcessingException, e:
-                return jsonify_status_code(status_code=e.status_code,
-                                           message=e.message)
+            for postprocessor in self.postprocessors['PATCH_SINGLE']:
+                new_result = postprocessor(result)
+                if new_result is not NO_CHANGE:
+                    result = new_result
 
         return jsonify(result)
 
