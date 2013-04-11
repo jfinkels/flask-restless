@@ -551,6 +551,7 @@ If you want certain HTTP methods to require authentication, use preprocessors::
 
     from flask import Flask
     from flask.ext.restless import APIManager
+    from flask.ext.restless import NO_CHANGE
     from flask.ext.restless import ProcessingException
     from flask.ext.login import current_user
     from mymodels import User
@@ -558,7 +559,7 @@ If you want certain HTTP methods to require authentication, use preprocessors::
     def auth_func(params):
         if not current_user.is_authenticated():
             raise ProcessingException(message='Not authenticated!')
-        return params
+        return NO_CHANGE
 
     app = Flask(__name__)
     api_manager = APIManager(app)

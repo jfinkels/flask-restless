@@ -42,7 +42,7 @@ import os.path
 
 from flask import Flask, render_template, redirect, url_for
 from flask.ext.login import current_user, login_user, LoginManager, UserMixin
-from flask.ext.restless import APIManager, ProcessingException
+from flask.ext.restless import APIManager, ProcessingException, NO_CHANGE
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.wtf import PasswordField, SubmitField, TextField, Form
 
@@ -120,7 +120,7 @@ def login():
 def auth_func(params):
     if not current_user.is_authenticated():
         raise ProcessingException(message='Not authenticated!')
-    return params
+    return NO_CHANGE
 
 
 api_manager.create_api(User, preprocessors=dict(GET_SINGLE=[auth_func],
