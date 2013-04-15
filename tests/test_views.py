@@ -1512,7 +1512,7 @@ class AssociationProxyTest(DatabaseTestBase):
         self.assertIn('products', data)
         self.assertIn({'id': 1}, data['products'])
 
-    def test_association_proxy_get_data(self):
+    def test_get_data(self):
         """Tests that a :http:method:`get` request exhibits the correct
         associations.
 
@@ -1524,7 +1524,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         self._check_relations()
 
-    def test_association_proxy_post(self):
+    def test_post(self):
         """Tests that a :http:method:`post` request correctly adds an
         association.
 
@@ -1538,7 +1538,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         self._check_relations()
 
-    def test_association_proxy_post_many(self):
+    def test_post_many(self):
         """Tests that a :http:method:`post` request correctly adds multiple
         associations.
 
@@ -1553,7 +1553,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         self._check_relations_two()
 
-    def test_association_proxy_patch(self):
+    def test_patch(self):
         """Tests that a :http:method:`patch` request correctly sets the
         appropriate associations.
 
@@ -1568,7 +1568,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         self._check_relations()
 
-    def test_association_proxy_patch_multiple(self):
+    def test_patch_multiple(self):
         """Tests that a :http:method:`patch` request correctly adds multiple
         associations.
 
@@ -1584,7 +1584,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         self._check_relations_two()
 
-    def test_association_proxy_patch_with_add(self):
+    def test_patch_with_add(self):
         """Tests that a :http:method:`patch` request correctly adds an
         association.
 
@@ -1599,7 +1599,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         self._check_relations()
 
-    def test_association_proxy_patch_with_remove(self):
+    def test_patch_with_remove(self):
         """Tests that a :http:method:`patch` request correctly removes an
         association.
 
@@ -1623,7 +1623,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         self._check_relations()
 
-    def test_association_proxy_any(self):
+    def test_any(self):
         """Tests that a search query correctly searches fields on an associated
         model.
 
@@ -1655,7 +1655,7 @@ class AssociationProxyTest(DatabaseTestBase):
         data = loads(response.data)
         self.assertEqual(data['num_results'], 0)
 
-    def test_association_proxy_scalar(self):
+    def test_scalar(self):
         """Tests that association proxies to remote scalar attributes work
         correctly.
 
