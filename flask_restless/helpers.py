@@ -381,7 +381,6 @@ def get_by(session, model, primary_key_value):
     return query_by_primary_key(session, model, primary_key_value).first()
 
 
-
 def get_or_create(session, model, attrs):
     """Returns the single instance of `model` whose primary key has the
     value found in `attrs`, or initializes a new instance if no primary key
@@ -394,23 +393,21 @@ def get_or_create(session, model, attrs):
     calling function has that responsibility.
 
     """
-    if isinstance(attrs, dict):
-        primarykey_names = primary_key_names(model)
-        pks = dict((k, attrs[k]) for k in attrs if k in primarykey_names)
-        instance = None
-        query = session_query(session, model)
-        if len(pks) == len(primarykey_names):
-            # Only query if *all* the primary keys on this model
-            # were included
-            instance = query.filter_by(**pks).first()
-        if instance is not None:
-            assign_attributes(instance, **attrs)
-        else:
-            instance = model(**attrs)
-    else:
-        # Not a full relation, probably just an association proxy
-        # to a scalar attribute on the remote model
-        instance = attrs
+    # Not a full relation, probably just an association proxy to a scalar
+    # attribute on the remote model.
+    if not isinstance(attrs, dict):
+        return attrs
+    pk_names = primary_key_names(model)
+    # If not all of the primary keys were included in `attrs`, create a new
+    # model. Otherwise, query the model for an existing instance which matches
+    # all the specified primary key values.
+    if not all(k in attrs for k in pk_names):
+        return model(**attrs)
+    # Determine the sub-dictionary of `attrs` which contains the mappings
+    # for the primary keys.
+    pk_values = dict((k, v) for (k, v) in attrs.iteritems() if k in pk_names)
+    instance = session_query(session, model).filter_by(**pk_values).first()
+    assign_attributes(instance, **attrs)
     return instance
 
 
