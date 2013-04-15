@@ -43,7 +43,7 @@ def partition(l, condition):
     """
     return filter(condition, l), filter(lambda x: not condition(x), l)
 
- 
+
 def unicode_keys_to_strings(dictionary):
     """Returns a new dictionary with the same mappings as `dictionary`, but
     with each of the keys coerced to a string (by calling :func:`str(key)`).
@@ -238,7 +238,7 @@ def to_dict(instance, deep=None, exclude=None, include=None,
     except UnmappedInstanceError:
         return instance
     for parent in type(instance).mro():
-        columns += [key for key,value in parent.__dict__.iteritems()
+        columns += [key for key, value in parent.__dict__.iteritems()
                     if isinstance(value, hybrid_property)]
     # filter the columns based on exclude and include values
     if exclude is not None:
@@ -283,6 +283,7 @@ def to_dict(instance, deep=None, exclude=None, include=None,
         result[relation] = to_dict(relatedvalue, rdeep, exclude=newexclude,
                                    include=newinclude)
     return result
+
 
 def evaluate_functions(session, model, functions):
     """Executes each of the SQLAlchemy functions specified in ``functions``, a

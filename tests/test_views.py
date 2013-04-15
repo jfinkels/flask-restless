@@ -10,7 +10,6 @@
 
 """
 from datetime import date
-from datetime import datetime
 from unittest2 import TestSuite
 from unittest2 import skipUnless
 
@@ -1050,7 +1049,6 @@ class APITestCase(TestSupport):
 
 class SearchTest(TestSupportPrefilled):
     """Unit tests for the search query functionality."""
-
 
     def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the

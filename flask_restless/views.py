@@ -37,10 +37,8 @@ from flask.views import MethodView
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound
-from sqlalchemy.orm.exc import UnmappedInstanceError
 from sqlalchemy.orm.exc import NoResultFound
 
-from .helpers import assign_attributes
 from .helpers import evaluate_functions
 from .helpers import get_by
 from .helpers import get_columns
@@ -48,10 +46,8 @@ from .helpers import get_or_create
 from .helpers import get_related_model
 from .helpers import get_relations
 from .helpers import has_field
-from .helpers import is_date_field
 from .helpers import is_like_list
 from .helpers import partition
-from .helpers import primary_key_name
 from .helpers import query_by_primary_key
 from .helpers import session_query
 from .helpers import strings_to_dates
@@ -935,7 +931,6 @@ class API(ModelView):
             new_params = preprocessor(params)
             if new_params is not NO_CHANGE:
                 params = new_params
-
 
         # Check for any request parameter naming a column which does not exist
         # on the current model.

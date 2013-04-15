@@ -269,7 +269,7 @@ class APIManager(object):
 
         See :ref:`includes` for information on specifying included or excluded
         columns on fields of related models.
- 
+
         `results_per_page` is a positive integer which represents the default
         number of results which are returned per page. Requests made by clients
         may override this default by specifying ``results_per_page`` as a query
@@ -349,7 +349,7 @@ class APIManager(object):
         if exclude_columns is not None and include_columns is not None:
             msg = ('Cannot simultaneously specify both include columns and'
                    ' exclude columns.')
-            raise IllegalArgumentError(msg) 
+            raise IllegalArgumentError(msg)
         if collection_name is None:
             collection_name = model.__tablename__
         # convert all method names to upper case
