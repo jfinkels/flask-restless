@@ -7,7 +7,7 @@ Making search queries
 
 Clients can make :http:method:`get` requests on individual instances of a model
 (for example, :http:get:`/api/person/1`) and on collections of all instances of
-a model (:http:get:`/api/person`). To get all instances of a model which meet
+a model (:http:get:`/api/person`). To get all instances of a model that meet
 some criteria, clients can make :http:method:`get` requests with a query
 parameter specifying a search. The search functionality in Flask-Restless is
 relatively simple, but should suffice for many cases.
@@ -82,14 +82,14 @@ mappings, all of which are optional:
   :ref:`operators` section, the first ``<fieldname>`` is the name of the field
   of the model to which to apply the operator, ``<argument>`` is a value to be
   used as the second argument to the given operator. In the second form, the
-  second ``<fieldname>`` is the field of the model which should be used as the
+  second ``<fieldname>`` is the field of the model that should be used as the
   second argument to the operator.
 
   ``<fieldname>`` may alternately specify a field on a related model, if it is
   a string of the form ``<relationname>__<fieldname>``.
 
   The returned list of matching instances will include only those instances
-  which satisfy all of the given filters.
+  that satisfy all of the given filters.
 
 ``disjunction``
   A Boolean that specifies whether the list of filters should be treated as a
@@ -100,7 +100,7 @@ mappings, all of which are optional:
   the client (in other words, the default is conjunction).
 
 ``limit`` 
-  A positive integer which specified the maximum number of objects to return.
+  A positive integer which specifies the maximum number of objects to return.
 
 ``offset``
   A positive integer which specifies the offset into the result set of the
@@ -160,7 +160,7 @@ On request:
    GET /api/person?q={"filters":[{"name":"age","op":"ge","val":10}]} HTTP/1.1
    Host: example.com
 
-the response will include only those ``Person`` instances which have ``age``
+the response will include only those ``Person`` instances that have ``age``
 attribute greater than or equal to 10:
 
 .. sourcecode:: http
@@ -218,7 +218,7 @@ On request:
    GET /api/person?q={"filters":[{"name":"age","op":"ge","val":10},{"name":"age","op":"le","val":20}]} HTTP/1.1
    Host: example.com
 
-the response will include only those ``Person`` instances which have ``age``
+the response will include only those ``Person`` instances that have ``age``
 attribute between 10 and 20, inclusive:
 
 .. sourcecode:: http
@@ -290,7 +290,7 @@ On request:
    GET /api/person?q={"filters":[{"name":"age","op":"ge","field":"height"}]} HTTP/1.1
    Host: example.com
 
-the response will include only those ``Person`` instances which have ``age``
+the response will include only those ``Person`` instances that have ``age``
 attribute greater than or equal to the value of the ``height`` attribute:
 
 .. sourcecode:: http
@@ -318,8 +318,8 @@ On request:
    GET /api/person?q={"filters":[{"name":"computers__manufacturer","op":"any","val":"Apple"}],"single":true} HTTP/1.1
    Host: example.com
 
-response will include only those ``Person`` instances which are related to any
-``Computer`` model which is manufactured by Apple:
+response will include only those ``Person`` instances that are related to any
+``Computer`` model that is manufactured by Apple:
 
 .. sourcecode:: http
 
