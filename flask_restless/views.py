@@ -58,13 +58,6 @@ from .search import create_query
 from .search import search
 
 
-#: A sentinel object which preprocessors or postprocessors may return if they
-#: make no change to the input parameters.
-#:
-#: For more information, see :ref:`processors`.
-NO_CHANGE = object()
-
-
 class ProcessingException(Exception):
     """Raised when a preprocessor or postprocessor encounters a problem.
 
@@ -689,19 +682,16 @@ class API(ModelView):
         """
         # try to get search query from the request query parameters
         try:
-            data = json.loads(request.args.get('q', '{}'))
+            search_params = json.loads(request.args.get('q', '{}'))
         except (TypeError, ValueError, OverflowError):
             return jsonify_status_code(400, message='Unable to decode data')
 
-        # exceptions are caught by the get() method, which calls this one
         for preprocessor in self.preprocessors['GET_MANY']:
-            new_data = preprocessor(data)
-            if new_data is not NO_CHANGE:
-                data = new_data
+            preprocessor(search_params=search_params)
 
         # perform a filtered search
         try:
-            result = search(self.session, self.model, data)
+            result = search(self.session, self.model, search_params)
         except NoResultFound:
             return jsonify_status_code(400, message='No result found')
         except MultipleResultsFound:
@@ -731,9 +721,7 @@ class API(ModelView):
                              include_relations=self.include_relations)
 
         for postprocessor in self.postprocessors['GET_MANY']:
-            new_result = postprocessor(result)
-            if new_result is not NO_CHANGE:
-                result = new_result
+            postprocessor(result=result)
 
         return jsonpify(result)
 
@@ -848,7 +836,7 @@ class API(ModelView):
         if instid is None:
             return self._search()
         for preprocessor in self.preprocessors['GET_SINGLE']:
-            preprocessor(instid)
+            preprocessor(instance_id=instid)
         # get the instance of the "main" model whose ID is instid
         instance = get_by(self.session, self.model, instid)
         if instance is None:
@@ -869,9 +857,7 @@ class API(ModelView):
             else:
                 result = to_dict(related_value, deep)
         for postprocessor in self.postprocessors['GET_SINGLE']:
-            new_result = postprocessor(result)
-            if new_result is not NO_CHANGE:
-                result = new_result
+            postprocessor(result=result)
         return jsonpify(result)
 
     def delete(self, instid, relationname):
@@ -890,14 +876,14 @@ class API(ModelView):
         """
         is_deleted = False
         for preprocessor in self.preprocessors['DELETE']:
-            preprocessor(instid)
+            preprocessor(instance_id=instid)
         inst = get_by(self.session, self.model, instid)
         if inst is not None:
             self.session.delete(inst)
             self.session.commit()
             is_deleted = True
         for postprocessor in self.postprocessors['DELETE']:
-            postprocessor(is_deleted)
+            postprocessor(is_deleted=is_deleted)
         return jsonify_status_code(204)
 
     def post(self):
@@ -928,9 +914,7 @@ class API(ModelView):
 
         # apply any preprocessors to the POST arguments
         for preprocessor in self.preprocessors['POST']:
-            new_params = preprocessor(params)
-            if new_params is not NO_CHANGE:
-                params = new_params
+            preprocessor(data=params)
 
         # Check for any request parameter naming a column which does not exist
         # on the current model.
@@ -980,9 +964,8 @@ class API(ModelView):
             result = self._inst_to_dict(instance)
 
             for postprocessor in self.postprocessors['POST']:
-                new_result = postprocessor(result)
-                if new_result is not NO_CHANGE:
-                    result = new_result
+                postprocessor(result=result)
+
             return jsonify_status_code(201, **result)
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
@@ -1024,14 +1007,10 @@ class API(ModelView):
             # dictionary indicate a change in the model's field.
             search_params = data.pop('q', {})
             for preprocessor in self.preprocessors['PATCH_MANY']:
-                result = preprocessor(search_params, data)
-                if result is not NO_CHANGE:
-                    search_params, data = result
+                preprocessor(search_params=search_params, data=data)
         else:
             for preprocessor in self.preprocessors['PATCH_SINGLE']:
-                new_data = preprocessor(instid, data)
-                if new_data is not NO_CHANGE:
-                    data = new_data
+                preprocessor(instance_id=instid, data=data)
 
         # Check for any request parameter naming a column which does not exist
         # on the current model.
@@ -1080,15 +1059,11 @@ class API(ModelView):
         if patchmany:
             result = dict(num_modified=num_modified)
             for postprocessor in self.postprocessors['PATCH_MANY']:
-                new_result = postprocessor(query, result)
-                if new_result is not NO_CHANGE:
-                    result = new_result
+                postprocessor(query=query, result=result)
         else:
             result = self._instid_to_dict(instid)
             for postprocessor in self.postprocessors['PATCH_SINGLE']:
-                new_result = postprocessor(result)
-                if new_result is not NO_CHANGE:
-                    result = new_result
+                postprocessor(result=result)
 
         return jsonify(result)
 

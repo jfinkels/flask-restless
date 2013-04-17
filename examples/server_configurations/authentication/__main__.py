@@ -117,10 +117,9 @@ def login():
 
 
 # Step 8: create the API for User with the authentication guard.
-def auth_func(params):
+def auth_func(**kw):
     if not current_user.is_authenticated():
         raise ProcessingException(message='Not authenticated!')
-    return NO_CHANGE
 
 
 api_manager.create_api(User, preprocessors=dict(GET_SINGLE=[auth_func],

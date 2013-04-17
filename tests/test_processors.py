@@ -15,7 +15,7 @@ from datetime import date
 from unittest2 import TestSuite
 
 from flask import json
-from flask.ext.restless.views import ProcessingException, NO_CHANGE
+from flask.ext.restless.views import ProcessingException
 from .helpers import TestSupport
 
 __all__ = ['ProcessorsTest']
@@ -44,7 +44,7 @@ class ProcessorsTest(TestSupport):
 
         """
 
-        def check_permissions(instid):
+        def check_permissions(**kw):
             raise ProcessingException(status_code=403,
                                       message='Permission denied')
 
@@ -57,13 +57,12 @@ class ProcessorsTest(TestSupport):
         self.assertEqual(response.status_code, 403)
 
     def test_get_many_preprocessor(self):
-        def check_permissions(params):
+        def check_permissions(search_params=None, **kw):
             filt = {u'name': u'id', u'op': u'in', u'val': [1, 3]}
-            if 'filters' not in params:
-                params['filters'] = [filt]
+            if 'filters' not in search_params:
+                search_params['filters'] = [filt]
             else:
-                params['filters'].append(filt)
-            return params
+                search_params['filters'].append(filt)
 
         pre = dict(GET_MANY=[check_permissions])
         self.manager.create_api(self.Person, methods=['GET', 'POST'],
@@ -91,13 +90,11 @@ class ProcessorsTest(TestSupport):
 
     def test_post_preprocessor(self):
         """Tests :http:method:`post` requests with a preprocessor function."""
-        def add_parameter(params):
-            if params:
-                # just add a new attribute
-                params['other'] = 7
-            return params
+        def add_parameter(data=None, **kw):
+            if data:
+                data['other'] = 7
 
-        def check_permissions(params):
+        def check_permissions(data=None, **kw):
             raise ProcessingException(status_code=403,
                                       message='Permission denied')
 
@@ -124,7 +121,7 @@ class ProcessorsTest(TestSupport):
         """Tests for using a preprocessor with :http:method:`delete` requests.
 
         """
-        def check_permissions(instid):
+        def check_permissions(**kw):
             raise ProcessingException(status_code=403,
                                       message='Permission denied')
 
@@ -155,7 +152,7 @@ class ProcessorsTest(TestSupport):
 
         """
 
-        def check_permissions(instid, data):
+        def check_permissions(**kw):
             raise ProcessingException(status_code=403,
                                       message='Permission denied')
 
@@ -182,9 +179,8 @@ class ProcessorsTest(TestSupport):
 
         """
 
-        def update_data(instid, data):
+        def update_data(data=None, **kw):
             data['other'] = 27
-            return data
 
         pre = dict(PATCH_SINGLE=[update_data])
         # recreate the api at /api/v1/person
@@ -215,9 +211,8 @@ class ProcessorsTest(TestSupport):
 
         """
 
-        def update_data(params, data):
+        def update_data(data=None, **kw):
             data['other'] = 27
-            return params, data
 
         pre = dict(PATCH_MANY=[update_data])
         # recreate the api at /api/v1/person
@@ -250,8 +245,8 @@ class ProcessorsTest(TestSupport):
     def test_processor_no_change(self):
         """Tests :http:method:`post` requests with a preprocessor function.
         that makes no change to the data"""
-        def no_change(*args):
-            return NO_CHANGE
+        def no_change(**kw):
+            pass
 
         self.manager.create_api(self.Person, methods=['GET', 'POST'],
                                 url_prefix='/api/v2',

@@ -313,10 +313,10 @@ apply in the individual case and which to apply in the collection case. For
 example::
 
     # Define pre- and postprocessor functions as described below.
-    def pre_get_single(instid): ...
-    def pre_get_many(params): ...
-    def post_patch_many(query, data): ...
-    def pre_delete(instid): ...
+    def pre_get_single(**kw): pass
+    def pre_get_many(**kw): pass
+    def post_patch_many(**kw): pass
+    def pre_delete(**kw): pass
 
     # Create an API for the Person model.
     manager.create_api(Person,
@@ -357,150 +357,122 @@ and `postprocessors` can be one of the following strings:
    *after* the preprocessors or postprocessors specified for the
    :http:method:`patch` method.
 
-Also as seen in the above example, the preprocessors and postprocessors for
-each type of request accept different arguments and have different return
-values.
+The preprocessors and postprocessors for each type of request accept different
+arguments, but none of them has a return value (more specifically, any returned
+value is ignored). Preprocessors and postprocessors *modify their arguments
+in-place*. The arguments to the preprocessor and postprocessor functions will
+be provided as keyword arguments, so you should always add ``**kw`` as the
+final argument when defining a preprocessor or postprocessor function. This
+way, you can specify only the keyword arguments you need when defining your
+functions.
 
 * :http:method:`get` for a single instance::
 
-      def get_single_preprocessor(instid):
-          """Accepts a single argument, `instid`, the primary key of the
+      def get_single_preprocessor(instance_id=None, **kw):
+          """Accepts a single argument, `instance_id`, the primary key of the
           instance of the model to get.
 
-          The return value is ignored, so this function should return nothing.
-
           """
-          return
+          pass
 
-      def get_single_postprocessor(data):
-          """Accepts a single argument, `data`, which is the dictionary
+      def get_single_postprocessor(result=None, **kw):
+          """Accepts a single argument, `result`, which is the dictionary
           representation of the requested instance of the model.
 
-          This function must return a dictionary representing the JSON to
-          return to the client.
-
           """
-          return data
+          pass
 
   and for the collection::
 
-      def get_many_preprocessor(params):
-          """Accepts a single argument, `params`, which is a dictionary
+      def get_many_preprocessor(search_params=None, **kw):
+          """Accepts a single argument, `search_params`, which is a dictionary
           containing the search parameters for the request.
 
-          This function must return a dictionary which represents the search
-          parameters for the request.
-
           """
-          return params
+          pass
 
-
-      def get_many_postprocessor(data):
-          """Accepts a single argument, `data`, which is the dictionary
+      def get_many_postprocessor(result=None, **kw):
+          """Accepts a single argument, `result`, which is the dictionary
           representation of the JSON response which will be returned to the
           client.
 
-          This function must return a dictionary representing the JSON to
-          return to the client.
-
           """
-          return data
+          pass
 
 * :http:method:`patch` (or :http:method:`put`) for a single instance::
 
-      def patch_single_preprocessor(instid, data):
-          """Accepts two arguments, `instid`, the primary key of the
+      def patch_single_preprocessor(instance_id=None, data=None, **kw):
+          """Accepts two arguments, `instance_id`, the primary key of the
           instance of the model to patch, and `data`, the dictionary of fields
           to change on the instance.
 
-          This function must return a dictionary representing the fields to
-          change in the specified instance of the model (that is, a modified
-          version of `data`).
-
           """
-          return data
+          pass
 
-      def patch_single_postprocessor(data):
-          """Accepts a single argument, `data`, which is the dictionary
+      def patch_single_postprocessor(result=None, **kw):
+          """Accepts a single argument, `result`, which is the dictionary
           representation of the requested instance of the model.
 
-          This function must return a dictionary representing the JSON to
-          return to the client.
-
           """
-          return data
+          pass
 
   and for the collection::
 
-      def patch_many_preprocessor(search_params, data):
+      def patch_many_preprocessor(search_params=None, data=None, **kw):
           """Accepts two arguments: `search_params`, which is a dictionary
           containing the search parameters for the request, and `data`, which
           is a dictionary representing the fields to change on the matching
           instances and the values to which they will be set.
 
-          This function must return a pair of dictionaries representing
-          modified versions of the input arguments.
-
           """
-          return search_params, data
+          pass
 
-      def patch_many_postprocessor(query, data):
+      def patch_many_postprocessor(query=None, data=None, **kw):
           """Accepts two arguments: `query`, which is the SQLAlchemy query
           which was inferred from the search parameters in the query string,
           and `data`, which is the dictionary representation of the JSON
           response which will be returned to the client.
 
-          This function must return a dictionary representing the JSON to
-          return to the client.
-
           """
-          return data
+          pass
 
 * :http:method:`post`::
 
-      def post_preprocessor(data):
+      def post_preprocessor(data=None, **kw):
           """Accepts a single argument, `data`, which is the dictionary of
           fields to set on the new instance of the model.
 
-          This function must return a dictionary representing the fields to
-          set on the new instance of the model.
-
           """
-          return data
+          pass
 
-      def post_postprocessor(data):
-          """Accepts a single argument, `data`, which is the dictionary
+      def post_postprocessor(result=None, **kw):
+          """Accepts a single argument, `result`, which is the dictionary
           representation of the created instance of the model.
 
-          This function must return a dictionary representing the JSON to
-          return to the client.
-
           """
-          return data
+          pass
 
 * :http:method:`delete`::
 
-      def delete_preprocessor(instid):
-          """Accepts a single argument, `instid`, which is the primary key of
-          the instance which will be deleted.
-
-          The return value is ignored, so this function should return nothing.
+      def delete_preprocessor(instance_id=None, **kw):
+          """Accepts a single argument, `instance_id`, which is the primary key
+          of the instance which will be deleted.
 
           """
-          return
+          pass
 
-      def delete_postprocessor(was_deleted):
+      def delete_postprocessor(was_deleted=None, **kw):
           """Accepts a single argument, `was_deleted`, which represents whether
           the instance has been deleted.
 
-          The return value is ignored, so this function should return nothing.
-
           """
-          return
+          pass
 
-Note: for more information about search parameters, see :ref:`searchformat`,
-and for more information about request and response formats, see
-:ref:`requestformat`.
+.. note::
+
+   For more information about search parameters, see :ref:`searchformat`, and
+   for more information about request and response formats, see
+   :ref:`requestformat`.
 
 In order to halt the preprocessing or postprocessing and return an error
 response directly to the client, your preprocessor or postprocessor functions
@@ -509,12 +481,12 @@ preprocessing or postprocessing functions that appear later in the list
 specified when the API was created will be invoked. For example, an
 authentication function can be implemented like this::
 
-    def check_auth(instid):
+    def check_auth(instance_id=None, **kw):
         # Here, get the current user from the session.
         current_user = ...
         # Next, check if the user is authorized to modify the specified
         # instance of the model.
-        if not is_authorized_to_modify(current_user, instid):
+        if not is_authorized_to_modify(current_user, instance_id):
             raise ProcessingException(message='Not Authorized',
                                       status_code=401)
     manager.create_api(Person, preprocessors=dict(GET_SINGLE=[check_auth]))
@@ -522,25 +494,6 @@ authentication function can be implemented like this::
 The :exc:`ProcessingException` allows you to specify an HTTP status code for
 the generated response and an error message which the client will receive as
 part of the JSON in the body of the response.
-
-Finally, if your preprocessor or postprocessor function makes no change to the
-input, return :data:`NO_CHANGE` instead of the dictionary that it would have
-returned as specified above. This is useful if you wish to define a single
-preprocessor which checks that the client is authenticated::
-
-    from flask.ext.restless import NO_CHANGE
-    from flask.ext.restless import ProcessingException
-
-    def check_auth(data):
-        # Here, get the current user from the session.
-        current_user = ...
-        # Next, check if the user is authorized to modify the specified
-        # instance of the model.
-        if not is_authorized_to_modify(current_user, data['id']):
-            raise ProcessingException(message='Not Authorized',
-                                      status_code=401)
-        # Indicate that no change to the inputs has occurred.
-        return NO_CHANGE
 
 .. _authentication:
 

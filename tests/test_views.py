@@ -933,11 +933,9 @@ class APITestCase(TestSupport):
 
     def test_post_form_preprocessor(self):
         """Tests POST method decoration using a custom function."""
-        def decorator_function(params):
-            if params:
-                # just add a new attribute
-                params['other'] = 7
-            return params
+        def decorator_function(data=None, **kw):
+            if data:
+                data['other'] = 7
 
         # test for function that decorates parameters with 'other' attribute
         self.manager.create_api(self.Person, methods=['POST'],
