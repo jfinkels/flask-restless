@@ -116,7 +116,7 @@ mappings, all of which are optional:
   order or ``"desc"`` for descending order.
 
 ``single``
-  A boolean representing whether a single result is expected as a result of the
+  A Boolean representing whether a single result is expected as a result of the
   search. If this is ``true`` and either no results or multiple results meet
   the criteria of the search, the server responds with an error message.
 
