@@ -42,6 +42,7 @@ Not yet released.
   of related instances.
 - #176: get model attribute instead of column name when getting name of primary
   key.
+- #182: allow :http:method:`post` requests that set hybrid properties.
 
 Version 0.9.3
 -------------
