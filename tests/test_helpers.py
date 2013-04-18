@@ -89,7 +89,7 @@ class ModelHelpersTest(TestSupport):
         self.assertIn('buy_date', d)
         self.assertEqual(d['buy_date'], computer.buy_date.isoformat())
 
-    def testto_dict(self):
+    def test_to_dict(self):
         """Test for serializing attributes of an instance of the model by the
         :meth:`flask_restless.model.Entity.to_dict` method.
 
@@ -114,7 +114,7 @@ class ModelHelpersTest(TestSupport):
         self.assertEqual('id', primary_key_name(self.Person))
         self.assertEqual('id', primary_key_name(self.Star))
 
-    def testto_dict_dynamic_relation(self):
+    def test_to_dict_dynamic_relation(self):
         """Tests that a dynamically queried relation is resolved when getting
         the dictionary representation of an instance of a model.
 
@@ -136,7 +136,7 @@ class ModelHelpersTest(TestSupport):
         self.assertEqual(person_dict['computers'], [expected_computer])
         self.assertEqual(computer_dict['owner'], expected_person)
 
-    def testto_dict_deep(self):
+    def test_to_dict_deep(self):
         """Tests that fields corresponding to related model instances are
         correctly serialized by the
         :meth:`flask_restless.model.Entity.to_dict` method.
@@ -157,7 +157,7 @@ class ModelHelpersTest(TestSupport):
         self.assertEqual(computers[0]['buy_date'], now.isoformat())
         self.assertEqual(computers[0]['owner_id'], someone.id)
 
-    def testto_dict_hybrid_property(self):
+    def test_to_dict_hybrid_property(self):
         """Tests that hybrid properties are correctly serialized."""
         young = self.Person(name=u'John', age=15)
         old = self.Person(name=u'Sally', age=25)
