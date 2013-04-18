@@ -202,9 +202,8 @@ class APIManager(object):
         object specified in the constructor of this class, so you do *not* need
         to register it yourself.
 
-        `model` is the :class:`flask.ext.restless.Entity` class for which a
-        ReSTful interface will be created. Note this must be a class, not an
-        instance of a class.
+        `model` is the SQLAlchemy model class for which a ReSTful interface
+        will be created. Note this must be a class, not an instance of a class.
 
         `methods` specify the HTTP methods which will be made available on the
         ReSTful API for the specified model, subject to the following caveats:

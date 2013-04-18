@@ -69,7 +69,7 @@ class ModelHelpersTest(TestSupport):
 
     def test_date_serialization(self):
         """Tests that date objects in the database are correctly serialized in
-        the :meth:`flask_restless.model.Entity.to_dict` method.
+        the :func:`flask.ext.restless.helpers.to_dict` function.
 
         """
         person = self.Person(birth_date=date(1986, 9, 15))
@@ -80,7 +80,7 @@ class ModelHelpersTest(TestSupport):
 
     def test_datetime_serialization(self):
         """Tests that datetime objects in the database are correctly serialized
-        in the :meth:`flask_restless.model.Entity.to_dict` method.
+        in the :func:`flask.ext.restless.helpers.to_dict` function.
 
         """
         computer = self.Computer(buy_date=datetime.now())
@@ -91,7 +91,7 @@ class ModelHelpersTest(TestSupport):
 
     def test_to_dict(self):
         """Test for serializing attributes of an instance of the model by the
-        :meth:`flask_restless.model.Entity.to_dict` method.
+        :func:`flask.ext.restless.helpers.to_dict` function.
 
         """
         me = self.Person(name=u'Lincoln', age=24, birth_date=date(1986, 9, 15))
@@ -138,8 +138,8 @@ class ModelHelpersTest(TestSupport):
 
     def test_to_dict_deep(self):
         """Tests that fields corresponding to related model instances are
-        correctly serialized by the
-        :meth:`flask_restless.model.Entity.to_dict` method.
+        correctly serialized by the :func:`flask.ext.restless.helpers.to_dict`
+        function.
 
         """
         now = datetime.now()

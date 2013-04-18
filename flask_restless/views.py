@@ -282,9 +282,8 @@ class API(ModelView):
         `session` is the SQLAlchemy session in which all database transactions
         will be performed.
 
-        `model` is the :class:`flask_restless.Entity` class of the database
-        model for which this instance of the class is an API. This model should
-        live in `database`.
+        `model` is the SQLAlchemy model class for which this instance of the
+        class is an API. This model should live in `database`.
 
         `validation_exceptions` is the tuple of exceptions raised by backend
         validation (if any exist). If exceptions are specified here, any

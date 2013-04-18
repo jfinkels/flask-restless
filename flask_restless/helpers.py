@@ -309,8 +309,8 @@ def evaluate_functions(session, model, functions):
     `session` is the SQLAlchemy session in which all database transactions will
     be performed.
 
-    `model` is the :class:`flask.ext.restless.Entity` object on which the
-    specified functions will be evaluated.
+    `model` is the SQLAlchemy model class on which the specified functions will
+    be evaluated.
 
     ``functions`` is a list of dictionaries of the form::
 
