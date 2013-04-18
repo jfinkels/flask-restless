@@ -20,6 +20,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import ColumnProperty
 from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm import RelationshipProperty as RelProperty
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.attributes import QueryableAttribute
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from sqlalchemy.orm.query import Query
@@ -90,7 +91,16 @@ def get_columns(model):
     specified `model` class.
 
     """
-    return model._sa_class_manager
+    columns = {}
+    exclude = set()
+    for supercls in model.__mro__:
+        for key in set(supercls.__dict__).difference(exclude):
+            exclude.add(key)
+            val = supercls.__dict__[key]
+            if isinstance(val, (InstrumentedAttribute,
+                                hybrid_property)):
+                columns[key] = val
+    return columns
 
 
 def get_relations(model):
@@ -104,7 +114,7 @@ def get_related_model(model, relationname):
     whose name is `relationname`.
 
     """
-    cols = get_columns(model)
+    cols = model._sa_class_manager
     attr = getattr(model, relationname)
     if relationname in cols and isinstance(attr.property, RelProperty):
         return cols[relationname].property.mapper.class_

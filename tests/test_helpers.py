@@ -171,7 +171,8 @@ class ModelHelpersTest(TestSupport):
         columns = get_columns(self.Person)
         self.assertEqual(sorted(columns.keys()), sorted(['age', 'birth_date',
                                                          'computers', 'id',
-                                                         'name', 'other']))
+                                                         'is_minor', 'name',
+                                                         'other']))
 
     def test_get_relations(self):
         """Tests getting the names of the relations of a model as strings."""
