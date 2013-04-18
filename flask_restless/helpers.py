@@ -33,6 +33,11 @@ BLACKLIST = ('query', 'query_class', '_sa_class_manager',
              '_decl_class_registry')
 
 
+#: Types which should be considered columns of a model when iterating over all
+#: attributes of a model class.
+COLUMN_TYPES = (InstrumentedAttribute, hybrid_property)
+
+
 def partition(l, condition):
     """Returns a pair of lists, the left one containing all elements of `l` for
     which `condition` is ``True`` and the right one containing all elements of
@@ -90,16 +95,16 @@ def get_columns(model):
     """Returns a dictionary-like object containing all the columns of the
     specified `model` class.
 
+    This includes `hybrid attributes`_.
+
+    .. _hybrid attributes: http://docs.sqlalchemy.org/en/latest/orm/extensions/hybrid.html
+
     """
     columns = {}
-    exclude = set()
-    for supercls in model.__mro__:
-        for key in set(supercls.__dict__).difference(exclude):
-            exclude.add(key)
-            val = supercls.__dict__[key]
-            if isinstance(val, (InstrumentedAttribute,
-                                hybrid_property)):
-                columns[key] = val
+    for superclass in model.__mro__:
+        for name, column in superclass.__dict__.iteritems():
+            if isinstance(column, COLUMN_TYPES):
+                columns[name] = column
     return columns
 
 
