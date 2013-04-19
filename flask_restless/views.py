@@ -612,6 +612,100 @@ class API(ModelView):
             return {fieldname: msg}
         return None
 
+    def _compute_results_per_page(self):
+        """Helper function which returns the number of results per page based
+        on the request argument ``results_per_page`` and the server
+        configuration parameters :attr:`results_per_page` and
+        :attr:`max_results_per_page`.
+
+        """
+        try:
+            results_per_page = int(request.args.get('results_per_page'))
+        except:
+            results_per_page = self.results_per_page
+        if results_per_page <= 0:
+            results_per_page = self.results_per_page
+        return min(results_per_page, self.max_results_per_page)
+
+    # TODO it is ugly to have `deep` as an arg here; can we remove it?
+    def _paginated(self, instances, deep):
+        """Returns a paginated JSONified response from the specified list of
+        model instances.
+
+        `instances` is a list of model instances.
+
+        `deep` is the dictionary which defines the depth of submodels to output
+        in the JSON format of the model instances in `instances`; it is passed
+        directly to :func:`helpers.to_dict`.
+
+        The response data is JSON of the form:
+
+        .. sourcecode:: javascript
+
+           {
+             "page": 2,
+             "total_pages": 3,
+             "num_results": 8,
+             "objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]
+           }
+
+        """
+        num_results = len(instances)
+        results_per_page = self._compute_results_per_page()
+        if results_per_page > 0:
+            # get the page number (first page is page 1)
+            page_num = int(request.args.get('page', 1))
+            start = (page_num - 1) * results_per_page
+            end = min(num_results, start + results_per_page)
+            total_pages = int(math.ceil(num_results / results_per_page))
+        else:
+            page_num = 1
+            start = 0
+            end = num_results
+            total_pages = 1
+        objects = [to_dict(x, deep, exclude=self.exclude_columns,
+                           exclude_relations=self.exclude_relations,
+                           include=self.include_columns,
+                           include_relations=self.include_relations)
+                   for x in instances[start:end]]
+        return dict(page=page_num, objects=objects, total_pages=total_pages,
+                    num_results=num_results)
+
+    def _inst_to_dict(self, inst):
+        """Returns the dictionary representation of the specified instance.
+
+        This method respects the include and exclude columns specified in the
+        constructor of this class.
+
+        """
+        # create a placeholder for the relations of the returned models
+        relations = frozenset(get_relations(self.model))
+        # do not follow relations that will not be included in the response
+        if self.include_columns is not None:
+            cols = frozenset(self.include_columns)
+            rels = frozenset(self.include_relations)
+            relations &= (cols | rels)
+        elif self.exclude_columns is not None:
+            relations -= frozenset(self.exclude_columns)
+        deep = dict((r, {}) for r in relations)
+        return to_dict(inst, deep, exclude=self.exclude_columns,
+                       exclude_relations=self.exclude_relations,
+                       include=self.include_columns,
+                       include_relations=self.include_relations)
+
+    def _instid_to_dict(self, instid):
+        """Returns the dictionary representation of the instance specified by
+        `instid`.
+
+        If no such instance of the model exists, this method aborts with a
+        :http:statuscode:`404`.
+
+        """
+        inst = get_by(self.session, self.model, instid)
+        if inst is None:
+            abort(404)
+        return self._inst_to_dict(inst)
+
     def _search(self):
         """Defines a generic search function for the database model.
 
@@ -723,100 +817,6 @@ class API(ModelView):
             postprocessor(result=result)
 
         return jsonpify(result)
-
-    def _compute_results_per_page(self):
-        """Helper function which returns the number of results per page based
-        on the request argument ``results_per_page`` and the server
-        configuration parameters :attr:`results_per_page` and
-        :attr:`max_results_per_page`.
-
-        """
-        try:
-            results_per_page = int(request.args.get('results_per_page'))
-        except:
-            results_per_page = self.results_per_page
-        if results_per_page <= 0:
-            results_per_page = self.results_per_page
-        return min(results_per_page, self.max_results_per_page)
-
-    # TODO it is ugly to have `deep` as an arg here; can we remove it?
-    def _paginated(self, instances, deep):
-        """Returns a paginated JSONified response from the specified list of
-        model instances.
-
-        `instances` is a list of model instances.
-
-        `deep` is the dictionary which defines the depth of submodels to output
-        in the JSON format of the model instances in `instances`; it is passed
-        directly to :func:`helpers.to_dict`.
-
-        The response data is JSON of the form:
-
-        .. sourcecode:: javascript
-
-           {
-             "page": 2,
-             "total_pages": 3,
-             "num_results": 8,
-             "objects": [{"id": 1, "name": "Jeffrey", "age": 24}, ...]
-           }
-
-        """
-        num_results = len(instances)
-        results_per_page = self._compute_results_per_page()
-        if results_per_page > 0:
-            # get the page number (first page is page 1)
-            page_num = int(request.args.get('page', 1))
-            start = (page_num - 1) * results_per_page
-            end = min(num_results, start + results_per_page)
-            total_pages = int(math.ceil(num_results / results_per_page))
-        else:
-            page_num = 1
-            start = 0
-            end = num_results
-            total_pages = 1
-        objects = [to_dict(x, deep, exclude=self.exclude_columns,
-                           exclude_relations=self.exclude_relations,
-                           include=self.include_columns,
-                           include_relations=self.include_relations)
-                   for x in instances[start:end]]
-        return dict(page=page_num, objects=objects, total_pages=total_pages,
-                    num_results=num_results)
-
-    def _inst_to_dict(self, inst):
-        """Returns the dictionary representation of the specified instance.
-
-        This method respects the include and exclude columns specified in the
-        constructor of this class.
-
-        """
-        # create a placeholder for the relations of the returned models
-        relations = frozenset(get_relations(self.model))
-        # do not follow relations that will not be included in the response
-        if self.include_columns is not None:
-            cols = frozenset(self.include_columns)
-            rels = frozenset(self.include_relations)
-            relations &= (cols | rels)
-        elif self.exclude_columns is not None:
-            relations -= frozenset(self.exclude_columns)
-        deep = dict((r, {}) for r in relations)
-        return to_dict(inst, deep, exclude=self.exclude_columns,
-                       exclude_relations=self.exclude_relations,
-                       include=self.include_columns,
-                       include_relations=self.include_relations)
-
-    def _instid_to_dict(self, instid):
-        """Returns the dictionary representation of the instance specified by
-        `instid`.
-
-        If no such instance of the model exists, this method aborts with a
-        :http:statuscode:`404`.
-
-        """
-        inst = get_by(self.session, self.model, instid)
-        if inst is None:
-            abort(404)
-        return self._inst_to_dict(inst)
 
     def get(self, instid, relationname):
         """Returns a JSON representation of an instance of model with the
