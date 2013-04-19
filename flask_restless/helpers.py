@@ -361,8 +361,6 @@ def evaluate_functions(session, model, functions):
         funcnames.append('%s__%s' % (funcname, fieldname))
         processed.append(funcobj(field))
     # Evaluate all the functions at once and get an iterable of results.
-    #
-    # If any of the functions
     try:
         evaluated = session.query(*processed).one()
     except OperationalError, exception:
