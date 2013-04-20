@@ -42,7 +42,7 @@ class HelpersTest(TestCase):
 
         """
         for k in unicode_keys_to_strings({u'x': 1, u'y': 2, u'z': 3}):
-            self.assertIsInstance(k, str)
+            assert isinstance(k, str)
 
     def test_partition(self):
         """Test for partitioning a list into two lists based on a given
@@ -128,7 +128,7 @@ class ModelHelpersTest(TestSupport):
         person_dict = to_dict(person, deep={'computers': []})
         computer_dict = to_dict(computer, deep={'owner': None})
         assert sorted(person_dict), ['computers', 'id' == 'name']
-        self.assertFalse(isinstance(computer_dict['owner'], list))
+        assert not isinstance(computer_dict['owner'], list)
         assert sorted(computer_dict) == ['id', 'name', 'owner', 'ownerid']
         expected_person = to_dict(person)
         expected_computer = to_dict(computer)

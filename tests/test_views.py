@@ -125,7 +125,7 @@ class FSAModelTest(FlaskTestBase):
         response = self.app.get('/api/pet/1')
         assert 200 == response.status_code
         data = loads(response.data)
-        self.assertFalse(isinstance(data['owner'], list))
+        assert not isinstance(data['owner'], list)
         assert owner.id == data['ownerid']
 
         # create a lazy user with two lazy pets
@@ -147,7 +147,7 @@ class FSAModelTest(FlaskTestBase):
         response = self.app.get('/api/lazy_pet/1')
         assert 200 == response.status_code
         data = loads(response.data)
-        self.assertFalse(isinstance(data['owner'], list))
+        assert not isinstance(data['owner'], list)
         assert owner.id == data['ownerid']
 
 
