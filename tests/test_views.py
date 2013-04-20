@@ -700,7 +700,7 @@ class APITestCase(TestSupport):
 
         # test that this new computer was added to the database as well
         computer = self.session.query(self.Computer).filter_by(id=1).first()
-        self.assertIsNotNone(computer)
+        assert computer is not None
         assert data['computers']['add']['name'] == computer.name
         assert data['computers']['add']['vendor'] == computer.vendor
 
@@ -757,11 +757,11 @@ class APITestCase(TestSupport):
 
         # test that these new computers were added to the database as well
         computer = self.session.query(self.Computer).filter_by(id=1).first()
-        self.assertIsNotNone(computer)
+        assert computer is not None
         assert u'lixeiro' == computer.name
         assert u'Lemote' == computer.vendor
         computer = self.session.query(self.Computer).filter_by(id=2).first()
-        self.assertIsNotNone(computer)
+        assert computer is not None
         assert u'foo' == computer.name
         assert u'bar' == computer.vendor
 
