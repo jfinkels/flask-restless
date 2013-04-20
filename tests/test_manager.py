@@ -60,7 +60,7 @@ class APIManagerTest(TestSupport):
         # make a request on the API
         #client = app.test_client()
         response = self.app.get('/api/person')
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
     def test_create_api(self):
         """Tests that the :meth:`flask_restless.manager.APIManager.create_api`
@@ -77,42 +77,42 @@ class APIManagerTest(TestSupport):
 
         # test that specified endpoints exist
         response = self.app.post('/api/person', data=dumps(dict(name='foo')))
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(loads(response.data)['id'], 1)
+        assert response.status_code == 201
+        assert loads(response.data)['id'] == 1
         response = self.app.get('/api/person')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(loads(response.data)['objects']), 1)
-        self.assertEqual(loads(response.data)['objects'][0]['id'], 1)
+        assert response.status_code == 200
+        assert len(loads(response.data)['objects']) == 1
+        assert loads(response.data)['objects'][0]['id'] == 1
 
         # test that non-specified methods are not allowed
         response = self.app.delete('/api/person/1')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
         response = self.app.patch('/api/person/1',
                                   data=dumps(dict(name='bar')))
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
 
         # test that specified endpoints exist
         response = self.app.patch('/api2/person/1',
                                   data=dumps(dict(name='bar')))
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['id'], 1)
-        self.assertEqual(loads(response.data)['name'], 'bar')
+        assert response.status_code == 200
+        assert loads(response.data)['id'] == 1
+        assert loads(response.data)['name'] == 'bar'
 
         # test that non-specified methods are not allowed
         response = self.app.get('/api2/person/1')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
         response = self.app.delete('/api2/person/1')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
         response = self.app.post('/api2/person',
                                  data=dumps(dict(name='baz')))
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
 
         # test that the model is the same as before
         response = self.app.get('/readonly/person')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(loads(response.data)['objects']), 1)
-        self.assertEqual(loads(response.data)['objects'][0]['id'], 1)
-        self.assertEqual(loads(response.data)['objects'][0]['name'], 'bar')
+        assert response.status_code == 200
+        assert len(loads(response.data)['objects']) == 1
+        assert loads(response.data)['objects'][0]['id'] == 1
+        assert loads(response.data)['objects'][0]['name'] == 'bar'
 
     def test_different_collection_name(self):
         """Tests that providing a different collection name exposes the API at
@@ -123,17 +123,17 @@ class APIManagerTest(TestSupport):
                                 collection_name='people')
 
         response = self.app.post('/api/people', data=dumps(dict(name='foo')))
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(loads(response.data)['id'], 1)
+        assert response.status_code == 201
+        assert loads(response.data)['id'] == 1
 
         response = self.app.get('/api/people')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(loads(response.data)['objects']), 1)
-        self.assertEqual(loads(response.data)['objects'][0]['id'], 1)
+        assert response.status_code == 200
+        assert len(loads(response.data)['objects']) == 1
+        assert loads(response.data)['objects'][0]['id'] == 1
 
         response = self.app.get('/api/people/1')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['id'], 1)
+        assert response.status_code == 200
+        assert loads(response.data)['id'] == 1
 
     def test_allow_functions(self):
         """Tests that the ``allow_functions`` keyword argument makes a
@@ -143,7 +143,7 @@ class APIManagerTest(TestSupport):
         self.manager.create_api(self.Person, allow_functions=True)
         response = self.app.get('/api/eval/person?q={}')
         self.assertNotEqual(response.status_code, 400)
-        self.assertEqual(response.status_code, 204)
+        assert response.status_code == 204
 
     def test_disallow_functions(self):
         """Tests that if the ``allow_functions`` keyword argument if ``False``,
@@ -153,7 +153,7 @@ class APIManagerTest(TestSupport):
         self.manager.create_api(self.Person, allow_functions=False)
         response = self.app.get('/api/eval/person')
         self.assertNotEqual(response.status_code, 200)
-        self.assertEqual(response.status_code, 404)
+        assert response.status_code == 404
 
     def test_include_related(self):
         """Test for specifying included columns on related models."""
@@ -240,7 +240,7 @@ class APIManagerTest(TestSupport):
         d = dict(name=u'Test', age=10, other=20,
                  birth_date=datetime.date(1999, 12, 31).isoformat())
         response = self.app.post('/add/person', data=dumps(d))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
         personid = loads(response.data)['id']
 
         # get all
@@ -288,7 +288,7 @@ class APIManagerTest(TestSupport):
         d = dict(name=u'Test', age=10, other=20,
                  birth_date=datetime.date(1999, 12, 31).isoformat())
         response = self.app.post('/add/person', data=dumps(d))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
         personid = loads(response.data)['id']
 
         # get all
@@ -325,60 +325,60 @@ class APIManagerTest(TestSupport):
 
         # test for correct requests
         response = self.app.get('/get/person')
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         response = self.app.post('/post/person', data=dumps(dict(name='Test')))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
         response = self.app.patch('/patch/person/1',
                                   data=dumps(dict(name='foo')))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         response = self.app.delete('/delete/person/1')
-        self.assertEqual(response.status_code, 204)
+        assert response.status_code == 204
 
         # test for incorrect requests
         response = self.app.get('/post/person')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
         response = self.app.get('/patch/person/1')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
         response = self.app.get('/delete/person/1')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
 
         response = self.app.post('/get/person')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
         response = self.app.post('/patch/person/1')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
         response = self.app.post('/delete/person/1')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
 
         response = self.app.patch('/get/person')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
         response = self.app.patch('/post/person')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
         response = self.app.patch('/delete/person/1')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
 
         response = self.app.delete('/get/person')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
         response = self.app.delete('/post/person')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
         response = self.app.delete('/patch/person/1')
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
 
         # test that the same model is updated on all URLs
         response = self.app.post('/post/person', data=dumps(dict(name='Test')))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
         response = self.app.get('/get/person/1')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['name'], 'Test')
+        assert response.status_code == 200
+        assert loads(response.data)['name'] == 'Test'
         response = self.app.patch('/patch/person/1',
                                   data=dumps(dict(name='Foo')))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         response = self.app.get('/get/person/1')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['name'], 'Foo')
+        assert response.status_code == 200
+        assert loads(response.data)['name'] == 'Foo'
         response = self.app.delete('/delete/person/1')
-        self.assertEqual(response.status_code, 204)
+        assert response.status_code == 204
         response = self.app.get('/get/person/1')
-        self.assertEqual(response.status_code, 404)
+        assert response.status_code == 404
 
     def test_max_results_per_page(self):
         """Test for specifying the ``max_results_per_page`` keyword argument.
@@ -388,11 +388,11 @@ class APIManagerTest(TestSupport):
                                 max_results_per_page=15)
         for n in range(100):
             response = self.app.post('/api/person', data=dumps({}))
-            self.assertEqual(201, response.status_code)
+            assert 201 == response.status_code
         response = self.app.get('/api/person?results_per_page=20')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertEqual(15, len(data['objects']))
+        assert 15 == len(data['objects'])
 
     def test_expose_relations(self):
         """Tests that relations are exposed at a URL which is a child of the
@@ -408,11 +408,11 @@ class APIManagerTest(TestSupport):
 
         self.manager.create_api(self.Person)
         response = self.app.get('/api/person/1/computers')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
         self.assertIn('objects', data)
-        self.assertEqual(1, len(data['objects']))
-        self.assertEqual('foo', data['objects'][0]['name'])
+        assert 1 == len(data['objects'])
+        assert 'foo' == data['objects'][0]['name']
 
     def test_expose_lazy_relations(self):
         """Tests that lazy relations are exposed at a URL which is a child of
@@ -427,11 +427,11 @@ class APIManagerTest(TestSupport):
 
         self.manager.create_api(self.LazyPerson)
         response = self.app.get('/api/lazyperson/1/computers')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
         self.assertIn('objects', data)
-        self.assertEqual(1, len(data['objects']))
-        self.assertEqual('foo', data['objects'][0]['name'])
+        assert 1 == len(data['objects'])
+        assert 'foo' == data['objects'][0]['name']
 
 
 class FSATest(FlaskTestBase):
@@ -496,24 +496,24 @@ class FSATest(FlaskTestBase):
 
         # test that specified endpoints exist
         response = self.app.post('/api/person', data=dumps(dict(name='foo')))
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(loads(response.data)['id'], 1)
+        assert response.status_code == 201
+        assert loads(response.data)['id'] == 1
         response = self.app.get('/api/person')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(loads(response.data)['objects']), 1)
-        self.assertEqual(loads(response.data)['objects'][0]['id'], 1)
+        assert response.status_code == 200
+        assert len(loads(response.data)['objects']) == 1
+        assert loads(response.data)['objects'][0]['id'] == 1
         response = self.app.patch('/api2/person/1',
                                   data=dumps(dict(name='bar')))
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['id'], 1)
-        self.assertEqual(loads(response.data)['name'], 'bar')
+        assert response.status_code == 200
+        assert loads(response.data)['id'] == 1
+        assert loads(response.data)['name'] == 'bar'
 
         # test that the model is the same as before
         response = self.app.get('/readonly/person')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(loads(response.data)['objects']), 1)
-        self.assertEqual(loads(response.data)['objects'][0]['id'], 1)
-        self.assertEqual(loads(response.data)['objects'][0]['name'], 'bar')
+        assert response.status_code == 200
+        assert len(loads(response.data)['objects']) == 1
+        assert loads(response.data)['objects'][0]['id'] == 1
+        assert loads(response.data)['objects'][0]['name'] == 'bar'
 
 
 # skipUnless should be used as a decorator, but Python 2.5 doesn't have
