@@ -174,11 +174,11 @@ class APIManagerTest(TestSupport):
         response = self.app.get('/api/person/%s' % person.id)
         person_dict = loads(response.data)
         for column in 'name', 'age', 'computers':
-            self.assertIn(column, person_dict)
+            assert column in person_dict
         for column in 'id', 'other', 'birth_date':
             self.assertNotIn(column, person_dict)
         for column in 'id', 'name':
-            self.assertIn(column, person_dict['computers'][0])
+            assert column in person_dict['computers'][0]
         for column in 'vendor', 'owner_id', 'buy_date':
             self.assertNotIn(column, person_dict['computers'][0])
 
@@ -206,15 +206,15 @@ class APIManagerTest(TestSupport):
         for column in 'name', 'age', 'computers':
             self.assertNotIn(column, person_dict)
         for column in 'id', 'other', 'birth_date':
-            self.assertIn(column, person_dict)
+            assert column in person_dict
 
         response = self.app.get('/api2/person/%s' % person.id)
         person_dict = loads(response.data)
-        self.assertIn('computers', person_dict)
+        assert 'computers' in person_dict
         for column in 'id', 'name':
             self.assertNotIn(column, person_dict['computers'][0])
         for column in 'vendor', 'owner_id', 'buy_date':
-            self.assertIn(column, person_dict['computers'][0])
+            assert column in person_dict['computers'][0]
 
     def test_include_columns(self):
         """Tests that the `include_columns` argument specifies which columns to
@@ -246,15 +246,15 @@ class APIManagerTest(TestSupport):
         # get all
         response = self.app.get('/all/person/%s' % personid)
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
-            self.assertIn(column, loads(response.data))
+            assert column in loads(response.data)
         response = self.app.get('/all2/person/%s' % personid)
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
-            self.assertIn(column, loads(response.data))
+            assert column in loads(response.data)
 
         # get some
         response = self.app.get('/some/person/%s' % personid)
         for column in 'name', 'age':
-            self.assertIn(column, loads(response.data))
+            assert column in loads(response.data)
         for column in 'other', 'birth_date', 'computers':
             self.assertNotIn(column, loads(response.data))
 
@@ -294,15 +294,15 @@ class APIManagerTest(TestSupport):
         # get all
         response = self.app.get('/all/person/%s' % personid)
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
-            self.assertIn(column, loads(response.data))
+            assert column in loads(response.data)
         response = self.app.get('/all2/person/%s' % personid)
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
-            self.assertIn(column, loads(response.data))
+            assert column in loads(response.data)
 
         # get some
         response = self.app.get('/some/person/%s' % personid)
         for column in 'name', 'age':
-            self.assertIn(column, loads(response.data))
+            assert column in loads(response.data)
         for column in 'other', 'birth_date', 'computers':
             self.assertNotIn(column, loads(response.data))
 
@@ -410,7 +410,7 @@ class APIManagerTest(TestSupport):
         response = self.app.get('/api/person/1/computers')
         assert 200 == response.status_code
         data = loads(response.data)
-        self.assertIn('objects', data)
+        assert 'objects' in data
         assert 1 == len(data['objects'])
         assert 'foo' == data['objects'][0]['name']
 
@@ -429,7 +429,7 @@ class APIManagerTest(TestSupport):
         response = self.app.get('/api/lazyperson/1/computers')
         assert 200 == response.status_code
         data = loads(response.data)
-        self.assertIn('objects', data)
+        assert 'objects' in data
         assert 1 == len(data['objects'])
         assert 'foo' == data['objects'][0]['name']
 

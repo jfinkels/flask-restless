@@ -182,11 +182,11 @@ class FunctionAPITestCase(TestSupportPrefilled):
         response = self.app.get('/api/eval/person?q=%s' % query)
         assert response.status_code == 200
         data = loads(response.data)
-        self.assertIn('sum__age', data)
+        assert 'sum__age' in data
         assert data['sum__age'] == 102.0
-        self.assertIn('avg__other', data)
+        assert 'avg__other' in data
         assert data['avg__other'] == 16.2
-        self.assertIn('count__id', data)
+        assert 'count__id' in data
         assert data['count__id'] == 5
 
     def test_no_functions(self):
@@ -214,15 +214,15 @@ class FunctionAPITestCase(TestSupportPrefilled):
         search = {'functions': [{'name': 'sum', 'field': 'bogusfieldname'}]}
         resp = self.app.get('/api/eval/person?q=%s' % dumps(search))
         assert resp.status_code == 400
-        self.assertIn('message', loads(resp.data))
-        self.assertIn('bogusfieldname', loads(resp.data)['message'])
+        assert 'message' in loads(resp.data)
+        assert 'bogusfieldname' in loads(resp.data)['message']
 
         # test for bad function name
         search = {'functions': [{'name': 'bogusfuncname', 'field': 'age'}]}
         resp = self.app.get('/api/eval/person?q=%s' % dumps(search))
         assert resp.status_code == 400
-        self.assertIn('message', loads(resp.data))
-        self.assertIn('bogusfuncname', loads(resp.data)['message'])
+        assert 'message' in loads(resp.data)
+        assert 'bogusfuncname' in loads(resp.data)['message']
 
     def test_jsonp(self):
         """Test for JSON-P callbacks."""
@@ -286,7 +286,7 @@ class APITestCase(TestSupport):
         response = self.app.post('/api/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
         assert response.status_code == 201
-        self.assertIn('id', loads(response.data))
+        assert 'id' in loads(response.data)
 
         response = self.app.get('/api/person/1')
         assert response.status_code == 200
@@ -338,7 +338,7 @@ class APITestCase(TestSupport):
                 'computers': [{'name': u'lixeiro', 'vendor': u'Lemote'}]}
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 201
-        self.assertIn('id', loads(response.data))
+        assert 'id' in loads(response.data)
 
         response = self.app.get('/api/person')
         assert len(loads(response.data)['objects']) == 1
@@ -348,7 +348,7 @@ class APITestCase(TestSupport):
                 'owner': {'name': u'John', 'age': 2041}}
         response = self.app.post('/api/computer', data=dumps(data))
         assert response.status_code == 201
-        self.assertIn('id', loads(response.data))
+        assert 'id' in loads(response.data)
         # Test if owner was successfully created
         response = self.app.get('/api/person')
         assert len(loads(response.data)['objects']) == 1
@@ -386,7 +386,7 @@ class APITestCase(TestSupport):
         response = self.app.post('/api/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
         assert response.status_code == 201
-        self.assertIn('id', loads(response.data))
+        assert 'id' in loads(response.data)
 
         # Making sure it has been created
         deep = {'computers': []}
@@ -555,7 +555,7 @@ class APITestCase(TestSupport):
         resp = self.app.post('/api/person', data=dumps({'name': u'Lincoln',
                                                          'age': 10}))
         assert resp.status_code == 201
-        self.assertIn('id', loads(resp.data))
+        assert 'id' in loads(resp.data)
 
         # Trying to pass invalid data to the update method
         resp = self.app.patch('/api/person/1', data='Invalid JSON string')
@@ -908,7 +908,7 @@ class APITestCase(TestSupport):
         response = self.app.get('/api/person')
         assert response.status_code == 200
         data = loads(response.data)
-        self.assertIn('num_results', data)
+        assert 'num_results' in data
         assert data['num_results'] == 25
 
     def test_alternate_primary_key(self):
@@ -990,7 +990,7 @@ class APITestCase(TestSupport):
         response = self.app.get('/api/stringid/1')
         assert 200 == response.status_code
         data = loads(response.data)
-        self.assertIn('name', data)
+        assert 'name' in data
         assert '1' == data['name']
         response = self.app.get('/api/stringid/01')
         assert 404 == response.status_code
@@ -1001,7 +1001,7 @@ class APITestCase(TestSupport):
         response = self.app.get('/api/stringid/01')
         assert 200 == response.status_code
         data = loads(response.data)
-        self.assertIn('name', data)
+        assert 'name' in data
         assert '01' == data['name']
 
         baz = StringID(name='hey')
@@ -1010,7 +1010,7 @@ class APITestCase(TestSupport):
         response = self.app.get('/api/stringid/hey')
         assert 200 == response.status_code
         data = loads(response.data)
-        self.assertIn('name', data)
+        assert 'name' in data
         assert 'hey' == data['name']
 
     def test_jsonp(self):
@@ -1309,13 +1309,13 @@ class AssociationProxyTest(DatabaseTestBase):
         """
         response = self.app.get('/api/product/1')
         data = loads(response.data)
-        self.assertIn('chosen_images', data)
-        self.assertIn({'id': 1}, data['chosen_images'])
+        assert 'chosen_images' in data
+        assert {'id': 1} in data['chosen_images']
 
         response = self.app.get('/api/image/1')
         data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': 1}, data['products'])
+        assert 'products' in data
+        assert {'id': 1} in data['products']
 
     def _check_relations_two(self):
         """Makes :http:method:`get` requests for the product with ID 1 and the
@@ -1325,7 +1325,7 @@ class AssociationProxyTest(DatabaseTestBase):
         """
         response = self.app.get('/api/product/1')
         data = loads(response.data)
-        self.assertIn('chosen_images', data)
+        assert 'chosen_images' in data
 
         expected_chosen_project_images = [
             {'image_id': 1, 'product_id': 1, 'name': 'default name'},
@@ -1337,13 +1337,13 @@ class AssociationProxyTest(DatabaseTestBase):
 
         response = self.app.get('/api/image/1')
         data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': 1}, data['products'])
+        assert 'products' in data
+        assert {'id': 1} in data['products']
 
         response = self.app.get('/api/image/2')
         data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': 1}, data['products'])
+        assert 'products' in data
+        assert {'id': 1} in data['products']
 
     def test_get_data(self):
         """Tests that a :http:method:`get` request exhibits the correct
@@ -1475,7 +1475,7 @@ class AssociationProxyTest(DatabaseTestBase):
         response = self.app.get('/api/product?q=' + dumps(filters))
         assert response.status_code == 200
         data = loads(response.data)
-        self.assertIn({'id': 1}, data['objects'][0]['chosen_images'])
+        assert {'id': 1} in data['objects'][0]['chosen_images']
 
         data = {'chosen_images': {'remove': [{'id': 1}]}}
         response = self.app.patch('/api/product/1', data=dumps(data))

@@ -75,7 +75,7 @@ class ModelHelpersTest(TestSupport):
         person = self.Person(birth_date=date(1986, 9, 15))
         self.session.commit()
         d = to_dict(person)
-        self.assertIn('birth_date', d)
+        assert 'birth_date' in d
         assert d['birth_date'] == person.birth_date.isoformat()
 
     def test_datetime_serialization(self):
@@ -86,7 +86,7 @@ class ModelHelpersTest(TestSupport):
         computer = self.Computer(buy_date=datetime.now())
         self.session.commit()
         d = to_dict(computer)
-        self.assertIn('buy_date', d)
+        assert 'buy_date' in d
         assert d['buy_date'] == computer.buy_date.isoformat()
 
     def test_to_dict(self):
@@ -200,23 +200,23 @@ class FunctionEvaluationTest(TestSupportPrefilled):
         # test for summing ages
         functions = [{'name': 'sum', 'field': 'age'}]
         result = evaluate_functions(self.session, self.Person, functions)
-        self.assertIn('sum__age', result)
+        assert 'sum__age' in result
         assert result['sum__age'] == 102.0
 
         # test for multiple functions
         functions = [{'name': 'sum', 'field': 'age'},
                      {'name': 'avg', 'field': 'other'}]
         result = evaluate_functions(self.session, self.Person, functions)
-        self.assertIn('sum__age', result)
+        assert 'sum__age' in result
         assert result['sum__age'] == 102.0
-        self.assertIn('avg__other', result)
+        assert 'avg__other' in result
         assert result['avg__other'] == 16.2
 
     def test_count(self):
         """Tests for counting the number of rows in a query."""
         functions = [{'name': 'count', 'field': 'id'}]
         result = evaluate_functions(self.session, self.Person, functions)
-        self.assertIn('count__id', result)
+        assert 'count__id' in result
         assert result['count__id'] == 5
 
     def test_poorly_defined_functions(self):
