@@ -142,7 +142,7 @@ class APIManagerTest(TestSupport):
         """
         self.manager.create_api(self.Person, allow_functions=True)
         response = self.app.get('/api/eval/person?q={}')
-        self.assertNotEqual(response.status_code, 400)
+        assert response.status_code != 400
         assert response.status_code == 204
 
     def test_disallow_functions(self):
@@ -152,7 +152,7 @@ class APIManagerTest(TestSupport):
         """
         self.manager.create_api(self.Person, allow_functions=False)
         response = self.app.get('/api/eval/person')
-        self.assertNotEqual(response.status_code, 200)
+        assert response.status_code != 200
         assert response.status_code == 404
 
     def test_include_related(self):
