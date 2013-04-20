@@ -116,7 +116,7 @@ class OperatorsTest(TestSupportPrefilled):
             d = dict(filters=[dict(name='name', op=op, val=u'Lincoln')])
             result = search(self.session, self.Person, d)
             assert len(result) == len(self.people) - 1
-            self.assertNotIn(u'Lincoln', (p.name for p in result))
+            assert u'Lincoln' not in (p.name for p in result)
         for op in '>', 'gt':
             d = dict(filters=[dict(name='age', op=op, val=20)])
             result = search(self.session, self.Person, d)

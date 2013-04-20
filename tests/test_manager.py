@@ -176,14 +176,14 @@ class APIManagerTest(TestSupport):
         for column in 'name', 'age', 'computers':
             assert column in person_dict
         for column in 'id', 'other', 'birth_date':
-            self.assertNotIn(column, person_dict)
+            assert column not in person_dict
         for column in 'id', 'name':
             assert column in person_dict['computers'][0]
         for column in 'vendor', 'owner_id', 'buy_date':
-            self.assertNotIn(column, person_dict['computers'][0])
+            assert column not in person_dict['computers'][0]
 
         response = self.app.get('/api2/person/%s' % person.id)
-        self.assertNotIn('computers', loads(response.data))
+        assert 'computers' not in loads(response.data)
 
     def test_exclude_related(self):
         """Test for specifying excluded columns on related models."""
@@ -204,7 +204,7 @@ class APIManagerTest(TestSupport):
         response = self.app.get('/api/person/%s' % person.id)
         person_dict = loads(response.data)
         for column in 'name', 'age', 'computers':
-            self.assertNotIn(column, person_dict)
+            assert column not in person_dict
         for column in 'id', 'other', 'birth_date':
             assert column in person_dict
 
@@ -212,7 +212,7 @@ class APIManagerTest(TestSupport):
         person_dict = loads(response.data)
         assert 'computers' in person_dict
         for column in 'id', 'name':
-            self.assertNotIn(column, person_dict['computers'][0])
+            assert column not in person_dict['computers'][0]
         for column in 'vendor', 'owner_id', 'buy_date':
             assert column in person_dict['computers'][0]
 
@@ -256,12 +256,12 @@ class APIManagerTest(TestSupport):
         for column in 'name', 'age':
             assert column in loads(response.data)
         for column in 'other', 'birth_date', 'computers':
-            self.assertNotIn(column, loads(response.data))
+            assert column not in loads(response.data)
 
         # get none
         response = self.app.get('/none/person/%s' % personid)
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
-            self.assertNotIn(column, loads(response.data))
+            assert column not in loads(response.data)
 
     def test_exclude_columns(self):
         """Tests that the ``exclude_columns`` argument specifies which columns
@@ -304,12 +304,12 @@ class APIManagerTest(TestSupport):
         for column in 'name', 'age':
             assert column in loads(response.data)
         for column in 'other', 'birth_date', 'computers':
-            self.assertNotIn(column, loads(response.data))
+            assert column not in loads(response.data)
 
         # get none
         response = self.app.get('/none/person/%s' % personid)
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
-            self.assertNotIn(column, loads(response.data))
+            assert column not in loads(response.data)
 
     def test_different_urls(self):
         """Tests that establishing different URL endpoints for the same model

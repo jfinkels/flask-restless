@@ -134,7 +134,7 @@ class SimpleValidationTest(TestSupport):
         data = loads(response.data)
         if 'validation_errors' in data and \
                 'email' in data['validation_errors']:
-            self.assertNotIn('format', errors['email'].lower())
+            assert 'format' not in errors['email'].lower()
 
 
 class SAVTest(TestSupport):
@@ -202,7 +202,7 @@ class SAVTest(TestSupport):
         data = loads(response.data)
         if 'validation_errors' in data and \
                 'email' in data['validation_errors']:
-            self.assertNotIn('email address', errors['email'].lower())
+            assert 'email address' not in errors['email'].lower()
 
     def test_presence_validations(self):
         """Tests that errors from validators which check for presence are
