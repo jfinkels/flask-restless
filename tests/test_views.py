@@ -235,8 +235,8 @@ class FunctionAPITestCase(TestSupportPrefilled):
         query = dumps(dict(functions=functions))
         response = self.app.get('/api/eval/person?q=%s&callback=baz' % query)
         assert response.status_code == 200
-        self.assertTrue(response.data.startswith('baz('))
-        self.assertTrue(response.data.endswith(')'))
+        assert response.data.startswith('baz(')
+        assert response.data.endswith(')')
 
 
 class APITestCase(TestSupport):
@@ -1022,13 +1022,13 @@ class APITestCase(TestSupport):
         # test for GET
         response = self.app.get('/api/person/1?callback=baz')
         assert 200 == response.status_code
-        self.assertTrue(response.data.startswith('baz('))
-        self.assertTrue(response.data.endswith(')'))
+        assert response.data.startswith('baz(')
+        assert response.data.endswith(')')
         # test for search
         response = self.app.get('/api/person?callback=baz')
         assert 200 == response.status_code
-        self.assertTrue(response.data.startswith('baz('))
-        self.assertTrue(response.data.endswith(')'))
+        assert response.data.startswith('baz(')
+        assert response.data.endswith(')')
 
     def test_duplicate_post(self):
         """Tests for making a :http:method:`post` request with data that

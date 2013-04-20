@@ -57,7 +57,7 @@ class HelpersTest(TestCase):
     def test_upper_keys(self):
         """Test for converting keys in a dictionary to upper case."""
         for k, v in upper_keys(dict(zip('abc', 'xyz'))).items():
-            self.assertTrue(k.isupper())
+            assert k.isupper()
             self.assertFalse(v.isupper())
 
 
@@ -162,7 +162,7 @@ class ModelHelpersTest(TestSupport):
         old = self.Person(name=u'Sally', age=25)
         self.session.commit()
 
-        self.assertTrue(to_dict(young)['is_minor'])
+        assert to_dict(young)['is_minor']
         self.assertFalse(to_dict(old)['is_minor'])
 
     def test_get_columns(self):
