@@ -48,6 +48,7 @@ from .helpers import get_relations
 from .helpers import has_field
 from .helpers import is_like_list
 from .helpers import partition
+from .helpers import primary_key_name
 from .helpers import query_by_primary_key
 from .helpers import session_query
 from .helpers import strings_to_dates
@@ -56,6 +57,10 @@ from .helpers import unicode_keys_to_strings
 from .helpers import upper_keys
 from .search import create_query
 from .search import search
+
+
+#: Format string for creating Link headers in paginated responses.
+LINKTEMPLATE = '<%s?page=%s&results_per_page=%s>; rel="%s"'
 
 
 class ProcessingException(Exception):
@@ -79,6 +84,23 @@ class ProcessingException(Exception):
         self.status_code = status_code
 
 
+def create_link_string(page, last_page, per_page):
+    """Returns a string representing the value of the ``Link`` header.
+
+    `page` is the number of the current page, `last_page` is the last page in
+    the pagination, and `per_page` is the number of results per page.
+
+    """
+    linkstring = ''
+    if page < last_page:
+        next_page = page + 1
+        linkstring = LINKTEMPLATE % (request.base_url, next_page,
+                                     per_page, 'next') + ', '
+    linkstring += LINKTEMPLATE % (request.base_url, last_page,
+                                  per_page, 'last')
+    return linkstring
+
+
 def catch_processing_exceptions(func):
     """Decorator that catches :exc:`ProcessingException`s and subsequently
     returns a JSON-ified error response.
@@ -95,23 +117,48 @@ def catch_processing_exceptions(func):
     return decorator
 
 
-def jsonify_status_code(status_code, *args, **kw):
+def set_headers(response, headers):
+    """Sets the specified headers on the specified response.
+
+    `response` is a Flask response object, and `headers` is a dictionary of
+    headers to set on the specified response. Any existing headers that
+    conflict with `headers` will be overwritten.
+
+    """
+    for key, value in headers.iteritems():
+        response.headers[key] = value
+
+
+def jsonify_status_code(status_code, headers=None, *args, **kw):
     """Returns a jsonified response with the specified HTTP status code.
 
-    The positional and keyword arguments are passed directly to the
+    If `headers` is specified, it must be a dictionary specifying headers to
+    set before sending the JSONified response to the client. Headers on the
+    response will be overwritten by headers specified in the `headers`
+    dictionary.
+
+    The remaining positional and keyword arguments are passed directly to the
     :func:`flask.jsonify` function which creates the response.
 
     """
     response = jsonify(*args, **kw)
     response.status_code = status_code
+    if headers:
+        set_headers(response, headers)
     return response
 
 
 def jsonpify(*args, **kw):
-    """Passes the specified arguments directly to :func:`flask.jsonify`, then
-    wraps the response with the name of a JSON-P callback function specified as
-    a query parameter called ``'callback'`` (or does nothing if no such
-    callback function is specified in the request).
+    """Passes the specified arguments directly to :func:`jsonify_status_code`
+    with a status code of 200, then wraps the response with the name of a
+    JSON-P callback function specified as a query parameter called
+    ``'callback'`` (or does nothing if no such callback function is specified
+    in the request).
+
+    If `headers` is specified, it must be a dictionary specifying headers to
+    set before sending the JSONified response to the client. Headers on the
+    response will be overwritten by headers specified in the `headers`
+    dictionary.
 
     """
     response = jsonify(*args, **kw)
@@ -121,7 +168,9 @@ def jsonpify(*args, **kw):
         # Note that this is different from the mimetype used in Flask for JSON
         # responses; Flask uses 'application/json'.
         mimetype = 'application/javascript'
-        return current_app.response_class(content, mimetype=mimetype)
+        response = current_app.response_class(content, mimetype=mimetype)
+    if 'headers' in kw:
+        set_headers(response, kw['headers'])
     return response
 
 
@@ -815,16 +864,29 @@ class API(ModelView):
         # for security purposes, don't transmit list as top-level JSON
         if isinstance(result, list):
             result = self._paginated(result, deep)
+            # Create the Link header.
+            #
+            # TODO We are already calling self._compute_results_per_page() once
+            # in _paginated(); don't compute it again here.
+            page, last_page = result['page'], result['total_pages']
+            linkstring = create_link_string(page, last_page,
+                                            self._compute_results_per_page())
+            headers = dict(Link=linkstring)
         else:
+            primary_key = primary_key_name(result)
             result = to_dict(result, deep, exclude=self.exclude_columns,
                              exclude_relations=self.exclude_relations,
                              include=self.include_columns,
                              include_relations=self.include_relations)
+            # The URL at which a client can access the instance matching this
+            # search query.
+            url = '%s/%s' % (request.base_url, result[primary_key])
+            headers = dict(Location=url)
 
         for postprocessor in self.postprocessors['GET_MANY']:
             postprocessor(result=result)
 
-        return jsonpify(result)
+        return jsonpify(result, headers=headers)
 
     def get(self, instid, relationname):
         """Returns a JSON representation of an instance of model with the
@@ -974,7 +1036,13 @@ class API(ModelView):
             for postprocessor in self.postprocessors['POST']:
                 postprocessor(result=result)
 
-            return jsonify_status_code(201, **result)
+            # The URL at which a client can access the newly created instance
+            # of the model.
+            primary_key = primary_key_name(instance)
+            url = '%s/%s' % (request.base_url, result[primary_key])
+            # Provide that URL in the Location header in the response.
+            headers = dict(Location=url)
+            return jsonify_status_code(201, headers=headers, **result)
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
         except IntegrityError, exception:

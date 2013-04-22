@@ -1180,6 +1180,43 @@ class TestAPI(TestSupport):
         assert 400 == response.status_code
 
 
+class TestHeaders(TestSupportPrefilled):
+    """Tests for correct HTTP headers in responses."""
+
+    def setUp(self):
+        super(TestHeaders, self).setUp()
+        self.manager.create_api(self.Person, methods=['GET', 'POST'])
+
+    def test_post_location(self):
+        """Tests that a :http:method:`post` request responds with the correct
+        ``Location`` header.
+
+        """
+        response = self.app.post('/api/person', data=dumps({}))
+        assert 201 == response.status_code
+        assert 'Location' in response.headers
+        # there are five existing people
+        expected = 'http://localhost/api/person/6'
+        actual = response.headers['Location']
+        assert expected == actual
+
+    def test_pagination_links(self):
+        """Tests that a :http:method:`get` request that would respond with a
+        paginated list of results returns the appropriate ``Link`` headers.
+
+        """
+        response = self.app.get('/api/person?page=2&results_per_page=1')
+        assert 200 == response.status_code
+        assert 'Link' in response.headers
+        links = response.headers['Link']
+        # next page
+        assert 'page=3' in links
+        assert 'rel="next"' in links
+        # last page
+        assert 'page=5' in links
+        assert 'rel="last"' in links
+
+
 class TestSearch(TestSupportPrefilled):
     """Unit tests for the search query functionality."""
 
