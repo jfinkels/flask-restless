@@ -424,8 +424,7 @@ def get_or_create(session, model, attrs):
     if instance is not None:
         assign_attributes(instance, **attrs)
         return instance
-    else:
-        return model(**attrs)
+    return model(**attrs)
 
 
 def strings_to_dates(model, dictionary):
