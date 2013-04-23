@@ -412,18 +412,20 @@ def get_or_create(session, model, attrs):
     if not isinstance(attrs, dict):
         return attrs
     pk_names = primary_key_names(model)
-    # If not all of the primary keys were included in `attrs`, create a new
-    # model. Otherwise, query the model for an existing instance which matches
-    # all the specified primary key values.
-    if not all(k in attrs for k in pk_names):
-        return model(**attrs)
-    # Determine the sub-dictionary of `attrs` which contains the mappings
-    # for the primary keys.
-    pk_values = dict((k, v) for (k, v) in attrs.iteritems() if k in pk_names)
-    instance = session_query(session, model).filter_by(**pk_values).first()
-    if instance is not None:
-        assign_attributes(instance, **attrs)
-        return instance
+    # If all of the primary keys were included in `attrs`, try to update
+    # an existing row.
+    if all(k in attrs for k in pk_names):
+        # Determine the sub-dictionary of `attrs` which contains the mappings
+        # for the primary keys.
+        pk_values = dict((k, v) for (k, v) in attrs.iteritems() if k in pk_names)
+        # query for an existing row which matches all the specified
+        # primary key values.
+        instance = session_query(session, model).filter_by(**pk_values).first()
+        if instance is not None:
+            assign_attributes(instance, **attrs)
+            return instance
+    # If some of the primary keys were missing, or the row wasn't found,
+    # create a new row.
     return model(**attrs)
 
 
