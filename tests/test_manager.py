@@ -21,6 +21,9 @@ else:
 from flask.ext.restless import APIManager
 from flask.ext.restless.helpers import get_columns
 
+from sqlalchemy import func
+from sqlalchemy.ext.hybrid import hybrid_property
+
 from .helpers import FlaskTestBase
 from .helpers import skip_unless
 from .helpers import TestSupport
@@ -428,6 +431,30 @@ class TestAPIManager(TestSupport):
         assert 'objects' in data
         assert 1 == len(data['objects'])
         assert 'foo' == data['objects'][0]['name']
+
+    def test_set_hybrid_property(self):
+        """Set a hybrid property"""
+
+        class HybridPerson(self.Person):
+
+            @hybrid_property
+            def abs_other(self):
+                return self.other is not None and abs(self.other) or 0
+
+            @abs_other.expression
+            def abs_other(self):
+                return func.sum(HybridPerson.other)
+
+            @abs_other.setter
+            def abs_other(self, v):
+                self.other = v
+
+        self.manager.create_api(HybridPerson, methods=['POST'])
+        response = self.app.post('/api/person', data=dumps({'abs_other': 1}))
+        assert 201 == response.status_code
+        data = loads(response.data)
+        assert 1 == data['other']
+        assert 1 == data['abs_other']
 
 
 class TestFSA(FlaskTestBase):
