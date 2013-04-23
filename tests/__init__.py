@@ -28,6 +28,7 @@
 from unittest2 import TestSuite
 from unittest2 import defaultTestLoader
 
+from . import test_exceptions
 from . import test_helpers
 from . import test_manager
 from . import test_search
@@ -40,6 +41,7 @@ def suite():
     """Returns the test suite for this module."""
     result = TestSuite()
     loader = defaultTestLoader
+    result.addTest(loader.loadTestsFromModule(test_exceptions))
     result.addTest(loader.loadTestsFromModule(test_helpers))
     result.addTest(loader.loadTestsFromModule(test_manager))
     result.addTest(loader.loadTestsFromModule(test_search))
