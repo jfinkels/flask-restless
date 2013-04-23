@@ -421,8 +421,11 @@ def get_or_create(session, model, attrs):
     # for the primary keys.
     pk_values = dict((k, v) for (k, v) in attrs.iteritems() if k in pk_names)
     instance = session_query(session, model).filter_by(**pk_values).first()
-    assign_attributes(instance, **attrs)
-    return instance
+    if instance is not None:
+        assign_attributes(instance, **attrs)
+        return instance
+    else:
+        return model(**attrs)
 
 
 def strings_to_dates(model, dictionary):
