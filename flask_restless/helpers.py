@@ -417,7 +417,8 @@ def get_or_create(session, model, attrs):
     if all(k in attrs for k in pk_names):
         # Determine the sub-dictionary of `attrs` which contains the mappings
         # for the primary keys.
-        pk_values = dict((k, v) for (k, v) in attrs.iteritems() if k in pk_names)
+        pk_values = dict((k, v) for (k, v) in attrs.iteritems()
+                         if k in pk_names)
         # query for an existing row which matches all the specified
         # primary key values.
         instance = session_query(session, model).filter_by(**pk_values).first()
