@@ -17,9 +17,12 @@ import inspect
 
 from sqlalchemy import and_ as AND
 from sqlalchemy import or_ as OR
+from sqlalchemy.ext.associationproxy import AssociationProxy
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from .helpers import unicode_keys_to_strings
 from .helpers import session_query
+from .helpers import get_related_association_proxy_model
 
 #: The mapping from operator name (as accepted by the search method) to a
 #: function which returns the SQLAlchemy expression corresponding to that
@@ -32,6 +35,34 @@ from .helpers import session_query
 #:
 #: Some operations have multiple names. For example, the equality operation can
 #: be described by the strings ``'=='``, ``'eq'``, ``'equals'``, etc.
+
+
+def _sub_operator(model, argument, fieldname):
+    if isinstance(model, InstrumentedAttribute):
+        submodel = model.property.mapper.class_
+    elif isinstance(model, AssociationProxy):
+        submodel = get_related_association_proxy_model(model)
+    if isinstance(argument, dict):
+        fieldname = argument['name']
+        operator = argument['op']
+        argument = argument['val']
+        relation = None
+        if '__' in fieldname:
+            fieldname, relation = fieldname.split('__')
+        return QueryBuilder._create_operation(submodel, fieldname, operator, argument, relation)
+    else:
+        # Support legacy has/any with implicit eq operator
+        return getattr(submodel, fieldname)==argument
+
+
+def any_op(model, argument, fieldname):
+    return model.any(_sub_operator(model, argument, fieldname))
+
+
+def has_op(model, argument, fieldname):
+    return model.has(_sub_operator(model, argument, fieldname))
+
+
 OPERATORS = {
     # Operators which accept a single argument.
     'is_null': lambda f: f == None,
@@ -66,9 +97,8 @@ OPERATORS = {
     'in': lambda f, a: f.in_(a),
     'not_in': lambda f, a: ~f.in_(a),
     # Operators which accept three arguments.
-    # HACK For Python 2.5, unicode dictionary keys are not allowed.
-    'has': lambda f, a, fn: f.has(**{str(fn): a}),
-    'any': lambda f, a, fn: f.any(**{str(fn): a})
+    'has': has_op,
+    'any': any_op,
 }
 
 

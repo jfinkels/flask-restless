@@ -185,6 +185,85 @@ class TestOperators(TestSupportPrefilled):
         result = search(self.session, self.Computer, d)
         assert len(result) == 3
 
+    def test_has_and_any_suboperators(self):
+        """Tests for the ``"has"`` and ``"any"`` operators with suboperators.
+
+        The `any` operator returns all instances for which any related instance
+        in a given collection has some property. The `has` operator returns all
+        instances for which a related instance has a given property.
+
+        """
+        # create test computers
+        computer1 = self.Computer(name=u'c1', vendor=u'foo')
+        computer2 = self.Computer(name=u'c2', vendor=u'bar')
+        computer3 = self.Computer(name=u'c3', vendor=u'bar')
+        computer4 = self.Computer(name=u'c4', vendor=u'bar')
+        computer5 = self.Computer(name=u'c5', vendor=u'foo')
+        computer6 = self.Computer(name=u'c6', vendor=u'foo')
+        self.session.add_all((computer1, computer2, computer3, computer4,
+                                 computer5, computer6))
+        self.session.commit()
+        # add the computers to three test people
+        person1, person2, person3 = self.people[:3]
+        person1.computers = [computer1, computer2, computer3]
+        person2.computers = [computer4]
+        person3.computers = [computer5, computer6]
+        self.session.commit()
+        # test 'any'
+        d = dict(filters=[dict(name='computers', op='any',
+                               val=dict(name='vendor', op='like', val=u'%o%'),
+                               )])
+        result = search(self.session, self.Person, d)
+        assert len(result) == 2
+        # test 'has'
+        d = dict(filters=[dict(name='owner', op='has',
+                               val=dict(name='name', op='like', val=u'%incol%'),
+                               )])
+        result = search(self.session, self.Computer, d)
+        assert len(result) == 3
+
+
+    def test_has_and_any_nested_suboperators(self):
+        """Tests for the ``"has"`` and ``"any"`` operators with nested suboperators.
+
+        The `any` operator returns all instances for which any related instance
+        in a given collection has some property. The `has` operator returns all
+        instances for which a related instance has a given property.
+
+        """
+        # create test computers
+        computer1 = self.Computer(name=u'c1', vendor=u'foo')
+        computer2 = self.Computer(name=u'c2', vendor=u'bar')
+        computer3 = self.Computer(name=u'c3', vendor=u'bar')
+        computer4 = self.Computer(name=u'c4', vendor=u'bar')
+        computer5 = self.Computer(name=u'c5', vendor=u'foo')
+        computer6 = self.Computer(name=u'c6', vendor=u'foo')
+        self.session.add_all((computer1, computer2, computer3, computer4,
+                                 computer5, computer6))
+        self.session.commit()
+        # add the computers to three test people
+        person1, person2, person3 = self.people[:3]
+        person1.computers = [computer1, computer2, computer3]
+        person2.computers = [computer4]
+        person3.computers = [computer5, computer6]
+        self.session.commit()
+        # test 'any'
+        d = dict(filters=[dict(name='computers', op='any',
+                               val=dict(name='owner', op='has',
+                                        val=dict(name='name', op='like', val=u'%incol%')
+                                        ),
+                               )])
+        result = search(self.session, self.Person, d)
+        assert len(result) == 1
+        # test 'has'
+        d = dict(filters=[dict(name='owner', op='has',
+                               val=dict(name='computers', op='any',
+                                        val=dict(name='vendor', op='like', val='%o%')
+                                        ),
+                               )])
+        result = search(self.session, self.Computer, d)
+        assert len(result) == 5
+
 
 class TestSearch(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.search.search` function.

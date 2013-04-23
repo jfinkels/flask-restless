@@ -129,11 +129,15 @@ def get_related_model(model, relationname):
     if relationname in cols and isinstance(attr.property, RelProperty):
         return cols[relationname].property.mapper.class_
     elif isinstance(attr, AssociationProxy):
-        if hasattr(attr.remote_attr.property, 'mapper'):
-            return attr.remote_attr.property.mapper.class_
-        elif hasattr(attr.remote_attr.property, 'parent'):
-            return attr.remote_attr.property.parent.class_
+        return get_related_association_proxy_model(attr)
     return None
+
+
+def get_related_association_proxy_model(attr):
+    if hasattr(attr.remote_attr.property, 'mapper'):
+        return attr.remote_attr.property.mapper.class_
+    elif hasattr(attr.remote_attr.property, 'parent'):
+        return attr.remote_attr.property.parent.class_
 
 
 def has_field(model, fieldname):
