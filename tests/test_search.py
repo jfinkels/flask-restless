@@ -8,10 +8,7 @@
     :license: GNU AGPLv3+ or BSD
 
 """
-from __future__ import with_statement
-
-from unittest2 import TestSuite
-
+from nose.tools import assert_raises
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -22,10 +19,7 @@ from flask.ext.restless.search import SearchParameters
 from .helpers import TestSupportPrefilled
 
 
-__all__ = ['OperatorsTest', 'QueryCreationTest', 'SearchTest']
-
-
-class QueryCreationTest(TestSupportPrefilled):
+class TestQueryCreation(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.search.create_query`
     function.
 
@@ -96,7 +90,7 @@ class QueryCreationTest(TestSupportPrefilled):
         assert results[1].other == 19
 
 
-class OperatorsTest(TestSupportPrefilled):
+class TestOperators(TestSupportPrefilled):
     """Tests for each of the query operators defined in
     :data:`flask_restless.search.OPERATORS`.
 
@@ -192,7 +186,7 @@ class OperatorsTest(TestSupportPrefilled):
         assert len(result) == 3
 
 
-class SearchTest(TestSupportPrefilled):
+class TestSearch(TestSupportPrefilled):
     """Unit tests for the :func:`flask_restless.search.search` function.
 
     The :func:`~flask_restless.search.search` function is a essentially a
@@ -210,26 +204,16 @@ class SearchTest(TestSupportPrefilled):
         # tests getting multiple results
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'%y%', 'op': 'like'}]}
-        with self.assertRaises(MultipleResultsFound):
-            search(self.session, self.Person, d)
+        assert_raises(MultipleResultsFound, search, self.session, self.Person,
+                      d)
 
         # tests getting no results
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'bogusname', 'op': '=='}]}
-        with self.assertRaises(NoResultFound):
-            search(self.session, self.Person, d)
+        assert_raises(NoResultFound, search, self.session, self.Person, d)
 
         # tests getting exactly one result
         d = {'single': True,
              'filters': [{'name': 'name', 'val': u'Lincoln', 'op': '=='}]}
         result = search(self.session, self.Person, d)
         assert result.name == u'Lincoln'
-
-
-def load_tests(loader, standard_tests, pattern):
-    """Returns the test suite for this module."""
-    suite = TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(OperatorsTest))
-    suite.addTest(loader.loadTestsFromTestCase(QueryCreationTest))
-    suite.addTest(loader.loadTestsFromTestCase(SearchTest))
-    return suite

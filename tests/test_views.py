@@ -10,8 +10,6 @@
 
 """
 from datetime import date
-from unittest2 import TestSuite
-from unittest2 import skipUnless
 
 from flask import json
 try:
@@ -34,24 +32,21 @@ from flask.ext.restless.manager import APIManager
 
 from .helpers import DatabaseTestBase
 from .helpers import FlaskTestBase
+from .helpers import skip_unless
 from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
-
-
-__all__ = ['FunctionAPITestCase', 'APITestCase', 'FSAModelTest',
-           'AssociationProxyTest', 'SearchTest']
 
 
 dumps = json.dumps
 loads = json.loads
 
 
-class FSAModelTest(FlaskTestBase):
+class TestFSAModel(FlaskTestBase):
     """Tests for functions which operate on Flask-SQLAlchemy models."""
 
     def setUp(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(FSAModelTest, self).setUp()
+        super(TestFSAModel, self).setUp()
 
         db = SQLAlchemy(self.flaskapp)
 
@@ -151,13 +146,13 @@ class FSAModelTest(FlaskTestBase):
         assert owner.id == data['ownerid']
 
 
-# skipUnless should be used as a decorator, but Python 2.5 doesn't have
+# skip_unless should be used as a decorator, but Python 2.5 doesn't have
 # decorators.
-FSATest = skipUnless(has_flask_sqlalchemy,
-                     'Flask-SQLAlchemy not found.')(FSAModelTest)
+TestFSAModel = skip_unless(has_flask_sqlalchemy,
+                           'Flask-SQLAlchemy not found.')(TestFSAModel)
 
 
-class FunctionAPITestCase(TestSupportPrefilled):
+class TestFunctionAPI(TestSupportPrefilled):
     """Unit tests for the :class:`flask_restless.views.FunctionAPI` class."""
 
     def setUp(self):
@@ -167,7 +162,7 @@ class FunctionAPITestCase(TestSupportPrefilled):
         :class:`testapp.Computer` models.
 
         """
-        super(FunctionAPITestCase, self).setUp()
+        super(TestFunctionAPI, self).setUp()
         self.manager.create_api(self.Person, allow_functions=True)
 
     def test_function_evaluation(self):
@@ -239,7 +234,7 @@ class FunctionAPITestCase(TestSupportPrefilled):
         assert response.data.endswith(')')
 
 
-class APITestCase(TestSupport):
+class TestAPI(TestSupport):
     """Unit tests for the :class:`flask_restless.views.API` class."""
 
     def setUp(self):
@@ -250,7 +245,7 @@ class APITestCase(TestSupport):
 
         """
         # create the database
-        super(APITestCase, self).setUp()
+        super(TestAPI, self).setUp()
 
         # setup the URLs for the Person and Computer API
         self.manager.create_api(self.Person,
@@ -1042,7 +1037,7 @@ class APITestCase(TestSupport):
         assert 400 == response.status_code
 
 
-class SearchTest(TestSupportPrefilled):
+class TestSearch(TestSupportPrefilled):
     """Unit tests for the search query functionality."""
 
     def setUp(self):
@@ -1052,7 +1047,7 @@ class SearchTest(TestSupportPrefilled):
         :class:`testapp.Computer` models.
 
         """
-        super(SearchTest, self).setUp()
+        super(TestSearch, self).setUp()
         self.manager.create_api(self.Person, methods=['GET', 'PATCH'])
         self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
 
@@ -1224,7 +1219,7 @@ class SearchTest(TestSupportPrefilled):
         assert resp.status_code == 400
 
 
-class AssociationProxyTest(DatabaseTestBase):
+class TestAssociationProxy(DatabaseTestBase):
     """Unit tests for models which have a relationship involving an association
     proxy.
 
@@ -1235,7 +1230,7 @@ class AssociationProxyTest(DatabaseTestBase):
         table.
 
         """
-        super(AssociationProxyTest, self).setUp()
+        super(TestAssociationProxy, self).setUp()
 
         tag_product = Table('tag_product', self.Base.metadata,
                             Column('tag_id', Integer,
@@ -1506,14 +1501,3 @@ class AssociationProxyTest(DatabaseTestBase):
         data = loads(response.data)
 
         assert sorted(data['tag_names']), sorted(['tag1' == 'tag2'])
-
-
-def load_tests(loader, standard_tests, pattern):
-    """Returns the test suite for this module."""
-    suite = TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(FSAModelTest))
-    suite.addTest(loader.loadTestsFromTestCase(FunctionAPITestCase))
-    suite.addTest(loader.loadTestsFromTestCase(APITestCase))
-    suite.addTest(loader.loadTestsFromTestCase(AssociationProxyTest))
-    suite.addTest(loader.loadTestsFromTestCase(SearchTest))
-    return suite

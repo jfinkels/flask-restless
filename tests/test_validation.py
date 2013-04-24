@@ -20,8 +20,6 @@ from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import Unicode
 from sqlalchemy.orm import validates
-from unittest2 import TestSuite
-from unittest2 import skipUnless
 
 # for SAValidation package on pypi.python.org
 try:
@@ -33,9 +31,9 @@ else:
     sav_version = tuple(int(n) for n in _sav.VERSION.split('.'))
     has_savalidation = True
 
+from .helpers import skip_unless
 from .helpers import TestSupport
 
-__all__ = ['SAVTest', 'SimpleValidationTest']
 
 #: A regular expression for email addresses.
 EMAIL_REGEX = re.compile("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^"
@@ -46,7 +44,7 @@ dumps = json.dumps
 loads = json.loads
 
 
-class SimpleValidationTest(TestSupport):
+class TestSimpleValidation(TestSupport):
     """Tests for validation errors raised by the SQLAlchemy's simple built-in
     validation.
 
@@ -57,7 +55,7 @@ class SimpleValidationTest(TestSupport):
 
     def setUp(self):
         """Create APIs for the validated models."""
-        super(SimpleValidationTest, self).setUp()
+        super(TestSimpleValidation, self).setUp()
 
         class CoolValidationError(Exception):
             pass
@@ -137,7 +135,7 @@ class SimpleValidationTest(TestSupport):
             assert 'format' not in errors['email'].lower()
 
 
-class SAVTest(TestSupport):
+class TestSAV(TestSupport):
     """Tests for validation errors raised by the ``savalidation`` package. For
     more information about this package, see `its PyPI page
     <http://pypi.python.org/pypi/SAValidation>`_.
@@ -146,7 +144,7 @@ class SAVTest(TestSupport):
 
     def setUp(self):
         """Create APIs for the validated models."""
-        super(SAVTest, self).setUp()
+        super(TestSAV, self).setUp()
 
         class Test(self.Base, _sav.ValidationMixin):
             __tablename__ = 'test'
@@ -243,15 +241,7 @@ class SAVTest(TestSupport):
         assert data['email'] == 'example@example.com'
 
 
-# skipUnless should be used as a decorator, but Python 2.5 doesn't have
+# skip_unless should be used as a decorator, but Python 2.5 doesn't have
 # decorators.
-SAVTest = skipUnless(has_savalidation and sav_version >= (0, 2),
-                     'savalidation not found.')(SAVTest)
-
-
-def load_tests(loader, standard_tests, pattern):
-    """Returns the test suite for this module."""
-    suite = TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(SimpleValidationTest))
-    suite.addTest(loader.loadTestsFromTestCase(SAVTest))
-    return suite
+TestSAV = skip_unless(has_savalidation and sav_version >= (0, 2),
+                      'savalidation not found.')(TestSAV)

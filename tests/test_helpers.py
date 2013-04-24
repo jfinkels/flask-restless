@@ -8,14 +8,11 @@
     :license: GNU AGPLv3+ or BSD
 
 """
-from __future__ import with_statement
-
 from datetime import date
 from datetime import datetime
 
+from nose.tools import assert_raises
 from sqlalchemy.exc import OperationalError
-from unittest2 import TestCase
-from unittest2 import TestSuite
 
 from flask.ext.restless.helpers import evaluate_functions
 from flask.ext.restless.helpers import get_columns
@@ -30,10 +27,7 @@ from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
 
 
-__all__ = ['HelpersTest', 'ModelHelpersTest', 'FunctionEvaluationTest']
-
-
-class HelpersTest(TestCase):
+class TestHelpers(object):
     """Unit tests for the helper functions."""
 
     def test_unicode_keys_to_strings(self):
@@ -61,7 +55,7 @@ class HelpersTest(TestCase):
             assert not v.isupper()
 
 
-class ModelHelpersTest(TestSupport):
+class TestModelHelpers(TestSupport):
     """Provides tests for helper functions which operate on pure SQLAlchemy
     models.
 
@@ -181,7 +175,7 @@ class ModelHelpersTest(TestSupport):
         assert relations == ['computers']
 
 
-class FunctionEvaluationTest(TestSupportPrefilled):
+class TestFunctionEvaluation(TestSupportPrefilled):
     """Unit tests for the :func:`flask.ext.restless.helpers.evaluate_functions`
     function.
 
@@ -223,19 +217,10 @@ class FunctionEvaluationTest(TestSupportPrefilled):
         """Tests that poorly defined functions raise errors."""
         # test for unknown field
         functions = [{'name': 'sum', 'field': 'bogus'}]
-        with self.assertRaises(AttributeError):
-            evaluate_functions(self.session, self.Person, functions)
+        assert_raises(AttributeError, evaluate_functions, self.session,
+                      self.Person, functions)
 
         # test for unknown function
         functions = [{'name': 'bogus', 'field': 'age'}]
-        with self.assertRaises(OperationalError):
-            evaluate_functions(self.session, self.Person, functions)
-
-
-def load_tests(loader, standard_tests, pattern):
-    """Returns the test suite for this module."""
-    suite = TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(HelpersTest))
-    suite.addTest(loader.loadTestsFromTestCase(ModelHelpersTest))
-    suite.addTest(loader.loadTestsFromTestCase(FunctionEvaluationTest))
-    return suite
+        assert_raises(OperationalError, evaluate_functions, self.session,
+                      self.Person, functions)

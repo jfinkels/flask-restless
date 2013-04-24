@@ -9,8 +9,6 @@
 
 """
 import datetime
-from unittest2 import skipUnless
-from unittest2 import TestSuite
 
 from flask import json
 try:
@@ -24,17 +22,15 @@ from flask.ext.restless import APIManager
 from flask.ext.restless.helpers import get_columns
 
 from .helpers import FlaskTestBase
+from .helpers import skip_unless
 from .helpers import TestSupport
-
-
-__all__ = ['APIManagerTest']
 
 
 dumps = json.dumps
 loads = json.loads
 
 
-class APIManagerTest(TestSupport):
+class TestAPIManager(TestSupport):
     """Unit tests for the :class:`flask_restless.manager.APIManager` class.
 
     """
@@ -434,7 +430,7 @@ class APIManagerTest(TestSupport):
         assert 'foo' == data['objects'][0]['name']
 
 
-class FSATest(FlaskTestBase):
+class TestFSA(FlaskTestBase):
     """Tests which use models defined using Flask-SQLAlchemy instead of pure
     SQLAlchemy.
 
@@ -445,7 +441,7 @@ class FSATest(FlaskTestBase):
         Flask-SQLAlchemy models.
 
         """
-        super(FSATest, self).setUp()
+        super(TestFSA, self).setUp()
 
         # initialize SQLAlchemy and Flask-Restless
         self.db = SQLAlchemy(self.flaskapp)
@@ -516,15 +512,7 @@ class FSATest(FlaskTestBase):
         assert loads(response.data)['objects'][0]['name'] == 'bar'
 
 
-# skipUnless should be used as a decorator, but Python 2.5 doesn't have
+# skip_unless should be used as a decorator, but Python 2.5 doesn't have
 # decorators.
-FSATest = skipUnless(has_flask_sqlalchemy,
-                     'Flask-SQLAlchemy not found.')(FSATest)
-
-
-def load_tests(loader, standard_tests, pattern):
-    """Returns the test suite for this module."""
-    suite = TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(APIManagerTest))
-    suite.addTest(loader.loadTestsFromTestCase(FSATest))
-    return suite
+TestFSA = skip_unless(has_flask_sqlalchemy,
+                      'Flask-SQLAlchemy not found.')(TestFSA)

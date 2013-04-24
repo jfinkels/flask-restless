@@ -8,15 +8,12 @@
     :license: GNU AGPLv3+ or BSD
 
 """
-from unittest2 import TestSuite
-from unittest2 import TestCase
-
 from flask import Flask
 
 from flask.ext.restless.exceptions import json_abort
 
 
-class ExceptionsTest(TestCase):
+class TestHeaders(object):
     """Unit tests for the :mod:`flask_restless.exceptions` module."""
 
     def test_json_abort(self):
@@ -32,12 +29,5 @@ class ExceptionsTest(TestCase):
 
         client = app.test_client()
         response = client.get('/')
-        self.assertEqual(404, response.status_code)
-        self.assertEqual('application/json', response.headers['Content-Type'])
-
-
-def load_tests(loader, standard_tests, pattern):
-    """Returns the test suite for this module."""
-    suite = TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(ExceptionsTest))
-    return suite
+        assert 404 == response.status_code
+        assert 'application/json' == response.headers['Content-Type']

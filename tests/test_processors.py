@@ -12,19 +12,17 @@
 from __future__ import with_statement
 
 from datetime import date
-from unittest2 import TestSuite
 
 from flask import json
 from flask.ext.restless.views import ProcessingException
 from .helpers import TestSupport
 
-__all__ = ['ProcessorsTest']
 
 dumps = json.dumps
 loads = json.loads
 
 
-class ProcessorsTest(TestSupport):
+class TestProcessors(TestSupport):
     """Unit tests for preprocessors and postprocessors."""
 
     def setUp(self):
@@ -33,7 +31,7 @@ class ProcessorsTest(TestSupport):
 
         """
         # create the database
-        super(ProcessorsTest, self).setUp()
+        super(TestProcessors, self).setUp()
 
         # to facilitate searching
         self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
@@ -306,15 +304,8 @@ class ProcessorsTest(TestSupport):
 
         # Test that the filter is added on GET requests to the collection.
         response = self.app.get('/api/person')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)['objects']
-        self.assertEqual(2, len(data))
-        self.assertEqual(sorted(['bar', 'baz']),
-                         sorted([person['name'] for person in data]))
-
-
-def load_tests(loader, standard_tests, pattern):
-    """Returns the test suite for this module."""
-    suite = TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(ProcessorsTest))
-    return suite
+        assert 2 == len(data)
+        assert sorted(['bar', 'baz']) == sorted([person['name']
+                                                 for person in data])
