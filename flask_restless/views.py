@@ -89,6 +89,7 @@ def catch_processing_exceptions(func):
         try:
             return func(*args, **kw)
         except ProcessingException, exception:
+            current_app.logger.exception(exception.message)
             status, message = exception.status_code, exception.message
             return jsonify_status_code(status_code=status, message=message)
     return decorator
@@ -245,7 +246,8 @@ class FunctionAPI(ModelView):
         """
         try:
             data = json.loads(request.args.get('q')) or {}
-        except (TypeError, ValueError, OverflowError):
+        except (TypeError, ValueError, OverflowError), exception:
+            current_app.logger.exception(exception.message)
             return jsonify_status_code(400, message='Unable to decode data')
         try:
             result = evaluate_functions(self.session, self.model,
@@ -254,9 +256,11 @@ class FunctionAPI(ModelView):
                 return jsonify_status_code(204)
             return jsonpify(result)
         except AttributeError, exception:
+            current_app.logger.exception(exception.message)
             message = 'No such field "%s"' % exception.field
             return jsonify_status_code(400, message=message)
         except OperationalError, exception:
+            current_app.logger.exception(exception.message)
             message = 'No such function "%s"' % exception.function
             return jsonify_status_code(400, message=message)
 
@@ -439,7 +443,8 @@ class API(ModelView):
             try:
                 for instance in query:
                     getattr(instance, relationname).append(subinst)
-            except AttributeError:
+            except AttributeError, exception:
+                current_app.logger.exception(exception.message)
                 setattr(instance, relationname, subinst)
 
     def _remove_from_relation(self, query, relationname, toremove=None):
@@ -604,7 +609,8 @@ class API(ModelView):
                 left, right = exception.message.rsplit(':', 1)
                 left_bracket = left.rindex('[')
                 right_bracket = right.rindex(']')
-            except ValueError:
+            except ValueError, exception:
+                current_app.logger.exception(exception.message)
                 # could not parse the string; we're not trying too hard here...
                 return None
             msg = right[:right_bracket].strip(' "')
@@ -776,7 +782,8 @@ class API(ModelView):
         # try to get search query from the request query parameters
         try:
             search_params = json.loads(request.args.get('q', '{}'))
-        except (TypeError, ValueError, OverflowError):
+        except (TypeError, ValueError, OverflowError), exception:
+            current_app.logger.exception(exception.message)
             return jsonify_status_code(400, message='Unable to decode data')
 
         for preprocessor in self.preprocessors['GET_MANY']:
@@ -789,7 +796,8 @@ class API(ModelView):
             return jsonify_status_code(400, message='No result found')
         except MultipleResultsFound:
             return jsonify_status_code(400, message='Multiple results found')
-        except:
+        except Exception, exception:
+            current_app.logger.exception(exception.message)
             return jsonify_status_code(400,
                                        message='Unable to construct query')
 
@@ -908,7 +916,8 @@ class API(ModelView):
         # try to read the parameters for the model from the body of the request
         try:
             params = json.loads(request.data)
-        except (TypeError, ValueError, OverflowError):
+        except (TypeError, ValueError, OverflowError), exception:
+            current_app.logger.exception(exception.message)
             return jsonify_status_code(400, message='Unable to decode data')
 
         # apply any preprocessors to the POST arguments
@@ -968,8 +977,9 @@ class API(ModelView):
             return jsonify_status_code(201, **result)
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
-        except IntegrityError, error:
-            return jsonify_status_code(400, message=error.message)
+        except IntegrityError, exception:
+            current_app.logger.exception(exception.message)
+            return jsonify_status_code(400, message=exception.message)
 
     def patch(self, instid, relationname):
         """Updates the instance specified by ``instid`` of the named model, or
@@ -995,8 +1005,9 @@ class API(ModelView):
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.data)
-        except (TypeError, ValueError, OverflowError):
+        except (TypeError, ValueError, OverflowError), exception:
             # this also happens when request.data is empty
+            current_app.logger.exception(exception.message)
             return jsonify_status_code(400, message='Unable to decode data')
         # Check if the request is to patch many instances of the current model.
         patchmany = instid is None
@@ -1022,7 +1033,8 @@ class API(ModelView):
             try:
                 # create a SQLALchemy Query from the query parameter `q`
                 query = create_query(self.session, self.model, search_params)
-            except:
+            except Exception, exception:
+                current_app.logger.exception(exception.message)
                 return jsonify_status_code(400,
                                            message='Unable to construct query')
         else:
@@ -1050,9 +1062,11 @@ class API(ModelView):
                     num_modified += 1
             self.session.commit()
         except self.validation_exceptions, exception:
+            current_app.logger.exception(exception.message)
             return self._handle_validation_exception(exception)
-        except IntegrityError, error:
-            return jsonify_status_code(400, message=error.message)
+        except IntegrityError, exception:
+            current_app.logger.exception(exception.message)
+            return jsonify_status_code(400, message=exception.message)
 
         # Perform any necessary postprocessing.
         if patchmany:

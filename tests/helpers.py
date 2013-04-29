@@ -47,6 +47,7 @@ class FlaskTestBase(TestCase):
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
+        app.logger.disabled = True
         self.flaskapp = app
 
         # create the test client
