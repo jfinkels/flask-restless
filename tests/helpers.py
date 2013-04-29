@@ -19,6 +19,7 @@ from sqlalchemy import DateTime
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import Boolean
 from sqlalchemy import Unicode
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -95,6 +96,20 @@ class TestSupport(DatabaseTestBase):
         super(TestSupport, self).setUp()
 
         # declare the models
+        class Program(self.Base):
+            __tablename__ = 'program'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode, unique=True)
+
+        class ComputerProgram(self.Base):
+            __tablename__ = 'computer_program'
+            computer_id = Column(Integer, ForeignKey('computer.id'),
+                                                     primary_key=True)
+            program_id = Column(Integer, ForeignKey('program.id'),
+                                                    primary_key=True)
+            licensed = Column(Boolean, default=False)
+            program = relationship('Program')
+
         class Computer(self.Base):
             __tablename__ = 'computer'
             id = Column(Integer, primary_key=True)
@@ -103,6 +118,7 @@ class TestSupport(DatabaseTestBase):
             buy_date = Column(DateTime)
             owner_id = Column(Integer, ForeignKey('person.id'))
             owner = relationship('Person')
+            programs = relationship('ComputerProgram')
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -156,6 +172,8 @@ class TestSupport(DatabaseTestBase):
             models = relationship('CarModel')
 
         self.Person = Person
+        self.Program = Program
+        self.ComputerProgram = ComputerProgram
         self.LazyComputer = LazyComputer
         self.LazyPerson = LazyPerson
         self.Computer = Computer

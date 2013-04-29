@@ -297,6 +297,38 @@ class APITestCase(TestSupport):
         inst = to_dict(person, deep)
         self.assertEqual(loads(response.data), inst)
 
+    def test_post_m2m(self):
+        """Test for creating a new instance of the database model that has a 
+        many to many relation that uses an association object to allow extra
+        info to be stored on the helper table.
+
+        For more info, see issue #166.
+        
+        """
+        vim = self.Program(name=u'Vim')
+        emacs = self.Program(name=u'Emacs')
+        self.session.add_all([vim, emacs])
+        self.session.commit()
+        data = {
+            'vendor': u'Apple',
+            'name': u'iMac',
+            'programs': [
+                {
+                    'program_id': 1,
+                    'licensed': False
+                },
+                {
+                    'program_id': 2,
+                    'licensed': True
+                }
+            ]
+        }
+        response = self.app.post('/api/computer', data=dumps(data))
+        self.assertEqual(response.status_code, 201)
+        self.assertIn('id', loads(response.data))
+        response = self.app.get('/api/computer/1')
+        self.assertEqual(response.status_code, 200)
+
     def test_post_bad_parameter(self):
         """Tests that attempting to make a :http:method:`post` request with a
         form parameter which does not exist on the specified model responds
@@ -377,6 +409,101 @@ class APITestCase(TestSupport):
         response = self.app.get('/api/computer/1')
         self.assertEqual(200, response.status_code)
         self.assertEqual('foo', loads(response.data)['name'])
+
+    def test_patch_m2m(self):
+        """Test for updating a model with a many to many relation that uses
+        an association object to allow extra data to be stored in the helper 
+        table.
+
+        For more info, see issue #166
+        
+        """
+        response = self.app.post('/api/computer', data=dumps({}))
+        self.assertEqual(201, response.status_code)
+        vim = self.Program(name=u'Vim')
+        emacs = self.Program(name=u'Emacs')
+        self.session.add_all([vim, emacs])
+        self.session.commit()
+        data = {
+            'programs': [
+                {
+                    'program_id': 1,
+                    'licensed': False
+                }
+            ]
+        }
+        response = self.app.patch('/api/computer/1', data=dumps(data))
+        computer = loads(response.data)
+        self.assertEqual(200, response.status_code)
+        vim_relation = {
+            'computer_id': 1,
+            'program_id': 1,
+            'licensed': False
+        }
+        self.assertIn(vim_relation, computer['programs'])
+        data = {
+            'programs': [
+                {
+                    'program_id': 2,
+                    'licensed': True
+                }
+            ]
+        }
+        response = self.app.patch('/api/computer/1', data=dumps(data))
+        computer = loads(response.data)
+        self.assertEqual(200, response.status_code)
+        emacs_relation = {
+            'computer_id': 1,
+            'program_id': 2,
+            'licensed': True
+        }
+        self.assertIn(emacs_relation, computer['programs'])
+
+    def test_patch_remove_m2m(self):
+        """Test for removing a relation on a model that uses an association 
+        object to allow extra data to be stored in the helper table.
+
+        For more info, see issue #166
+        
+        """
+        response = self.app.post('/api/computer', data=dumps({}))
+        self.assertEqual(201, response.status_code)
+        vim = self.Program(name=u'Vim')
+        emacs = self.Program(name=u'Emacs')
+        self.session.add_all([vim, emacs])
+        self.session.commit()
+        data = {
+            'programs': [
+                {
+                    'program_id': 1,
+                    'licensed': False
+                }
+            ]
+        }
+        response = self.app.patch('/api/computer/1', data=dumps(data))
+        computer = loads(response.data)
+        self.assertEqual(200, response.status_code)
+        vim_relation = {
+            'computer_id': 1,
+            'program_id': 1,
+            'licensed': False
+        }
+        self.assertIn(vim_relation, computer['programs'])
+        data = {
+            'programs': {
+                'remove': [{'program_id': 1}]
+            }
+        }
+        response = self.app.patch('/api/computer/1', data=dumps(data))
+        computer = loads(response.data)
+        self.assertEqual(200, response.status_code)
+        emacs_relation = {
+            'computer_id': 1,
+            'program_id': 2,
+            'licensed': True
+        }
+        self.assertNotIn(emacs_relation, computer['programs'])
+
 
     def test_delete(self):
         """Test for deleting an instance of the database using the
