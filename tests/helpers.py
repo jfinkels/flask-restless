@@ -9,6 +9,7 @@
 
 """
 import datetime
+import uuid
 
 from flask import Flask
 from nose import SkipTest
@@ -21,12 +22,15 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Boolean
 from sqlalchemy import Unicode
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.types import CHAR
+from sqlalchemy.types import TypeDecorator
 
 from flask.ext.restless import APIManager
 
@@ -52,6 +56,37 @@ def skip_unless(condition, reason=None):
         inner.__name__ = test.__name__
         return inner
     return skip
+
+
+# This code adapted from
+# http://docs.sqlalchemy.org/en/rel_0_8/core/types.html#backend-agnostic-guid-type
+class GUID(TypeDecorator):
+    """Platform-independent GUID type.
+
+    Uses Postgresql's UUID type, otherwise uses CHAR(32), storing as
+    stringified hex values.
+
+    """
+    impl = CHAR
+
+    def load_dialect_impl(self, dialect):
+        descriptor = UUID() if dialect.name == 'postgresql' else CHAR(32)
+        return dialect.type_descriptor(descriptor)
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if dialect.name == 'postgresql':
+            return str(value)
+        if not isinstance(value, uuid.UUID):
+            return "%.32x" % uuid.UUID(value)
+        # hexstring
+        return "%.32x" % value
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return uuid.UUID(value)
 
 
 class FlaskTestBase(object):
@@ -129,7 +164,12 @@ class TestSupport(DatabaseTestBase):
     """
 
     def setUp(self):
-        """Creates some example models and creates the database tables."""
+        """Creates some example models and creates the database tables.
+
+        This class defines a whole bunch of models with various properties for
+        use in testing, so look here first when writing new tests.
+
+        """
         super(TestSupport, self).setUp()
 
         # declare the models
@@ -202,6 +242,10 @@ class TestSupport(DatabaseTestBase):
             id = Column("star_id", Integer, primary_key=True)
             inception_time = Column(DateTime, nullable=True)
 
+        class Vehicle(self.Base):
+            __tablename__ = 'vehicle'
+            uuid = Column(GUID, primary_key=True)
+
         class CarModel(self.Base):
             __tablename__ = 'car_model'
             id = Column(Integer, primary_key=True)
@@ -226,6 +270,7 @@ class TestSupport(DatabaseTestBase):
         self.Computer = Computer
         self.Planet = Planet
         self.Star = Star
+        self.Vehicle = Vehicle
         self.CarManufacturer = CarManufacturer
         self.CarModel = CarModel
 

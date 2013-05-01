@@ -19,6 +19,8 @@ Not yet released.
   application/json`` will cause a :http:statuscode:`415` response.
 - Responses now have ``Content-Type: application/json``.
 - #180: allow more expressive ``has`` and ``any`` searches.
+- #195: convert UUID objects to strings when converting an instance of a model
+  to a dictionary.
 - #202: allow setting hybrid properties with expressions and setters.
 - #203: adds the ``include_methods`` keyword argument to
   :meth:`APIManager.create_api`, which allows JSON responses to include the

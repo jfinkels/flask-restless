@@ -10,6 +10,7 @@
 """
 import datetime
 import inspect
+import uuid
 
 from dateutil.parser import parse as parse_datetime
 from sqlalchemy import Date
@@ -244,6 +245,11 @@ def to_dict(instance, deep=None, exclude=None, include=None,
     """Returns a dictionary representing the fields of the specified `instance`
     of a SQLAlchemy model.
 
+    The returned dictionary is suitable as an argument to
+    :func:`flask.jsonify`; :class:`datetime.date` and :class:`uuid.UUID`
+    objects are converted to string representations, so no special JSON encoder
+    behavior is required.
+
     `deep` is a dictionary containing a mapping from a relation name (for a
     relation of `instance`) to either a list or a dictionary. This is a
     recursive structure which represents the `deep` argument when calling
@@ -300,12 +306,15 @@ def to_dict(instance, deep=None, exclude=None, include=None,
         result.update(dict((method, getattr(instance, method)())
                            for method in include_methods
                            if not '.' in method))
-    # Convert datetime and date objects to ISO 8601 format.
-    #
-    # TODO We can get rid of this when issue #33 is resolved.
+    # Check for objects in the dictionary that may not be serializable by
+    # default. Specifically, convert datetime and date objects to ISO 8601
+    # format, and convert UUID objects to hexadecimal strings.
     for key, value in result.items():
+        # TODO We can get rid of this when issue #33 is resolved.
         if isinstance(value, datetime.date):
             result[key] = value.isoformat()
+        elif isinstance(value, uuid.UUID):
+            result[key] = str(value)
         elif is_mapped_class(type(value)):
             result[key] = to_dict(value)
     # recursively call _to_dict on each of the `deep` relations

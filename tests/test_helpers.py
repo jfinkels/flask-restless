@@ -10,6 +10,7 @@
 """
 from datetime import date
 from datetime import datetime
+import uuid
 
 from nose.tools import assert_raises
 from sqlalchemy.exc import OperationalError
@@ -82,6 +83,15 @@ class TestModelHelpers(TestSupport):
         d = to_dict(computer)
         assert 'buy_date' in d
         assert d['buy_date'] == computer.buy_date.isoformat()
+
+    def test_uuid(self):
+        """Tests for correct serialization of UUID objects."""
+        exampleuuid = uuid.uuid1()
+        vehicle = self.Vehicle(uuid=exampleuuid)
+        self.session.commit()
+        d = to_dict(vehicle)
+        assert 'uuid' in d
+        assert str(exampleuuid) == d['uuid']
 
     def test_to_dict(self):
         """Test for serializing attributes of an instance of the model by the
