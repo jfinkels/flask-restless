@@ -43,6 +43,7 @@ Not yet released.
 - #176: get model attribute instead of column name when getting name of primary
   key.
 - #182: allow :http:method:`post` requests that set hybrid properties.
+- #152: adds some basic server-side logging for exceptions raised by views.
 
 Version 0.9.3
 -------------
