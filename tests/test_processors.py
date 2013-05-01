@@ -279,6 +279,39 @@ class ProcessorsTest(TestSupport):
         self.assertEquals(person_response['name'], person.name)
         self.assertEquals(person_response['age'], person.age)
 
+    def test_add_filters(self):
+        """Test for adding a filter to a :http:method:`get` request for a
+        collection where there was no query parameter before.
+
+        """
+        # Create some people in the database.
+        person1 = self.Person(name='foo')
+        person2 = self.Person(name='bar')
+        person3 = self.Person(name='baz')
+        self.session.add_all((person1, person2, person3))
+        self.session.commit()
+
+        # Create a preprocessor function that adds a filter.
+        def add_filter(search_params=None, **kw):
+            if search_params is None:
+                return
+            filt = dict(name='name', op='like', val='ba%')
+            if 'filters' not in search_params:
+                search_params['filters'] = []
+            search_params['filters'].append(filt)
+
+        # Create the API with the preprocessor.
+        self.manager.create_api(self.Person,
+                                preprocessors=dict(GET_MANY=[add_filter]))
+
+        # Test that the filter is added on GET requests to the collection.
+        response = self.app.get('/api/person')
+        self.assertEqual(200, response.status_code)
+        data = loads(response.data)['objects']
+        self.assertEqual(2, len(data))
+        self.assertEqual(sorted(['bar', 'baz']),
+                         sorted([person['name'] for person in data]))
+
 
 def load_tests(loader, standard_tests, pattern):
     """Returns the test suite for this module."""
