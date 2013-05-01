@@ -425,12 +425,14 @@ class APITestCase(TestSupport):
         self.session.add_all([vim, emacs])
         self.session.commit()
         data = {
-            'programs': [
-                {
-                    'program_id': 1,
-                    'licensed': False
-                }
-            ]
+            'programs': {
+                'add': [
+                    {
+                        'program_id': 1,
+                        'licensed': False
+                    }
+                ]
+            }
         }
         response = self.app.patch('/api/computer/1', data=dumps(data))
         computer = loads(response.data)
@@ -442,12 +444,14 @@ class APITestCase(TestSupport):
         }
         self.assertIn(vim_relation, computer['programs'])
         data = {
-            'programs': [
-                {
-                    'program_id': 2,
-                    'licensed': True
-                }
-            ]
+            'programs': {
+                'add': [
+                    {
+                        'program_id': 2,
+                        'licensed': True
+                    }
+                ]
+            }
         }
         response = self.app.patch('/api/computer/1', data=dumps(data))
         computer = loads(response.data)
@@ -458,6 +462,12 @@ class APITestCase(TestSupport):
             'licensed': True
         }
         self.assertIn(emacs_relation, computer['programs'])
+        vim_relation = {
+            'computer_id': 1,
+            'program_id': 1,
+            'licensed': False
+        }
+        self.assertIn(vim_relation, computer['programs'])
 
     def test_patch_remove_m2m(self):
         """Test for removing a relation on a model that uses an association 
@@ -477,6 +487,10 @@ class APITestCase(TestSupport):
                 {
                     'program_id': 1,
                     'licensed': False
+                },
+                {
+                    'program_id': 2,
+                    'licensed': True
                 }
             ]
         }
@@ -488,7 +502,13 @@ class APITestCase(TestSupport):
             'program_id': 1,
             'licensed': False
         }
+        emacs_relation = {
+            'computer_id': 1,
+            'program_id': 2,
+            'licensed': True
+        }
         self.assertIn(vim_relation, computer['programs'])
+        self.assertIn(emacs_relation, computer['programs'])
         data = {
             'programs': {
                 'remove': [{'program_id': 1}]
@@ -497,12 +517,8 @@ class APITestCase(TestSupport):
         response = self.app.patch('/api/computer/1', data=dumps(data))
         computer = loads(response.data)
         self.assertEqual(200, response.status_code)
-        emacs_relation = {
-            'computer_id': 1,
-            'program_id': 2,
-            'licensed': True
-        }
-        self.assertNotIn(emacs_relation, computer['programs'])
+        self.assertNotIn(vim_relation, computer['programs'])
+        self.assertIn(emacs_relation, computer['programs'])
 
 
     def test_delete(self):

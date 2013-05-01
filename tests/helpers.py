@@ -118,7 +118,7 @@ class TestSupport(DatabaseTestBase):
             buy_date = Column(DateTime)
             owner_id = Column(Integer, ForeignKey('person.id'))
             owner = relationship('Person')
-            programs = relationship('ComputerProgram')
+            programs = relationship('ComputerProgram', cascade="all, delete-orphan")
 
         class Person(self.Base):
             __tablename__ = 'person'
