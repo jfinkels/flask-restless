@@ -15,6 +15,8 @@ Version 0.10.1-dev
 
 Not yet released.
 
+- Switch to `nose <http://nose.readthedocs.org>`_ for testing.
+
 Version 0.10.0
 --------------
 
@@ -23,6 +25,7 @@ Released on April 30, 2013.
 - #2: adds basic :http:method:`get` access to one level of relationship depth
   for models.
 - #113: interpret empty strings for date fields as ``None`` objects.
+- #115: use Python's built-in assert statements for testing
 - #128: allow disjunctions when filtering search queries.
 - #130: documentation and examples now more clearly show search examples.
 - #135: added support for hybrid properties.

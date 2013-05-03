@@ -10,8 +10,6 @@
 
 """
 from datetime import date
-from unittest2 import TestSuite
-from unittest2 import skipUnless
 
 from flask import json
 try:
@@ -34,24 +32,21 @@ from flask.ext.restless.manager import APIManager
 
 from .helpers import DatabaseTestBase
 from .helpers import FlaskTestBase
+from .helpers import skip_unless
 from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
-
-
-__all__ = ['FunctionAPITestCase', 'APITestCase', 'FSAModelTest',
-           'AssociationProxyTest', 'SearchTest']
 
 
 dumps = json.dumps
 loads = json.loads
 
 
-class FSAModelTest(FlaskTestBase):
+class TestFSAModel(FlaskTestBase):
     """Tests for functions which operate on Flask-SQLAlchemy models."""
 
     def setUp(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(FSAModelTest, self).setUp()
+        super(TestFSAModel, self).setUp()
 
         db = SQLAlchemy(self.flaskapp)
 
@@ -98,13 +93,13 @@ class FSAModelTest(FlaskTestBase):
         self.manager.create_api(self.LazyPet)
 
         response = self.app.get('/api/user')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         response = self.app.get('/api/lazy_user')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         response = self.app.get('/api/pet')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         response = self.app.get('/api/lazy_pet')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
 
         # create a user with two pets
         owner = self.User()
@@ -116,17 +111,17 @@ class FSAModelTest(FlaskTestBase):
         self.db.session.commit()
 
         response = self.app.get('/api/user/%d' % owner.id)
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertEqual(2, len(data['pets']))
+        assert 2 == len(data['pets'])
         for pet in data['pets']:
-            self.assertEqual(owner.id, pet['ownerid'])
+            assert owner.id == pet['ownerid']
 
         response = self.app.get('/api/pet/1')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertFalse(isinstance(data['owner'], list))
-        self.assertEqual(owner.id, data['ownerid'])
+        assert not isinstance(data['owner'], list)
+        assert owner.id == data['ownerid']
 
         # create a lazy user with two lazy pets
         owner = self.LazyUser()
@@ -138,26 +133,26 @@ class FSAModelTest(FlaskTestBase):
         self.db.session.commit()
 
         response = self.app.get('/api/lazy_user/%d' % owner.id)
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertEqual(2, len(data['pets']))
+        assert 2 == len(data['pets'])
         for pet in data['pets']:
-            self.assertEqual(owner.id, pet['ownerid'])
+            assert owner.id == pet['ownerid']
 
         response = self.app.get('/api/lazy_pet/1')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertFalse(isinstance(data['owner'], list))
-        self.assertEqual(owner.id, data['ownerid'])
+        assert not isinstance(data['owner'], list)
+        assert owner.id == data['ownerid']
 
 
-# skipUnless should be used as a decorator, but Python 2.5 doesn't have
+# skip_unless should be used as a decorator, but Python 2.5 doesn't have
 # decorators.
-FSATest = skipUnless(has_flask_sqlalchemy,
-                     'Flask-SQLAlchemy not found.')(FSAModelTest)
+TestFSAModel = skip_unless(has_flask_sqlalchemy,
+                           'Flask-SQLAlchemy not found.')(TestFSAModel)
 
 
-class FunctionAPITestCase(TestSupportPrefilled):
+class TestFunctionAPI(TestSupportPrefilled):
     """Unit tests for the :class:`flask_restless.views.FunctionAPI` class."""
 
     def setUp(self):
@@ -167,7 +162,7 @@ class FunctionAPITestCase(TestSupportPrefilled):
         :class:`testapp.Computer` models.
 
         """
-        super(FunctionAPITestCase, self).setUp()
+        super(TestFunctionAPI, self).setUp()
         self.manager.create_api(self.Person, allow_functions=True)
 
     def test_function_evaluation(self):
@@ -180,14 +175,14 @@ class FunctionAPITestCase(TestSupportPrefilled):
                      {'name': 'count', 'field': 'id'}]
         query = dumps(dict(functions=functions))
         response = self.app.get('/api/eval/person?q=%s' % query)
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         data = loads(response.data)
-        self.assertIn('sum__age', data)
-        self.assertEqual(data['sum__age'], 102.0)
-        self.assertIn('avg__other', data)
-        self.assertEqual(data['avg__other'], 16.2)
-        self.assertIn('count__id', data)
-        self.assertEqual(data['count__id'], 5)
+        assert 'sum__age' in data
+        assert data['sum__age'] == 102.0
+        assert 'avg__other' in data
+        assert data['avg__other'] == 16.2
+        assert 'count__id' in data
+        assert data['count__id'] == 5
 
     def test_no_functions(self):
         """Tests that if no functions are defined, an empty response is
@@ -196,14 +191,14 @@ class FunctionAPITestCase(TestSupportPrefilled):
         """
         # no data is invalid JSON
         response = self.app.get('/api/eval/person')
-        self.assertEqual(response.status_code, 400)
+        assert response.status_code == 400
         # so is the empty string
         response = self.app.get('/api/eval/person?q=')
-        self.assertEqual(response.status_code, 400)
+        assert response.status_code == 400
 
         # if we provide no functions, then we expect an empty response
         response = self.app.get('/api/eval/person?q=%s' % dumps(dict()))
-        self.assertEqual(response.status_code, 204)
+        assert response.status_code == 204
 
     def test_poorly_defined_functions(self):
         """Tests that poorly defined requests for function evaluations cause an
@@ -213,16 +208,16 @@ class FunctionAPITestCase(TestSupportPrefilled):
         # test for bad field name
         search = {'functions': [{'name': 'sum', 'field': 'bogusfieldname'}]}
         resp = self.app.get('/api/eval/person?q=%s' % dumps(search))
-        self.assertEqual(resp.status_code, 400)
-        self.assertIn('message', loads(resp.data))
-        self.assertIn('bogusfieldname', loads(resp.data)['message'])
+        assert resp.status_code == 400
+        assert 'message' in loads(resp.data)
+        assert 'bogusfieldname' in loads(resp.data)['message']
 
         # test for bad function name
         search = {'functions': [{'name': 'bogusfuncname', 'field': 'age'}]}
         resp = self.app.get('/api/eval/person?q=%s' % dumps(search))
-        self.assertEqual(resp.status_code, 400)
-        self.assertIn('message', loads(resp.data))
-        self.assertIn('bogusfuncname', loads(resp.data)['message'])
+        assert resp.status_code == 400
+        assert 'message' in loads(resp.data)
+        assert 'bogusfuncname' in loads(resp.data)['message']
 
     def test_jsonp(self):
         """Test for JSON-P callbacks."""
@@ -234,12 +229,12 @@ class FunctionAPITestCase(TestSupportPrefilled):
         functions = [{'name': 'sum', 'field': 'age'}]
         query = dumps(dict(functions=functions))
         response = self.app.get('/api/eval/person?q=%s&callback=baz' % query)
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.data.startswith('baz('))
-        self.assertTrue(response.data.endswith(')'))
+        assert response.status_code == 200
+        assert response.data.startswith('baz(')
+        assert response.data.endswith(')')
 
 
-class APITestCase(TestSupport):
+class TestAPI(TestSupport):
     """Unit tests for the :class:`flask_restless.views.API` class."""
 
     def setUp(self):
@@ -250,7 +245,7 @@ class APITestCase(TestSupport):
 
         """
         # create the database
-        super(APITestCase, self).setUp()
+        super(TestAPI, self).setUp()
 
         # setup the URLs for the Person and Computer API
         self.manager.create_api(self.Person,
@@ -274,9 +269,8 @@ class APITestCase(TestSupport):
         """
         # Invalid JSON in request data should respond with error.
         response = self.app.post('/api/person', data='Invalid JSON string')
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(loads(response.data)['message'],
-                         'Unable to decode data')
+        assert response.status_code == 400
+        assert loads(response.data)['message'] == 'Unable to decode data'
 
         # Now, let's test the validation stuff
         # response = self.app.post('/api/person', data=dumps({'name': u'Test',
@@ -286,16 +280,16 @@ class APITestCase(TestSupport):
 
         response = self.app.post('/api/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
-        self.assertEqual(response.status_code, 201)
-        self.assertIn('id', loads(response.data))
+        assert response.status_code == 201
+        assert 'id' in loads(response.data)
 
         response = self.app.get('/api/person/1')
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         deep = {'computers': []}
         person = self.session.query(self.Person).filter_by(id=1).first()
         inst = to_dict(person, deep)
-        self.assertEqual(loads(response.data), inst)
+        assert loads(response.data) == inst
 
     def test_post_bad_parameter(self):
         """Tests that attempting to make a :http:method:`post` request with a
@@ -304,21 +298,21 @@ class APITestCase(TestSupport):
 
         """
         response = self.app.post('/api/person', data=dumps(dict(bogus=0)))
-        self.assertEqual(400, response.status_code)
+        assert 400 == response.status_code
 
         response = self.app.post('/api/person',
                                  data=dumps(dict(is_minor=True)))
-        self.assertEqual(400, response.status_code)
+        assert 400 == response.status_code
 
     def test_post_nullable_date(self):
         """Tests the creation of a model with a nullable date field."""
         self.manager.create_api(self.Star, methods=['GET', 'POST'])
         data = dict(inception_time=None)
         response = self.app.post('/api/star', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
         response = self.app.get('/api/star/1')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['inception_time'], None)
+        assert response.status_code == 200
+        assert loads(response.data)['inception_time'] is None
 
     def test_post_empty_date(self):
         """Tests that attempting to assign an empty date string to a date field
@@ -328,31 +322,31 @@ class APITestCase(TestSupport):
         self.manager.create_api(self.Star, methods=['GET', 'POST'])
         data = dict(inception_time='')
         response = self.app.post('/api/star', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
         response = self.app.get('/api/star/1')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['inception_time'], None)
+        assert response.status_code == 200
+        assert loads(response.data)['inception_time'] is None
 
     def test_post_with_submodels(self):
         """Tests the creation of a model with a related field."""
         data = {'name': u'John', 'age': 2041,
                 'computers': [{'name': u'lixeiro', 'vendor': u'Lemote'}]}
         response = self.app.post('/api/person', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
-        self.assertIn('id', loads(response.data))
+        assert response.status_code == 201
+        assert 'id' in loads(response.data)
 
         response = self.app.get('/api/person')
-        self.assertEqual(len(loads(response.data)['objects']), 1)
+        assert len(loads(response.data)['objects']) == 1
 
     def test_post_with_single_submodel(self):
         data = {'vendor': u'Apple',  'name': u'iMac',
                 'owner': {'name': u'John', 'age': 2041}}
         response = self.app.post('/api/computer', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
-        self.assertIn('id', loads(response.data))
+        assert response.status_code == 201
+        assert 'id' in loads(response.data)
         # Test if owner was successfully created
         response = self.app.get('/api/person')
-        self.assertEqual(len(loads(response.data)['objects']), 1)
+        assert len(loads(response.data)['objects']) == 1
 
     def test_patch_update_relations(self):
         """Test for posting a new model and simultaneously adding related
@@ -364,19 +358,19 @@ class APITestCase(TestSupport):
         # First, create a new computer object with an empty `name` field and a
         # new person with no related computers.
         response = self.app.post('/api/computer', data=dumps({}))
-        self.assertEqual(201, response.status_code)
+        assert 201 == response.status_code
         response = self.app.post('/api/person', data=dumps({}))
-        self.assertEqual(201, response.status_code)
+        assert 201 == response.status_code
         # Second, patch the person by setting its list of related computer
         # instances to include the previously created computer, *and*
         # simultaneously update the `name` attribute of that computer.
         data = dict(computers=[dict(id=1, name='foo')])
         response = self.app.patch('/api/person/1', data=dumps(data))
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         # Check that the computer now has its `name` field set.
         response = self.app.get('/api/computer/1')
-        self.assertEqual(200, response.status_code)
-        self.assertEqual('foo', loads(response.data)['name'])
+        assert 200 == response.status_code
+        assert 'foo' == loads(response.data)['name']
 
     def test_delete(self):
         """Test for deleting an instance of the database using the
@@ -386,23 +380,23 @@ class APITestCase(TestSupport):
         # Creating the person who's gonna be deleted
         response = self.app.post('/api/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
-        self.assertEqual(response.status_code, 201)
-        self.assertIn('id', loads(response.data))
+        assert response.status_code == 201
+        assert 'id' in loads(response.data)
 
         # Making sure it has been created
         deep = {'computers': []}
         person = self.session.query(self.Person).filter_by(id=1).first()
         inst = to_dict(person, deep)
         response = self.app.get('/api/person/1')
-        self.assertEqual(loads(response.data), inst)
+        assert loads(response.data) == inst
 
         # Deleting it
         response = self.app.delete('/api/person/1')
-        self.assertEqual(response.status_code, 204)
+        assert response.status_code == 204
 
         # Making sure it has been deleted
         people = self.session.query(self.Person).filter_by(id=1)
-        self.assertEquals(people.count(), 0)
+        assert people.count() == 0
 
     def test_delete_absent_instance(self):
         """Test that deleting an instance of the model which does not exist
@@ -413,7 +407,7 @@ class APITestCase(TestSupport):
 
         """
         response = self.app.delete('/api/person/1')
-        self.assertEqual(response.status_code, 204)
+        assert response.status_code == 204
 
     def test_disallow_patch_many(self):
         """Tests that disallowing "patch many" requests responds with a
@@ -421,7 +415,7 @@ class APITestCase(TestSupport):
 
         """
         response = self.app.patch('/api/person', data=dumps(dict(name='foo')))
-        self.assertEqual(response.status_code, 405)
+        assert response.status_code == 405
 
     def test_put_same_as_patch(self):
         """Tests that :http:method:`put` requests are the same as
@@ -442,11 +436,11 @@ class APITestCase(TestSupport):
 
         # change a single entry
         resp = self.app.put('/api/v2/person/1', data=dumps({'age': 24}))
-        self.assertEqual(resp.status_code, 200)
+        assert resp.status_code == 200
 
         resp = self.app.get('/api/v2/person/1')
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(loads(resp.data)['age'], 24)
+        assert resp.status_code == 200
+        assert loads(resp.data)['age'] == 24
 
         # Changing the birth date field of the entire collection
         day, month, year = 15, 9, 1986
@@ -458,20 +452,20 @@ class APITestCase(TestSupport):
         response = self.app.get('/api/v2/person')
         loaded = loads(response.data)['objects']
         for i in loaded:
-            self.assertEqual(i['birth_date'], ('%s-%s-%s' % (
-                    year, str(month).zfill(2), str(day).zfill(2))))
+            assert i['birth_date'] == ('%s-%s-%s' % (
+                year, str(month).zfill(2), str(day).zfill(2)))
 
     def test_patch_empty(self):
         """Test for making a :http:method:`patch` request with no data."""
         response = self.app.post('/api/person', data=dumps(dict(name='foo')))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
         personid = loads(response.data)['id']
         # here we really send no data
         response = self.app.patch('/api/person/' + str(personid))
-        self.assertEqual(response.status_code, 400)
+        assert response.status_code == 400
         # here we send the empty string (which is not valid JSON)
         response = self.app.patch('/api/person/' + str(personid), data='')
-        self.assertEqual(response.status_code, 400)
+        assert response.status_code == 400
 
     def test_patch_bad_parameter(self):
         """Tests that attempting to make a :http:method:`patch` request with a
@@ -480,9 +474,9 @@ class APITestCase(TestSupport):
 
         """
         response = self.app.post('/api/person', data=dumps({}))
-        self.assertEqual(201, response.status_code)
+        assert 201 == response.status_code
         response = self.app.patch('/api/person/1', data=dumps(dict(bogus=0)))
-        self.assertEqual(400, response.status_code)
+        assert 400 == response.status_code
 
     def test_patch_many(self):
         """Test for updating a collection of instances of the model using the
@@ -503,8 +497,8 @@ class APITestCase(TestSupport):
 
         # Trying to pass invalid data to the update method
         resp = self.app.patch('/api/v2/person', data='Hello there')
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(loads(resp.data)['message'], 'Unable to decode data')
+        assert resp.status_code == 400
+        assert loads(resp.data)['message'] == 'Unable to decode data'
 
         # Changing the birth date field of the entire collection
         day, month, year = 15, 9, 1986
@@ -516,8 +510,8 @@ class APITestCase(TestSupport):
         response = self.app.get('/api/v2/person')
         loaded = loads(response.data)['objects']
         for i in loaded:
-            self.assertEqual(i['birth_date'], ('%s-%s-%s' % (
-                    year, str(month).zfill(2), str(day).zfill(2))))
+            assert i['birth_date'] == ('%s-%s-%s' % (
+                year, str(month).zfill(2), str(day).zfill(2)))
 
     def test_patch_many_with_filter(self):
         """Test for updating a collection of instances of the model using a
@@ -546,7 +540,7 @@ class APITestCase(TestSupport):
         form = {'birth_date': birth_date, 'q': search}
         response = self.app.patch('/api/v2/person', data=dumps(form))
         num_modified = loads(response.data)['num_modified']
-        self.assertEqual(num_modified, 1)
+        assert num_modified == 1
 
     def test_single_update(self):
         """Test for updating a single instance of the model using the
@@ -555,20 +549,20 @@ class APITestCase(TestSupport):
         """
         resp = self.app.post('/api/person', data=dumps({'name': u'Lincoln',
                                                          'age': 10}))
-        self.assertEqual(resp.status_code, 201)
-        self.assertIn('id', loads(resp.data))
+        assert resp.status_code == 201
+        assert 'id' in loads(resp.data)
 
         # Trying to pass invalid data to the update method
         resp = self.app.patch('/api/person/1', data='Invalid JSON string')
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(loads(resp.data)['message'], 'Unable to decode data')
+        assert resp.status_code == 400
+        assert loads(resp.data)['message'] == 'Unable to decode data'
 
         resp = self.app.patch('/api/person/1', data=dumps({'age': 24}))
-        self.assertEqual(resp.status_code, 200)
+        assert resp.status_code == 200
 
         resp = self.app.get('/api/person/1')
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(loads(resp.data)['age'], 24)
+        assert resp.status_code == 200
+        assert loads(resp.data)['age'] == 24
 
     def test_patch_404(self):
         """Tests that making a :http:method:`patch` request to an instance
@@ -576,27 +570,27 @@ class APITestCase(TestSupport):
 
         """
         resp = self.app.patch('/api/person/1', data=dumps(dict(name='foo')))
-        self.assertEqual(resp.status_code, 404)
+        assert resp.status_code == 404
 
     def test_patch_with_single_submodel(self):
         # Create a new object with a single submodel
         data = {'vendor': u'Apple', 'name': u'iMac',
                 'owner': {'name': u'John', 'age': 2041}}
         response = self.app.post('/api/computer', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
         data = loads(response.data)
-        self.assertEqual(1, data['owner']['id'])
-        self.assertEqual(u'John', data['owner']['name'])
-        self.assertEqual(2041, data['owner']['age'])
+        assert 1 == data['owner']['id']
+        assert u'John' == data['owner']['name']
+        assert 2041 == data['owner']['age']
 
         # Update the submodel
         data = {'id': 1, 'owner': {'id': 1, 'age': 29}}
         response = self.app.patch('/api/computer/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         data = loads(response.data)
 
-        self.assertEqual(u'John', data['owner']['name'])
-        self.assertEqual(29, data['owner']['age'])
+        assert u'John' == data['owner']['name']
+        assert 29 == data['owner']['age']
 
     def test_patch_set_submodel(self):
         """Test for assigning a list to a relation of a model using
@@ -605,44 +599,44 @@ class APITestCase(TestSupport):
         """
         # create the person
         response = self.app.post('/api/person', data=dumps({}))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
 
         # patch the person with some computers
         data = {'computers': [{'name': u'lixeiro', 'vendor': u'Lemote'},
                               {'name': u'foo', 'vendor': u'bar'}]}
         response = self.app.patch('/api/person/1', data=dumps(data))
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertEqual(2, len(data['computers']))
-        self.assertEqual(u'lixeiro', data['computers'][0]['name'])
-        self.assertEqual(u'Lemote', data['computers'][0]['vendor'])
-        self.assertEqual(u'foo', data['computers'][1]['name'])
-        self.assertEqual(u'bar', data['computers'][1]['vendor'])
+        assert 2 == len(data['computers'])
+        assert u'lixeiro' == data['computers'][0]['name']
+        assert u'Lemote' == data['computers'][0]['vendor']
+        assert u'foo' == data['computers'][1]['name']
+        assert u'bar' == data['computers'][1]['vendor']
 
         # change one of the computers
         data = {'computers': [{'id': data['computers'][0]['id']},
                               {'id': data['computers'][1]['id'],
                                'vendor': u'Apple'}]}
         response = self.app.patch('/api/person/1', data=dumps(data))
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertEqual(2, len(data['computers']))
-        self.assertEqual(u'lixeiro', data['computers'][0]['name'])
-        self.assertEqual(u'Lemote', data['computers'][0]['vendor'])
-        self.assertEqual(u'foo', data['computers'][1]['name'])
-        self.assertEqual(u'Apple', data['computers'][1]['vendor'])
+        assert 2 == len(data['computers'])
+        assert u'lixeiro' == data['computers'][0]['name']
+        assert u'Lemote' == data['computers'][0]['vendor']
+        assert u'foo' == data['computers'][1]['name']
+        assert u'Apple' == data['computers'][1]['vendor']
 
         # patch the person with some new computers
         data = {'computers': [{'name': u'hey', 'vendor': u'you'},
                               {'name': u'big', 'vendor': u'money'},
                               {'name': u'milk', 'vendor': u'chocolate'}]}
         response = self.app.patch('/api/person/1', data=dumps(data))
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertEqual(3, len(data['computers']))
-        self.assertEqual(u'hey', data['computers'][0]['name'])
-        self.assertEqual(u'big', data['computers'][1]['name'])
-        self.assertEqual(u'milk', data['computers'][2]['name'])
+        assert 3 == len(data['computers'])
+        assert u'hey' == data['computers'][0]['name']
+        assert u'big' == data['computers'][1]['name']
+        assert u'milk' == data['computers'][2]['name']
 
     def test_patch_duplicate(self):
         """Test for assigning a list containing duplicate items
@@ -654,23 +648,23 @@ class APITestCase(TestSupport):
                                             {'name': u'Mustang', 'seats': 4},
                                             {'name': u'Maverick', 'seats': 2}]}
         response = self.app.post('/api/car_manufacturer', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
         data = loads(response.data)
-        self.assertEqual(3, len(data['models']))
-        self.assertEqual(u'Maverick', data['models'][0]['name'])
-        self.assertEqual(u'Mustang', data['models'][1]['name'])
-        self.assertEqual(u'Maverick', data['models'][2]['name'])
+        assert 3 == len(data['models'])
+        assert u'Maverick' == data['models'][0]['name']
+        assert u'Mustang' == data['models'][1]['name']
+        assert u'Maverick' == data['models'][2]['name']
 
         # add another duplicate car
         data['models'].append({'name': u'Mustang', 'seats': 4})
         response = self.app.patch('/api/car_manufacturer/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         data = loads(response.data)
-        self.assertEqual(4, len(data['models']))
-        self.assertEqual(u'Maverick', data['models'][0]['name'])
-        self.assertEqual(u'Mustang', data['models'][1]['name'])
-        self.assertEqual(u'Maverick', data['models'][2]['name'])
-        self.assertEqual(u'Mustang', data['models'][3]['name'])
+        assert 4 == len(data['models'])
+        assert u'Maverick' == data['models'][0]['name']
+        assert u'Mustang' == data['models'][1]['name']
+        assert u'Maverick' == data['models'][2]['name']
+        assert u'Mustang' == data['models'][3]['name']
 
     def test_patch_new_single(self):
         """Test for adding a single new object to a one-to-one relationship
@@ -680,31 +674,30 @@ class APITestCase(TestSupport):
         # create the person
         data = {'name': u'Lincoln', 'age': 23}
         response = self.app.post('/api/person', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
 
         # patch the person with a new computer
         data = {'computers': {'add': {'name': u'lixeiro',
             'vendor': u'Lemote'}}}
 
         response = self.app.patch('/api/person/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         # Let's check it out
         response = self.app.get('/api/person/1')
         loaded = loads(response.data)
 
-        self.assertEqual(len(loaded['computers']), 1)
-        self.assertEqual(loaded['computers'][0]['name'],
-                         data['computers']['add']['name'])
-        self.assertEqual(loaded['computers'][0]['vendor'],
-                         data['computers']['add']['vendor'])
+        assert len(loaded['computers']) == 1
+        assert loaded['computers'][0]['name'] == \
+            data['computers']['add']['name']
+        assert loaded['computers'][0]['vendor'] == \
+            data['computers']['add']['vendor']
 
         # test that this new computer was added to the database as well
         computer = self.session.query(self.Computer).filter_by(id=1).first()
-        self.assertIsNotNone(computer)
-        self.assertEqual(data['computers']['add']['name'], computer.name)
-        self.assertEqual(data['computers']['add']['vendor'],
-                         computer.vendor)
+        assert computer is not None
+        assert data['computers']['add']['name'] == computer.name
+        assert data['computers']['add']['vendor'] == computer.vendor
 
     def test_patch_existing_single(self):
         """Test for adding a single existing object to a one-to-one
@@ -714,25 +707,24 @@ class APITestCase(TestSupport):
         # create the person
         data = {'name': u'Lincoln', 'age': 23}
         response = self.app.post('/api/person', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
 
         # create the computer
         data = {'name': u'lixeiro', 'vendor': u'Lemote'}
         response = self.app.post('/api/computer', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
 
         # patch the person with the created computer
         data = {'computers': {'add': {'id': 1}}}
         response = self.app.patch('/api/person/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         # Let's check it out
         response = self.app.get('/api/person/1')
         loaded = loads(response.data)
 
-        self.assertEqual(len(loaded['computers']), 1)
-        self.assertEqual(loaded['computers'][0]['id'],
-                         data['computers']['add']['id'])
+        assert len(loaded['computers']) == 1
+        assert loaded['computers'][0]['id'] == data['computers']['add']['id']
 
     def test_patch_add_submodels(self):
         """Test for updating a single instance of the model by adding a list of
@@ -741,32 +733,32 @@ class APITestCase(TestSupport):
         """
         data = dict(name=u'Lincoln', age=23)
         response = self.app.post('/api/person', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
 
         data = {'computers':
                     {'add': [{'name': u'lixeiro', 'vendor': u'Lemote'},
                              {'name': u'foo', 'vendor': u'bar'}]}
                 }
         response = self.app.patch('/api/person/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         response = self.app.get('/api/person/1')
         loaded = loads(response.data)
 
-        self.assertEqual(len(loaded['computers']), 2)
-        self.assertEqual(loaded['computers'][0]['name'], u'lixeiro')
-        self.assertEqual(loaded['computers'][0]['vendor'], u'Lemote')
-        self.assertEqual(loaded['computers'][1]['name'], u'foo')
-        self.assertEqual(loaded['computers'][1]['vendor'], u'bar')
+        assert len(loaded['computers']) == 2
+        assert loaded['computers'][0]['name'] == u'lixeiro'
+        assert loaded['computers'][0]['vendor'] == u'Lemote'
+        assert loaded['computers'][1]['name'] == u'foo'
+        assert loaded['computers'][1]['vendor'] == u'bar'
 
         # test that these new computers were added to the database as well
         computer = self.session.query(self.Computer).filter_by(id=1).first()
-        self.assertIsNotNone(computer)
-        self.assertEqual(u'lixeiro', computer.name)
-        self.assertEqual(u'Lemote', computer.vendor)
+        assert computer is not None
+        assert u'lixeiro' == computer.name
+        assert u'Lemote' == computer.vendor
         computer = self.session.query(self.Computer).filter_by(id=2).first()
-        self.assertIsNotNone(computer)
-        self.assertEqual(u'foo', computer.name)
-        self.assertEqual(u'bar', computer.vendor)
+        assert computer is not None
+        assert u'foo' == computer.name
+        assert u'bar' == computer.vendor
 
     def test_patch_remove_submodel(self):
         """Test for updating a single instance of the model by removing a
@@ -790,13 +782,13 @@ class APITestCase(TestSupport):
             }
         }
         resp = self.app.patch('/api/person/1', data=dumps(update_data))
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(loads(resp.data)['id'], 1)
+        assert resp.status_code == 200
+        assert loads(resp.data)['id'] == 1
 
         # Let's check it out
         response = self.app.get('/api/person/1')
         loaded = loads(response.data)
-        self.assertEqual(len(loaded['computers']), 1)
+        assert len(loaded['computers']) == 1
 
     def test_patch_autodelete_submodel(self):
         """Tests the automatic deletion of entries marked with the
@@ -808,10 +800,10 @@ class APITestCase(TestSupport):
         # Creating all rows needed in our test
         person_data = {'name': u'Lincoln', 'age': 23}
         resp = self.app.post('/api/person', data=dumps(person_data))
-        self.assertEqual(resp.status_code, 201)
+        assert resp.status_code == 201
         comp_data = {'name': u'lixeiro', 'vendor': u'Lemote'}
         resp = self.app.post('/api/computer', data=dumps(comp_data))
-        self.assertEqual(resp.status_code, 201)
+        assert resp.status_code == 201
 
         # updating person to add the computer
         update_data = {'computers': {'add': [{'id': 1}]}}
@@ -819,10 +811,10 @@ class APITestCase(TestSupport):
 
         # Making sure that everything worked properly
         resp = self.app.get('/api/person/1')
-        self.assertEqual(resp.status_code, 200)
+        assert resp.status_code == 200
         loaded = loads(resp.data)
-        self.assertEqual(len(loaded['computers']), 1)
-        self.assertEqual(loaded['computers'][0]['name'], u'lixeiro')
+        assert len(loaded['computers']) == 1
+        assert loaded['computers'][0]['name'] == u'lixeiro'
 
         # Now, let's remove it and delete it
         update2_data = {
@@ -833,17 +825,17 @@ class APITestCase(TestSupport):
             },
         }
         resp = self.app.patch('/api/person/1', data=dumps(update2_data))
-        self.assertEqual(resp.status_code, 200)
+        assert resp.status_code == 200
 
         # Testing to make sure it was removed from the related field
         resp = self.app.get('/api/person/1')
-        self.assertEqual(resp.status_code, 200)
+        assert resp.status_code == 200
         loaded = loads(resp.data)
-        self.assertEqual(len(loaded['computers']), 0)
+        assert len(loaded['computers']) == 0
 
         # Making sure it was removed from the database
         resp = self.app.get('/api/computer/1')
-        self.assertEqual(resp.status_code, 404)
+        assert resp.status_code == 404
 
     def test_pagination(self):
         """Tests for pagination of long result sets."""
@@ -854,49 +846,49 @@ class APITestCase(TestSupport):
         for i in range(25):
             d = dict(name=unicode('person%s' % i))
             response = self.app.post('/api/person', data=dumps(d))
-            self.assertEqual(response.status_code, 201)
+            assert response.status_code == 201
 
         response = self.app.get('/api/person')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['page'], 1)
-        self.assertEqual(len(loads(response.data)['objects']), 10)
-        self.assertEqual(loads(response.data)['total_pages'], 3)
+        assert response.status_code == 200
+        assert loads(response.data)['page'] == 1
+        assert len(loads(response.data)['objects']) == 10
+        assert loads(response.data)['total_pages'] == 3
 
         response = self.app.get('/api/person?page=1')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['page'], 1)
-        self.assertEqual(len(loads(response.data)['objects']), 10)
-        self.assertEqual(loads(response.data)['total_pages'], 3)
+        assert response.status_code == 200
+        assert loads(response.data)['page'] == 1
+        assert len(loads(response.data)['objects']) == 10
+        assert loads(response.data)['total_pages'] == 3
 
         response = self.app.get('/api/person?page=2')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['page'], 2)
-        self.assertEqual(len(loads(response.data)['objects']), 10)
-        self.assertEqual(loads(response.data)['total_pages'], 3)
+        assert response.status_code == 200
+        assert loads(response.data)['page'] == 2
+        assert len(loads(response.data)['objects']) == 10
+        assert loads(response.data)['total_pages'] == 3
 
         response = self.app.get('/api/person?page=3')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['page'], 3)
-        self.assertEqual(len(loads(response.data)['objects']), 5)
-        self.assertEqual(loads(response.data)['total_pages'], 3)
+        assert response.status_code == 200
+        assert loads(response.data)['page'] == 3
+        assert len(loads(response.data)['objects']) == 5
+        assert loads(response.data)['total_pages'] == 3
 
         response = self.app.get('/api/v2/person?page=3')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['page'], 3)
-        self.assertEqual(len(loads(response.data)['objects']), 5)
-        self.assertEqual(loads(response.data)['total_pages'], 5)
+        assert response.status_code == 200
+        assert loads(response.data)['page'] == 3
+        assert len(loads(response.data)['objects']) == 5
+        assert loads(response.data)['total_pages'] == 5
 
         response = self.app.get('/api/v3/person')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['page'], 1)
-        self.assertEqual(len(loads(response.data)['objects']), 25)
-        self.assertEqual(loads(response.data)['total_pages'], 1)
+        assert response.status_code == 200
+        assert loads(response.data)['page'] == 1
+        assert len(loads(response.data)['objects']) == 25
+        assert loads(response.data)['total_pages'] == 1
 
         response = self.app.get('/api/v3/person?page=2')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data)['page'], 1)
-        self.assertEqual(len(loads(response.data)['objects']), 25)
-        self.assertEqual(loads(response.data)['total_pages'], 1)
+        assert response.status_code == 200
+        assert loads(response.data)['page'] == 1
+        assert len(loads(response.data)['objects']) == 25
+        assert loads(response.data)['total_pages'] == 1
 
     def test_num_results(self):
         """Tests that a request for (a subset of) all instances of a model
@@ -907,12 +899,12 @@ class APITestCase(TestSupport):
         for i in range(25):
             d = dict(name=unicode('person%s' % i))
             response = self.app.post('/api/person', data=dumps(d))
-            self.assertEqual(response.status_code, 201)
+            assert response.status_code == 201
         response = self.app.get('/api/person')
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         data = loads(response.data)
-        self.assertIn('num_results', data)
-        self.assertEqual(data['num_results'], 25)
+        assert 'num_results' in data
+        assert data['num_results'] == 25
 
     def test_alternate_primary_key(self):
         """Tests that models with primary keys which are not ``id`` columns are
@@ -921,15 +913,15 @@ class APITestCase(TestSupport):
         """
         self.manager.create_api(self.Planet, methods=['GET', 'POST'])
         response = self.app.post('/api/planet', data=dumps(dict(name='Earth')))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
         response = self.app.get('/api/planet/1')
-        self.assertEqual(response.status_code, 404)
+        assert response.status_code == 404
         response = self.app.get('/api/planet')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(loads(response.data)['objects']), 1)
+        assert response.status_code == 200
+        assert len(loads(response.data)['objects']) == 1
         response = self.app.get('/api/planet/Earth')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(loads(response.data), dict(name='Earth'))
+        assert response.status_code == 200
+        assert loads(response.data) == dict(name='Earth')
 
     def test_post_form_preprocessor(self):
         """Tests POST method decoration using a custom function."""
@@ -944,11 +936,11 @@ class APITestCase(TestSupport):
 
         response = self.app.post('/api/v2/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
 
         personid = loads(response.data)['id']
         person = self.session.query(self.Person).filter_by(id=personid).first()
-        self.assertEquals(person.other, 7)
+        assert person.other == 7
 
     def test_results_per_page(self):
         """Tests that the client can correctly specify the number of results
@@ -959,21 +951,21 @@ class APITestCase(TestSupport):
         self.manager.create_api(self.Person, methods=['POST', 'GET'])
         for n in range(150):
             response = self.app.post('/api/person', data=dumps({}))
-            self.assertEqual(201, response.status_code)
+            assert 201 == response.status_code
         response = self.app.get('/api/person?results_per_page=20')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertEqual(20, len(data['objects']))
+        assert 20 == len(data['objects'])
         # Fall back to default number of results per page on bad requests.
         response = self.app.get('/api/person?results_per_page=-1')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertEqual(10, len(data['objects']))
+        assert 10 == len(data['objects'])
         # Only return max number of results per page.
         response = self.app.get('/api/person?results_per_page=120')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertEqual(100, len(data['objects']))
+        assert 100 == len(data['objects'])
 
     def test_get_string_pk(self):
         """Tests for getting a row which has a string primary key, including
@@ -991,30 +983,30 @@ class APITestCase(TestSupport):
         self.session.add(foo)
         self.session.commit()
         response = self.app.get('/api/stringid/1')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertIn('name', data)
-        self.assertEqual('1', data['name'])
+        assert 'name' in data
+        assert '1' == data['name']
         response = self.app.get('/api/stringid/01')
-        self.assertEqual(404, response.status_code)
+        assert 404 == response.status_code
 
         bar = StringID(name='01')
         self.session.add(bar)
         self.session.commit()
         response = self.app.get('/api/stringid/01')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertIn('name', data)
-        self.assertEqual('01', data['name'])
+        assert 'name' in data
+        assert '01' == data['name']
 
         baz = StringID(name='hey')
         self.session.add(baz)
         self.session.commit()
         response = self.app.get('/api/stringid/hey')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)
-        self.assertIn('name', data)
-        self.assertEqual('hey', data['name'])
+        assert 'name' in data
+        assert 'hey' == data['name']
 
     def test_jsonp(self):
         """Test for JSON-P callbacks."""
@@ -1024,14 +1016,14 @@ class APITestCase(TestSupport):
         self.session.commit()
         # test for GET
         response = self.app.get('/api/person/1?callback=baz')
-        self.assertEqual(200, response.status_code)
-        self.assertTrue(response.data.startswith('baz('))
-        self.assertTrue(response.data.endswith(')'))
+        assert 200 == response.status_code
+        assert response.data.startswith('baz(')
+        assert response.data.endswith(')')
         # test for search
         response = self.app.get('/api/person?callback=baz')
-        self.assertEqual(200, response.status_code)
-        self.assertTrue(response.data.startswith('baz('))
-        self.assertTrue(response.data.endswith(')'))
+        assert 200 == response.status_code
+        assert response.data.startswith('baz(')
+        assert response.data.endswith(')')
 
     def test_duplicate_post(self):
         """Tests for making a :http:method:`post` request with data that
@@ -1040,12 +1032,12 @@ class APITestCase(TestSupport):
         """
         data = dict(name='test')
         response = self.app.post('/api/person', data=dumps(data))
-        self.assertEqual(201, response.status_code)
+        assert 201 == response.status_code
         response = self.app.post('/api/person', data=dumps(data))
-        self.assertEqual(400, response.status_code)
+        assert 400 == response.status_code
 
 
-class SearchTest(TestSupportPrefilled):
+class TestSearch(TestSupportPrefilled):
     """Unit tests for the search query functionality."""
 
     def setUp(self):
@@ -1055,7 +1047,7 @@ class SearchTest(TestSupportPrefilled):
         :class:`testapp.Computer` models.
 
         """
-        super(SearchTest, self).setUp()
+        super(TestSearch, self).setUp()
         self.manager.create_api(self.Person, methods=['GET', 'PATCH'])
         self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
 
@@ -1063,8 +1055,8 @@ class SearchTest(TestSupportPrefilled):
         """Tests basic search using the :http:method:`get` method."""
         # Trying to pass invalid params to the search method
         resp = self.app.get('/api/person?q=Test')
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(loads(resp.data)['message'], 'Unable to decode data')
+        assert resp.status_code == 400
+        assert loads(resp.data)['message'] == 'Unable to decode data'
 
         search = {
             'filters': [
@@ -1074,9 +1066,9 @@ class SearchTest(TestSupportPrefilled):
 
         # Let's search for users with that above filter
         resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
+        assert resp.status_code == 200
         loaded = loads(resp.data)
-        self.assertEqual(len(loaded['objects']), 3)  # Mary, Lucy and Katy
+        assert len(loaded['objects']) == 3  # Mary, Lucy and Katy
 
         # Tests searching for a single row
         search = {
@@ -1086,14 +1078,14 @@ class SearchTest(TestSupportPrefilled):
             ],
         }
         resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(loads(resp.data)['name'], u'Lincoln')
+        assert resp.status_code == 200
+        assert loads(resp.data)['name'] == u'Lincoln'
 
         # Looking for something that does not exist on the database
         search['filters'][0]['val'] = 'Sammy'
         resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(loads(resp.data)['message'], 'No result found')
+        assert resp.status_code == 400
+        assert loads(resp.data)['message'] == 'No result found'
 
         # We have to receive an error if the user provides an invalid
         # data to the search, like this:
@@ -1103,21 +1095,21 @@ class SearchTest(TestSupportPrefilled):
             ]
         }
         resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
+        assert resp.status_code == 200
         #assert loads(resp.data)['error_list'][0] == \
         #    {'age': 'Please enter a number'}
-        self.assertEqual(len(loads(resp.data)['objects']), 0)
+        assert len(loads(resp.data)['objects']) == 0
 
         # Testing the order_by stuff
         search = {'order_by': [{'field': 'age', 'direction': 'asc'}]}
         resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
+        assert resp.status_code == 200
         loaded = loads(resp.data)['objects']
-        self.assertEqual(loaded[0][u'age'], 7)
-        self.assertEqual(loaded[1][u'age'], 19)
-        self.assertEqual(loaded[2][u'age'], 23)
-        self.assertEqual(loaded[3][u'age'], 25)
-        self.assertEqual(loaded[4][u'age'], 28)
+        assert loaded[0][u'age'] == 7
+        assert loaded[1][u'age'] == 19
+        assert loaded[2][u'age'] == 23
+        assert loaded[3][u'age'] == 25
+        assert loaded[4][u'age'] == 28
 
         # Test the IN operation
         search = {
@@ -1126,10 +1118,10 @@ class SearchTest(TestSupportPrefilled):
             ]
         }
         resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
+        assert resp.status_code == 200
         loaded = loads(resp.data)['objects']
-        self.assertEqual(loaded[0][u'age'], 7)
-        self.assertEqual(loaded[1][u'age'], 28)
+        assert loaded[0][u'age'] == 7
+        assert loaded[1][u'age'] == 28
 
         # Testing related search
         update = {
@@ -1138,7 +1130,7 @@ class SearchTest(TestSupportPrefilled):
             }
         }
         resp = self.app.patch('/api/person/1', data=dumps(update))
-        self.assertEqual(resp.status_code, 200)
+        assert resp.status_code == 200
 
         # TODO document this
         search = {
@@ -1150,8 +1142,8 @@ class SearchTest(TestSupportPrefilled):
             ]
         }
         resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(loads(resp.data)['computers'][0]['name'], 'lixeiro')
+        assert resp.status_code == 200
+        assert loads(resp.data)['computers'][0]['name'] == 'lixeiro'
 
         # Testing the comparation for two fields. We want to compare
         # `age' and `other' fields. If the first one is lower than or
@@ -1165,11 +1157,11 @@ class SearchTest(TestSupportPrefilled):
             ]
         }
         resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
+        assert resp.status_code == 200
         loaded = loads(resp.data)['objects']
-        self.assertEqual(len(loaded), 2)
-        self.assertEqual(loaded[0]['other'], 10)
-        self.assertEqual(loaded[1]['other'], 19)
+        assert len(loaded) == 2
+        assert loaded[0]['other'] == 10
+        assert loaded[1]['other'] == 19
 
     def test_search2(self):
         """Testing more search functionality."""
@@ -1179,20 +1171,20 @@ class SearchTest(TestSupportPrefilled):
             'filters': [{'name': 'id', 'op': 'equal_to', 'val': 1}]
         }
         resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(loads(resp.data)['name'], u'Lincoln')
+        assert resp.status_code == 200
+        assert loads(resp.data)['name'] == u'Lincoln'
 
         # Testing limit and offset
         search = {'limit': 1, 'offset': 1}
         resp = self.app.search('/api/person', dumps(search))
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(1, len(loads(resp.data)['objects']))
-        self.assertEqual(loads(resp.data)['objects'][0]['name'], u'Mary')
+        assert resp.status_code == 200
+        assert 1 == len(loads(resp.data)['objects'])
+        assert loads(resp.data)['objects'][0]['name'] == u'Mary'
 
         # Testing multiple results when calling .one()
         resp = self.app.search('/api/person', dumps({'single': True}))
-        self.assertEqual(resp.status_code, 400)
-        self.assertEqual(loads(resp.data)['message'], 'Multiple results found')
+        assert resp.status_code == 400
+        assert loads(resp.data)['message'] == 'Multiple results found'
 
     def test_search_disjunction(self):
         """Tests for search with disjunctive filters."""
@@ -1200,11 +1192,11 @@ class SearchTest(TestSupportPrefilled):
                              dict(name='age', op='ge', val=25)],
                     disjunction=True)
         response = self.app.search('/api/person', dumps(data))
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)['objects']
-        self.assertEqual(3, len(data))
-        self.assertEqual(set(['Lucy', 'Katy', 'John']),
-                         set([person['name'] for person in data]))
+        assert 3 == len(data)
+        assert set(['Lucy', 'Katy', 'John']) == \
+            set([person['name'] for person in data])
 
     def test_search_bad_arguments(self):
         """Tests that search requests with bad parameters respond with an error
@@ -1214,20 +1206,20 @@ class SearchTest(TestSupportPrefilled):
         # missing argument
         d = dict(filters=[dict(name='name', op='==')])
         resp = self.app.search('/api/person', dumps(d))
-        self.assertEqual(resp.status_code, 400)
+        assert resp.status_code == 400
 
         # missing operator
         d = dict(filters=[dict(name='name', val='Test')])
         resp = self.app.search('/api/person', dumps(d))
-        self.assertEqual(resp.status_code, 400)
+        assert resp.status_code == 400
 
         # missing fieldname
         d = dict(filters=[dict(op='==', val='Test')])
         resp = self.app.search('/api/person', dumps(d))
-        self.assertEqual(resp.status_code, 400)
+        assert resp.status_code == 400
 
 
-class AssociationProxyTest(DatabaseTestBase):
+class TestAssociationProxy(DatabaseTestBase):
     """Unit tests for models which have a relationship involving an association
     proxy.
 
@@ -1238,7 +1230,7 @@ class AssociationProxyTest(DatabaseTestBase):
         table.
 
         """
-        super(AssociationProxyTest, self).setUp()
+        super(TestAssociationProxy, self).setUp()
 
         tag_product = Table('tag_product', self.Base.metadata,
                             Column('tag_id', Integer,
@@ -1312,13 +1304,13 @@ class AssociationProxyTest(DatabaseTestBase):
         """
         response = self.app.get('/api/product/1')
         data = loads(response.data)
-        self.assertIn('chosen_images', data)
-        self.assertIn({'id': 1}, data['chosen_images'])
+        assert 'chosen_images' in data
+        assert {'id': 1} in data['chosen_images']
 
         response = self.app.get('/api/image/1')
         data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': 1}, data['products'])
+        assert 'products' in data
+        assert {'id': 1} in data['products']
 
     def _check_relations_two(self):
         """Makes :http:method:`get` requests for the product with ID 1 and the
@@ -1328,23 +1320,25 @@ class AssociationProxyTest(DatabaseTestBase):
         """
         response = self.app.get('/api/product/1')
         data = loads(response.data)
-        self.assertIn('chosen_images', data)
-        self.assertEquals(data['chosen_images'], [{'id': 1}, {'id': 2}])
-        self.assertEquals(data['chosen_product_images'],
-                          [{'image_id': 1, 'product_id': 1,
-                            'name': 'default name'},
-                           {'image_id': 2, 'product_id': 1,
-                            'name': 'default name'}])
+        assert 'chosen_images' in data
+
+        expected_chosen_project_images = [
+            {'image_id': 1, 'product_id': 1, 'name': 'default name'},
+            {'image_id': 2, 'product_id': 1, 'name': 'default name'}
+        ]
+
+        assert data['chosen_images'], [{'id': 1} == {'id': 2}]
+        assert data['chosen_product_images'] == expected_chosen_project_images
 
         response = self.app.get('/api/image/1')
         data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': 1}, data['products'])
+        assert 'products' in data
+        assert {'id': 1} in data['products']
 
         response = self.app.get('/api/image/2')
         data = loads(response.data)
-        self.assertIn('products', data)
-        self.assertIn({'id': 1}, data['products'])
+        assert 'products' in data
+        assert {'id': 1} in data['products']
 
     def test_get_data(self):
         """Tests that a :http:method:`get` request exhibits the correct
@@ -1368,7 +1362,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         data = {'products': [{'id': 1}]}
         response = self.app.post('/api/image', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
 
         self._check_relations()
 
@@ -1383,7 +1377,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         data = {'chosen_images': [{'id': 1}, {'id': 2}]}
         response = self.app.post('/api/product', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
 
         self._check_relations_two()
 
@@ -1398,7 +1392,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         data = {'chosen_images': [{'id': 1}]}
         response = self.app.patch('/api/product/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         self._check_relations()
 
@@ -1414,7 +1408,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         data = {'chosen_images': [{'id': 1}, {'id': 2}]}
         response = self.app.patch('/api/product/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         self._check_relations_two()
 
@@ -1429,7 +1423,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         data = {'chosen_images': {'add': {'id': 1}}}
         response = self.app.patch('/api/product/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         self._check_relations()
 
@@ -1445,15 +1439,15 @@ class AssociationProxyTest(DatabaseTestBase):
 
         data = {'chosen_images': {'add': {'id': 1}}}
         response = self.app.patch('/api/product/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         data = {'chosen_images': {'add': {'id': 2}}}
         response = self.app.patch('/api/product/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         data = {'chosen_images': {'remove': [{'id': 2}]}}
         response = self.app.patch('/api/product/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         self._check_relations()
 
@@ -1469,25 +1463,25 @@ class AssociationProxyTest(DatabaseTestBase):
 
         data = {'chosen_images': [{'id': 1}, {'id': 2}]}
         response = self.app.patch('/api/product/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         filters = {'filters':
                        [{'name': 'chosen_images__id', 'op': 'any', 'val': 1}]}
         response = self.app.get('/api/product?q=' + dumps(filters))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         data = loads(response.data)
-        self.assertIn({'id': 1}, data['objects'][0]['chosen_images'])
+        assert {'id': 1} in data['objects'][0]['chosen_images']
 
         data = {'chosen_images': {'remove': [{'id': 1}]}}
         response = self.app.patch('/api/product/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         filters = {'filters':
                        [{'name': 'chosen_images__id', 'op': 'any', 'val': 1}]}
         response = self.app.get('/api/product?q=' + dumps(filters))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         data = loads(response.data)
-        self.assertEqual(data['num_results'], 0)
+        assert data['num_results'] == 0
 
     def test_scalar(self):
         """Tests that association proxies to remote scalar attributes work
@@ -1503,18 +1497,7 @@ class AssociationProxyTest(DatabaseTestBase):
 
         data = {'tag_names': ['tag1', 'tag2']}
         response = self.app.patch('/api/product/1', data=dumps(data))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
         data = loads(response.data)
 
-        self.assertEqual(sorted(data['tag_names']), sorted(['tag1', 'tag2']))
-
-
-def load_tests(loader, standard_tests, pattern):
-    """Returns the test suite for this module."""
-    suite = TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(FSAModelTest))
-    suite.addTest(loader.loadTestsFromTestCase(FunctionAPITestCase))
-    suite.addTest(loader.loadTestsFromTestCase(APITestCase))
-    suite.addTest(loader.loadTestsFromTestCase(AssociationProxyTest))
-    suite.addTest(loader.loadTestsFromTestCase(SearchTest))
-    return suite
+        assert sorted(data['tag_names']), sorted(['tag1' == 'tag2'])

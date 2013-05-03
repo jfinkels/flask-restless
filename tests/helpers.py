@@ -9,9 +9,9 @@
 
 """
 import datetime
-from unittest2 import TestCase
 
 from flask import Flask
+from nose import SkipTest
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import Date
@@ -30,7 +30,30 @@ from sqlalchemy.orm import sessionmaker
 from flask.ext.restless import APIManager
 
 
-class FlaskTestBase(TestCase):
+def skip_unless(condition, reason=None):
+    """Decorator that skips `test` unless `condition` is ``True``.
+
+    This is a replacement for :func:`unittest.skipUnless` that works with
+    ``nose``. The argument ``reason`` is a string describing why the test was
+    skipped.
+
+    """
+    def skip(test):
+        message = 'Skipped %s: %s' % (test.__name__, reason)
+
+        # TODO Since we don't check the case in which `test` is a class, the
+        # result of running the tests will be a single skipped test, although
+        # it should show one skip for each test method within the class.
+        def inner(*args, **kw):
+            if not condition:
+                raise SkipTest(message)
+            return test(*args, **kw)
+        inner.__name__ = test.__name__
+        return inner
+    return skip
+
+
+class FlaskTestBase(object):
     """Base class for tests which use a Flask application.
 
     The Flask test client can be accessed at ``self.app``. The Flask
@@ -40,8 +63,6 @@ class FlaskTestBase(TestCase):
 
     def setUp(self):
         """Creates the Flask application and the APIManager."""
-        super(FlaskTestBase, self).setUp()
-
         # create the Flask application
         app = Flask(__name__)
         app.config['DEBUG'] = True

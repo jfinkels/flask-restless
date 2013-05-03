@@ -1,8 +1,12 @@
 *.pyc
 
+# local TODO notes
+TODO
+
 # coverage files
 *.coverage
 htmlcov
+cover
 
 # temporary files
 *~

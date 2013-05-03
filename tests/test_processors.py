@@ -12,19 +12,17 @@
 from __future__ import with_statement
 
 from datetime import date
-from unittest2 import TestSuite
 
 from flask import json
 from flask.ext.restless.views import ProcessingException
 from .helpers import TestSupport
 
-__all__ = ['ProcessorsTest']
 
 dumps = json.dumps
 loads = json.loads
 
 
-class ProcessorsTest(TestSupport):
+class TestProcessors(TestSupport):
     """Unit tests for preprocessors and postprocessors."""
 
     def setUp(self):
@@ -33,7 +31,7 @@ class ProcessorsTest(TestSupport):
 
         """
         # create the database
-        super(ProcessorsTest, self).setUp()
+        super(TestProcessors, self).setUp()
 
         # to facilitate searching
         self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
@@ -52,9 +50,9 @@ class ProcessorsTest(TestSupport):
         self.manager.create_api(self.Person, methods=['GET', 'POST'],
                                 preprocessors=pre)
         response = self.app.post('/api/person', data=dumps({'name': u'test'}))
-        self.assertEqual(201, response.status_code)
+        assert 201 == response.status_code
         response = self.app.get('/api/person/1')
-        self.assertEqual(response.status_code, 403)
+        assert response.status_code == 403
 
     def test_get_many_preprocessor(self):
         def check_permissions(search_params=None, **kw):
@@ -78,15 +76,15 @@ class ProcessorsTest(TestSupport):
         response = self.app.get('/api/person')
         objs = loads(response.data)['objects']
         ids = [obj['id'] for obj in objs]
-        self.assertEqual(ids, [1, 3])
-        self.assertEqual(response.status_code, 200)
+        assert ids == [1, 3]
+        assert response.status_code == 200
 
         search = dict(filters=[dict(name='name', val='Lincoln', op='equals')])
         response = self.app.search('/api/person', dumps(search))
         num_results = loads(response.data)['num_results']
 
-        self.assertEqual(num_results, 1)
-        self.assertEqual(response.status_code, 200)
+        assert num_results == 1
+        assert response.status_code == 200
 
     def test_post_preprocessor(self):
         """Tests :http:method:`post` requests with a preprocessor function."""
@@ -107,15 +105,15 @@ class ProcessorsTest(TestSupport):
 
         response = self.app.post('/api/v2/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
 
         personid = loads(response.data)['id']
         person = self.session.query(self.Person).filter_by(id=personid).first()
-        self.assertEquals(person.other, 7)
+        assert person.other == 7
 
         response = self.app.post('/api/v3/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
-        self.assertEqual(response.status_code, 403)
+        assert response.status_code == 403
 
     def test_delete_preprocessor(self):
         """Tests for using a preprocessor with :http:method:`delete` requests.
@@ -141,11 +139,11 @@ class ProcessorsTest(TestSupport):
 
         # Try deleting it
         response = self.app.delete('/api/person/1')
-        self.assertEqual(response.status_code, 403)
+        assert response.status_code == 403
 
         # Making sure it has been not deleted
         people = self.session.query(self.Person).filter_by(id=1)
-        self.assertEquals(people.count(), 1)
+        assert people.count() == 1
 
     def test_patch_single_preprocessor(self):
         """Tests for using a preprocessor with :http:method:`patch` requests.
@@ -172,7 +170,7 @@ class ProcessorsTest(TestSupport):
 
         # Try updating people with id=1
         response = self.app.patch('/api/person/1', data=dumps({'age': 27}))
-        self.assertEqual(response.status_code, 403)
+        assert response.status_code == 403
 
     def test_patch_single_preprocessor2(self):
         """Tests for using a preprocessor with :http:method:`patch` requests.
@@ -198,12 +196,12 @@ class ProcessorsTest(TestSupport):
 
         # Try updating people with id=1
         response = self.app.patch('/api/person/1', data=dumps({'age': 27}))
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         resp = self.app.get('/api/person/1')
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(loads(resp.data)['age'], 27)
-        self.assertEqual(loads(resp.data)['other'], 27)
+        assert resp.status_code == 200
+        assert loads(resp.data)['age'] == 27
+        assert loads(resp.data)['other'] == 27
 
     def test_patch_many_preprocessor(self):
         """Tests for using a preprocessor with :http:method:`patch` requests
@@ -238,9 +236,9 @@ class ProcessorsTest(TestSupport):
         response = self.app.get('/api/person')
         loaded = loads(response.data)['objects']
         for i in loaded:
-            self.assertEqual(i['birth_date'], ('%s-%s-%s' % (
-                    year, str(month).zfill(2), str(day).zfill(2))))
-            self.assertEqual(i['other'], 27)
+            assert i['birth_date'] == ('%s-%s-%s' % (
+                year, str(month).zfill(2), str(day).zfill(2)))
+            assert i['other'] == 27
 
     def test_processor_no_change(self):
         """Tests :http:method:`post` requests with a preprocessor function.
@@ -256,28 +254,28 @@ class ProcessorsTest(TestSupport):
 
         response = self.app.post('/api/v2/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
-        self.assertEqual(response.status_code, 201)
+        assert response.status_code == 201
 
         personid = loads(response.data)['id']
         person = self.session.query(self.Person).filter_by(id=personid).first()
-        self.assertEquals(person.name, u'Lincoln')
-        self.assertEquals(person.age, 23)
+        assert person.name == u'Lincoln'
+        assert person.age == 23
 
         # Test for GET_SINGLE
         response = self.app.get('/api/v2/person/%d' % personid)
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         person_response = loads(response.data)
-        self.assertEquals(person_response['name'], person.name)
-        self.assertEquals(person_response['age'], person.age)
+        assert person_response['name'] == person.name
+        assert person_response['age'] == person.age
 
         # Test for GET_MANY
         response = self.app.get('/api/v2/person')
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
         person_response = loads(response.data)["objects"][0]
-        self.assertEquals(person_response['name'], person.name)
-        self.assertEquals(person_response['age'], person.age)
+        assert person_response['name'] == person.name
+        assert person_response['age'] == person.age
 
     def test_add_filters(self):
         """Test for adding a filter to a :http:method:`get` request for a
@@ -306,15 +304,8 @@ class ProcessorsTest(TestSupport):
 
         # Test that the filter is added on GET requests to the collection.
         response = self.app.get('/api/person')
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         data = loads(response.data)['objects']
-        self.assertEqual(2, len(data))
-        self.assertEqual(sorted(['bar', 'baz']),
-                         sorted([person['name'] for person in data]))
-
-
-def load_tests(loader, standard_tests, pattern):
-    """Returns the test suite for this module."""
-    suite = TestSuite()
-    suite.addTest(loader.loadTestsFromTestCase(ProcessorsTest))
-    return suite
+        assert 2 == len(data)
+        assert sorted(['bar', 'baz']) == sorted([person['name']
+                                                 for person in data])

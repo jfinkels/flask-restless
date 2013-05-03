@@ -32,49 +32,6 @@ else:
     requirements.append('python-dateutil!=2.0')
 
 
-class run_coverage(Command):
-    """Runs ``coverage``, the Python code coverage tool to generate a test
-    coverage report.
-
-    This command requires that `coverage.py
-    <http://nedbatchelder.com/code/coverage>`_ is installed. This can be done
-    by doing, for example::
-
-        pip install coverage
-
-    """
-
-    #: A brief description of the command.
-    description = "Generate a test coverage report."
-
-    #: Options which can be provided by the user.
-    user_options = []
-
-    def initialize_options(self):
-        """Intentionally unimplemented."""
-        pass
-
-    def finalize_options(self):
-        """Intentionally unimplemented."""
-        pass
-
-    def run(self):
-        """Runs coverage.py on the test suite then generates an HTML report,
-        both in a subprocess.
-
-        """
-        import subprocess
-        try:
-            subprocess.call(['coverage', 'run', '--source=flask_restless',
-                             '--branch', 'run-tests.py'])
-            subprocess.call(['coverage', 'html'])
-        except OSError:
-            print('coverage.py not found.'
-                  ' Install it with "pip install coverage".')
-            sys.exit(-1)
-        print('HTML coverage report generated at "htmlcov/".')
-
-
 setup(
     author='Jeffrey Finkelstein',
     author_email='jeffrey.finkelstein@gmail.com',
@@ -90,7 +47,6 @@ setup(
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
-    cmdclass={'coverage': run_coverage},
     description='A Flask extension for easy ReSTful API generation',
     download_url='http://pypi.python.org/pypi/Flask-Restless',
     install_requires=requirements,
@@ -101,8 +57,8 @@ setup(
     name='Flask-Restless',
     platforms='any',
     packages=['flask_restless'],
-    test_suite='tests.suite',
-    tests_require=['unittest2'],
+    test_suite='nose.collector',
+    tests_require=['nose'],
     url='http://github.com/jfinkels/flask-restless',
     version='0.10.1-dev',
     zip_safe=False
