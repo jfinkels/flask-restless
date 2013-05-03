@@ -15,7 +15,8 @@ Version 0.10.1-dev
 
 Not yet released.
 
-- Switch to `nose <http://nose.readthedocs.org>`_ for testing.
+- #115: change ``assertEqual()`` methods to ``assert`` statements in tests.
+- #184, #186: Switch to `nose <http://nose.readthedocs.org>`_ for testing.
 
 Version 0.10.0
 --------------
