@@ -495,6 +495,34 @@ The :exc:`ProcessingException` allows you to specify an HTTP status code for
 the generated response and an error message which the client will receive as
 part of the JSON in the body of the response.
 
+Preprocessors for collections
+-----------------------------
+
+When the server receives, for example, a request for :http:get:`/api/person`,
+Flask-Restless interprets this request as a search with no filters (that is, a
+search for all instances of ``Person`` without exception). In other words,
+:http:get:`/api/person` is roughly equivalent to
+:http:get:`/api/person?q={}`. Therefore, if you want to filter the set of
+``Person`` instances returned by such a request, you can create a preprocessor
+for a :http:method:`get` request to the collection endpoint that *appends
+filters* to the ``search_params`` keyword argument. For example::
+
+    def preprocessor(search_params=None, **kw):
+        # This checks if the preprocessor function is being called before a
+        # request that does not have search parameters.
+        if search_params is None:
+            return
+        # Create the filter you wish to add; in this case, we include only
+        # instances with ``id`` not equal to 1.
+        filt = dict(name='id', op='neq', val=1)
+        # Check if there are any filters there already.
+        if 'filters' not in search_params:
+            search_params['filters'] = []
+        # *Append* your filter to the list of filters.
+        search_params['filters'].append(filt)
+
+    apimanager.create_api(Person, preprocessors=dict(GET_MANY=[preprocessor]))
+
 .. _authentication:
 
 Requiring authentication for some methods

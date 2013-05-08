@@ -17,6 +17,8 @@ Not yet released.
 
 - #115: change ``assertEqual()`` methods to ``assert`` statements in tests.
 - #184, #186: Switch to `nose <http://nose.readthedocs.org>`_ for testing.
+- #197: documents technique for adding filters in processors when there are
+  none initially.
 
 Version 0.10.0
 --------------
