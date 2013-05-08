@@ -29,9 +29,13 @@ from sqlalchemy.sql.expression import _BinaryExpression
 
 #: Names of attributes which should definitely not be considered relations when
 #: dynamically computing a list of relations of a SQLAlchemy model.
-BLACKLIST = ('query', 'query_class', '_sa_class_manager',
-             '_decl_class_registry')
+RELATION_BLACKLIST = ('query', 'query_class', '_sa_class_manager',
+                      '_decl_class_registry')
 
+
+#: Names of columns which should definitely not be considered user columns to
+#: be included in a dictionary representation of a model.
+COLUMN_BLACKLIST = ('_sa_polymorphic_on', )
 
 #: Types which should be considered columns of a model when iterating over all
 #: attributes of a model class.
@@ -110,7 +114,8 @@ def get_columns(model):
 
 def get_relations(model):
     """Returns a list of relation names of `model` (as a list of strings)."""
-    return [k for k in dir(model) if not (k.startswith('__') or k in BLACKLIST)
+    return [k for k in dir(model)
+            if not (k.startswith('__') or k in RELATION_BLACKLIST)
             and get_related_model(model, k)]
 
 
@@ -261,7 +266,8 @@ def to_dict(instance, deep=None, exclude=None, include=None,
     elif include is not None:
         columns = (c for c in columns if c in include)
     # create a dictionary mapping column name to value
-    result = dict((col, getattr(instance, col)) for col in columns)
+    result = dict((col, getattr(instance, col)) for col in columns
+                  if not (col.startswith('__') or col in COLUMN_BLACKLIST))
     # Convert datetime and date objects to ISO 8601 format.
     #
     # TODO We can get rid of this when issue #33 is resolved.
