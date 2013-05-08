@@ -318,10 +318,10 @@ class TestAPI(TestSupport):
             ]
         }
         response = self.app.post('/api/computer', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
-        self.assertIn('id', loads(response.data))
+        assert response.status_code == 201
+        assert 'id' in loads(response.data)
         response = self.app.get('/api/computer/1')
-        self.assertEqual(response.status_code, 200)
+        assert response.status_code == 200
 
     def test_post_bad_parameter(self):
         """Tests that attempting to make a :http:method:`post` request with a
@@ -413,7 +413,7 @@ class TestAPI(TestSupport):
         
         """
         response = self.app.post('/api/computer', data=dumps({}))
-        self.assertEqual(201, response.status_code)
+        assert 201 == response.status_code
         vim = self.Program(name=u'Vim')
         emacs = self.Program(name=u'Emacs')
         self.session.add_all([vim, emacs])
@@ -430,13 +430,13 @@ class TestAPI(TestSupport):
         }
         response = self.app.patch('/api/computer/1', data=dumps(data))
         computer = loads(response.data)
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         vim_relation = {
             'computer_id': 1,
             'program_id': 1,
             'licensed': False
         }
-        self.assertIn(vim_relation, computer['programs'])
+        assert vim_relation in computer['programs']
         data = {
             'programs': {
                 'add': [
@@ -449,19 +449,19 @@ class TestAPI(TestSupport):
         }
         response = self.app.patch('/api/computer/1', data=dumps(data))
         computer = loads(response.data)
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         emacs_relation = {
             'computer_id': 1,
             'program_id': 2,
             'licensed': True
         }
-        self.assertIn(emacs_relation, computer['programs'])
+        assert emacs_relation in computer['programs']
         vim_relation = {
             'computer_id': 1,
             'program_id': 1,
             'licensed': False
         }
-        self.assertIn(vim_relation, computer['programs'])
+        assert vim_relation in computer['programs']
 
     def test_patch_remove_m2m(self):
         """Test for removing a relation on a model that uses an association 
@@ -471,7 +471,7 @@ class TestAPI(TestSupport):
         
         """
         response = self.app.post('/api/computer', data=dumps({}))
-        self.assertEqual(201, response.status_code)
+        assert 201 == response.status_code
         vim = self.Program(name=u'Vim')
         emacs = self.Program(name=u'Emacs')
         self.session.add_all([vim, emacs])
@@ -490,7 +490,7 @@ class TestAPI(TestSupport):
         }
         response = self.app.patch('/api/computer/1', data=dumps(data))
         computer = loads(response.data)
-        self.assertEqual(200, response.status_code)
+        assert 200 == response.status_code
         vim_relation = {
             'computer_id': 1,
             'program_id': 1,
@@ -501,8 +501,8 @@ class TestAPI(TestSupport):
             'program_id': 2,
             'licensed': True
         }
-        self.assertIn(vim_relation, computer['programs'])
-        self.assertIn(emacs_relation, computer['programs'])
+        assert vim_relation in computer['programs']
+        assert emacs_relation in computer['programs']
         data = {
             'programs': {
                 'remove': [{'program_id': 1}]
@@ -510,9 +510,9 @@ class TestAPI(TestSupport):
         }
         response = self.app.patch('/api/computer/1', data=dumps(data))
         computer = loads(response.data)
-        self.assertEqual(200, response.status_code)
-        self.assertNotIn(vim_relation, computer['programs'])
-        self.assertIn(emacs_relation, computer['programs'])
+        assert 200 == response.status_code
+        assert vim_relation not in computer['programs']
+        assert emacs_relation in computer['programs']
 
 
     def test_delete(self):
