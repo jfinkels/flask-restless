@@ -6,8 +6,10 @@ Format of requests and responses
 ================================
 
 Requests and responses are all in JSON format, so the mimetype is
-:mimetype:`application/json`. Ensure that requests you make have the correct
-mimetype and/or content type.
+:mimetype:`application/json`. Ensure that requests you make that require a body
+(:http:method:`patch` and :http:method:`post` requests) have the header
+``Content-Type: application/json``; if they do not, the server will respond
+with a :http:statuscode:`415`.
 
 Suppose we have the following Flask-SQLAlchemy models (the example works with
 pure SQLALchemy just the same)::

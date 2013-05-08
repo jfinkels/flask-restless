@@ -75,6 +75,21 @@ class FlaskTestBase(object):
         # create the test client
         self.app = app.test_client()
 
+        # Ensure that all requests have Content-Type set to "application/json"
+        # unless otherwise specified.
+        for methodname in ('get', 'put', 'patch', 'post', 'delete'):
+            # Create a decorator for the test client request methods that adds
+            # a JSON Content-Type by default if none is specified.
+            def set_content_type(func):
+                def new_func(*args, **kw):
+                    if 'content_type' not in kw:
+                        kw['content_type'] = 'application/json'
+                    return func(*args, **kw)
+                return new_func
+            # Decorate the original test client request method.
+            old_method = getattr(self.app, methodname)
+            setattr(self.app, methodname, set_content_type(old_method))
+
 
 class DatabaseTestBase(FlaskTestBase):
     """Base class for tests which use a database and have an

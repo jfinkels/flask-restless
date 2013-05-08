@@ -15,6 +15,9 @@ Version 0.10.2-dev
 
 Not yet released.
 
+- Requests that require a body but don't have ``Content-Type:
+  application/json`` will cause a :http:statuscode:`415` response.
+- Responses now have ``Content-Type: application/json``.
 - #180: allow more expressive ``has`` and ``any`` searches.
 - #202: allow setting hybrid properties with expressions and setters.
 

@@ -1185,7 +1185,7 @@ class TestHeaders(TestSupportPrefilled):
 
     def setUp(self):
         super(TestHeaders, self).setUp()
-        self.manager.create_api(self.Person, methods=['GET', 'POST'])
+        self.manager.create_api(self.Person, methods=['GET', 'POST', 'PATCH'])
 
     def test_post_location(self):
         """Tests that a :http:method:`post` request responds with the correct
@@ -1215,6 +1215,68 @@ class TestHeaders(TestSupportPrefilled):
         # last page
         assert 'page=5' in links
         assert 'rel="last"' in links
+
+    def test_content_type(self):
+        """Tests that the server responds only to requests with a JSON
+        Content-Type.
+
+        """
+        # A request that does not require a body without a Content-Type headers
+        # should be OK either way.
+        response = self.app.get('/api/person/1', content_type=None)
+        assert 200 == response.status_code
+        response = self.app.get('/api/person/1',
+                                content_type='application/json')
+        assert 200 == response.status_code
+        # A request that requires a body but without a Content-Type header
+        # should produce an error (specifically, error 415 Unsupported media
+        # type).
+        response = self.app.post('/api/person', data=dumps(dict(name='foo')),
+                                 content_type=None)
+        assert 415 == response.status_code
+        response = self.app.post('/api/person', data=dumps(dict(name='foo')),
+                                 content_type='application/json')
+        assert 201 == response.status_code
+        # A request without an Accept header should return JSON.
+        assert 'Content-Type' in response.headers
+        assert 'application/json' == response.headers['Content-Type']
+        assert 'foo' == loads(response.data)['name']
+        response = self.app.post('/api/person', data=dumps(dict(name='foo')),
+                                 content_type=None)
+        assert 415 == response.status_code
+        # Same goes for a PATCH request.
+        response = self.app.patch('/api/person/6', data=dumps(dict(name='x')),
+                                  content_type=None)
+        assert 415 == response.status_code
+        response = self.app.patch('/api/person/6', data=dumps(dict(name='x')),
+                                  content_type='application/json')
+        assert 200 == response.status_code
+        # A request without an Accept header should return JSON.
+        assert 'Content-Type' in response.headers
+        assert 'application/json' == response.headers['Content-Type']
+        assert 'x' == loads(response.data)['name']
+
+    def test_accept(self):
+        """Tests that the server responds to the ``Accept`` with a response of
+        the correct content-type.
+
+        """
+        # A request without an Accept header should return JSON.
+        response = self.app.get('/api/person/1')
+        assert 200 == response.status_code
+        assert 'Content-Type' in response.headers
+        assert 'application/json' == response.headers['Content-Type']
+        assert 1 == loads(response.data)['id']
+        response = self.app.get('/api/person/1',
+                                headers=dict(Accept='application/json'))
+        assert 200 == response.status_code
+        assert 'Content-Type' in response.headers
+        assert 'application/json' == response.headers['Content-Type']
+        assert 1 == loads(response.data)['id']
+        #headers = dict(Accept='application/xml')
+        #assert 'Content-Type' in response.headers
+        #assert 'application/xml' == response.headers['Content-Type']
+        #assert '<id>1</id>' in response.data
 
 
 class TestSearch(TestSupportPrefilled):

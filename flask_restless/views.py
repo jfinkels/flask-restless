@@ -975,6 +975,11 @@ class API(ModelView):
         single level of relationship data.
 
         """
+        content_type = request.headers.get('Content-Type', None)
+        if content_type != 'application/json':
+            msg = 'Request must have "Content-Type: application/json" header'
+            return jsonify_status_code(415, message=msg)
+
         # try to read the parameters for the model from the body of the request
         try:
             params = json.loads(request.data)
@@ -1070,6 +1075,11 @@ class API(ModelView):
            Added the `relationname` keyword argument.
 
         """
+        content_type = request.headers.get('Content-Type', None)
+        if content_type != 'application/json':
+            msg = 'Request must have "Content-Type: application/json" header'
+            return jsonify_status_code(415, message=msg)
+
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.data)
