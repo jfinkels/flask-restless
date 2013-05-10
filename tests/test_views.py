@@ -1627,13 +1627,12 @@ class TestAssociationProxy(DatabaseTestBase):
         assert data['num_results'] == 0
 
         filters = {'filters':
-                       [{'name': 'chosen_images', 'op': 'any', 'val': {'name':'id', 'op':'eq', 'val':1}}]}
+                       [{'name': 'chosen_images', 'op': 'any',
+                         'val': {'name': 'id', 'op': 'eq', 'val': 1}}]}
         response = self.app.get('/api/product?q=' + dumps(filters))
         assert response.status_code == 200
         data = loads(response.data)
         assert data['num_results'] == 0
-
-
 
     def test_scalar(self):
         """Tests that association proxies to remote scalar attributes work

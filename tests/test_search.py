@@ -210,21 +210,19 @@ class TestOperators(TestSupportPrefilled):
         person3.computers = [computer5, computer6]
         self.session.commit()
         # test 'any'
-        d = dict(filters=[dict(name='computers', op='any',
-                               val=dict(name='vendor', op='like', val=u'%o%'),
-                               )])
+        val = dict(name='vendor', op='like', val=u'%o%')
+        d = dict(filters=[dict(name='computers', op='any', val=val)])
         result = search(self.session, self.Person, d)
         assert len(result) == 2
         # test 'has'
-        d = dict(filters=[dict(name='owner', op='has',
-                               val=dict(name='name', op='like', val=u'%incol%'),
-                               )])
+        val=dict(name='name', op='like', val=u'%incol%')
+        d = dict(filters=[dict(name='owner', op='has', val=val)])
         result = search(self.session, self.Computer, d)
         assert len(result) == 3
 
-
     def test_has_and_any_nested_suboperators(self):
-        """Tests for the ``"has"`` and ``"any"`` operators with nested suboperators.
+        """Tests for the ``"has"`` and ``"any"`` operators with nested
+        suboperators.
 
         The `any` operator returns all instances for which any related instance
         in a given collection has some property. The `has` operator returns all
@@ -248,19 +246,15 @@ class TestOperators(TestSupportPrefilled):
         person3.computers = [computer5, computer6]
         self.session.commit()
         # test 'any'
-        d = dict(filters=[dict(name='computers', op='any',
-                               val=dict(name='owner', op='has',
-                                        val=dict(name='name', op='like', val=u'%incol%')
-                                        ),
-                               )])
+        innerval = dict(name='name', op='like', val=u'%incol%')
+        val = dict(name='owner', op='has', val=innerval)
+        d = dict(filters=[dict(name='computers', op='any', val=val)])
         result = search(self.session, self.Person, d)
         assert len(result) == 1
         # test 'has'
-        d = dict(filters=[dict(name='owner', op='has',
-                               val=dict(name='computers', op='any',
-                                        val=dict(name='vendor', op='like', val='%o%')
-                                        ),
-                               )])
+        innerval = dict(name='vendor', op='like', val='%o%')
+        val = dict(name='computers', op='any', val=innerval)
+        d = dict(filters=[dict(name='owner', op='has', val=val)])
         result = search(self.session, self.Computer, d)
         assert len(result) == 5
 
