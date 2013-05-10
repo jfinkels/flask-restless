@@ -88,6 +88,11 @@ mappings, all of which are optional:
   ``<fieldname>`` may alternately specify a field on a related model, if it is
   a string of the form ``<relationname>__<fieldname>``.
 
+  If the field name is the name of a relation and the operator is ``"has"`` or
+  ``"any"``, the ``"val"`` argument can be a dictionary with the arguments
+  representing another filter to be applied as the argument for ``"has"`` or
+  ``"any"``.
+
   The returned list of matching instances will include only those instances
   that satisfy all of the given filters.
 
@@ -345,5 +350,33 @@ response will include only those ``Person`` instances that are related to any
            { "id": 3, "manufacturer": "Apple", "model": "iMac"}
          ]
        }
+     ]
+   }
+
+Using ``has`` and ``any``
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On request:
+
+.. sourcecode:: http
+
+   GET /api/person?q={"filters":[{"name":"computers","op":"any","val":{"name":"id","op":"gt","val":1}}]} HTTP/1.1
+   Host: example.com
+
+the response will include only those ``Person`` instances that have a related
+``Computer`` instance with ``id`` field of value greater than 1:
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+
+   {
+     "num_results": 6,
+     "total_pages": 3,
+     "page": 2,
+     "objects":
+     [
+       {"id": 1, "name": "John", "age": 80, "height": 65, "computers": [...]},
+       {"id": 2, "name": "Mary", "age": 73, "height": 60, "computers": [...]}
      ]
    }
