@@ -24,18 +24,6 @@ from .helpers import unicode_keys_to_strings
 from .helpers import session_query
 from .helpers import get_related_association_proxy_model
 
-#: The mapping from operator name (as accepted by the search method) to a
-#: function which returns the SQLAlchemy expression corresponding to that
-#: operator.
-#:
-#: Each of these functions accepts either one, two, or three arguments. The
-#: first argument is the field object on which to apply the operator. The
-#: second argument, where it exists, is the second argument to the operator.
-#: The third argument, where it exists, is the name of the field.
-#:
-#: Some operations have multiple names. For example, the equality operation can
-#: be described by the strings ``'=='``, ``'eq'``, ``'equals'``, etc.
-
 
 def _sub_operator(model, argument, fieldname):
     if isinstance(model, InstrumentedAttribute):
@@ -63,6 +51,17 @@ def has_op(model, argument, fieldname):
     return model.has(_sub_operator(model, argument, fieldname))
 
 
+#: The mapping from operator name (as accepted by the search method) to a
+#: function which returns the SQLAlchemy expression corresponding to that
+#: operator.
+#:
+#: Each of these functions accepts either one, two, or three arguments. The
+#: first argument is the field object on which to apply the operator. The
+#: second argument, where it exists, is the second argument to the operator.
+#: The third argument, where it exists, is the name of the field.
+#:
+#: Some operations have multiple names. For example, the equality operation can
+#: be described by the strings ``'=='``, ``'eq'``, ``'equals'``, etc.
 OPERATORS = {
     # Operators which accept a single argument.
     'is_null': lambda f: f == None,
