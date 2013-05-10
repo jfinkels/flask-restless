@@ -128,16 +128,23 @@ def get_related_model(model, relationname):
     attr = getattr(model, relationname)
     if relationname in cols and isinstance(attr.property, RelProperty):
         return cols[relationname].property.mapper.class_
-    elif isinstance(attr, AssociationProxy):
+    if isinstance(attr, AssociationProxy):
         return get_related_association_proxy_model(attr)
     return None
 
 
 def get_related_association_proxy_model(attr):
-    if hasattr(attr.remote_attr.property, 'mapper'):
-        return attr.remote_attr.property.mapper.class_
-    elif hasattr(attr.remote_attr.property, 'parent'):
-        return attr.remote_attr.property.parent.class_
+    """Returns the model class specified by the given SQLAlchemy relation
+    attribute, or ``None`` if no such class can be inferred.
+
+    `attr` must be a relation attribute corresponding to an association proxy.
+
+    """
+    prop = attr.remote_attr.property
+    for attribute in ('mapper', 'parent'):
+        if hasattr(prop, attribute):
+            return getattr(prop, attribute).class_
+    return None
 
 
 def has_field(model, fieldname):

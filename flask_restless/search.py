@@ -26,10 +26,18 @@ from .helpers import get_related_association_proxy_model
 
 
 def _sub_operator(model, argument, fieldname):
+    """Recursively calls :func:`QueryBuilder._create_operation` when argument
+    is a dictionary of the form specified in :ref:`search`.
+
+    This function is for use with the ``has`` and ``any`` search operations.
+
+    """
     if isinstance(model, InstrumentedAttribute):
         submodel = model.property.mapper.class_
     elif isinstance(model, AssociationProxy):
         submodel = get_related_association_proxy_model(model)
+    else:  # TODO what to do here?
+        pass
     if isinstance(argument, dict):
         fieldname = argument['name']
         operator = argument['op']
@@ -37,18 +45,10 @@ def _sub_operator(model, argument, fieldname):
         relation = None
         if '__' in fieldname:
             fieldname, relation = fieldname.split('__')
-        return QueryBuilder._create_operation(submodel, fieldname, operator, argument, relation)
-    else:
-        # Support legacy has/any with implicit eq operator
-        return getattr(submodel, fieldname)==argument
-
-
-def any_op(model, argument, fieldname):
-    return model.any(_sub_operator(model, argument, fieldname))
-
-
-def has_op(model, argument, fieldname):
-    return model.has(_sub_operator(model, argument, fieldname))
+        return QueryBuilder._create_operation(submodel, fieldname, operator,
+                                              argument, relation)
+    # Support legacy has/any with implicit eq operator
+    return getattr(submodel, fieldname) == argument
 
 
 #: The mapping from operator name (as accepted by the search method) to a
@@ -57,8 +57,14 @@ def has_op(model, argument, fieldname):
 #:
 #: Each of these functions accepts either one, two, or three arguments. The
 #: first argument is the field object on which to apply the operator. The
-#: second argument, where it exists, is the second argument to the operator.
-#: The third argument, where it exists, is the name of the field.
+#: second argument, where it exists, is either the second argument to the
+#: operator or a dictionary as described below. The third argument, where it
+#: exists, is the name of the field.
+#:
+#: For functions that accept three arguments, the second argument may be a
+#: dictionary containing ``'name'``, ``'op'``, and ``'val'`` mappings so that
+#: :func:`QueryBuilder._create_operation` may be applied recursively. For more
+#: information and examples, see :ref:`search`.
 #:
 #: Some operations have multiple names. For example, the equality operation can
 #: be described by the strings ``'=='``, ``'eq'``, ``'equals'``, etc.
@@ -96,8 +102,8 @@ OPERATORS = {
     'in': lambda f, a: f.in_(a),
     'not_in': lambda f, a: ~f.in_(a),
     # Operators which accept three arguments.
-    'has': has_op,
-    'any': any_op,
+    'has': lambda f, a, fn: f.has(_sub_operator(f, a, fn)),
+    'any': lambda f, a, fn: f.any(_sub_operator(f, a, fn)),
 }
 
 
