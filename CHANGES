@@ -16,6 +16,7 @@ Version 0.10.2-dev
 Not yet released.
 
 - #180: allow more expressive ``has`` and ``any`` searches.
+- #202: allow setting hybrid properties with expressions and setters.
 
 Version 0.10.1
 --------------
