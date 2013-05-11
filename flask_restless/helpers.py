@@ -26,6 +26,7 @@ from sqlalchemy.orm.exc import UnmappedInstanceError
 from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import _BinaryExpression
+from sqlalchemy.sql.expression import ColumnElement
 
 #: Names of attributes which should definitely not be considered relations when
 #: dynamically computing a list of relations of a SQLAlchemy model.
@@ -163,12 +164,15 @@ def is_date_field(model, fieldname):
 
     """
     field = getattr(model, fieldname)
-    if isinstance(field, AssociationProxy):
-        field = field.remote_attr
-    prop = field.property
-    if isinstance(prop, RelProperty):
-        return False
-    fieldtype = prop.columns[0].type
+    if isinstance(field, ColumnElement):
+        fieldtype = field.type
+    else:
+        if isinstance(field, AssociationProxy):
+            field = field.remote_attr
+        prop = field.property
+        if isinstance(prop, RelProperty):
+            return False
+        fieldtype = prop.columns[0].type
     return isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime)
 
 
