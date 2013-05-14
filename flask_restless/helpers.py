@@ -24,6 +24,7 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.attributes import QueryableAttribute
 from sqlalchemy.orm.exc import UnmappedInstanceError
 from sqlalchemy.orm.query import Query
+from sqlalchemy.orm.util import class_mapper
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import _BinaryExpression
 from sqlalchemy.sql.expression import ColumnElement
@@ -228,10 +229,18 @@ def is_like_list(instance, relation):
     return isinstance(related_value, AssociationProxy)
 
 
+def is_mapped_class(cls):
+    try:
+        class_mapper(cls)
+        return True
+    except:
+        return False
+
 # This code was adapted from :meth:`elixir.entity.Entity.to_dict` and
 # http://stackoverflow.com/q/1958219/108197.
 def to_dict(instance, deep=None, exclude=None, include=None,
-            exclude_relations=None, include_relations=None):
+            exclude_relations=None, include_relations=None,
+            include_methods=None):
     """Returns a dictionary representing the fields of the specified `instance`
     of a SQLAlchemy model.
 
@@ -262,6 +271,9 @@ def to_dict(instance, deep=None, exclude=None, include=None,
     names of fields on the related model which should be included in the
     returned dictionary; `exclude_relations` is similar.
 
+    `include_methods` is a list mapping strings to method names which will
+    be called and their return values added to the returned dictionary.
+
     """
     if (exclude is not None or exclude_relations is not None) and \
             (include is not None or include_relations is not None):
@@ -283,12 +295,18 @@ def to_dict(instance, deep=None, exclude=None, include=None,
     # create a dictionary mapping column name to value
     result = dict((col, getattr(instance, col)) for col in columns
                   if not (col.startswith('__') or col in COLUMN_BLACKLIST))
+    # add any included methods
+    if include_methods is not None:
+        result.update(dict((method, getattr(instance, method)())
+                           for method in include_methods))
     # Convert datetime and date objects to ISO 8601 format.
     #
     # TODO We can get rid of this when issue #33 is resolved.
     for key, value in result.items():
         if isinstance(value, datetime.date):
             result[key] = value.isoformat()
+        elif is_mapped_class(type(value)):
+            result[key] = to_dict(value)
     # recursively call _to_dict on each of the `deep` relations
     deep = deep or {}
     for relation, rdeep in deep.iteritems():

@@ -262,6 +262,54 @@ class TestAPIManager(TestSupport):
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
             assert column not in loads(response.data)
 
+    def test_include_methods(self):
+        """Tests that the `include_methods` argument specifies which methods to
+        return in the JSON representation of instances of the model.
+
+        """
+        # included
+        self.manager.create_api(self.Person, include_methods=['name_and_age'],
+                                url_prefix='/included')
+        # not included
+        self.manager.create_api(self.Person, url_prefix='/not_included')
+
+        # create a test person
+        self.manager.create_api(self.Person, methods=['POST'],
+                                url_prefix='/add')
+        d = dict(name=u'Test', age=10, other=20,
+                 birth_date=datetime.date(1999, 12, 31).isoformat())
+        response = self.app.post('/add/person', data=dumps(d))
+        assert response.status_code == 201
+        personid = loads(response.data)['id']
+
+        # get all
+        response = self.app.get('/included/person/%s' % personid)
+        assert loads(response.data)['name_and_age'] == 'Test (aged 10)'
+
+        # get none
+        response = self.app.get('/not_included/person/%s' % personid)
+        assert 'name_and_age' not in loads(response.data)
+
+    def test_included_method_returns_object(self):
+        """Tests that objects are serialized when returned from a method listed
+        in the `include_methods` argument.
+
+        """
+        date = datetime.date(1999, 12, 31)
+        person = self.Person(name='Test', age=10, other=20, birth_date=date)
+        computer = self.Computer(name='foo', vendor='bar', buy_date=date)
+        self.session.add(person)
+        person.computers.append(computer)
+        self.session.commit()
+
+        self.manager.create_api(self.Person,
+                                include_methods=['first_computer'])
+        response = self.app.get('/api/person/1')
+        assert 200 == response.status_code
+        data = loads(response.data)
+        assert 'first_computer' in data
+        assert 'foo' == data['first_computer']['name']
+
     def test_exclude_columns(self):
         """Tests that the ``exclude_columns`` argument specifies which columns
         to exclude in the JSON representation of instances of the model.

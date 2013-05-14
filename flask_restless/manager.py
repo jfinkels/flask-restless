@@ -179,8 +179,8 @@ class APIManager(object):
                              url_prefix='/api', collection_name=None,
                              allow_patch_many=False, allow_functions=False,
                              exclude_columns=None, include_columns=None,
-                             validation_exceptions=None, results_per_page=10,
-                             max_results_per_page=100,
+                             include_methods=None, validation_exceptions=None,
+                             results_per_page=10, max_results_per_page=100,
                              post_form_preprocessor=None,
                              preprocessors=None, postprocessors=None):
         """Creates an returns a ReSTful API interface as a blueprint, but does
@@ -266,6 +266,10 @@ class APIManager(object):
         empty. If `include_columns` is ``None``, then the returned dictionary
         will include all columns not excluded by `exclude_columns`.
 
+        If `include_methods` is an iterable of strings, the methods with names
+        corresponding to those in this list will be called and their output
+        included in the response.
+
         See :ref:`includes` for information on specifying included or excluded
         columns on fields of related models.
 
@@ -308,6 +312,9 @@ class APIManager(object):
         essentially the same, except the given functions are called after all
         other code. For more information on preprocessors and postprocessors,
         see :ref:`processors`.
+
+        .. versionadded:: 0.10.2
+           Added the `include_methods` keyword argument.
 
         .. versionchanged:: 0.10.0
            Removed `authentication_required_for` and `authentication_function`
@@ -368,10 +375,10 @@ class APIManager(object):
         apiname = APIManager.APINAME_FORMAT % collection_name
         # the view function for the API for this model
         api_view = API.as_view(apiname, self.session, model, exclude_columns,
-                               include_columns, validation_exceptions,
-                               results_per_page, max_results_per_page,
-                               post_form_preprocessor, preprocessors,
-                               postprocessors)
+                               include_columns, include_methods,
+                               validation_exceptions, results_per_page,
+                               max_results_per_page, post_form_preprocessor,
+                               preprocessors, postprocessors)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the

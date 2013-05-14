@@ -170,6 +170,13 @@ class TestSupport(DatabaseTestBase):
             def is_minor(self):
                 return self.age < 18
 
+            def name_and_age(self):
+                return "{0} (aged {1:g})".format(self.name, self.age)
+
+            def first_computer(self):
+                return sorted(self.computers, key=lambda k: k.name)[0]
+
+
         class LazyComputer(self.Base):
             __tablename__ = 'lazycomputer'
             id = Column(Integer, primary_key=True)
