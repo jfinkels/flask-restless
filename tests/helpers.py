@@ -171,7 +171,7 @@ class TestSupport(DatabaseTestBase):
                 return self.age < 18
 
             def name_and_age(self):
-                return "{0} (aged {1:g})".format(self.name, self.age)
+                return "%s (aged %d)" % (self.name, self.age)
 
             def first_computer(self):
                 return sorted(self.computers, key=lambda k: k.name)[0]
