@@ -298,7 +298,8 @@ def to_dict(instance, deep=None, exclude=None, include=None,
     # add any included methods
     if include_methods is not None:
         result.update(dict((method, getattr(instance, method)())
-                           for method in include_methods))
+                           for method in include_methods
+                           if not '.' in method))
     # Convert datetime and date objects to ISO 8601 format.
     #
     # TODO We can get rid of this when issue #33 is resolved.
@@ -325,9 +326,15 @@ def to_dict(instance, deep=None, exclude=None, include=None,
         elif (include_relations is not None and
               relation in include_relations):
             newinclude = include_relations[relation]
+        # Determine the included methods for the related model.
+        newmethods = None
+        if include_methods is not None:
+            newmethods = [method.split('.', 1)[1] for method in include_methods
+                        if method.split('.', 1)[0] == relation]
         if is_like_list(instance, relation):
             result[relation] = [to_dict(inst, rdeep, exclude=newexclude,
-                                        include=newinclude)
+                                        include=newinclude,
+                                        include_methods=newmethods)
                                 for inst in relatedvalue]
             continue
         # If the related value is dynamically loaded, resolve the query to get
@@ -335,7 +342,8 @@ def to_dict(instance, deep=None, exclude=None, include=None,
         if isinstance(relatedvalue, Query):
             relatedvalue = relatedvalue.one()
         result[relation] = to_dict(relatedvalue, rdeep, exclude=newexclude,
-                                   include=newinclude)
+                                   include=newinclude,
+                                   include_methods=newmethods)
     return result
 
 

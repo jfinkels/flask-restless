@@ -157,6 +157,9 @@ class TestSupport(DatabaseTestBase):
             owner = relationship('Person')
             programs = relationship('ComputerProgram', cascade="all, delete-orphan")
 
+            def speed(self):
+                return 42
+
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)

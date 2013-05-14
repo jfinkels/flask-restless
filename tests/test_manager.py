@@ -268,27 +268,45 @@ class TestAPIManager(TestSupport):
 
         """
         # included
-        self.manager.create_api(self.Person, include_methods=['name_and_age'],
-                                url_prefix='/included')
+        self.manager.create_api(self.Person, url_prefix='/included',
+                                include_methods=['name_and_age',
+                                                 'computers.speed'])
         # not included
         self.manager.create_api(self.Person, url_prefix='/not_included')
+        # related object
+        self.manager.create_api(self.Computer, url_prefix='/included',
+                                include_methods=['owner.name_and_age'])
 
         # create a test person
-        self.manager.create_api(self.Person, methods=['POST'],
-                                url_prefix='/add')
-        d = dict(name=u'Test', age=10, other=20,
-                 birth_date=datetime.date(1999, 12, 31).isoformat())
-        response = self.app.post('/add/person', data=dumps(d))
-        assert response.status_code == 201
-        personid = loads(response.data)['id']
+        date = datetime.date(1999, 12, 31)
+        person = self.Person(name='Test', age=10, other=20, birth_date=date)
+        computer = self.Computer(name='foo', vendor='bar', buy_date=date)
+        self.session.add(person)
+        person.computers.append(computer)
+        self.session.commit()
 
-        # get all
-        response = self.app.get('/included/person/%s' % personid)
+        # get one with included method
+        response = self.app.get('/included/person/%s' % person.id)
         assert loads(response.data)['name_and_age'] == 'Test (aged 10)'
 
-        # get none
-        response = self.app.get('/not_included/person/%s' % personid)
+        # get one without included method
+        response = self.app.get('/not_included/person/%s' % person.id)
         assert 'name_and_age' not in loads(response.data)
+
+        # get many with included method
+        response = self.app.get('/included/person')
+        response_data = loads(response.data)
+        assert response_data['objects'][0]['name_and_age'] == 'Test (aged 10)'
+
+        # get one through a related object
+        response = self.app.get('/included/computer')
+        response_data = loads(response.data)
+        assert 'name_and_age' in response_data['objects'][0]['owner']
+
+        # get many through a related object
+        response = self.app.get('/included/person')
+        response_data = loads(response.data)
+        assert response_data['objects'][0]['computers'][0]['speed'] == 42
 
     def test_included_method_returns_object(self):
         """Tests that objects are serialized when returned from a method listed
