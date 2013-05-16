@@ -262,6 +262,72 @@ class TestAPIManager(TestSupport):
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
             assert column not in loads(response.data)
 
+    def test_include_methods(self):
+        """Tests that the `include_methods` argument specifies which methods to
+        return in the JSON representation of instances of the model.
+
+        """
+        # included
+        self.manager.create_api(self.Person, url_prefix='/included',
+                                include_methods=['name_and_age',
+                                                 'computers.speed'])
+        # not included
+        self.manager.create_api(self.Person, url_prefix='/not_included')
+        # related object
+        self.manager.create_api(self.Computer, url_prefix='/included',
+                                include_methods=['owner.name_and_age'])
+
+        # create a test person
+        date = datetime.date(1999, 12, 31)
+        person = self.Person(name='Test', age=10, other=20, birth_date=date)
+        computer = self.Computer(name='foo', vendor='bar', buy_date=date)
+        self.session.add(person)
+        person.computers.append(computer)
+        self.session.commit()
+
+        # get one with included method
+        response = self.app.get('/included/person/%s' % person.id)
+        assert loads(response.data)['name_and_age'] == 'Test (aged 10)'
+
+        # get one without included method
+        response = self.app.get('/not_included/person/%s' % person.id)
+        assert 'name_and_age' not in loads(response.data)
+
+        # get many with included method
+        response = self.app.get('/included/person')
+        response_data = loads(response.data)
+        assert response_data['objects'][0]['name_and_age'] == 'Test (aged 10)'
+
+        # get one through a related object
+        response = self.app.get('/included/computer')
+        response_data = loads(response.data)
+        assert 'name_and_age' in response_data['objects'][0]['owner']
+
+        # get many through a related object
+        response = self.app.get('/included/person')
+        response_data = loads(response.data)
+        assert response_data['objects'][0]['computers'][0]['speed'] == 42
+
+    def test_included_method_returns_object(self):
+        """Tests that objects are serialized when returned from a method listed
+        in the `include_methods` argument.
+
+        """
+        date = datetime.date(1999, 12, 31)
+        person = self.Person(name='Test', age=10, other=20, birth_date=date)
+        computer = self.Computer(name='foo', vendor='bar', buy_date=date)
+        self.session.add(person)
+        person.computers.append(computer)
+        self.session.commit()
+
+        self.manager.create_api(self.Person,
+                                include_methods=['first_computer'])
+        response = self.app.get('/api/person/1')
+        assert 200 == response.status_code
+        data = loads(response.data)
+        assert 'first_computer' in data
+        assert 'foo' == data['first_computer']['name']
+
     def test_exclude_columns(self):
         """Tests that the ``exclude_columns`` argument specifies which columns
         to exclude in the JSON representation of instances of the model.

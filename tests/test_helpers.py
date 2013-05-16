@@ -159,6 +159,17 @@ class TestModelHelpers(TestSupport):
         assert to_dict(young)['is_minor']
         assert not to_dict(old)['is_minor']
 
+    def test_to_dict_nested_object(self):
+        """Tests that nested objects are correctly serialized."""
+        person = self.Person(name='Test', age=10, other=20)
+        computer = self.Computer(name='foo')
+        person.computers.append(computer)
+
+        data = to_dict(person, include_methods=['first_computer'])
+
+        assert 'first_computer' in data
+        assert 'foo' == data['first_computer']['name']
+
     def test_get_columns(self):
         """Test for getting the names of columns as strings."""
         columns = get_columns(self.Person)

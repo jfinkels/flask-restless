@@ -157,6 +157,9 @@ class TestSupport(DatabaseTestBase):
             owner = relationship('Person')
             programs = relationship('ComputerProgram', cascade="all, delete-orphan")
 
+            def speed(self):
+                return 42
+
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
@@ -169,6 +172,13 @@ class TestSupport(DatabaseTestBase):
             @hybrid_property
             def is_minor(self):
                 return self.age < 18
+
+            def name_and_age(self):
+                return "%s (aged %d)" % (self.name, self.age)
+
+            def first_computer(self):
+                return sorted(self.computers, key=lambda k: k.name)[0]
+
 
         class LazyComputer(self.Base):
             __tablename__ = 'lazycomputer'

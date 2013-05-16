@@ -326,10 +326,10 @@ class API(ModelView):
     decorators = [catch_processing_exceptions]
 
     def __init__(self, session, model, exclude_columns=None,
-                 include_columns=None, validation_exceptions=None,
-                 results_per_page=10, max_results_per_page=100,
-                 post_form_preprocessor=None, preprocessors=None,
-                 postprocessors=None, *args, **kw):
+                 include_columns=None, include_methods=None,
+                 validation_exceptions=None, results_per_page=10,
+                 max_results_per_page=100, post_form_preprocessor=None,
+                 preprocessors=None, postprocessors=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -361,6 +361,10 @@ class API(ModelView):
         tuple or the empty list), then the returned dictionary will be
         empty. If `include_columns` is ``None``, then the returned dictionary
         will include all columns not excluded by `exclude_columns`.
+
+        If `include_methods` is an iterable of strings, the methods with names
+        corresponding to those in this list will be called and their output
+        included in the response.
 
         See :ref:`includes` for information on specifying included or excluded
         columns on fields of related models.
@@ -405,6 +409,9 @@ class API(ModelView):
         other code. For more information on preprocessors and postprocessors,
         see :ref:`processors`.
 
+        .. versionadded:: 0.10.2
+           Added the `include_methods` keyword argument.
+
         .. versionchanged:: 0.10.0
            Removed `authentication_required_for` and `authentication_function`
            keyword arguments.
@@ -438,6 +445,7 @@ class API(ModelView):
             _parse_excludes(exclude_columns)
         self.include_columns, self.include_relations = \
             _parse_includes(include_columns)
+        self.include_methods = include_methods
         self.validation_exceptions = tuple(validation_exceptions or ())
         self.results_per_page = results_per_page
         self.max_results_per_page = max_results_per_page
@@ -721,7 +729,8 @@ class API(ModelView):
         objects = [to_dict(x, deep, exclude=self.exclude_columns,
                            exclude_relations=self.exclude_relations,
                            include=self.include_columns,
-                           include_relations=self.include_relations)
+                           include_relations=self.include_relations,
+                           include_methods=self.include_methods)
                    for x in instances[start:end]]
         return dict(page=page_num, objects=objects, total_pages=total_pages,
                     num_results=num_results)
@@ -746,7 +755,8 @@ class API(ModelView):
         return to_dict(inst, deep, exclude=self.exclude_columns,
                        exclude_relations=self.exclude_relations,
                        include=self.include_columns,
-                       include_relations=self.include_relations)
+                       include_relations=self.include_relations,
+                       include_methods=self.include_methods)
 
     def _instid_to_dict(self, instid):
         """Returns the dictionary representation of the instance specified by
@@ -877,7 +887,8 @@ class API(ModelView):
             result = to_dict(result, deep, exclude=self.exclude_columns,
                              exclude_relations=self.exclude_relations,
                              include=self.include_columns,
-                             include_relations=self.include_relations)
+                             include_relations=self.include_relations,
+                             include_methods=self.include_methods)
             # The URL at which a client can access the instance matching this
             # search query.
             url = '%s/%s' % (request.base_url, result[primary_key])
