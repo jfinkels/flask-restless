@@ -242,6 +242,34 @@ relationship field has no effect::
 
    {"name": "Jeffrey", "birth_date": "1999-12-31"}
 
+To include the return value of an arbitrary method defined on a model, use the
+``include_methods`` keyword argument. This argument must be an iterable of
+strings representing methods with no arguments (other than ``self``) defined on
+the model for which the API will be created::
+
+    class Person(Base):
+        __tablename__ = 'person'
+        id = Column(Integer, primary_key=True)
+        name = Column(Unicode)
+        age = Column(Integer)
+
+        def name_and_age(self):
+            return "%s (aged %d)" % (self.name, self.age)
+
+    include_methods = ['name_and_age']
+    manager.create_api(Person, include_methods=['name_and_age'])
+
+A response to a :http:method:`get` request will then look like this:
+
+.. sourcecode:: javascript
+
+   {
+     "id": 1,
+     "name": "Paul McCartney",
+     "age": 64,
+     "name_and_age": "Paul McCartney (aged 64)"
+   }
+
 .. _serverpagination:
 
 Server-side pagination

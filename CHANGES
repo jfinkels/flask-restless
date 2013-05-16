@@ -20,6 +20,9 @@ Not yet released.
 - Responses now have ``Content-Type: application/json``.
 - #180: allow more expressive ``has`` and ``any`` searches.
 - #202: allow setting hybrid properties with expressions and setters.
+- #203: adds the ``include_methods`` keyword argument to
+  :meth:`APIManager.create_api`, which allows JSON responses to include the
+  result of calling arbitrary methods of instances of models.
 
 Version 0.10.1
 --------------
