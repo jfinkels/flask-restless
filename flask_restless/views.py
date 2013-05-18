@@ -987,7 +987,7 @@ class API(ModelView):
 
         """
         content_type = request.headers.get('Content-Type', None)
-        if content_type != 'application/json':
+        if not content_type.startswith('application/json'):
             msg = 'Request must have "Content-Type: application/json" header'
             return jsonify_status_code(415, message=msg)
 
@@ -1087,7 +1087,7 @@ class API(ModelView):
 
         """
         content_type = request.headers.get('Content-Type', None)
-        if content_type != 'application/json':
+        if not content_type.startswith('application/json'):
             msg = 'Request must have "Content-Type: application/json" header'
             return jsonify_status_code(415, message=msg)
 
