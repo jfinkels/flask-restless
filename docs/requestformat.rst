@@ -679,7 +679,7 @@ the empty JSON object, ``{}``.
 
       {"count__id": 5}
 
-JSON-P callbacks
+JSONP callbacks
 ----------------
 
 Add a ``callback=myfunc`` query parameter to the request URL on any
@@ -708,6 +708,10 @@ Then in your Javascript code, write the function ``foo`` like this:
      var name = response.name;
      console.log(name);
    }
+
+The mimetype of a JSONP response is ``application/javascript`` instead of the
+usual ``application/json``, because the payload of such a response is not valid
+JSON.
 
 .. _clientpagination:
 

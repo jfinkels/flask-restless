@@ -166,7 +166,8 @@ def jsonpify(*args, **kw):
     if callback:
         content = '%s(%s)' % (callback, response.data)
         # Note that this is different from the mimetype used in Flask for JSON
-        # responses; Flask uses 'application/json'.
+        # responses; Flask uses 'application/json'. We use
+        # 'application/javascript' because a JSONP response is not valid JSON.
         mimetype = 'application/javascript'
         response = current_app.response_class(content, mimetype=mimetype)
     if 'headers' in kw:
