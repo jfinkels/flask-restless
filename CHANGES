@@ -23,6 +23,7 @@ Not yet released.
 - #203: adds the ``include_methods`` keyword argument to
   :meth:`APIManager.create_api`, which allows JSON responses to include the
   result of calling arbitrary methods of instances of models.
+- #204, 205: allow parameters in ``Content-Type`` header.
 
 Version 0.10.1
 --------------
