@@ -1251,6 +1251,10 @@ class TestHeaders(TestSupportPrefilled):
         response = self.app.patch('/api/person/6', data=dumps(dict(name='x')),
                                   content_type='application/json')
         assert 200 == response.status_code
+        response = self.app.patch('/api/person/6', data=dumps(dict(name='x')),
+                                  content_type='application/json; charset=UTF-8')
+        assert 200 == response.status_code
+
         # A request without an Accept header should return JSON.
         assert 'Content-Type' in response.headers
         assert 'application/json' == response.headers['Content-Type']
