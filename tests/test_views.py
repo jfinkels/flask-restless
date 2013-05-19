@@ -318,12 +318,12 @@ class TestAPI(TestSupport):
         assert loads(response.data) == inst
 
     def test_post_m2m(self):
-        """Test for creating a new instance of the database model that has a 
+        """Test for creating a new instance of the database model that has a
         many to many relation that uses an association object to allow extra
         info to be stored on the helper table.
 
         For more info, see issue #166.
-        
+
         """
         vim = self.Program(name=u'Vim')
         emacs = self.Program(name=u'Emacs')
@@ -432,11 +432,11 @@ class TestAPI(TestSupport):
 
     def test_patch_m2m(self):
         """Test for updating a model with a many to many relation that uses
-        an association object to allow extra data to be stored in the helper 
+        an association object to allow extra data to be stored in the helper
         table.
 
         For more info, see issue #166
-        
+
         """
         response = self.app.post('/api/computer', data=dumps({}))
         assert 201 == response.status_code
@@ -490,11 +490,11 @@ class TestAPI(TestSupport):
         assert vim_relation in computer['programs']
 
     def test_patch_remove_m2m(self):
-        """Test for removing a relation on a model that uses an association 
+        """Test for removing a relation on a model that uses an association
         object to allow extra data to be stored in the helper table.
 
         For more info, see issue #166
-        
+
         """
         response = self.app.post('/api/computer', data=dumps({}))
         assert 201 == response.status_code
@@ -539,7 +539,6 @@ class TestAPI(TestSupport):
         assert 200 == response.status_code
         assert vim_relation not in computer['programs']
         assert emacs_relation in computer['programs']
-
 
     def test_delete(self):
         """Test for deleting an instance of the database using the
@@ -697,11 +696,8 @@ class TestAPI(TestSupport):
                       data=dumps({'name': u'Lucy', 'age': 23}))
         self.app.post('/api/v2/person',
                       data=dumps({'name': u'Mary', 'age': 25}))
-        search = {
-                     'filters': [
-                         {'name': 'name', 'val': u'Lincoln', 'op': 'equals'}
-                     ],
-                 }
+        search = {'filters': [{'name': 'name', 'val': u'Lincoln',
+                               'op': 'equals'}]}
         # Changing the birth date field for objects where name field equals
         # Lincoln
         day, month, year = 15, 9, 1986
@@ -717,7 +713,7 @@ class TestAPI(TestSupport):
 
         """
         resp = self.app.post('/api/person', data=dumps({'name': u'Lincoln',
-                                                         'age': 10}))
+                                                        'age': 10}))
         assert resp.status_code == 201
         assert 'id' in loads(resp.data)
 
@@ -847,7 +843,7 @@ class TestAPI(TestSupport):
 
         # patch the person with a new computer
         data = {'computers': {'add': {'name': u'lixeiro',
-            'vendor': u'Lemote'}}}
+                                      'vendor': u'Lemote'}}}
 
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 200
@@ -904,10 +900,9 @@ class TestAPI(TestSupport):
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 201
 
-        data = {'computers':
-                    {'add': [{'name': u'lixeiro', 'vendor': u'Lemote'},
-                             {'name': u'foo', 'vendor': u'bar'}]}
-                }
+        add1 = {'name': u'lixeiro', 'vendor': u'Lemote'}
+        add2 = {'name': u'foo', 'vendor': u'bar'}
+        data = {'computers': {'add': [add1, add2]}}
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 200
         response = self.app.get('/api/person/1')
@@ -1277,8 +1272,9 @@ class TestHeaders(TestSupportPrefilled):
         response = self.app.patch('/api/person/6', data=dumps(dict(name='x')),
                                   content_type='application/json')
         assert 200 == response.status_code
+        content_type = 'application/json; charset=UTF-8'
         response = self.app.patch('/api/person/6', data=dumps(dict(name='x')),
-                                  content_type='application/json; charset=UTF-8')
+                                  content_type=content_type)
         assert 200 == response.status_code
 
         # A request without an Accept header should return JSON.
@@ -1330,12 +1326,7 @@ class TestSearch(TestSupportPrefilled):
         assert resp.status_code == 400
         assert loads(resp.data)['message'] == 'Unable to decode data'
 
-        search = {
-            'filters': [
-                {'name': 'name', 'val': '%y%', 'op': 'like'}
-             ]
-        }
-
+        search = {'filters': [{'name': 'name', 'val': '%y%', 'op': 'like'}]}
         # Let's search for users with that above filter
         resp = self.app.search('/api/person', dumps(search))
         assert resp.status_code == 200
@@ -1512,12 +1503,15 @@ class TestAssociationProxy(DatabaseTestBase):
                                    ForeignKey('product.id'),
                                    primary_key=True))
 
+        # For brevity, create this association proxy creator functions here.
+        creator1 = lambda product: ChosenProductImage(product=product)
+        creator2 = lambda image: ChosenProductImage(image=image)
+
         class Image(self.Base):
             __tablename__ = 'image'
             id = Column(Integer, primary_key=True)
             products = prox('chosen_product_images', 'product',
-                            creator=lambda product:
-                                ChosenProductImage(product=product))
+                            creator=creator1)
 
         class ChosenProductImage(self.Base):
             __tablename__ = 'chosen_product_image'
@@ -1542,8 +1536,7 @@ class TestAssociationProxy(DatabaseTestBase):
                                         backref=backref(name='product'),
                                         cascade="all, delete-orphan")
             chosen_images = prox('chosen_product_images', 'image',
-                                 creator=lambda image:
-                                     ChosenProductImage(image=image))
+                                 creator=creator2)
             image_names = prox('chosen_product_images', 'name')
             tags = rel(Tag, secondary=tag_product,
                        backref=backref(name='products', lazy='dynamic'))
@@ -1737,8 +1730,8 @@ class TestAssociationProxy(DatabaseTestBase):
         response = self.app.patch('/api/product/1', data=dumps(data))
         assert response.status_code == 200
 
-        filters = {'filters':
-                       [{'name': 'chosen_images__id', 'op': 'any', 'val': 1}]}
+        filters = {'filters': [{'name': 'chosen_images__id', 'op': 'any',
+                                'val': 1}]}
         response = self.app.get('/api/product?q=' + dumps(filters))
         assert response.status_code == 200
         data = loads(response.data)
@@ -1748,16 +1741,15 @@ class TestAssociationProxy(DatabaseTestBase):
         response = self.app.patch('/api/product/1', data=dumps(data))
         assert response.status_code == 200
 
-        filters = {'filters':
-                       [{'name': 'chosen_images__id', 'op': 'any', 'val': 1}]}
+        filters = {'filters': [{'name': 'chosen_images__id', 'op': 'any',
+                                'val': 1}]}
         response = self.app.get('/api/product?q=' + dumps(filters))
         assert response.status_code == 200
         data = loads(response.data)
         assert data['num_results'] == 0
 
-        filters = {'filters':
-                       [{'name': 'chosen_images', 'op': 'any',
-                         'val': {'name': 'id', 'op': 'eq', 'val': 1}}]}
+        filters = {'filters': [{'name': 'chosen_images', 'op': 'any',
+                                'val': {'name': 'id', 'op': 'eq', 'val': 1}}]}
         response = self.app.get('/api/product?q=' + dumps(filters))
         assert response.status_code == 200
         data = loads(response.data)
