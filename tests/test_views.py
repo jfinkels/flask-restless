@@ -228,10 +228,36 @@ class TestFunctionAPI(TestSupportPrefilled):
         self.session.commit()
         functions = [{'name': 'sum', 'field': 'age'}]
         query = dumps(dict(functions=functions))
+        # JSONP should work on function evaluation endpoints as well as on
+        # normal GET endpoints.
         response = self.app.get('/api/eval/person?q=%s&callback=baz' % query)
         assert response.status_code == 200
         assert response.data.startswith('baz(')
         assert response.data.endswith(')')
+
+        # Add some more people so the result will be paginated.
+        for n in range(20):
+            self.session.add(self.Person(name=str(n)))
+        self.session.commit()
+        response = self.app.get('/api/person?callback=baz')
+        assert response.status_code == 200
+        assert response.data.startswith('baz(')
+        assert response.data.endswith(')')
+        # Get the dictionary representation of the JSON string inside the
+        # 'baz()' part of the JSONP response.
+        data = loads(response.data[4:-1])
+        assert 'meta' in data
+        assert 'data' in data
+        # The meta should include a JSON representation of the HTTP status.
+        assert 'status' in data['meta']
+        assert data['meta']['status'] == 200
+        # The metadata should include a JSON representation of the HTTP Link
+        # header information.
+        assert 'Link' in data['meta']
+        assert len(data['meta']['Link']) == 2
+        assert data['meta']['Link'][0]['rel'] == 'next'
+        assert data['meta']['Link'][1]['rel'] == 'last'
+        # TODO What other headers should the metadata include?
 
 
 class TestAPI(TestSupport):

@@ -148,6 +148,61 @@ def jsonify_status_code(status_code, headers=None, *args, **kw):
     return response
 
 
+# This code is (lightly) adapted from the ``requests`` library, in the
+# ``requests.utils`` module. See <http://python-requests.org> for more
+# information.
+def _link_to_json(value):
+    """Returns a list representation of the specified HTTP Link header
+    information.
+
+    `value` is a string containing the link header information. If the link
+    header information (the part of after ``Link:``) looked like this::
+
+        <url1>; rel="next", <url2>; rel="foo"; bar="baz"
+
+    then this function returns a list that looks like this::
+
+        [{"url": "url1", "rel": "next"},
+         {"url": "url2", "rel": "foo", "bar": "baz"}]
+
+    This example is adapted from the documentation of GitHub's API.
+
+    """
+    links = []
+    replace_chars = " '\""
+    for val in value.split(","):
+        try:
+            url, params = val.split(";", 1)
+        except ValueError:
+            url, params = val, ''
+        link = {}
+        link["url"] = url.strip("<> '\"")
+        for param in params.split(";"):
+            try:
+                key, value = param.split("=")
+            except ValueError:
+                break
+            link[key.strip(replace_chars)] = value.strip(replace_chars)
+        links.append(link)
+    return links
+
+
+def _headers_to_json(headers):
+    """Returns a dictionary representation of the specified dictionary of HTTP
+    headers ready for use as a JSON object.
+
+    Pre-condition: headers is not ``None``.
+
+    """
+    link = headers.pop('Link', None)
+    # Shallow copy is fine here because the `headers` dictionary maps strings
+    # to strings to strings.
+    result = headers.copy()
+    if link:
+        result['Link'] = _link_to_json(link)
+    return result
+
+
 def jsonpify(*args, **kw):
     """Passes the specified arguments directly to :func:`jsonify_status_code`
     with a status code of 200, then wraps the response with the name of a
@@ -161,17 +216,27 @@ def jsonpify(*args, **kw):
     dictionary.
 
     """
+    headers = kw.pop('headers', None)
     response = jsonify(*args, **kw)
     callback = request.args.get('callback', False)
     if callback:
-        content = '%s(%s)' % (callback, response.data)
+        # Reload the data from the constructed JSON string so we can wrap it in
+        # a JSONP function.
+        data = json.loads(response.data)
+        # Add the headers as metadata to the JSONP response.
+        meta = _headers_to_json(headers) if headers is not None else {}
+        # TODO add a jsonpify_status_code function?
+        meta['status'] = 200
+        inner = json.dumps(dict(meta=meta, data=data))
+        content = '%s( %s)' % (callback, inner)
         # Note that this is different from the mimetype used in Flask for JSON
         # responses; Flask uses 'application/json'. We use
         # 'application/javascript' because a JSONP response is not valid JSON.
         mimetype = 'application/javascript'
         response = current_app.response_class(content, mimetype=mimetype)
-    if 'headers' in kw:
-        set_headers(response, kw['headers'])
+    # Set the headers on the HTTP response as well.
+    if headers:
+        set_headers(response, headers)
     return response
 
 

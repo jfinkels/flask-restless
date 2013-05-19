@@ -698,16 +698,38 @@ will produce a response like this:
 
    HTTP/1.1 200 OK
 
-   foo({"id": 1, "name": "Henry", "age": 10})
+   foo({"meta": ..., "data": ...})
 
 Then in your Javascript code, write the function ``foo`` like this:
 
 .. sourcecode:: javascript
 
    function foo(response) {
-     var name = response.name;
-     console.log(name);
+     var meta, data;
+     meta = response.meta;
+     data = response.data;
+     // Do something cool here...
    }
+
+The metadata includes the status code and the values of the HTTP headers,
+including the `Link headers <https://tools.ietf.org/html/rfc5988>`_ parsed in
+JSON format. For example, a link that looks like this:
+
+.. This is adapted from the GitHub API documentation; see
+.. <http://developer.github.com/v3/#json-p-callbacks> for more information.
+
+.. sourcecode:: http
+
+   Link: <url1>; rel="next", <url2>; rel="foo"; bar="baz"
+
+will look like this in the JSON metadata:
+
+.. sourcecode:: javascript
+
+   [
+     {"url": "url1", "rel": "next"},
+     {"url": "url2", "rel": "foo", "bar": "baz"}
+   ]
 
 The mimetype of a JSONP response is ``application/javascript`` instead of the
 usual ``application/json``, because the payload of such a response is not valid
