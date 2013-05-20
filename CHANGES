@@ -16,6 +16,7 @@ Version 0.12.0-dev
 Not yet released.
 
 - #188: Provides metadata as well as normal data in JSONP responses.
+- #193: Allows :http:method:`delete` requests to related instances.
 
 Version 0.11.0
 --------------

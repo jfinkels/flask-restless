@@ -123,6 +123,20 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
       HTTP/1.1 204 No Content
 
+.. http:delete:: /api/person/(int:id)/computers/(int:id)
+
+   Removes the instance of ``Computer`` with the specified ID from the
+   ``computers`` collection of the instance of ``Person`` with the specified
+   ID. This is essentially a shortcut to using a
+   :http:patch:`/api/person/(int:id)/computers` request with a ``remove``
+   parameter in the body of the request.
+
+   **Sample response**:
+
+   .. sourcecode:: http
+
+      HTTP/1.1 204 No Content
+
 .. http:post:: /api/person
 
    Creates a new person with initial attributes specified as a JSON string in

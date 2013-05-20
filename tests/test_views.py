@@ -1200,6 +1200,45 @@ class TestAPI(TestSupport):
         response = self.app.post('/api/person', data=dumps(data))
         assert 400 == response.status_code
 
+    def test_delete_from_relation(self):
+        """Tests that a :http:method:`delete` request to a related instance
+        removes that related instance from the specified model.
+
+        See issue #193.
+
+        """
+        person = self.Person()
+        computer = self.Computer()
+        person.computers.append(computer)
+        self.session.add_all((person, computer))
+        self.session.commit()
+        # Delete the related computer.
+        response = self.app.delete('/api/person/1/computers/1')
+        assert response.status_code == 204
+        # Check that it is actually gone from the relation.
+        response = self.app.get('/api/person/1')
+        assert response.status_code == 200
+        assert len(loads(response.data)['computers']) == 0
+        # Check that the related instance hasn't been deleted from the database
+        # altogether.
+        response = self.app.get('/api/computer/1')
+        assert response.status_code == 200
+
+        # # Add the computer back in to the relation and use the Delete-Orphan
+        # # header to instruct the server to delete the orphaned computer
+        # # instance.
+        # person.computers.append(computer)
+        # self.session.commit()
+        # response = self.app.delete('/api/person/1/computers/1',
+        #                            headers={'Delete-Orphan': 1})
+        # assert response.status_code == 204
+        # response = self.app.get('/api/person/1/computers')
+        # assert response.status_code == 200
+        # assert len(loads(response.data)['computers']) == 0
+        # response = self.app.get('/api/computers')
+        # assert response.status_code == 200
+        # assert len(loads(response.data)['objects']) == 0
+
 
 class TestHeaders(TestSupportPrefilled):
     """Tests for correct HTTP headers in responses."""

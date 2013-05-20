@@ -388,22 +388,34 @@ class APIManager(object):
         # TODO what should the second argument here be?
         # TODO should the url_prefix be specified here or in register_blueprint
         blueprint = Blueprint(blueprintname, __name__, url_prefix=url_prefix)
+        # For example, /api/person.
         blueprint.add_url_rule(collection_endpoint,
                                methods=no_instance_methods, view_func=api_view)
+        # For example, /api/person/1.
         blueprint.add_url_rule(collection_endpoint,
-                               defaults={'instid': None, 'relationname': None},
+                               defaults={'instid': None, 'relationname': None,
+                                         'relationinstid': None},
                                methods=possibly_empty_instance_methods,
                                view_func=api_view)
         # the per-instance endpoints will allow both integer and string primary
         # key accesses
         instance_endpoint = '%s/<instid>' % (collection_endpoint)
+        # For example, /api/person/1.
         blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
-                               defaults={'relationname': None},
+                               defaults={'relationname': None,
+                                         'relationinstid': None},
                                view_func=api_view)
         # add endpoints which expose related models
         relation_endpoint = '%s/<relationname>' % (instance_endpoint)
+        relation_instance_endpoint = '%s/<relationinstid>' % relation_endpoint
+        # For example, /api/person/1/computers.
         blueprint.add_url_rule(relation_endpoint,
-                               methods=methods & frozenset(['GET']),
+                               methods=possibly_empty_instance_methods,
+                               defaults={'relationinstid': None},
+                               view_func=api_view)
+        # For example, /api/person/1/computers/2.
+        blueprint.add_url_rule(relation_instance_endpoint,
+                               methods=instance_methods,
                                view_func=api_view)
         # if function evaluation is allowed, add an endpoint at /api/eval/...
         # which responds only to GET requests and responds with the result of

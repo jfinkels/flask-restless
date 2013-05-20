@@ -965,7 +965,7 @@ class API(ModelView):
 
         return jsonpify(result, headers=headers)
 
-    def get(self, instid, relationname):
+    def get(self, instid, relationname, relationinstid):
         """Returns a JSON representation of an instance of model with the
         specified name.
 
@@ -1006,7 +1006,7 @@ class API(ModelView):
             postprocessor(result=result)
         return jsonpify(result)
 
-    def delete(self, instid, relationname):
+    def delete(self, instid, relationname, relationinstid):
         """Removes the specified instance of the model with the specified name
         from the database.
 
@@ -1014,17 +1014,33 @@ class API(ModelView):
         :rfc:`2616`, this method responds with :http:status:`204` regardless of
         whether an object was deleted.
 
-        This function ignores the `relationname` keyword argument.
+        If `relationname
 
-        .. versionadded:: 0.10
+        .. versionadded:: 0.12.0
+           Added the `relationinstid` keyword argument.
+
+        .. versionadded:: 0.10.0
            Added the `relationname` keyword argument.
 
         """
         is_deleted = False
         for preprocessor in self.preprocessors['DELETE']:
-            preprocessor(instance_id=instid)
+            preprocessor(instance_id=instid, relation_name=relationname,
+                         relation_instance_id=relationinstid)
         inst = get_by(self.session, self.model, instid)
-        if inst is not None:
+        if relationname:
+            # If the request is ``DELETE /api/person/1/computers``, error 400.
+            if not relationinstid:
+                msg = 'Cannot DELETE entire "%s" relation' % relationname
+                return jsonify_status_code(400, msg)
+            # Otherwise, get the related instance to delete.
+            relation = getattr(inst, relationname)
+            related_model = get_related_model(self.model, relationname)
+            relation_instance = get_by(self.session, related_model,
+                                       relationinstid)
+            # Removes an object from the relation list.
+            relation.remove(relation_instance)
+        elif inst is not None:
             self.session.delete(inst)
             self.session.commit()
             is_deleted = True
@@ -1131,7 +1147,7 @@ class API(ModelView):
             current_app.logger.exception(exception.message)
             return jsonify_status_code(400, message=exception.message)
 
-    def patch(self, instid, relationname):
+    def patch(self, instid, relationname, relationinstid):
         """Updates the instance specified by ``instid`` of the named model, or
         updates multiple instances if ``instid`` is ``None``.
 
@@ -1146,9 +1162,13 @@ class API(ModelView):
         parameters for restricting the set of instances on which updates will
         be made in this case.
 
-        This function ignores the `relationname` keyword argument.
+        This function ignores the `relationname` and `relationinstid` keyword
+        arguments.
 
-        .. versionadded:: 0.10
+        .. versionadded:: 0.12.0
+           Added the `relationinstid` keyword argument.
+
+        .. versionadded:: 0.10.0
            Added the `relationname` keyword argument.
 
         """
@@ -1235,6 +1255,6 @@ class API(ModelView):
 
         return jsonify(result)
 
-    def put(self, instid, relationname):
+    def put(self, *args, **kw):
         """Alias for :meth:`patch`."""
-        return self.patch(instid, relationname)
+        return self.patch(*args, **kw)
