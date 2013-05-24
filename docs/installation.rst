@@ -17,6 +17,7 @@ installed if you use ``pip``):
 
 * `Flask <http://flask.pocoo.org>`_ version 0.10 or greater
 * `SQLAlchemy <http://sqlalchemy.org>`_ version 0.8 or greater
+* `mimerender <http://mimerender.readthedocs.org>`_ version 0.5.2 or greater
 * `python-dateutil <http://labix.org/python-dateutil>`_ version strictly
   greater than 2.0
 * `Flask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy>`_, *only if*
