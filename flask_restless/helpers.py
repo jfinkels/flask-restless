@@ -171,10 +171,13 @@ def is_date_field(model, fieldname):
     else:
         if isinstance(field, AssociationProxy):
             field = field.remote_attr
-        prop = field.property
-        if isinstance(prop, RelProperty):
+        if hasattr(field, 'property'):
+            prop = field.property
+            if isinstance(prop, RelProperty):
+                return False
+            fieldtype = prop.columns[0].type
+        else:
             return False
-        fieldtype = prop.columns[0].type
     return isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime)
 
 

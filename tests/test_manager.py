@@ -9,6 +9,7 @@
 
 """
 import datetime
+import math
 
 from flask import json
 try:
@@ -515,12 +516,33 @@ class TestAPIManager(TestSupport):
             def abs_other(self, v):
                 self.other = v
 
-        self.manager.create_api(HybridPerson, methods=['POST'])
+            @hybrid_property
+            def sq_other(self):
+                if not isinstance(self.other, float):
+                    return None
+
+                return self.other ** 2
+
+            @sq_other.setter
+            def sq_other(self, v):
+                self.other = math.sqrt(v)
+
+
+
+        self.manager.create_api(HybridPerson, methods=['POST', 'PATCH'])
         response = self.app.post('/api/person', data=dumps({'abs_other': 1}))
         assert 201 == response.status_code
         data = loads(response.data)
         assert 1 == data['other']
         assert 1 == data['abs_other']
+
+        response = self.app.post('/api/person', data=dumps({'name': u'Rodriguez'}))
+        assert 201 == response.status_code
+        response = self.app.patch('/api/person/2', data=dumps({'sq_other': 4}))
+        assert 200 == response.status_code
+        data = loads(response.data)
+        assert 2 == data['other']
+        assert 4 == data['sq_other']
 
 
 class TestFSA(FlaskTestBase):
