@@ -467,6 +467,17 @@ def get_or_create(session, model, attrs):
     # attribute on the remote model.
     if not isinstance(attrs, dict):
         return attrs
+    # Recurse into nested relationships
+    for rel in get_relations(model):
+        if not rel in attrs:
+            continue
+        if isinstance(attrs[rel], list):
+            attrs[rel] = [get_or_create(session, get_related_model(model, rel),
+                                        r) for r in attrs[rel]]
+        else:
+            attrs[rel] = get_or_create(session, get_related_model(model, rel),
+                                       attrs[rel])
+    # Find private key names
     pk_names = primary_key_names(model)
     # If all of the primary keys were included in `attrs`, try to update
     # an existing row.
