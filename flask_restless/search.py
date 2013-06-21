@@ -479,4 +479,4 @@ def search(session, model, search_params):
     if is_single:
         # may raise NoResultFound or MultipleResultsFound
         return query.one()
-    return query.all()
+    return query
