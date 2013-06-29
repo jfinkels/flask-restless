@@ -506,6 +506,8 @@ def strings_to_dates(model, dictionary):
         if is_date_field(model, fieldname) and value is not None:
             if value.strip() == '':
                 result[fieldname] = None
+            elif value in ('CURRENT_TIMESTAMP', 'CURRENT_DATE', 'LOCALTIMESTAMP',):
+                result[fieldname] = getattr(func, value.lower())()
             else:
                 result[fieldname] = parse_datetime(value)
         else:

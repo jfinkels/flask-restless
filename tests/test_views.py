@@ -10,6 +10,8 @@
 
 """
 from datetime import date
+from datetime import datetime
+import dateutil
 
 from flask import json
 try:
@@ -384,6 +386,21 @@ class TestAPI(TestSupport):
         response = self.app.get('/api/star/1')
         assert response.status_code == 200
         assert loads(response.data)['inception_time'] is None
+
+    def test_post_date_functions(self):
+        """Tests that assigning an string like CURRENT_TIMESTAMP gets converted into a date."""
+        self.manager.create_api(self.Star, methods=['GET', 'POST'])
+        data = dict(inception_time='CURRENT_TIMESTAMP')
+        response = self.app.post('/api/star', data=dumps(data))
+        assert response.status_code == 201
+        response = self.app.get('/api/star/1')
+        assert response.status_code == 200
+        inception_time = loads(response.data)['inception_time']
+        assert inception_time is not None
+        inception_time = dateutil.parser.parse(inception_time)
+        diff = datetime.utcnow() - inception_time
+        assert diff.days == 0
+        assert (diff.seconds + diff.microseconds / 1000000.0) < 3600
 
     def test_post_with_submodels(self):
         """Tests the creation of a model with a related field."""
