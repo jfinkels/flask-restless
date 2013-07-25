@@ -97,7 +97,7 @@ class APIManager(object):
     def _next_blueprint_name(self, basename):
         """Returns the next name for a blueprint with the specified base name.
 
-        This method returns a string of the form ``'{}{}'.format(basename,
+        This method returns a string of the form ``'{0}{1}'.format(basename,
         number)``, where ``number`` is the next non-negative integer not
         already used in the name of an existing blueprint.
 

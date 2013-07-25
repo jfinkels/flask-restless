@@ -124,7 +124,7 @@ class OrderBy(object):
 
     def __repr__(self):
         """Returns a string representation of this object."""
-        return '<OrderBy {}, {}>'.format(self.field, self.direction)
+        return '<OrderBy {0}, {1}>'.format(self.field, self.direction)
 
 
 class Filter(object):
@@ -165,7 +165,7 @@ class Filter(object):
 
     def __repr__(self):
         """Returns a string representation of this object."""
-        return '<Filter {} {} {}>'.format(self.fieldname, self.operator,
+        return '<Filter {0} {1} {2}>'.format(self.fieldname, self.operator,
                                           self.argument or self.otherfield)
 
     @staticmethod
@@ -233,8 +233,8 @@ class SearchParameters(object):
 
     def __repr__(self):
         """Returns a string representation of the search parameters."""
-        template = ('<SearchParameters filters={}, order_by={}, limit={},'
-                    ' offset={}, junction={}>')
+        template = ('<SearchParameters filters={0}, order_by={1}, limit={2},'
+                    ' offset={3}, junction={4}>')
         return template.format(self.filters, self.order_by, self.limit,
                                self.offset, self.junction.__name__)
 
