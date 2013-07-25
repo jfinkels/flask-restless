@@ -28,6 +28,7 @@ from functools import wraps
 import math
 import warnings
 
+from flask import abort
 from flask import current_app
 from flask import json
 from flask import jsonify
@@ -38,7 +39,6 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 
-from .exceptions import json_abort
 from .helpers import evaluate_functions
 from .helpers import get_by
 from .helpers import get_columns
@@ -834,7 +834,7 @@ class API(ModelView):
         """
         inst = get_by(self.session, self.model, instid)
         if inst is None:
-            json_abort(404)
+            abort(404)
         return self._inst_to_dict(inst)
 
     def _search(self):
@@ -986,7 +986,7 @@ class API(ModelView):
         # get the instance of the "main" model whose ID is instid
         instance = get_by(self.session, self.model, instid)
         if instance is None:
-            json_abort(404)
+            abort(404)
         # If no relation is requested, just return the instance. Otherwise,
         # get the value of the relation specified by `relationname`.
         if relationname is None:
@@ -1216,7 +1216,7 @@ class API(ModelView):
             # create a SQLAlchemy Query which has exactly the specified row
             query = query_by_primary_key(self.session, self.model, instid)
             if query.count() == 0:
-                json_abort(404)
+                abort(404)
             assert query.count() == 1, 'Multiple rows with same ID'
 
         relations = self._update_relations(query, data)
