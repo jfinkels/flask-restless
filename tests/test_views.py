@@ -11,8 +11,8 @@
 """
 from datetime import date
 from datetime import datetime
-import dateutil
 
+import dateutil
 from flask import json
 try:
     from flask.ext.sqlalchemy import SQLAlchemy
