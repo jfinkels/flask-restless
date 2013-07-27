@@ -44,6 +44,11 @@ COLUMN_BLACKLIST = ('_sa_polymorphic_on', )
 #: attributes of a model class.
 COLUMN_TYPES = (InstrumentedAttribute, hybrid_property)
 
+#: Strings which, when received by the server as the value of a date or time
+#: field, indicate that the server should use the current time when setting the
+#: value of the field.
+CURRENT_TIME_MARKERS = ('CURRENT_TIMESTAMP', 'CURRENT_DATE', 'LOCALTIMESTAMP')
+
 
 def partition(l, condition):
     """Returns a pair of lists, the left one containing all elements of `l` for
@@ -506,7 +511,7 @@ def strings_to_dates(model, dictionary):
         if is_date_field(model, fieldname) and value is not None:
             if value.strip() == '':
                 result[fieldname] = None
-            elif value in ('CURRENT_TIMESTAMP', 'CURRENT_DATE', 'LOCALTIMESTAMP',):
+            elif value in CURRENT_TIME_MARKERS:
                 result[fieldname] = getattr(func, value.lower())()
             else:
                 result[fieldname] = parse_datetime(value)
