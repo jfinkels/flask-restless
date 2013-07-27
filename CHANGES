@@ -19,6 +19,8 @@ Not yet released.
 - #193: Allows :http:method:`delete` requests to related instances.
 - #215: Removes Python 2.5 tests from Travis configuration.
 - #217: adds missing indices in format string.
+- #227: allows client to request that the server use the current date and/or
+  time when setting the value of a field.
 - #228 (as well as #212, #218, #231): Fixes issue due to a module removed from
   Flask version 0.10.
 
