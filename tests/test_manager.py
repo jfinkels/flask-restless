@@ -527,8 +527,6 @@ class TestAPIManager(TestSupport):
             def sq_other(self, v):
                 self.other = math.sqrt(v)
 
-
-
         self.manager.create_api(HybridPerson, methods=['POST', 'PATCH'])
         response = self.app.post('/api/person', data=dumps({'abs_other': 1}))
         assert 201 == response.status_code
@@ -536,7 +534,8 @@ class TestAPIManager(TestSupport):
         assert 1 == data['other']
         assert 1 == data['abs_other']
 
-        response = self.app.post('/api/person', data=dumps({'name': u'Rodriguez'}))
+        response = self.app.post('/api/person',
+                                 data=dumps({'name': u'Rodriguez'}))
         assert 201 == response.status_code
         response = self.app.patch('/api/person/2', data=dumps({'sq_other': 4}))
         assert 200 == response.status_code
