@@ -469,7 +469,7 @@ def get_or_create(session, model, attrs):
         return attrs
     # Recurse into nested relationships
     for rel in get_relations(model):
-        if not rel in attrs:
+        if rel not in attrs:
             continue
         if isinstance(attrs[rel], list):
             attrs[rel] = [get_or_create(session, get_related_model(model, rel),
