@@ -18,6 +18,7 @@ Not yet released.
 - #188: Provides metadata as well as normal data in JSONP responses.
 - #193: Allows :http:method:`delete` requests to related instances.
 - #215: Removes Python 2.5 tests from Travis configuration.
+- #216: don't resolve Query objects until pagination function.
 - #217: adds missing indices in format string.
 - #227: allows client to request that the server use the current date and/or
   time when setting the value of a field.
