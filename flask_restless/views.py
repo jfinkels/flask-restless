@@ -38,6 +38,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy.orm.query import Query
 
 from .helpers import evaluate_functions
 from .helpers import get_by
@@ -779,7 +780,10 @@ class API(ModelView):
            }
 
         """
-        num_results = len(instances)
+        if type(instances) == list:
+            num_results = len(instances)
+        else:
+            num_results = instances.count()
         results_per_page = self._compute_results_per_page()
         if results_per_page > 0:
             # get the page number (first page is page 1)
@@ -938,7 +942,7 @@ class API(ModelView):
         deep = dict((r, {}) for r in relations)
 
         # for security purposes, don't transmit list as top-level JSON
-        if isinstance(result, list):
+        if isinstance(result, Query):
             result = self._paginated(result, deep)
             # Create the Link header.
             #

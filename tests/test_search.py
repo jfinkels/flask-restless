@@ -104,47 +104,47 @@ class TestOperators(TestSupportPrefilled):
         for op in '==', 'eq', 'equals', 'equal_to':
             d = dict(filters=[dict(name='name', op=op, val=u'Lincoln')])
             result = search(self.session, self.Person, d)
-            assert len(result) == 1
+            assert result.count() == 1
             assert result[0].name == u'Lincoln'
         for op in '!=', 'ne', 'neq', 'not_equal_to', 'does_not_equal':
             d = dict(filters=[dict(name='name', op=op, val=u'Lincoln')])
             result = search(self.session, self.Person, d)
-            assert len(result) == len(self.people) - 1
+            assert result.count() == len(self.people) - 1
             assert u'Lincoln' not in (p.name for p in result)
         for op in '>', 'gt':
             d = dict(filters=[dict(name='age', op=op, val=20)])
             result = search(self.session, self.Person, d)
-            assert len(result) == 3
+            assert result.count() == 3
         for op in '<', 'lt':
             d = dict(filters=[dict(name='age', op=op, val=20)])
             result = search(self.session, self.Person, d)
-            assert len(result) == 2
+            assert result.count() == 2
         for op in '>=', 'ge', 'gte', 'geq':
             d = dict(filters=[dict(name='age', op=op, val=23)])
             result = search(self.session, self.Person, d)
-            assert len(result) == 3
+            assert result.count() == 3
         for op in '<=', 'le', 'lte', 'leq':
             d = dict(filters=[dict(name='age', op=op, val=23)])
             result = search(self.session, self.Person, d)
-            assert len(result) == 3
+            assert result.count() == 3
         d = dict(filters=[dict(name='name', op='like', val=u'%y%')])
         result = search(self.session, self.Person, d)
-        assert len(result) == 3
+        assert result.count() == 3
         d = dict(filters=[dict(name='name', op='ilike', val=u'%Y%')])
         result = search(self.session, self.Person, d)
-        assert len(result) == 3
+        assert result.count() == 3
         d = dict(filters=[dict(name='age', op='in', val=[19, 21, 23])])
         result = search(self.session, self.Person, d)
-        assert len(result) == 2
+        assert result.count() == 2
         d = dict(filters=[dict(name='age', op='not_in', val=[19, 21, 23])])
         result = search(self.session, self.Person, d)
-        assert len(result) == 3
+        assert result.count() == 3
         d = dict(filters=[dict(name='birth_date', op='is_null')])
         result = search(self.session, self.Person, d)
-        assert len(result) == 4
+        assert result.count() == 4
         d = dict(filters=[dict(name='birth_date', op='is_not_null')])
         result = search(self.session, self.Person, d)
-        assert len(result) == 1
+        assert result.count() == 1
 
     def test_desc_and_asc(self):
         """Tests for the ``"desc"`` and ``"asc"`` operators."""
@@ -179,11 +179,11 @@ class TestOperators(TestSupportPrefilled):
         d = dict(filters=[dict(name='computers__vendor', val=u'foo',
                                op='any')])
         result = search(self.session, self.Person, d)
-        assert len(result) == 2
+        assert result.count() == 2
         # test 'has'
         d = dict(filters=[dict(name='owner__name', op='has', val=u'Lincoln')])
         result = search(self.session, self.Computer, d)
-        assert len(result) == 3
+        assert result.count() == 3
 
     def test_has_and_any_suboperators(self):
         """Tests for the ``"has"`` and ``"any"`` operators with suboperators.
@@ -213,12 +213,12 @@ class TestOperators(TestSupportPrefilled):
         val = dict(name='vendor', op='like', val=u'%o%')
         d = dict(filters=[dict(name='computers', op='any', val=val)])
         result = search(self.session, self.Person, d)
-        assert len(result) == 2
+        assert result.count() == 2
         # test 'has'
         val=dict(name='name', op='like', val=u'%incol%')
         d = dict(filters=[dict(name='owner', op='has', val=val)])
         result = search(self.session, self.Computer, d)
-        assert len(result) == 3
+        assert result.count() == 3
 
     def test_has_and_any_nested_suboperators(self):
         """Tests for the ``"has"`` and ``"any"`` operators with nested
@@ -250,13 +250,13 @@ class TestOperators(TestSupportPrefilled):
         val = dict(name='owner', op='has', val=innerval)
         d = dict(filters=[dict(name='computers', op='any', val=val)])
         result = search(self.session, self.Person, d)
-        assert len(result) == 1
+        assert result.count() == 1
         # test 'has'
         innerval = dict(name='vendor', op='like', val='%o%')
         val = dict(name='computers', op='any', val=innerval)
         d = dict(filters=[dict(name='owner', op='has', val=val)])
         result = search(self.session, self.Computer, d)
-        assert len(result) == 5
+        assert result.count() == 5
 
 
 class TestSearch(TestSupportPrefilled):
