@@ -413,6 +413,17 @@ class TestAPI(TestSupport):
         response = self.app.get('/api/person')
         assert len(loads(response.data)['objects']) == 1
 
+        # Test with nested objects
+        data = dict(name='Rodriguez', age=70,
+                    computers=[dict(name='iMac', vendor='Apple',
+                                    programs=[dict(program=
+                                                   dict(name='iPhoto'))])])
+        response = self.app.post('/api/person', data=dumps(data))
+        assert 201 == response.status_code
+        response = self.app.get('/api/computer/2/programs')
+        programs = loads(response.data)['objects']
+        assert programs[0]['program']['name'] == 'iPhoto'
+
     def test_post_with_single_submodel(self):
         data = {'vendor': u'Apple',  'name': u'iMac',
                 'owner': {'name': u'John', 'age': 2041}}
@@ -446,6 +457,27 @@ class TestAPI(TestSupport):
         response = self.app.get('/api/computer/1')
         assert 200 == response.status_code
         assert 'foo' == loads(response.data)['name']
+        # Add a new computer by patching person
+        data = dict(computers=[dict(id=1),
+                               dict(name='iMac', vendor='Apple',
+                                    programs=[dict(program=
+                                                   dict(name='iPhoto'))])])
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        assert 200 == response.status_code
+        response = self.app.get('/api/computer/2/programs')
+        programs = loads(response.data)['objects']
+        assert programs[0]['program']['name'] == 'iPhoto'
+        # Add a program to the computer through the person
+        data = dict(computers=[dict(id=1),
+                               dict(id=2,
+                                    programs=[dict(program_id=1),
+                                              dict(program=
+                                                   dict(name='iMovie'))])])
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        assert 200 == response.status_code
+        response = self.app.get('/api/computer/2/programs')
+        programs = loads(response.data)['objects']
+        assert programs[1]['program']['name'] == 'iMovie'
 
     def test_patch_m2m(self):
         """Test for updating a model with a many to many relation that uses
