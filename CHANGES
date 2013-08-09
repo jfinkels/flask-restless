@@ -15,6 +15,9 @@ Version 0.12.1-dev
 
 Not yet released.
 
+- #222: on :http:method:`post` and :http:method:`patch` requests, recurse into
+  nested relations to get or create instances of related models.
+
 Version 0.12.0
 --------------
 
