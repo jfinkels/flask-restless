@@ -241,7 +241,7 @@ latex_elements = {
 }
 latex_use_parts = True
 
-latex_additional_files = ['flaskstyle.sty', 'logo.pdf']
+latex_additional_files = ['flaskstyle.sty', 'logo.png']
 
 
 # -- Options for manual page output --------------------------------------------
@@ -260,6 +260,9 @@ intersphinx_mapping = {'python': ('http://docs.python.org/', None),
                        'sqlalchemy': ('http://sqlalchemy.org/docs', None),
                        'flasksqlalchemy':
                            ('http://packages.python.org/Flask-SQLAlchemy',
+                            None),
+                       'flasklogin':
+                           ('https://flask-login.readthedocs.org/en/latest',
                             None)}
 
 # fall back if theme is not there
