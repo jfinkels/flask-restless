@@ -1135,7 +1135,7 @@ class API(ModelView):
             self.session.commit()
             result = self._inst_to_dict(instance)
             primary_key = str(result[primary_key_name(instance)])
-            
+
             for postprocessor in self.postprocessors['POST']:
                 postprocessor(result=result)
 
