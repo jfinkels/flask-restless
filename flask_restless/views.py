@@ -696,6 +696,11 @@ class API(ModelView):
 
         return tochange
 
+    def _handle_integrity_exception(self, exception):
+        self.session.rollback()
+        current_app.logger.exception(exception.message)
+        return jsonify_status_code(400, message=exception.message)
+
     def _handle_validation_exception(self, exception):
         """Rolls back the session, extracts validation error messages, and
         returns a :func:`flask.jsonify` response with :http:statuscode:`400`
@@ -1148,8 +1153,7 @@ class API(ModelView):
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
         except IntegrityError, exception:
-            current_app.logger.exception(exception.message)
-            return jsonify_status_code(400, message=exception.message)
+            return self._handle_integrity_exception(exception)
 
     def patch(self, instid, relationname, relationinstid):
         """Updates the instance specified by ``instid`` of the named model, or
