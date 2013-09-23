@@ -306,6 +306,24 @@ class TestAPI(TestSupport):
         # assert loads(response.data)['message'] == 'Validation error'
         # assert loads(response.data)['error_list'].keys() == ['age']
 
+        # Test the integrity exception by violating the unique 'name' field
+        # of person
+        response = self.app.post('/api/person',
+                                 data=dumps({'name': u'George', 'age': 23}))
+        assert response.status_code == 201
+
+        # This errors as expected
+        response = self.app.post('/api/person',
+                                 data=dumps({'name': u'George', 'age': 23}))
+        assert response.status_code == 400
+
+        # For issue #158 we make sure that the previous failure is rolled back
+        # so that we can add valid entries again
+        response = self.app.post('/api/person',
+                                 data=dumps({'name': u'Benjamin', 'age': 23}))
+        assert response.status_code == 201
+
+
         response = self.app.post('/api/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
         assert response.status_code == 201
