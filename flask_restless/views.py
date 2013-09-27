@@ -922,7 +922,7 @@ class API(ModelView):
         try:
             result = search(self.session, self.model, search_params)
         except NoResultFound:
-            return jsonify_status_code(400, message='No result found')
+            return jsonify_status_code(404, message='No result found')
         except MultipleResultsFound:
             return jsonify_status_code(400, message='Multiple results found')
         except Exception, exception:
