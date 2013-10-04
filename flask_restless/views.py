@@ -1082,6 +1082,8 @@ class API(ModelView):
                     result = self._paginated(list(related_value), deep)
                 else:
                     result = to_dict(related_value, deep)
+        if result is None:
+            abort(404)
         for postprocessor in self.postprocessors['GET_SINGLE']:
             postprocessor(result=result)
         return result

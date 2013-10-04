@@ -120,9 +120,10 @@ class TestFSAModel(FlaskTestBase):
         owner = self.User()
         pet1 = self.Pet()
         pet2 = self.Pet()
+        pet3 = self.Pet()
         pet1.owner = owner
         pet2.owner = owner
-        self.db.session.add_all([owner, pet1, pet2])
+        self.db.session.add_all([owner, pet1, pet2, pet3])
         self.db.session.commit()
 
         response = self.app.get('/api/user/{0:d}'.format(owner.id))
@@ -159,6 +160,15 @@ class TestFSAModel(FlaskTestBase):
         data = loads(response.data)
         assert not isinstance(data['owner'], list)
         assert owner.id == data['ownerid']
+
+        # Check that it's possible to get owner if not null
+        response = self.app.get('/api/pet/1/owner')
+        assert 200 == response.status_code
+        data = loads(response.data)
+        assert 2 == len(data['pets'])
+        # And that we get a 404 if owner is null
+        response = self.app.get('/api/pet/3/owner')
+        assert 404 == response.status_code
 
 
 class TestFunctionAPI(TestSupportPrefilled):
