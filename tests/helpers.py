@@ -24,7 +24,7 @@ from sqlalchemy import Boolean
 from sqlalchemy import Unicode
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
@@ -211,6 +211,8 @@ class TestSupport(DatabaseTestBase):
 
             @hybrid_property
             def is_minor(self):
+                if getattr(self, 'age') is None:
+                    return None
                 return self.age < 18
 
             def name_and_age(self):

@@ -59,7 +59,7 @@ def partition(l, condition):
     element of the list `l`) and returns either ``True`` or ``False``.
 
     """
-    return filter(condition, l), filter(lambda x: not condition(x), l)
+    return list(filter(condition, l)), list(filter(lambda x: not condition(x), l))
 
 
 def unicode_keys_to_strings(dictionary):
@@ -82,7 +82,7 @@ def unicode_keys_to_strings(dictionary):
         30
 
     """
-    return dict((str(k), v) for k, v in dictionary.iteritems())
+    return dict((str(k), v) for k, v in dictionary.items())
 
 
 def session_query(session, model):
@@ -114,7 +114,7 @@ def get_columns(model):
     """
     columns = {}
     for superclass in model.__mro__:
-        for name, column in superclass.__dict__.iteritems():
+        for name, column in superclass.__dict__.items():
             if isinstance(column, COLUMN_TYPES):
                 columns[name] = column
     return columns
@@ -193,7 +193,7 @@ def assign_attributes(model, **kwargs):
 
     """
     cls = type(model)
-    for field, value in kwargs.iteritems():
+    for field, value in kwargs.items():
         if not hasattr(cls, field):
             msg = '%s has no field named "%r"' % (cls.__name__, field)
             raise TypeError(msg)
@@ -299,7 +299,7 @@ def to_dict(instance, deep=None, exclude=None, include=None,
     except UnmappedInstanceError:
         return instance
     for parent in type(instance).mro():
-        columns += [key for key, value in parent.__dict__.iteritems()
+        columns += [key for key, value in parent.__dict__.items()
                     if isinstance(value, hybrid_property)]
     # filter the columns based on exclude and include values
     if exclude is not None:
@@ -327,7 +327,7 @@ def to_dict(instance, deep=None, exclude=None, include=None,
             result[key] = to_dict(value)
     # recursively call _to_dict on each of the `deep` relations
     deep = deep or {}
-    for relation, rdeep in deep.iteritems():
+    for relation, rdeep in deep.items():
         # Get the related value so we can see if it is None, a list, a query
         # (as specified by a dynamic relationship loader), or an actual
         # instance of a model.
@@ -415,7 +415,7 @@ def evaluate_functions(session, model, functions):
         funcobj = getattr(func, funcname)
         try:
             field = getattr(model, fieldname)
-        except AttributeError, exception:
+        except AttributeError as exception:
             exception.field = fieldname
             raise exception
         # Time to store things to be executed. The processed list stores
@@ -427,7 +427,7 @@ def evaluate_functions(session, model, functions):
     # Evaluate all the functions at once and get an iterable of results.
     try:
         evaluated = session.query(*processed).one()
-    except OperationalError, exception:
+    except OperationalError as exception:
         # HACK original error message is of the form:
         #
         #    '(OperationalError) no such function: bogusfuncname'
@@ -493,7 +493,7 @@ def get_or_create(session, model, attrs):
     if all(k in attrs for k in pk_names):
         # Determine the sub-dictionary of `attrs` which contains the mappings
         # for the primary keys.
-        pk_values = dict((k, v) for (k, v) in attrs.iteritems()
+        pk_values = dict((k, v) for (k, v) in attrs.items()
                          if k in pk_names)
         # query for an existing row which matches all the specified
         # primary key values.
@@ -522,7 +522,7 @@ def strings_to_dates(model, dictionary):
 
     """
     result = {}
-    for fieldname, value in dictionary.iteritems():
+    for fieldname, value in dictionary.items():
         if is_date_field(model, fieldname) and value is not None:
             if value.strip() == '':
                 result[fieldname] = None

@@ -60,7 +60,8 @@ files:
 
 ## Installing ##
 
-This application requires [Python][4] version 2.5, 2.6, or 2.7.
+This application requires [Python][4] version 2.6, 2.7 or 3.3. Python 3.2 is
+not supported by Flask and therefore cannot be supported by Flask-Restless.
 
 This application requires the following libraries to be installed:
 

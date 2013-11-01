@@ -43,8 +43,8 @@ class TestProcessors(TestSupport):
         """
 
         def check_permissions(**kw):
-            raise ProcessingException(status_code=403,
-                                      message='Permission denied')
+            raise ProcessingException(code=403,
+                                      description='Permission denied')
 
         pre = dict(GET_SINGLE=[check_permissions])
         self.manager.create_api(self.Person, methods=['GET', 'POST'],
@@ -93,8 +93,8 @@ class TestProcessors(TestSupport):
                 data['other'] = 7
 
         def check_permissions(data=None, **kw):
-            raise ProcessingException(status_code=403,
-                                      message='Permission denied')
+            raise ProcessingException(code=403,
+                                      description='Permission denied')
 
         self.manager.create_api(self.Person, methods=['POST'],
                                 url_prefix='/api/v2',
@@ -120,8 +120,8 @@ class TestProcessors(TestSupport):
 
         """
         def check_permissions(**kw):
-            raise ProcessingException(status_code=403,
-                                      message='Permission denied')
+            raise ProcessingException(code=403,
+                                      description='Permission denied')
 
         pre = dict(DELETE=[check_permissions])
         # recreate the api at /api/v1/person
@@ -151,8 +151,8 @@ class TestProcessors(TestSupport):
         """
 
         def check_permissions(**kw):
-            raise ProcessingException(status_code=403,
-                                      message='Permission denied')
+            raise ProcessingException(code=403,
+                                      description='Permission denied')
 
         pre = dict(PATCH_SINGLE=[check_permissions])
         # recreate the api at /api/v1/person
