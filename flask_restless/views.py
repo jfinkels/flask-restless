@@ -1001,11 +1001,17 @@ class API(ModelView):
             related_model = get_related_model(self.model, relationname)
             relations = frozenset(get_relations(related_model))
             deep = dict((r, {}) for r in relations)
-            # for security purposes, don't transmit list as top-level JSON
-            if is_like_list(instance, relationname):
-                result = self._paginated(list(related_value), deep)
+            if relationinstid is not None:
+                related_value_instance = get_by(self.session, related_model, relationinstid)
+                if related_value_instance is None:
+                    abort(404)
+                result = to_dict(related_value_instance, deep)
             else:
-                result = to_dict(related_value, deep)
+                # for security purposes, don't transmit list as top-level JSON
+                if is_like_list(instance, relationname):
+                    result = self._paginated(list(related_value), deep)
+                else:
+                    result = to_dict(related_value, deep)
         for postprocessor in self.postprocessors['GET_SINGLE']:
             postprocessor(result=result)
         return jsonpify(result)
