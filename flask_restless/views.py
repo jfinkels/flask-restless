@@ -1136,15 +1136,16 @@ class API(ModelView):
             result = self._inst_to_dict(instance)
             primary_key = str(result[primary_key_name(instance)])
 
-            for postprocessor in self.postprocessors['POST']:
-                postprocessor(result=result)
-
             # The URL at which a client can access the newly created instance
             # of the model.
 
             url = '%s/%s' % (request.base_url, primary_key)
             # Provide that URL in the Location header in the response.
             headers = dict(Location=url)
+
+            for postprocessor in self.postprocessors['POST']:
+                postprocessor(result=result)
+                        
             return jsonify_status_code(201, headers=headers, **result)
         except self.validation_exceptions, exception:
             return self._handle_validation_exception(exception)
