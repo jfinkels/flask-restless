@@ -487,6 +487,7 @@ def get_or_create(session, model, attrs):
                                        attrs[rel])
     # Find private key names
     pk_names = primary_key_names(model)
+    attrs = strings_to_dates(model, attrs)
     # If all of the primary keys were included in `attrs`, try to update
     # an existing row.
     if all(k in attrs for k in pk_names):
