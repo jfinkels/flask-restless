@@ -543,6 +543,33 @@ class TestAPIManager(TestSupport):
         assert 2 == data['other']
         assert 4 == data['sq_other']
 
+    def test_universal_preprocessor(self):
+        """Tests universal preprocessor and postprocessor applied to all
+        methods created with the API manager.
+
+        """
+        class Counter(object):
+            def __init__(s): s.count = 0
+            def increment(s): s.count += 1
+            def __eq__(s, o):
+                return s.count == o.count if isinstance(o, Counter) \
+                    else s.count == o
+        precount = Counter()
+        postcount = Counter()
+        def preget(**kw):
+            precount.increment()
+        def postget(**kw):
+            postcount.increment()
+        manager = APIManager(self.flaskapp, self.session,
+                             preprocessors=dict(GET_MANY=[preget]),
+                             postprocessors=dict(GET_MANY=[postget]))
+        manager.create_api(self.Person)
+        manager.create_api(self.Computer)
+        self.app.get('/api/person')
+        self.app.get('/api/computer')
+        self.app.get('/api/person')
+        assert precount == postcount == 3
+
 
 @skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')
 class TestFSA(FlaskTestBase):

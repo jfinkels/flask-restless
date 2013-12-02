@@ -532,6 +532,43 @@ The :exc:`ProcessingException` allows you to specify an HTTP status code for
 the generated response and an error message which the client will receive as
 part of the JSON in the body of the response.
 
+.. _universal:
+
+Universal preprocessors and postprocessors
+------------------------------------------
+
+.. versionadded:: 0.13.0
+
+The previous section describes how to specify a preprocessor or postprocessor
+on a per-API (that is, a per-model) basis. If you want a function to be
+executed for *all* APIs created by a :class:`APIManager`, you can use the
+``preprocessors`` or ``postprocessors`` keyword arguments in the constructor of
+the :class:`APIManager` class. These keyword arguments have the same format as
+the corresponding ones in the :meth:`APIManager.create_api` method as described
+above. Functions specified in this way are prepended to the list of
+preprocessors or postprocessors specified in the :meth:`APIManager.create_api`
+method.
+
+This may be used, for example, if all :http:method:`post` requests require
+authentication::
+
+    from flask import Flask
+    from flask.ext.restless import APIManager
+    from flask.ext.restless import ProcessingException
+    from flask.ext.login import current_user
+    from mymodels import User
+    from mymodels import session
+
+    def auth_func(*args, **kw):
+        if not current_user.is_authenticated():
+            raise ProcessingException(message='Not authenticated!')
+
+    app = Flask(__name__)
+    api_manager = APIManager(app, session=session,
+                             preprocessors=dict(POST=[auth_func]))
+    api_manager.create_api(User)
+
+
 Preprocessors for collections
 -----------------------------
 

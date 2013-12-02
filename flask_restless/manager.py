@@ -11,6 +11,7 @@
     :license: GNU AGPLv3+ or BSD
 
 """
+from collections import defaultdict
 
 from flask import Blueprint
 
@@ -91,8 +92,10 @@ class APIManager(object):
     #:    has been registered.
     BLUEPRINTNAME_FORMAT = '%s%s'
 
-    def __init__(self, app=None, session=None, flask_sqlalchemy_db=None):
-        self.init_app(app, session, flask_sqlalchemy_db)
+    def __init__(self, app=None, session=None, flask_sqlalchemy_db=None,
+                 preprocessors=None, postprocessors=None):
+        self.init_app(app, session, flask_sqlalchemy_db, preprocessors,
+                      postprocessors)
 
     def _next_blueprint_name(self, basename):
         """Returns the next name for a blueprint with the specified base name.
@@ -121,7 +124,8 @@ class APIManager(object):
             next_number = max(existing_numbers) + 1
         return APIManager.BLUEPRINTNAME_FORMAT % (basename, next_number)
 
-    def init_app(self, app, session=None, flask_sqlalchemy_db=None):
+    def init_app(self, app, session=None, flask_sqlalchemy_db=None,
+                 preprocessors=None, postprocessors=None):
         """Stores the specified :class:`flask.Flask` application object on
         which API endpoints will be registered and the
         :class:`sqlalchemy.orm.session.Session` object in which all database
@@ -171,9 +175,25 @@ class APIManager(object):
             db = SQLALchemy(app)
             apimanager.init_app(app, flask_sqlalchemy_db=db)
 
+        `postprocessors` and `preprocessors` must be dictionaries as described
+        in the section :ref:`processors`. These preprocessors and
+        postprocessors will be applied to all requests to and responses from
+        APIs created using this APIManager object. The preprocessors and
+        postprocessors given in these keyword arguments will be prepended to
+        the list of processors given for each individual model when using the
+        :meth:`create_api_blueprint` method (more specifically, the functions
+        listed here will be executed before any functions specified in the
+        :meth:`create_api_blueprint` method). For more information on using
+        preprocessors and postprocessors, see :ref:`processors`.
+
+        .. versionadded:: 0.13.0
+           Added the `preprocessors` and `postprocessors` keyword arguments.
+
         """
         self.app = app
         self.session = session or getattr(flask_sqlalchemy_db, 'session', None)
+        self.universal_preprocessors = preprocessors or {}
+        self.universal_postprocessors = postprocessors or {}
 
     def create_api_blueprint(self, model, methods=READONLY_METHODS,
                              url_prefix='/api', collection_name=None,
@@ -373,12 +393,22 @@ class APIManager(object):
         collection_endpoint = '/%s' % collection_name
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.APINAME_FORMAT % collection_name
+        # Prepend the universal preprocessors and postprocessors specified in
+        # the constructor of this class.
+        preprocessors_ = defaultdict(list)
+        postprocessors_ = defaultdict(list)
+        preprocessors_.update(preprocessors or {})
+        postprocessors_.update(postprocessors or {})
+        for key, value in self.universal_preprocessors.items():
+            preprocessors_[key] = value + preprocessors_[key]
+        for key, value in self.universal_postprocessors.items():
+            postprocessors_[key] = value + postprocessors_[key]
         # the view function for the API for this model
         api_view = API.as_view(apiname, self.session, model, exclude_columns,
                                include_columns, include_methods,
                                validation_exceptions, results_per_page,
                                max_results_per_page, post_form_preprocessor,
-                               preprocessors, postprocessors)
+                               preprocessors_, postprocessors_)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the
