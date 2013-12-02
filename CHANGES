@@ -17,6 +17,13 @@ Not yet released.
 
 - #222: on :http:method:`post` and :http:method:`patch` requests, recurse into
   nested relations to get or create instances of related models.
+- #246: adds `pysqlite <https://pypi.python.org/pypi/pysqlite>`_ to test
+  requirements.
+- #260: return a single object when making a :http:method:`get` request to a
+  relation sub-URL.
+- #264: all methods now execute postprocessors after setting headers.
+- #265: convert strings to dates in related models when making
+  :http:method:`post` requests.
 
 Version 0.12.0
 --------------
