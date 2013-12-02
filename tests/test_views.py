@@ -1595,7 +1595,7 @@ class TestAssociationProxy(DatabaseTestBase):
 
         # Metadata is a key-value pair, used to test for association
         # proxies that use AssociationDict types
-        # this is the associtiation table for Image->metadata
+        # this is the association table for Image->metadata
         product_meta = Table('product_meta', self.Base.metadata,
                  Column('image_id', Integer, ForeignKey('image.id')),
                  Column('meta_id', Integer, ForeignKey('meta.id')))
