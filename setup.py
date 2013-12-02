@@ -58,7 +58,7 @@ setup(
     platforms='any',
     packages=['flask_restless'],
     test_suite='nose.collector',
-    tests_require=['nose'],
+    tests_require=['nose', 'pysqlite'],
     url='http://github.com/jfinkels/flask-restless',
     version='0.12.2-dev',
     zip_safe=False
