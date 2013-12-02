@@ -10,10 +10,10 @@ Numbers following a pound sign (#) refer to `GitHub issues
    As of version 0.6, Flask-Restless supports both pure SQLAlchemy and
    Flask-SQLAlchemy models. Before that, it supported only Elixir models.
 
-Version 0.12.1-dev
-------------------
+Version 0.12.1
+--------------
 
-Not yet released.
+Released on December 1, 2013.
 
 - #222: on :http:method:`post` and :http:method:`patch` requests, recurse into
   nested relations to get or create instances of related models.
