@@ -14,8 +14,6 @@
       * `Source code repository <http://github.com/jfinkels/flask-restless>`_
 
 """
-import sys
-from setuptools import Command
 from setuptools import setup
 
 #: The installation requirements for Flask-Restless. Some notes:
