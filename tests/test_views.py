@@ -1605,7 +1605,6 @@ class TestAssociationProxy(DatabaseTestBase):
         creator2 = lambda image: ChosenProductImage(image=image)
         creator3 = lambda key, value: Metadata(key, value)
 
-
         class Metadata(self.Base):
             def __init__(self, key, value):
                 super(Metadata, self).__init__()
@@ -1624,7 +1623,7 @@ class TestAssociationProxy(DatabaseTestBase):
                             creator=creator1)
 
             meta_store = rel('Metadata',
-                             cascade="all",
+                             cascade='all',
                              backref=backref(name='metadata'),
                              collection_class=col_mapped(
                                                     Metadata.__table__.c.key),
@@ -1660,8 +1659,6 @@ class TestAssociationProxy(DatabaseTestBase):
                        backref=backref(name='products', lazy='dynamic'))
             tag_names = prox('tags', 'name',
                              creator=lambda tag_name: Tag(name=tag_name))
-
-
 
         self.Product = Product
         self.Image = Image
