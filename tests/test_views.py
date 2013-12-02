@@ -1604,7 +1604,6 @@ class TestAssociationProxy(DatabaseTestBase):
         creator1 = lambda product: ChosenProductImage(product=product)
         creator2 = lambda image: ChosenProductImage(image=image)
         creator3 = lambda key, value: Metadata(key, value)
-
         class Metadata(self.Base):
             def __init__(self, key, value):
                 super(Metadata, self).__init__()
