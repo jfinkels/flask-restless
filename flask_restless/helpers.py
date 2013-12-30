@@ -72,8 +72,17 @@ def session_query(session, model):
     If `model` has a ``query`` attribute already, that object will be returned.
     Otherwise a query will be created and returned based on `session`.
 
+    If the ``query`` attribute is a callable it will be evaluated.
+
     """
-    return model.query if hasattr(model, 'query') else session.query(model)
+    if hasattr(model, 'query'):
+        query = model.query
+        if callable(query):
+            query = query()
+    else:
+        query = session.query(model)
+
+    return query
 
 
 def upper_keys(d):
@@ -448,7 +457,7 @@ def query_by_primary_key(session, model, primary_key_value, primary_key=None):
     """
     pk_name = primary_key or primary_key_name(model)
     query = session_query(session, model)
-    return query.filter_by(**{pk_name: primary_key_value})
+    return query.filter(getattr(model, pk_name) == primary_key_value)
 
 
 def get_by(session, model, primary_key_value, primary_key=None):

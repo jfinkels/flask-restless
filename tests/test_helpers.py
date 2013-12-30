@@ -14,6 +14,8 @@ import uuid
 
 from nose.tools import assert_raises
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.orm import Query, relationship
+from sqlalchemy import Column, Integer, Unicode, ForeignKey
 
 from flask.ext.restless.helpers import evaluate_functions
 from flask.ext.restless.helpers import get_columns
@@ -22,10 +24,99 @@ from flask.ext.restless.helpers import partition
 from flask.ext.restless.helpers import primary_key_name
 from flask.ext.restless.helpers import to_dict
 from flask.ext.restless.helpers import upper_keys
+from flask.ext.restless.helpers import session_query
+from flask.ext.restless.helpers import get_by
 
 from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
+from .helpers import DatabaseTestBase
 
+
+class TestSessionQuery(DatabaseTestBase):
+    """Unit test for the session_query function"""
+
+    def setUp(self):
+        """Creates example tables to test the various behaviours of session_query()
+
+        """
+        super(TestSessionQuery, self).setUp()
+
+
+        #declare models
+        class WithCallable(self.Base):
+            __tablename__ = 'with_callable'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode, unique=True)
+
+            @classmethod
+            def query(model):
+              return WithCallable
+
+
+        class WithoutCallable(self.Base):
+            __tablename__ = 'without_callable'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode, unique=True)
+
+
+        class Person(self.Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode, unique=True)
+            family_id = Column(Integer, ForeignKey('family.id'))
+            family = relationship('Family')
+
+            @classmethod
+            def query(cls):
+              return self.session.query(Person).join((Family, Person.family_id == Family.id))
+
+        class Family(self.Base):
+            __tablename__ = 'family'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode, unique=True)
+            persons = relationship('Person')
+
+        self.WithCallable = WithCallable
+        self.WithoutCallable = WithoutCallable
+        self.Person = Person
+        self.Family = Family
+
+        # create all the tables required for the models
+        self.Base.metadata.create_all()
+
+    def test_with_callable(self):
+        assert session_query(self.session, self.WithCallable) == self.WithCallable
+
+    def test_without_callable(self):
+        assert type(session_query(self.session, self.WithoutCallable)) == Query
+
+    def test_get_by(self):
+        """Tests if get_by works correct given multiple types of queries
+
+        """
+        family = self.Family(name='Test Family')
+        self.session.add(family)
+
+        persons = map(lambda n: self.Person(name='Person %i' %n, family=family) ,range(0, 100))
+        map(lambda person: self.session.add(person), persons)
+
+        self.session.commit()
+
+        person = persons[-1]
+        assert person.id, "Person needs to exist in the database with a valid id"
+
+        family_test = get_by(self.session, self.Family, family.id)
+
+        assert family_test, "Family not found"
+        assert family_test.name == family.name, "Family name needs to be the same"
+        assert family_test.id == family.id, "Family id needs to be the same"
+
+
+        person_test = get_by(self.session, self.Person, person.id)
+
+        assert person_test, "No person found"
+        assert person.id == person_test.id, "Person id must match, otherwise wrong match"
+        assert person.name == person_test.name, "Should be the same name"
 
 class TestHelpers(object):
     """Unit tests for the helper functions."""
