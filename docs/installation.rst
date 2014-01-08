@@ -9,6 +9,9 @@ with ``pip`` (hopefully in a virtual environment provided by ``virtualenv``)::
 
     pip install Flask-Restless
 
+Flask-Restless requires Python version 2.6, 2.7, or 3.3. Python 3.2 is not
+supported by Flask and therefore cannot be supported by Flask-Restless.
+
 Flask-Restless has the following dependencies (which will be automatically
 installed if you use ``pip``):
 
@@ -19,5 +22,3 @@ installed if you use ``pip``):
 * `Flask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy>`_, *only if*
   you want to define your models using Flask-SQLAlchemy (which we highly
   recommend)
-
-Flask-Restless requires Python version 2.6, 2.7, or 3.
