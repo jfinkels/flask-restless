@@ -7,7 +7,7 @@ Numbers following a pound sign (#) refer to `GitHub issues
 
 .. note::
 
-   As of version 0.12.2, Flask-Restless supports Python 2.6, 2.7, and 3. Before
+   As of version 0.13.0, Flask-Restless supports Python 2.6, 2.7, and 3. Before
    that, it supported Python 2.5, 2.6, and 2.7.
 
 .. note::
@@ -15,7 +15,7 @@ Numbers following a pound sign (#) refer to `GitHub issues
    As of version 0.6, Flask-Restless supports both pure SQLAlchemy and
    Flask-SQLAlchemy models. Before that, it supported only Elixir models.
 
-Version 0.12.2-dev
+Version 0.13.0-dev
 ------------------
 
 Not yet released.
