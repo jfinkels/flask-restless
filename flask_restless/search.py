@@ -361,6 +361,9 @@ class QueryBuilder(object):
         :exc:`TypeError` if there is a problem creating the query. See the
         documentation for :func:`_create_operation` for more information.
 
+        Pre-condition: the ``search_params.filters`` is a (possibly empty)
+        iterable.
+
         """
         filters = []
         for filt in search_params.filters:
