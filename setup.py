@@ -17,18 +17,9 @@
 import sys
 from setuptools import setup
 
-#: The installation requirements for Flask-Restless. Some notes:
-#: - ``simplejson`` is only required on Python version 2.5.
-#: - ``Flask-SQLAlchemy`` is not required, so the user must install it
-#:   explicitly.
-#: - Versions less than 2.0 of ``python-dateutil`` support Python 2.5, but
-#:   later versions do not.
-requirements = ['flask>=0.7', 'sqlalchemy']
-if sys.version_info < (2, 6):
-    requirements.append('simplejson')
-    requirements.append('python-dateutil<2.0')
-else:
-    requirements.append('python-dateutil!=2.0')
+#: The installation requirements for Flask-Restless. Flask-SQLAlchemy is not
+#: required, so the user must install it explicitly.
+requirements = ['flask>=0.10', 'sqlalchemy', 'python-dateutil>2.0']
 
 
 setup(
@@ -50,14 +41,14 @@ setup(
     download_url='http://pypi.python.org/pypi/Flask-Restless',
     install_requires=requirements,
     include_package_data=True,
-    keywords=['ReST', 'API', 'Flask', 'Elixir'],
+    keywords=['ReST', 'API', 'Flask'],
     license='GNU AGPLv3+ or BSD',
     long_description=__doc__,
     name='Flask-Restless',
     platforms='any',
     packages=['flask_restless'],
     test_suite='nose.collector',
-    tests_require=['nose', 'pysqlite'],
+    tests_require=['nose'],
     url='http://github.com/jfinkels/flask-restless',
     version='0.12.2-dev',
     zip_safe=False
