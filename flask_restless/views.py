@@ -1084,7 +1084,7 @@ class API(ModelView):
 
         # try to read the parameters for the model from the body of the request
         try:
-            params = request.json or {}
+            params = request.get_json() or {}
         except BadRequest as exception:
             current_app.logger.exception(str(exception))
             return jsonify(message='Unable to decode data'), 400
@@ -1190,7 +1190,7 @@ class API(ModelView):
 
         # try to load the fields/values to update from the body of the request
         try:
-            data = request.json or {}
+            data = request.get_json() or {}
         except BadRequest as exception:
             # this also happens when request.data is empty
             current_app.logger.exception(str(exception))
