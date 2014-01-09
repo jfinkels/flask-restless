@@ -20,7 +20,6 @@ from sqlalchemy import or_ as OR
 from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
-from .helpers import unicode_keys_to_strings
 from .helpers import session_query
 from .helpers import get_related_association_proxy_model
 
@@ -268,9 +267,7 @@ class SearchParameters(object):
         # for the sake of brevity...
         from_dict = Filter.from_dictionary
         filters = [from_dict(f) for f in dictionary.get('filters', [])]
-        # HACK In Python 2.5, unicode dictionary keys are not allowed.
         order_by_list = dictionary.get('order_by', [])
-        order_by_list = (unicode_keys_to_strings(o) for o in order_by_list)
         order_by = [OrderBy(**o) for o in order_by_list]
         limit = dictionary.get('limit')
         offset = dictionary.get('offset')

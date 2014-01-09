@@ -55,7 +55,6 @@ from .helpers import query_by_primary_key
 from .helpers import session_query
 from .helpers import strings_to_dates
 from .helpers import to_dict
-from .helpers import unicode_keys_to_strings
 from .helpers import upper_keys
 from werkzeug.exceptions import BadRequest
 
@@ -603,8 +602,7 @@ class API(ModelView):
             if 'id' in dictionary:
                 subinst = get_by(self.session, submodel, dictionary['id'])
             else:
-                kw = unicode_keys_to_strings(dictionary)
-                subinst = self.query(submodel).filter_by(**kw).first()
+                subinst = self.query(submodel).filter_by(**dictionary).first()
             for instance in query:
                 getattr(instance, relationname).remove(subinst)
             if remove:
@@ -1116,8 +1114,7 @@ class API(ModelView):
         try:
             # Instantiate the model with the parameters.
             modelargs = dict([(i, params[i]) for i in props])
-            # HACK Python 2.5 requires __init__() keywords to be strings.
-            instance = self.model(**unicode_keys_to_strings(modelargs))
+            instance = self.model(**modelargs)
 
             # Handling relations, a single level is allowed
             for col in set(relations).intersection(paramkeys):
