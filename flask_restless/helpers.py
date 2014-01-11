@@ -416,25 +416,32 @@ def evaluate_functions(session, model, functions):
     return dict(zip(funcnames, evaluated))
 
 
-def query_by_primary_key(session, model, primary_key_value):
+def query_by_primary_key(session, model, primary_key_value, primary_key=None):
     """Returns a SQLAlchemy query object containing the result of querying
     `model` for instances whose primary key has the value `primary_key_value`.
+
+    If `primary_key` is specified, the column specified by that string is used
+    as the primary key column. Otherwise, the column named ``id`` is used.
 
     Presumably, the returned query should have at most one element.
 
     """
-    # force unicode primary key name to string; see unicode_keys_to_strings
-    pk_name = str(primary_key_name(model))
+    pk_name = primary_key or primary_key_name(model)
     query = session_query(session, model)
     return query.filter_by(**{pk_name: primary_key_value})
 
 
-def get_by(session, model, primary_key_value):
+def get_by(session, model, primary_key_value, primary_key=None):
     """Returns the first instance of `model` whose primary key has the value
     `primary_key_value`, or ``None`` if no such instance exists.
 
+    If `primary_key` is specified, the column specified by that string is used
+    as the primary key column. Otherwise, the column named ``id`` is used.
+
     """
-    return query_by_primary_key(session, model, primary_key_value).first()
+    result = query_by_primary_key(session, model, primary_key_value,
+                                  primary_key)
+    return result.first()
 
 
 def get_or_create(session, model, attrs):

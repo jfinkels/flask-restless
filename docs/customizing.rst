@@ -98,6 +98,17 @@ method::
 
 Then the API will be exposed at ``/api/people`` instead of ``/api/person``.
 
+Specifying one of many primary keys
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If your model has more than one primary key (one called ``id`` and one called
+``username``, for example), you should specify the one to use::
+
+    manager.create_api(User, primary_key='username')
+
+If you do this, Flask-Restless will create URLs like ``/api/user/myusername``
+instead of ``/api/user/137``.
+
 .. _allowpatchmany:
 
 Enable patching all instances
