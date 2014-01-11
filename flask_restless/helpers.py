@@ -69,20 +69,19 @@ def partition(l, condition):
 def session_query(session, model):
     """Returns a SQLAlchemy query object for the specified `model`.
 
-    If `model` has a ``query`` attribute already, that object will be returned.
-    Otherwise a query will be created and returned based on `session`.
+    If `model` has a ``query`` attribute already, ``model.query`` will be
+    returned. If the ``query`` attribute is callable ``model.query()`` will be
+    returned instead.
 
-    If the ``query`` attribute is a callable it will be evaluated.
+    If `model` has no such attribute, a query based on `session` will be
+    created and returned.
 
     """
     if hasattr(model, 'query'):
-        query = model.query
-        if callable(query):
-            query = query()
-    else:
-        query = session.query(model)
-
-    return query
+        if callable(model.query):
+            return model.query()
+        return model.query
+    return session.query(model)
 
 
 def upper_keys(d):
