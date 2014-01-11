@@ -544,6 +544,7 @@ class TestAPIManager(TestSupport):
         assert 4 == data['sq_other']
 
 
+@skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')
 class TestFSA(FlaskTestBase):
     """Tests which use models defined using Flask-SQLAlchemy instead of pure
     SQLAlchemy.
@@ -624,9 +625,3 @@ class TestFSA(FlaskTestBase):
         assert len(loads(response.data)['objects']) == 1
         assert loads(response.data)['objects'][0]['id'] == 1
         assert loads(response.data)['objects'][0]['name'] == 'bar'
-
-
-# skip_unless should be used as a decorator, but Python 2.5 doesn't have
-# decorators.
-TestFSA = skip_unless(has_flask_sqlalchemy,
-                      'Flask-SQLAlchemy not found.')(TestFSA)

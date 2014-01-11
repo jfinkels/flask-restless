@@ -43,6 +43,7 @@ dumps = json.dumps
 loads = json.loads
 
 
+@skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')
 class TestFSAModel(FlaskTestBase):
     """Tests for functions which operate on Flask-SQLAlchemy models."""
 
@@ -146,12 +147,6 @@ class TestFSAModel(FlaskTestBase):
         data = loads(response.data)
         assert not isinstance(data['owner'], list)
         assert owner.id == data['ownerid']
-
-
-# skip_unless should be used as a decorator, but Python 2.5 doesn't have
-# decorators.
-TestFSAModel = skip_unless(has_flask_sqlalchemy,
-                           'Flask-SQLAlchemy not found.')(TestFSAModel)
 
 
 class TestFunctionAPI(TestSupportPrefilled):

@@ -135,6 +135,8 @@ class TestSimpleValidation(TestSupport):
             assert 'format' not in errors['email'].lower()
 
 
+@skip_unless(has_savalidation and sav_version >= (0, 2),
+             'savalidation not found.')
 class TestSAV(TestSupport):
     """Tests for validation errors raised by the ``savalidation`` package. For
     more information about this package, see `its PyPI page
@@ -239,9 +241,3 @@ class TestSAV(TestSupport):
         data = loads(response.data)
         assert data['name'] == 'Jeffrey'
         assert data['email'] == 'example@example.com'
-
-
-# skip_unless should be used as a decorator, but Python 2.5 doesn't have
-# decorators.
-TestSAV = skip_unless(has_savalidation and sav_version >= (0, 2),
-                      'savalidation not found.')(TestSAV)
