@@ -394,6 +394,11 @@ final argument when defining a preprocessor or postprocessor function. This
 way, you can specify only the keyword arguments you need when defining your
 functions.
 
+.. versionadded:: 0.13.0
+   Functions provided as postprocessors for ``GET_MANY`` and ``PATCH_MANY``
+   requests receive the ``search_params`` keyword argument, so that both
+   preprocessors and postprocessors have access to this information.
+
 * :http:method:`get` for a single instance::
 
       def get_single_preprocessor(instance_id=None, **kw):
@@ -419,10 +424,12 @@ functions.
           """
           pass
 
-      def get_many_postprocessor(result=None, **kw):
-          """Accepts a single argument, `result`, which is the dictionary
+      def get_many_postprocessor(result=None, search_params=None, **kw):
+          """Accepts two arguments, `result`, which is the dictionary
           representation of the JSON response which will be returned to the
-          client.
+          client, and `search_params`, which is a dictionary containing the
+          search parameters for the request (that produced the specified
+          `result`).
 
           """
           pass
@@ -455,11 +462,13 @@ functions.
           """
           pass
 
-      def patch_many_postprocessor(query=None, data=None, **kw):
-          """Accepts two arguments: `query`, which is the SQLAlchemy query
+      def patch_many_postprocessor(query=None, data=None, search_params=None,
+                                   **kw):
+          """Accepts three arguments: `query`, which is the SQLAlchemy query
           which was inferred from the search parameters in the query string,
-          and `data`, which is the dictionary representation of the JSON
-          response which will be returned to the client.
+          `data`, which is the dictionary representation of the JSON response
+          which will be returned to the client, and `search_params`, which is a
+          dictionary containing the search parameters for the request.
 
           """
           pass

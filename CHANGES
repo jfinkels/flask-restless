@@ -24,6 +24,9 @@ Not yet released.
 - #29: replace custom ``jsonify_status_code`` function with built-in support
   for ``return jsonify(), status_code`` style return statements (new in Flask
   0.9).
+- #256: makes search parameters available to postprocessors for
+  :http:method:`get` and :http:method:`patch` requests that access multiple
+  resources.
 - #263: Adds Python 3.3 support; drops Python 2.5 support.
 
 Version 0.12.1

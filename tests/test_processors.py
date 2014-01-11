@@ -54,6 +54,17 @@ class TestProcessors(TestSupport):
         response = self.app.get('/api/person/1')
         assert response.status_code == 403
 
+    def test_get_many_postprocessor(self):
+        filt = dict(name='id', op='in', val=[1, 3])
+        def foo(search_params=None, **kw):
+            assert filt in search_params['filters']
+        post = dict(GET_MANY=[foo])
+        self.manager.create_api(self.Person, methods=['GET', 'POST'],
+                                postprocessors=post)
+        query = dict(filters=[filt])
+        response = self.app.search('/api/person', dumps(query))
+        assert response.status_code == 200
+
     def test_get_many_preprocessor(self):
         def check_permissions(search_params=None, **kw):
             filt = {u'name': u'id', u'op': u'in', u'val': [1, 3]}

@@ -962,7 +962,7 @@ class API(ModelView):
             headers = dict(Location=url)
 
         for postprocessor in self.postprocessors['GET_MANY']:
-            postprocessor(result=result)
+            postprocessor(result=result, search_params=search_params)
 
         return jsonpify(result, headers=headers)
 
@@ -1254,7 +1254,8 @@ class API(ModelView):
         if patchmany:
             result = dict(num_modified=num_modified)
             for postprocessor in self.postprocessors['PATCH_MANY']:
-                postprocessor(query=query, result=result)
+                postprocessor(query=query, result=result,
+                              search_params=search_params)
         else:
             result = self._instid_to_dict(instid)
             for postprocessor in self.postprocessors['PATCH_SINGLE']:
