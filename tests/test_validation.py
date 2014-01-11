@@ -14,6 +14,7 @@
 
 """
 import re
+import sys
 
 from flask import json
 from sqlalchemy import Column
@@ -135,8 +136,8 @@ class TestSimpleValidation(TestSupport):
             assert 'format' not in errors['email'].lower()
 
 
-@skip_unless(has_savalidation and sav_version >= (0, 2),
-             'savalidation not found.')
+@skip_unless(has_savalidation and sav_version >= (0, 2) and
+             sys.version < (3, 0, 0), 'savalidation not found.')
 class TestSAV(TestSupport):
     """Tests for validation errors raised by the ``savalidation`` package. For
     more information about this package, see `its PyPI page
