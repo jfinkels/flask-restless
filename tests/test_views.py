@@ -1319,6 +1319,57 @@ class TestAPI(TestSupport):
         # assert response.status_code == 200
         # assert len(loads(response.data)['objects']) == 0
 
+    def test_get_callable_query_attribute(self):
+        """Tests that a callable model.query attribute is being used
+        when available.
+
+        """
+
+        CarModel, CarManufacturer = self.CarModel, self.CarManufacturer
+
+        manufacturer_name = u'Super Cars Ltd.'
+
+        cm1 = CarManufacturer(name=manufacturer_name)
+        cm2 = CarManufacturer(name=u'Trash Cars Ltd.')
+
+        self.session.add_all((cm1, cm2))
+
+        car1 = CarModel(name=u'Luxory deluxe L', manufacturer=cm1)
+        car2 = CarModel(name=u'Luxory deluxe XL', manufacturer=cm1)
+        car3 = CarModel(name=u'Broken wheel', manufacturer=cm2)
+
+        self.session.add_all((car1, car2, car3))
+
+        self.session.commit()
+
+        def query(cls):
+            car_model = self.session.query(CarModel)
+            return car_model.join(CarManufacturer).\
+                filter(CarManufacturer.name==manufacturer_name)
+
+        CarModel.query = classmethod(query)
+
+        response = self.app.get('/api/car_model')
+
+        assert 200 == response.status_code, "%d" % response.status_code
+
+        data = loads(response.data)
+
+        assert 2 == len(data['objects'])
+
+        for car in data['objects']:
+          assert car['manufacturer']['name'] == manufacturer_name
+
+        for car in [car1, car2]:
+          response = self.app.get('/api/car_model/%d' % car.id)
+          assert 200 == response.status_code
+          data = loads(response.data)
+          assert data['manufacturer_id'] == cm1.id
+          assert data['name'] == car.name
+
+        response = self.app.get('/api/car_model/%d' % car3.id)
+        assert 404 == response.status_code
+
 
 class TestHeaders(TestSupportPrefilled):
     """Tests for correct HTTP headers in responses."""
