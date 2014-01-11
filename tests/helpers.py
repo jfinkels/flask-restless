@@ -24,7 +24,7 @@ from sqlalchemy import Boolean
 from sqlalchemy import Unicode
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.hybrid import hybrid_property, hybrid_method
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
@@ -181,9 +181,9 @@ class TestSupport(DatabaseTestBase):
         class ComputerProgram(self.Base):
             __tablename__ = 'computer_program'
             computer_id = Column(Integer, ForeignKey('computer.id'),
-                                                     primary_key=True)
+                                 primary_key=True)
             program_id = Column(Integer, ForeignKey('program.id'),
-                                                    primary_key=True)
+                                primary_key=True)
             licensed = Column(Boolean, default=False)
             program = relationship('Program')
 
@@ -195,7 +195,8 @@ class TestSupport(DatabaseTestBase):
             buy_date = Column(DateTime)
             owner_id = Column(Integer, ForeignKey('person.id'))
             owner = relationship('Person')
-            programs = relationship('ComputerProgram', cascade="all, delete-orphan")
+            programs = relationship('ComputerProgram',
+                                    cascade="all, delete-orphan")
 
             def speed(self):
                 return 42
@@ -220,7 +221,6 @@ class TestSupport(DatabaseTestBase):
 
             def first_computer(self):
                 return sorted(self.computers, key=lambda k: k.name)[0]
-
 
         class LazyComputer(self.Base):
             __tablename__ = 'lazycomputer'

@@ -82,7 +82,7 @@ class TestQueryCreation(TestSupportPrefilled):
         assert query.one().computers[0].name == 'turing'
 
         d = {'filters': [{'name': 'age', 'op': 'lte', 'field': 'other'}],
-            'order_by': [{'field': 'other'}]}
+             'order_by': [{'field': 'other'}]}
         query = create_query(self.session, self.Person, d)
         assert query.count() == 2
         results = query.all()
@@ -167,7 +167,7 @@ class TestOperators(TestSupportPrefilled):
         computer5 = self.Computer(name=u'c5', vendor=u'foo')
         computer6 = self.Computer(name=u'c6', vendor=u'foo')
         self.session.add_all((computer1, computer2, computer3, computer4,
-                                 computer5, computer6))
+                              computer5, computer6))
         self.session.commit()
         # add the computers to three test people
         person1, person2, person3 = self.people[:3]
@@ -201,7 +201,7 @@ class TestOperators(TestSupportPrefilled):
         computer5 = self.Computer(name=u'c5', vendor=u'foo')
         computer6 = self.Computer(name=u'c6', vendor=u'foo')
         self.session.add_all((computer1, computer2, computer3, computer4,
-                                 computer5, computer6))
+                              computer5, computer6))
         self.session.commit()
         # add the computers to three test people
         person1, person2, person3 = self.people[:3]
@@ -215,7 +215,7 @@ class TestOperators(TestSupportPrefilled):
         result = search(self.session, self.Person, d)
         assert result.count() == 2
         # test 'has'
-        val=dict(name='name', op='like', val=u'%incol%')
+        val = dict(name='name', op='like', val=u'%incol%')
         d = dict(filters=[dict(name='owner', op='has', val=val)])
         result = search(self.session, self.Computer, d)
         assert result.count() == 3
@@ -237,7 +237,7 @@ class TestOperators(TestSupportPrefilled):
         computer5 = self.Computer(name=u'c5', vendor=u'foo')
         computer6 = self.Computer(name=u'c6', vendor=u'foo')
         self.session.add_all((computer1, computer2, computer3, computer4,
-                                 computer5, computer6))
+                              computer5, computer6))
         self.session.commit()
         # add the computers to three test people
         person1, person2, person3 = self.people[:3]

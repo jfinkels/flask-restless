@@ -56,8 +56,10 @@ class TestProcessors(TestSupport):
 
     def test_get_many_postprocessor(self):
         filt = dict(name='id', op='in', val=[1, 3])
+
         def foo(search_params=None, **kw):
             assert filt in search_params['filters']
+
         post = dict(GET_MANY=[foo])
         self.manager.create_api(self.Person, methods=['GET', 'POST'],
                                 postprocessors=post)

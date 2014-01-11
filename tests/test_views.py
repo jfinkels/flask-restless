@@ -383,7 +383,10 @@ class TestAPI(TestSupport):
         assert loads(response.data)['inception_time'] is None
 
     def test_post_date_functions(self):
-        """Tests that assigning an string like CURRENT_TIMESTAMP gets converted into a date."""
+        """Tests that ``'CURRENT_TIMESTAMP'`` gets converted into a datetime
+        object when making a request to set a date or time field.
+
+        """
         self.manager.create_api(self.Star, methods=['GET', 'POST'])
         data = dict(inception_time='CURRENT_TIMESTAMP')
         response = self.app.post('/api/star', data=dumps(data))

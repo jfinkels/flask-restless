@@ -94,7 +94,7 @@ class TestModelHelpers(TestSupport):
 
         me_dict = to_dict(me)
         expectedfields = sorted(['birth_date', 'age', 'id', 'name',
-            'other', 'is_minor'])
+                                 'other', 'is_minor'])
         assert sorted(me_dict) == expectedfields
         assert me_dict['name'] == u'Lincoln'
         assert me_dict['age'] == 24

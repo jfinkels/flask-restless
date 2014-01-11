@@ -65,6 +65,7 @@ from .search import search
 #: Format string for creating Link headers in paginated responses.
 LINKTEMPLATE = '<%s?page=%s&results_per_page=%s>; rel="%s"'
 
+
 class ProcessingException(HTTPException):
     """Raised when a preprocessor or postprocessor encounters a problem.
 
@@ -680,8 +681,8 @@ class API(ModelView):
         tochange = frozenset(relations) & frozenset(params)
         for columnname in tochange:
             # Check if 'add' or 'remove' is being used
-            if (isinstance(params[columnname], dict) and
-                any(k in params[columnname] for k in ['add', 'remove'])):
+            if (isinstance(params[columnname], dict)
+                and any(k in params[columnname] for k in ['add', 'remove'])):
 
                 toadd = params[columnname].get('add', [])
                 toremove = params[columnname].get('remove', [])
@@ -999,7 +1000,8 @@ class API(ModelView):
             relations = frozenset(get_relations(related_model))
             deep = dict((r, {}) for r in relations)
             if relationinstid is not None:
-                related_value_instance = get_by(self.session, related_model, relationinstid)
+                related_value_instance = get_by(self.session, related_model,
+                                                relationinstid)
                 if related_value_instance is None:
                     abort(404)
                 result = to_dict(related_value_instance, deep)
@@ -1039,7 +1041,7 @@ class API(ModelView):
             # If the request is ``DELETE /api/person/1/computers``, error 400.
             if not relationinstid:
                 msg = 'Cannot DELETE entire "%s" relation' % relationname
-                return jsonify_status_code(400, msg)
+                return jsonify(message=msg), 400
             # Otherwise, get the related instance to delete.
             relation = getattr(inst, relationname)
             related_model = get_related_model(self.model, relationname)
@@ -1147,7 +1149,7 @@ class API(ModelView):
 
             for postprocessor in self.postprocessors['POST']:
                 postprocessor(result=result)
-                        
+
             return jsonify(headers=headers, **result), 201
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)

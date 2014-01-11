@@ -59,7 +59,7 @@ def partition(l, condition):
     element of the list `l`) and returns either ``True`` or ``False``.
 
     """
-    return list(filter(condition, l)), list(filter(lambda x: not condition(x), l))
+    return [x for x in l if condition(x)], [x for x in l if not condition(x)]
 
 
 def session_query(session, model):
@@ -180,9 +180,9 @@ def assign_attributes(model, **kwargs):
 def primary_key_names(model):
     """Returns all the primary keys for a model."""
     return [key for key, field in inspect.getmembers(model)
-           if isinstance(field, QueryableAttribute)
-           and isinstance(field.property, ColumnProperty)
-           and field.property.columns[0].primary_key]
+            if isinstance(field, QueryableAttribute)
+            and isinstance(field.property, ColumnProperty)
+            and field.property.columns[0].primary_key]
 
 
 def primary_key_name(model_or_instance):
@@ -221,6 +221,7 @@ def is_mapped_class(cls):
         return True
     except:
         return False
+
 
 # This code was adapted from :meth:`elixir.entity.Entity.to_dict` and
 # http://stackoverflow.com/q/1958219/108197.
@@ -324,7 +325,7 @@ def to_dict(instance, deep=None, exclude=None, include=None,
         newmethods = None
         if include_methods is not None:
             newmethods = [method.split('.', 1)[1] for method in include_methods
-                        if method.split('.', 1)[0] == relation]
+                          if method.split('.', 1)[0] == relation]
         if is_like_list(instance, relation):
             result[relation] = [to_dict(inst, rdeep, exclude=newexclude,
                                         include=newinclude,
