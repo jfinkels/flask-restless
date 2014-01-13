@@ -234,7 +234,7 @@ class TestFunctionAPI(TestSupportPrefilled):
 
         # Add some more people so the result will be paginated.
         for n in range(20):
-            self.session.add(self.Person(name=str(n)))
+            self.session.add(self.Person(name=u'{0}'.format(n)))
         self.session.commit()
         response = self.app.get('/api/person?callback=baz')
         assert response.status_code == 200
@@ -1190,7 +1190,7 @@ class TestAPI(TestSupport):
         self.Base.metadata.create_all()
         self.manager.create_api(StringID)
 
-        foo = StringID(name='1')
+        foo = StringID(name=u'1')
         self.session.add(foo)
         self.session.commit()
         response = self.app.get('/api/stringid/1')
@@ -1201,7 +1201,7 @@ class TestAPI(TestSupport):
         response = self.app.get('/api/stringid/01')
         assert 404 == response.status_code
 
-        bar = StringID(name='01')
+        bar = StringID(name=u'01')
         self.session.add(bar)
         self.session.commit()
         response = self.app.get('/api/stringid/01')
@@ -1210,7 +1210,7 @@ class TestAPI(TestSupport):
         assert 'name' in data
         assert '01' == data['name']
 
-        baz = StringID(name='hey')
+        baz = StringID(name=u'hey')
         self.session.add(baz)
         self.session.commit()
         response = self.app.get('/api/stringid/hey')
@@ -1221,8 +1221,8 @@ class TestAPI(TestSupport):
 
     def test_jsonp(self):
         """Test for JSON-P callbacks."""
-        person1 = self.Person(name='foo')
-        person2 = self.Person(name='bar')
+        person1 = self.Person(name=u'foo')
+        person2 = self.Person(name=u'bar')
         self.session.add_all([person1, person2])
         self.session.commit()
         # test for GET
@@ -1608,7 +1608,7 @@ class TestAssociationProxy(DatabaseTestBase):
             image = rel('Image', backref=backref(name='chosen_product_images',
                                                  cascade="all, delete-orphan"),
                         enable_typechecks=False)
-            name = Column(Unicode, default=lambda: "default name")
+            name = Column(Unicode, default=lambda: u'default name')
 
         class Tag(self.Base):
             __tablename__ = 'tag'

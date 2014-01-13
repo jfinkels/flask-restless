@@ -252,7 +252,7 @@ class TestOperators(TestSupportPrefilled):
         result = search(self.session, self.Person, d)
         assert result.count() == 1
         # test 'has'
-        innerval = dict(name='vendor', op='like', val='%o%')
+        innerval = dict(name='vendor', op='like', val=u'%o%')
         val = dict(name='computers', op='any', val=innerval)
         d = dict(filters=[dict(name='owner', op='has', val=val)])
         result = search(self.session, self.Computer, d)

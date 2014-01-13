@@ -114,9 +114,9 @@ class TestModelHelpers(TestSupport):
         the dictionary representation of an instance of a model.
 
         """
-        person = self.LazyPerson(name='Lincoln')
+        person = self.LazyPerson(name=u'Lincoln')
         self.session.add(person)
-        computer = self.LazyComputer(name='lixeiro')
+        computer = self.LazyComputer(name=u'lixeiro')
         self.session.add(computer)
         person.computers.append(computer)
         self.session.commit()
@@ -162,8 +162,8 @@ class TestModelHelpers(TestSupport):
 
     def test_to_dict_nested_object(self):
         """Tests that nested objects are correctly serialized."""
-        person = self.Person(name='Test', age=10, other=20)
-        computer = self.Computer(name='foo')
+        person = self.Person(name=u'Test', age=10, other=20)
+        computer = self.Computer(name=u'foo')
         person.computers.append(computer)
 
         data = to_dict(person, include_methods=['first_computer'])

@@ -296,17 +296,16 @@ class TestProcessors(TestSupport):
 
         """
         # Create some people in the database.
-        person1 = self.Person(name='foo')
-        person2 = self.Person(name='bar')
-        person3 = self.Person(name='baz')
+        person1 = self.Person(name=u'foo')
+        person2 = self.Person(name=u'bar')
+        person3 = self.Person(name=u'baz')
         self.session.add_all((person1, person2, person3))
         self.session.commit()
-
         # Create a preprocessor function that adds a filter.
         def add_filter(search_params=None, **kw):
             if search_params is None:
                 return
-            filt = dict(name='name', op='like', val='ba%')
+            filt = dict(name='name', op='like', val=u'ba%')
             if 'filters' not in search_params:
                 search_params['filters'] = []
             search_params['filters'].append(filt)

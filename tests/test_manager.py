@@ -158,8 +158,8 @@ class TestAPIManager(TestSupport):
     def test_include_related(self):
         """Test for specifying included columns on related models."""
         date = datetime.date(1999, 12, 31)
-        person = self.Person(name='Test', age=10, other=20, birth_date=date)
-        computer = self.Computer(name='foo', vendor='bar', buy_date=date)
+        person = self.Person(name=u'Test', age=10, other=20, birth_date=date)
+        computer = self.Computer(name=u'foo', vendor=u'bar', buy_date=date)
         self.session.add(person)
         person.computers.append(computer)
         self.session.commit()
@@ -188,8 +188,8 @@ class TestAPIManager(TestSupport):
     def test_exclude_related(self):
         """Test for specifying excluded columns on related models."""
         date = datetime.date(1999, 12, 31)
-        person = self.Person(name='Test', age=10, other=20, birth_date=date)
-        computer = self.Computer(name='foo', vendor='bar', buy_date=date)
+        person = self.Person(name=u'Test', age=10, other=20, birth_date=date)
+        computer = self.Computer(name=u'foo', vendor=u'bar', buy_date=date)
         self.session.add(person)
         person.computers.append(computer)
         self.session.commit()
@@ -280,8 +280,8 @@ class TestAPIManager(TestSupport):
 
         # create a test person
         date = datetime.date(1999, 12, 31)
-        person = self.Person(name='Test', age=10, other=20, birth_date=date)
-        computer = self.Computer(name='foo', vendor='bar', buy_date=date)
+        person = self.Person(name=u'Test', age=10, other=20, birth_date=date)
+        computer = self.Computer(name=u'foo', vendor=u'bar', buy_date=date)
         self.session.add(person)
         person.computers.append(computer)
         self.session.commit()
@@ -315,8 +315,8 @@ class TestAPIManager(TestSupport):
 
         """
         date = datetime.date(1999, 12, 31)
-        person = self.Person(name='Test', age=10, other=20, birth_date=date)
-        computer = self.Computer(name='foo', vendor='bar', buy_date=date)
+        person = self.Person(name=u'Test', age=10, other=20, birth_date=date)
+        computer = self.Computer(name=u'foo', vendor=u'bar', buy_date=date)
         self.session.add(person)
         person.computers.append(computer)
         self.session.commit()
@@ -466,8 +466,8 @@ class TestAPIManager(TestSupport):
 
         """
         date = datetime.date(1999, 12, 31)
-        person = self.Person(name='Test', age=10, other=20, birth_date=date)
-        computer = self.Computer(name='foo', vendor='bar', buy_date=date)
+        person = self.Person(name=u'Test', age=10, other=20, birth_date=date)
+        computer = self.Computer(name=u'foo', vendor=u'bar', buy_date=date)
         self.session.add(person)
         person.computers.append(computer)
         self.session.commit()
@@ -485,8 +485,8 @@ class TestAPIManager(TestSupport):
         the instance URL.
 
         """
-        person = self.LazyPerson(name='Test')
-        computer = self.LazyComputer(name='foo')
+        person = self.LazyPerson(name=u'Test')
+        computer = self.LazyComputer(name=u'foo')
         self.session.add(person)
         person.computers.append(computer)
         self.session.commit()
