@@ -63,7 +63,7 @@ from .search import search
 
 
 #: Format string for creating Link headers in paginated responses.
-LINKTEMPLATE = '<%s?page=%s&results_per_page=%s>; rel="%s"'
+LINKTEMPLATE = '<{0}?page={1}&results_per_page={2}>; rel="{3}"'
 
 
 class ProcessingException(HTTPException):
@@ -97,10 +97,10 @@ def create_link_string(page, last_page, per_page):
     linkstring = ''
     if page < last_page:
         next_page = page + 1
-        linkstring = LINKTEMPLATE % (request.base_url, next_page,
-                                     per_page, 'next') + ', '
-    linkstring += LINKTEMPLATE % (request.base_url, last_page,
-                                  per_page, 'last')
+        linkstring = LINKTEMPLATE.format(request.base_url, next_page,
+                                         per_page, 'next') + ', '
+    linkstring += LINKTEMPLATE.format(request.base_url, last_page,
+                                      per_page, 'last')
     return linkstring
 
 
@@ -226,7 +226,7 @@ def jsonpify(*args, **kw):
         # TODO add a jsonpify_status_code function?
         meta['status'] = 200
         inner = json.dumps(dict(meta=meta, data=data))
-        content = '%s( %s)' % (callback, inner)
+        content = '{0}({1})'.format(callback, inner)
         # Note that this is different from the mimetype used in Flask for JSON
         # responses; Flask uses 'application/json'. We use
         # 'application/javascript' because a JSONP response is not valid JSON.
@@ -373,11 +373,11 @@ class FunctionAPI(ModelView):
             return jsonpify(result)
         except AttributeError as exception:
             current_app.logger.exception(str(exception))
-            message = 'No such field "%s"' % exception.field
+            message = 'No such field "{0}"'.format(exception.field)
             return jsonify(message=message), 400
         except OperationalError as exception:
             current_app.logger.exception(str(exception))
-            message = 'No such function "%s"' % exception.function
+            message = 'No such function "{0}"'.format(exception.function)
             return jsonify(message=message), 400
 
 
@@ -959,7 +959,7 @@ class API(ModelView):
                              include_methods=self.include_methods)
             # The URL at which a client can access the instance matching this
             # search query.
-            url = '%s/%s' % (request.base_url, result[primary_key])
+            url = '{0}/{1}'.format(request.base_url, result[primary_key])
             headers = dict(Location=url)
 
         for postprocessor in self.postprocessors['GET_MANY']:
@@ -1040,7 +1040,8 @@ class API(ModelView):
         if relationname:
             # If the request is ``DELETE /api/person/1/computers``, error 400.
             if not relationinstid:
-                msg = 'Cannot DELETE entire "%s" relation' % relationname
+                msg = ('Cannot DELETE entire "{0}"'
+                       ' relation').format(relationname)
                 return jsonify(message=msg), 400
             # Otherwise, get the related instance to delete.
             relation = getattr(inst, relationname)
@@ -1097,7 +1098,7 @@ class API(ModelView):
         # on the current model.
         for field in params:
             if not has_field(self.model, field):
-                msg = "Model does not have field '%s'" % field
+                msg = "Model does not have field '{0}'".format(field)
                 return jsonify(message=msg), 400
 
         # Getting the list of relations that will be added later
@@ -1143,7 +1144,7 @@ class API(ModelView):
             # The URL at which a client can access the newly created instance
             # of the model.
 
-            url = '%s/%s' % (request.base_url, primary_key)
+            url = '{0}/{1}'.format(request.base_url, primary_key)
             # Provide that URL in the Location header in the response.
             headers = dict(Location=url)
 
@@ -1212,7 +1213,7 @@ class API(ModelView):
         # on the current model.
         for field in data:
             if not has_field(self.model, field):
-                msg = "Model does not have field '%s'" % field
+                msg = "Model does not have field '{0}'".format(field)
                 return jsonify(message=msg), 400
         if patchmany:
             try:

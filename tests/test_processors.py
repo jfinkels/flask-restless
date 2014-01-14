@@ -34,7 +34,7 @@ class TestProcessors(TestSupport):
         super(TestProcessors, self).setUp()
 
         # to facilitate searching
-        self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
+        self.app.search = lambda url, q: self.app.get(url + '?q={0}'.format(q))
 
     def test_get_single_preprocessor(self):
         """Tests :http:method:`get` requests for a single object with
@@ -249,8 +249,8 @@ class TestProcessors(TestSupport):
         response = self.app.get('/api/person')
         loaded = loads(response.data)['objects']
         for i in loaded:
-            assert i['birth_date'] == ('%s-%s-%s' % (
-                year, str(month).zfill(2), str(day).zfill(2)))
+            expected = '{0:4d}-{1:02d}-{2:02d}'.format(year, month, day)
+            assert i['birth_date'] == expected
             assert i['other'] == 27
 
     def test_processor_no_change(self):
@@ -275,7 +275,7 @@ class TestProcessors(TestSupport):
         assert person.age == 23
 
         # Test for GET_SINGLE
-        response = self.app.get('/api/v2/person/%d' % personid)
+        response = self.app.get('/api/v2/person/{0:d}'.format(personid))
         assert response.status_code == 200
 
         person_response = loads(response.data)

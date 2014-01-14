@@ -113,7 +113,7 @@ class TestFSAModel(FlaskTestBase):
         self.db.session.add_all([owner, pet1, pet2])
         self.db.session.commit()
 
-        response = self.app.get('/api/user/%d' % owner.id)
+        response = self.app.get('/api/user/{0:d}'.format(owner.id))
         assert 200 == response.status_code
         data = loads(response.data)
         assert 2 == len(data['pets'])
@@ -135,7 +135,7 @@ class TestFSAModel(FlaskTestBase):
         self.db.session.add_all([owner, pet1, pet2])
         self.db.session.commit()
 
-        response = self.app.get('/api/lazy_user/%d' % owner.id)
+        response = self.app.get('/api/lazy_user/{0:d}'.format(owner.id))
         assert 200 == response.status_code
         data = loads(response.data)
         assert 2 == len(data['pets'])
@@ -171,7 +171,7 @@ class TestFunctionAPI(TestSupportPrefilled):
                      {'name': 'avg', 'field': 'other'},
                      {'name': 'count', 'field': 'id'}]
         query = dumps(dict(functions=functions))
-        response = self.app.get('/api/eval/person?q=%s' % query)
+        response = self.app.get('/api/eval/person?q={0}'.format(query))
         assert response.status_code == 200
         data = loads(response.data)
         assert 'sum__age' in data
@@ -194,7 +194,7 @@ class TestFunctionAPI(TestSupportPrefilled):
         assert response.status_code == 400
 
         # if we provide no functions, then we expect an empty response
-        response = self.app.get('/api/eval/person?q=%s' % dumps(dict()))
+        response = self.app.get('/api/eval/person?q={0}'.format(dumps(dict())))
         assert response.status_code == 204
 
     def test_poorly_defined_functions(self):
@@ -204,14 +204,14 @@ class TestFunctionAPI(TestSupportPrefilled):
         """
         # test for bad field name
         search = {'functions': [{'name': 'sum', 'field': 'bogusfieldname'}]}
-        resp = self.app.get('/api/eval/person?q=%s' % dumps(search))
+        resp = self.app.get('/api/eval/person?q={0}'.format(dumps(search)))
         assert resp.status_code == 400
         assert 'message' in loads(resp.data)
         assert 'bogusfieldname' in loads(resp.data)['message']
 
         # test for bad function name
         search = {'functions': [{'name': 'bogusfuncname', 'field': 'age'}]}
-        resp = self.app.get('/api/eval/person?q=%s' % dumps(search))
+        resp = self.app.get('/api/eval/person?q={0}'.format(dumps(search)))
         assert resp.status_code == 400
         assert 'message' in loads(resp.data)
         assert 'bogusfuncname' in loads(resp.data)['message']
@@ -227,7 +227,8 @@ class TestFunctionAPI(TestSupportPrefilled):
         query = dumps(dict(functions=functions))
         # JSONP should work on function evaluation endpoints as well as on
         # normal GET endpoints.
-        response = self.app.get('/api/eval/person?q=%s&callback=baz' % query)
+        response = self.app.get('/api/eval/person?'
+                                'q={0}&callback=baz'.format(query))
         assert response.status_code == 200
         assert response.data.startswith(b'baz(')
         assert response.data.endswith(b')')
@@ -283,7 +284,7 @@ class TestAPI(TestSupport):
                                 methods=['GET', 'PATCH', 'POST', 'DELETE'])
 
         # to facilitate searching
-        self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
+        self.app.search = lambda url, q: self.app.get(url + '?q={0}'.format(q))
 
     def test_post(self):
         """Test for creating a new instance of the database model using the
@@ -667,8 +668,8 @@ class TestAPI(TestSupport):
         response = self.app.get('/api/v2/person')
         loaded = loads(response.data)['objects']
         for i in loaded:
-            assert i['birth_date'] == ('%s-%s-%s' % (
-                year, str(month).zfill(2), str(day).zfill(2)))
+            expected = '{0:4d}-{1:02d}-{2:02d}'.format(year, month, day)
+            assert i['birth_date'] == expected
 
     def test_patch_empty(self):
         """Test for making a :http:method:`patch` request with no data."""
@@ -725,8 +726,8 @@ class TestAPI(TestSupport):
         response = self.app.get('/api/v2/person')
         loaded = loads(response.data)['objects']
         for i in loaded:
-            assert i['birth_date'] == ('%s-%s-%s' % (
-                year, str(month).zfill(2), str(day).zfill(2)))
+            expected = '{0:4d}-{1:02d}-{2:02d}'.format(year, month, day)
+            assert i['birth_date'] == expected
 
     def test_patch_many_with_filter(self):
         """Test for updating a collection of instances of the model using a
@@ -1055,7 +1056,7 @@ class TestAPI(TestSupport):
         self.manager.create_api(self.Person, url_prefix='/api/v3',
                                 results_per_page=0)
         for i in range(25):
-            d = dict(name='person%s' % i)
+            d = dict(name='person{0}'.format(i))
             response = self.app.post('/api/person', data=dumps(d))
             assert response.status_code == 201
 
@@ -1108,7 +1109,7 @@ class TestAPI(TestSupport):
         """
         self.manager.create_api(self.Person)
         for i in range(25):
-            d = dict(name='person%s' % i)
+            d = dict(name='person{0}'.format(i))
             response = self.app.post('/api/person', data=dumps(d))
             assert response.status_code == 201
         response = self.app.get('/api/person')
@@ -1403,7 +1404,7 @@ class TestSearch(TestSupportPrefilled):
         """
         super(TestSearch, self).setUp()
         self.manager.create_api(self.Person, methods=['GET', 'PATCH'])
-        self.app.search = lambda url, q: self.app.get(url + '?q=%s' % q)
+        self.app.search = lambda url, q: self.app.get(url + '?q={0}'.format(q))
 
     def test_search(self):
         """Tests basic search using the :http:method:`get` method."""

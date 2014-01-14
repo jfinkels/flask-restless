@@ -172,7 +172,7 @@ def assign_attributes(model, **kwargs):
     cls = type(model)
     for field, value in kwargs.items():
         if not hasattr(cls, field):
-            msg = '%s has no field named "%r"' % (cls.__name__, field)
+            msg = '{0} has no field named "{1!r}"'.format(cls.__name__, field)
             raise TypeError(msg)
         setattr(model, field, value)
 
@@ -400,7 +400,7 @@ def evaluate_functions(session, model, functions):
         # functions that will be executed in the database and funcnames
         # contains names of the entries that will be returned to the
         # caller.
-        funcnames.append('%s__%s' % (funcname, fieldname))
+        funcnames.append('{0}__{1}'.format(funcname, fieldname))
         processed.append(funcobj(field))
     # Evaluate all the functions at once and get an iterable of results.
     try:

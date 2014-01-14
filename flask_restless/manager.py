@@ -80,7 +80,7 @@ class APIManager(object):
     #:
     #: This format string expects the name of a model to be provided when
     #: formatting.
-    APINAME_FORMAT = '%sapi'
+    APINAME_FORMAT = '{0}api'
 
     #: The format of the name of the blueprint containing the API view for a
     #: given model.
@@ -90,7 +90,7 @@ class APIManager(object):
     #: 1. name of the API view of a specific model
     #: 2. a number representing the number of times a blueprint with that name
     #:    has been registered.
-    BLUEPRINTNAME_FORMAT = '%s%s'
+    BLUEPRINTNAME_FORMAT = '{0}{1}'
 
     def __init__(self, app=None, session=None, flask_sqlalchemy_db=None,
                  preprocessors=None, postprocessors=None):
@@ -122,7 +122,7 @@ class APIManager(object):
             b = basename
             existing_numbers = [int(n.partition(b)[-1]) for n in existing]
             next_number = max(existing_numbers) + 1
-        return APIManager.BLUEPRINTNAME_FORMAT % (basename, next_number)
+        return APIManager.BLUEPRINTNAME_FORMAT.format(basename, next_number)
 
     def init_app(self, app, session=None, flask_sqlalchemy_db=None,
                  preprocessors=None, postprocessors=None):
@@ -390,9 +390,9 @@ class APIManager(object):
         instance_methods = \
             methods & frozenset(('GET', 'PATCH', 'DELETE', 'PUT'))
         # the base URL of the endpoints on which requests will be made
-        collection_endpoint = '/%s' % collection_name
+        collection_endpoint = '/{0}'.format(collection_name)
         # the name of the API, for use in creating the view and the blueprint
-        apiname = APIManager.APINAME_FORMAT % collection_name
+        apiname = APIManager.APINAME_FORMAT.format(collection_name)
         # Prepend the universal preprocessors and postprocessors specified in
         # the constructor of this class.
         preprocessors_ = defaultdict(list)
@@ -429,15 +429,16 @@ class APIManager(object):
                                view_func=api_view)
         # the per-instance endpoints will allow both integer and string primary
         # key accesses
-        instance_endpoint = '%s/<instid>' % (collection_endpoint)
+        instance_endpoint = '{0}/<instid>'.format(collection_endpoint)
         # For example, /api/person/1.
         blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
                                defaults={'relationname': None,
                                          'relationinstid': None},
                                view_func=api_view)
         # add endpoints which expose related models
-        relation_endpoint = '%s/<relationname>' % (instance_endpoint)
-        relation_instance_endpoint = '%s/<relationinstid>' % relation_endpoint
+        relation_endpoint = '{0}/<relationname>'.format(instance_endpoint)
+        relation_instance_endpoint = \
+            '{0}/<relationinstid>'.format(relation_endpoint)
         # For example, /api/person/1/computers.
         blueprint.add_url_rule(relation_endpoint,
                                methods=possibly_empty_instance_methods,

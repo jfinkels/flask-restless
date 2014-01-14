@@ -44,7 +44,7 @@ def skip_unless(condition, reason=None):
 
     """
     def skip(test):
-        message = 'Skipped %s: %s' % (test.__name__, reason)
+        message = 'Skipped {0}: {1}'.format(test.__name__, reason)
 
         # TODO Since we don't check the case in which `test` is a class, the
         # result of running the tests will be a single skipped test, although
@@ -79,9 +79,9 @@ class GUID(TypeDecorator):
         if dialect.name == 'postgresql':
             return str(value)
         if not isinstance(value, uuid.UUID):
-            return "%.32x" % uuid.UUID(value)
+            return '{0:.32x}'.format(uuid.UUID(value))
         # hexstring
-        return "%.32x" % value
+        return '{0:.32x}'.format(value)
 
     def process_result_value(self, value, dialect):
         if value is None:
@@ -205,7 +205,7 @@ class TestSupport(DatabaseTestBase):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
             name = Column(Unicode, unique=True)
-            age = Column(Float)
+            age = Column(Integer)
             other = Column(Float)
             birth_date = Column(Date)
             computers = relationship('Computer')
@@ -217,7 +217,7 @@ class TestSupport(DatabaseTestBase):
                 return self.age < 18
 
             def name_and_age(self):
-                return "%s (aged %d)" % (self.name, self.age)
+                return "{0} (aged {1:d})".format(self.name, self.age)
 
             def first_computer(self):
                 return sorted(self.computers, key=lambda k: k.name)[0]

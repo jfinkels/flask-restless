@@ -171,7 +171,7 @@ class TestAPIManager(TestSupport):
         self.manager.create_api(self.Person, url_prefix='/api2',
                                 include_columns=include)
 
-        response = self.app.get('/api/person/%s' % person.id)
+        response = self.app.get('/api/person/{0}'.format(person.id))
         person_dict = loads(response.data)
         for column in 'name', 'age', 'computers':
             assert column in person_dict
@@ -182,7 +182,7 @@ class TestAPIManager(TestSupport):
         for column in 'vendor', 'owner_id', 'buy_date':
             assert column not in person_dict['computers'][0]
 
-        response = self.app.get('/api2/person/%s' % person.id)
+        response = self.app.get('/api2/person/{0}'.format(person.id))
         assert 'computers' not in loads(response.data)
 
     def test_exclude_related(self):
@@ -201,14 +201,14 @@ class TestAPIManager(TestSupport):
         self.manager.create_api(self.Person, url_prefix='/api2',
                                 exclude_columns=exclude)
 
-        response = self.app.get('/api/person/%s' % person.id)
+        response = self.app.get('/api/person/{0}'.format(person.id))
         person_dict = loads(response.data)
         for column in 'name', 'age', 'computers':
             assert column not in person_dict
         for column in 'id', 'other', 'birth_date':
             assert column in person_dict
 
-        response = self.app.get('/api2/person/%s' % person.id)
+        response = self.app.get('/api2/person/{0}'.format(person.id))
         person_dict = loads(response.data)
         assert 'computers' in person_dict
         for column in 'id', 'name':
@@ -244,22 +244,22 @@ class TestAPIManager(TestSupport):
         personid = loads(response.data)['id']
 
         # get all
-        response = self.app.get('/all/person/%s' % personid)
+        response = self.app.get('/all/person/{0}'.format(personid))
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
             assert column in loads(response.data)
-        response = self.app.get('/all2/person/%s' % personid)
+        response = self.app.get('/all2/person/{0}'.format(personid))
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
             assert column in loads(response.data)
 
         # get some
-        response = self.app.get('/some/person/%s' % personid)
+        response = self.app.get('/some/person/{0}'.format(personid))
         for column in 'name', 'age':
             assert column in loads(response.data)
         for column in 'other', 'birth_date', 'computers':
             assert column not in loads(response.data)
 
         # get none
-        response = self.app.get('/none/person/%s' % personid)
+        response = self.app.get('/none/person/{0}'.format(personid))
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
             assert column not in loads(response.data)
 
@@ -287,11 +287,11 @@ class TestAPIManager(TestSupport):
         self.session.commit()
 
         # get one with included method
-        response = self.app.get('/included/person/%s' % person.id)
+        response = self.app.get('/included/person/{0}'.format(person.id))
         assert loads(response.data)['name_and_age'] == 'Test (aged 10)'
 
         # get one without included method
-        response = self.app.get('/not_included/person/%s' % person.id)
+        response = self.app.get('/not_included/person/{0}'.format(person.id))
         assert 'name_and_age' not in loads(response.data)
 
         # get many with included method
@@ -358,22 +358,22 @@ class TestAPIManager(TestSupport):
         personid = loads(response.data)['id']
 
         # get all
-        response = self.app.get('/all/person/%s' % personid)
+        response = self.app.get('/all/person/{0}'.format(personid))
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
             assert column in loads(response.data)
-        response = self.app.get('/all2/person/%s' % personid)
+        response = self.app.get('/all2/person/{0}'.format(personid))
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
             assert column in loads(response.data)
 
         # get some
-        response = self.app.get('/some/person/%s' % personid)
+        response = self.app.get('/some/person/{0}'.format(personid))
         for column in 'name', 'age':
             assert column in loads(response.data)
         for column in 'other', 'birth_date', 'computers':
             assert column not in loads(response.data)
 
         # get none
-        response = self.app.get('/none/person/%s' % personid)
+        response = self.app.get('/none/person/{0}'.format(personid))
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
             assert column not in loads(response.data)
 
@@ -385,7 +385,7 @@ class TestAPIManager(TestSupport):
         methods = frozenset(('get', 'patch', 'post', 'delete'))
         # create a separate endpoint for each HTTP method
         for method in methods:
-            url = '/%s' % method
+            url = '/{0}'.format(method)
             self.manager.create_api(self.Person, methods=[method.upper()],
                                     url_prefix=url)
 
