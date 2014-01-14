@@ -20,6 +20,7 @@ from sqlalchemy import DateTime
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import Interval
 from sqlalchemy import Boolean
 from sqlalchemy import Unicode
 from sqlalchemy.dialects.postgresql import UUID
@@ -244,6 +245,11 @@ class TestSupport(DatabaseTestBase):
             __tablename__ = 'planet'
             name = Column(Unicode, primary_key=True)
 
+        class Satellite(self.Base):
+            __tablename__ = 'satellite'
+            name = Column(Unicode, primary_key=True)
+            period = Column(Interval, nullable=True)
+
         class Star(self.Base):
             __tablename__ = 'star'
             id = Column("star_id", Integer, primary_key=True)
@@ -277,6 +283,7 @@ class TestSupport(DatabaseTestBase):
         self.User = User
         self.Computer = Computer
         self.Planet = Planet
+        self.Satellite = Satellite
         self.Star = Star
         self.Vehicle = Vehicle
         self.CarManufacturer = CarManufacturer

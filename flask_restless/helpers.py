@@ -15,6 +15,7 @@ import uuid
 from dateutil.parser import parse as parse_datetime
 from sqlalchemy import Date
 from sqlalchemy import DateTime
+from sqlalchemy import Interval
 from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.associationproxy import AssociationProxy
@@ -144,11 +145,8 @@ def has_field(model, fieldname):
             not isinstance(getattr(model, fieldname), _BinaryExpression))
 
 
-def is_date_field(model, fieldname):
-    """Returns ``True`` if and only if the field of `model` with the specified
-    name corresponds to either a :class:`datetime.date` object or a
-    :class:`datetime.datetime` object.
-
+def get_field_type(model, fieldname):
+    """Helper which returns the SQLAlchemy type of the field.
     """
     field = getattr(model, fieldname)
     if isinstance(field, ColumnElement):
@@ -159,11 +157,28 @@ def is_date_field(model, fieldname):
         if hasattr(field, 'property'):
             prop = field.property
             if isinstance(prop, RelProperty):
-                return False
+                return None
             fieldtype = prop.columns[0].type
         else:
-            return False
+            return None
+    return fieldtype
+
+
+def is_date_field(model, fieldname):
+    """Returns ``True`` if and only if the field of `model` with the specified
+    name corresponds to either a :class:`datetime.date` object or a
+    :class:`datetime.datetime` object.
+    """
+    fieldtype = get_field_type(model, fieldname)
     return isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime)
+
+
+def is_interval_field(model, fieldname):
+    """Returns ``True`` if and only if the field of `model` with the specified
+    name corresponds to a :class:`datetime.timedelta` object.
+    """
+    fieldtype = get_field_type(model, fieldname)
+    return isinstance(fieldtype, Interval)
 
 
 def assign_attributes(model, **kwargs):
@@ -498,15 +513,16 @@ def get_or_create(session, model, attrs):
 
 def strings_to_dates(model, dictionary):
     """Returns a new dictionary with all the mappings of `dictionary` but
-    with date strings mapped to :class:`datetime.datetime` objects.
+    with date strings and intervals mapped to :class:`datetime.datetime` or
+    :class:`datetime.timedelta` objects.
 
     The keys of `dictionary` are names of fields in the model specified in the
     constructor of this class. The values are values to set on these fields. If
     a field name corresponds to a field in the model which is a
-    :class:`sqlalchemy.types.Date` or :class:`sqlalchemy.types.DateTime`, then
-    the returned dictionary will have the corresponding
-    :class:`datetime.datetime` Python object as the value of that mapping in
-    place of the string.
+    :class:`sqlalchemy.types.Date`, :class:`sqlalchemy.types.DateTime`, or
+    :class:`sqlalchemy.Interval`, then the returned dictionary will have the
+    corresponding :class:`datetime.datetime` or :class:`datetime.timedelta`
+    Python object as the value of that mapping in place of the string.
 
     This function outputs a new dictionary; it does not modify the argument.
 
@@ -520,6 +536,9 @@ def strings_to_dates(model, dictionary):
                 result[fieldname] = getattr(func, value.lower())()
             else:
                 result[fieldname] = parse_datetime(value)
+        elif is_interval_field(model, fieldname) and value is not None\
+            and isinstance(value, int):
+            result[fieldname] = datetime.timedelta(seconds=value)
         else:
             result[fieldname] = value
     return result

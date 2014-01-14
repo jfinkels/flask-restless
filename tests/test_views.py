@@ -11,6 +11,7 @@
 """
 from datetime import date
 from datetime import datetime
+from datetime import timedelta
 
 import dateutil
 from flask import json
@@ -412,6 +413,24 @@ class TestAPI(TestSupport):
         diff = datetime.utcnow() - inception_time
         assert diff.days == 0
         assert (diff.seconds + diff.microseconds / 1000000.0) < 3600
+
+    def test_post_interval_functions(self):
+        oldJSONEncoder = self.flaskapp.json_encoder
+        class IntervalJSONEncoder(oldJSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, timedelta):
+                    return int(obj.days*86400 + obj.seconds)
+                return oldJSONEncoder.default(self, obj)
+        self.flaskapp.json_encoder = IntervalJSONEncoder
+
+        self.manager.create_api(self.Satellite, methods=['GET', 'POST'])
+        data = dict(name="Callufrax_Minor", period=300)
+        response = self.app.post('/api/satellite', data=dumps(data))
+        assert response.status_code == 201
+        response = self.app.get('/api/satellite/Callufrax_Minor')
+        assert response.status_code == 200
+        assert loads(response.data)['period'] == 300
+        assert self.session.query(self.Satellite).all()[0].period == timedelta(0, 300)
 
     def test_post_with_submodels(self):
         """Tests the creation of a model with a related field."""
