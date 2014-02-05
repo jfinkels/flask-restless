@@ -22,6 +22,7 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from .helpers import session_query
 from .helpers import get_related_association_proxy_model
+from .helpers import primary_key_names
 
 
 def _sub_operator(model, argument, fieldname):
@@ -410,10 +411,15 @@ class QueryBuilder(object):
         query = query.filter(search_params.junction(*filters))
 
         # Order the search
-        for val in search_params.order_by:
-            field = getattr(model, val.field)
-            direction = getattr(field, val.direction)
-            query = query.order_by(direction())
+        if search_params.order_by:
+            for val in search_params.order_by:
+                field = getattr(model, val.field)
+                direction = getattr(field, val.direction)
+                query = query.order_by(direction())
+        else:
+            query = query.order_by(
+                *(getattr(model, field).asc() for field in primary_key_names(model))
+            )
 
         # Limit it
         if search_params.limit:
