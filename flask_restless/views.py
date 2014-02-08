@@ -34,7 +34,7 @@ from flask import json
 from flask import jsonify as _jsonify
 from flask import request
 from flask.views import MethodView
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import DataError, IntegrityError, ProgrammingError
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
@@ -1154,7 +1154,7 @@ class API(ModelView):
             return jsonify(headers=headers, **result), 201
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
-        except IntegrityError as exception:
+        except (DataError, IntegrityError, ProgrammingError) as exception:
             current_app.logger.exception(str(exception))
             return jsonify(message=str(exception)), 400
 
@@ -1249,7 +1249,7 @@ class API(ModelView):
         except self.validation_exceptions as exception:
             current_app.logger.exception(str(exception))
             return self._handle_validation_exception(exception)
-        except IntegrityError as exception:
+        except (DataError, IntegrityError, ProgrammingError) as exception:
             current_app.logger.exception(str(exception))
             return jsonify(message=str(exception)), 400
 
