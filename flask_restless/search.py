@@ -410,16 +410,17 @@ class QueryBuilder(object):
         filters = QueryBuilder._create_filters(model, search_params)
         query = query.filter(search_params.junction(*filters))
 
-        # Order the search
+        # Order the search. If no order field is specified in the search
+        # parameters, order by primary key.
         if search_params.order_by:
             for val in search_params.order_by:
                 field = getattr(model, val.field)
                 direction = getattr(field, val.direction)
                 query = query.order_by(direction())
         else:
-            query = query.order_by(
-                *(getattr(model, field).asc() for field in primary_key_names(model))
-            )
+            pks = primary_key_names(model)
+            pk_order = (getattr(model, field).asc() for field in pks)
+            query = query.order_by(*pk_order)
 
         # Limit it
         if search_params.limit:
