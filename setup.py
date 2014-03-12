@@ -19,7 +19,7 @@ from setuptools import setup
 
 #: The installation requirements for Flask-Restless. Flask-SQLAlchemy is not
 #: required, so the user must install it explicitly.
-requirements = ['flask>=0.10', 'sqlalchemy', 'python-dateutil>2.0']
+requirements = ['flask>=0.10', 'sqlalchemy>=0.8', 'python-dateutil>2.0']
 
 
 setup(

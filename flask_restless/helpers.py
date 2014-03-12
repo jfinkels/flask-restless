@@ -15,8 +15,10 @@ import uuid
 from dateutil.parser import parse as parse_datetime
 from sqlalchemy import Date
 from sqlalchemy import DateTime
+from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.associationproxy import AssociationProxy
+from sqlalchemy.ext import hybrid
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import ColumnProperty
 from sqlalchemy.orm import object_mapper
@@ -29,6 +31,7 @@ from sqlalchemy.orm.util import class_mapper
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import _BinaryExpression
 from sqlalchemy.sql.expression import ColumnElement
+from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 
 #: Names of attributes which should definitely not be considered relations when
 #: dynamically computing a list of relations of a SQLAlchemy model.
@@ -217,7 +220,7 @@ def is_like_list(instance, relation):
 
 def is_mapped_class(cls):
     try:
-        class_mapper(cls)
+        sqlalchemy_inspect(cls)
         return True
     except:
         return False
@@ -271,14 +274,16 @@ def to_dict(instance, deep=None, exclude=None, include=None,
             (include is not None or include_relations is not None):
         raise ValueError('Cannot specify both include and exclude.')
     # create a list of names of columns, including hybrid properties
+    instance_type = type(instance)
+    columns = []
     try:
-        columns = [p.key for p in object_mapper(instance).iterate_properties
-                   if isinstance(p, ColumnProperty)]
-    except UnmappedInstanceError:
+        inspected_instance = sqlalchemy_inspect(instance_type)
+        column_attrs = inspected_instance.column_attrs.keys()
+        hybrid_columns = [ k for k, descriptor in inspected_instance.all_orm_descriptors.items()\
+            if descriptor.extension_type == hybrid.HYBRID_PROPERTY ]
+        columns = column_attrs + hybrid_columns
+    except NoInspectionAvailable:
         return instance
-    for parent in type(instance).mro():
-        columns += [key for key, value in parent.__dict__.items()
-                    if isinstance(value, hybrid_property)]
     # filter the columns based on exclude and include values
     if exclude is not None:
         columns = (c for c in columns if c not in exclude)
@@ -301,7 +306,7 @@ def to_dict(instance, deep=None, exclude=None, include=None,
             result[key] = value.isoformat()
         elif isinstance(value, uuid.UUID):
             result[key] = str(value)
-        elif is_mapped_class(type(value)):
+        elif key not in column_attrs and is_mapped_class(type(value)):
             result[key] = to_dict(value)
     # recursively call _to_dict on each of the `deep` relations
     deep = deep or {}

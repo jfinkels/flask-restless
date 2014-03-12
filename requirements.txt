@@ -1,4 +1,4 @@
 flask>=0.10
 flask-sqlalchemy
-sqlalchemy
+sqlalchemy>=0.8
 python-dateutil>2.0
