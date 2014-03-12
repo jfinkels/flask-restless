@@ -511,3 +511,16 @@ def strings_to_dates(model, dictionary):
         else:
             result[fieldname] = value
     return result
+
+
+def count(session, query):
+    """Returns the count of the specified `query`.
+
+    This function employs an optimization that bypasses the
+    :meth:`sqlalchemy.orm.Query.count` method, which can be very slow for large
+    queries.
+
+    """
+    counts = query.statement.with_only_columns([func.count()])
+    num_results = session.execute(counts.order_by(None)).scalar()
+    return query.count() if num_results is None else num_results

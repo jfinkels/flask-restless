@@ -42,6 +42,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
 from werkzeug.exceptions import HTTPException
 
+from .helpers import count
 from .helpers import evaluate_functions
 from .helpers import get_by
 from .helpers import get_columns
@@ -762,7 +763,8 @@ class API(ModelView):
         """Returns a paginated JSONified response from the specified list of
         model instances.
 
-        `instances` is a list of model instances.
+        `instances` is either a Python list of model instances or a
+        :class:`~sqlalchemy.orm.Query`.
 
         `deep` is the dictionary which defines the depth of submodels to output
         in the JSON format of the model instances in `instances`; it is passed
@@ -783,9 +785,7 @@ class API(ModelView):
         if type(instances) == list:
             num_results = len(instances)
         else:
-            num_results = self.session.execute(instances.statement.with_only_columns([func.count()]).order_by(None)).scalar()
-            if num_results is None:
-                num_results = instances.count()
+            num_results = count(self.session, instances)
         results_per_page = self._compute_results_per_page()
         if results_per_page > 0:
             # get the page number (first page is page 1)
