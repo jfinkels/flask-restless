@@ -29,6 +29,8 @@ Not yet released.
   :http:method:`get` and :http:method:`patch` requests that access multiple
   resources.
 - #263: Adds Python 3.3 support; drops Python 2.5 support.
+- #284: catch ``DataError`` and ``ProgrammingError`` exceptions when bad data
+  are sent to the server.
 
 Version 0.12.1
 --------------
