@@ -34,9 +34,10 @@ from flask import json
 from flask import jsonify as _jsonify
 from flask import request
 from flask.views import MethodView
-from sqlalchemy.exc import DataError, IntegrityError, ProgrammingError
-from sqlalchemy import func
+from sqlalchemy.exc import DataError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
