@@ -452,7 +452,7 @@ class TestAPIManager(TestSupport):
         """
         self.manager.create_api(self.Person, methods=['GET', 'POST'],
                                 max_results_per_page=15)
-        for n in range(100):
+        for n in range(20):
             response = self.app.post('/api/person', data=dumps({}))
             assert 201 == response.status_code
         response = self.app.get('/api/person?results_per_page=20')

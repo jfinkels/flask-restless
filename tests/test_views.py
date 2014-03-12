@@ -1108,7 +1108,7 @@ class TestAPI(TestSupport):
 
         """
         self.manager.create_api(self.Person)
-        for i in range(25):
+        for i in range(15):
             d = dict(name='person{0}'.format(i))
             response = self.app.post('/api/person', data=dumps(d))
             assert response.status_code == 201
@@ -1116,7 +1116,7 @@ class TestAPI(TestSupport):
         assert response.status_code == 200
         data = loads(response.data)
         assert 'num_results' in data
-        assert data['num_results'] == 25
+        assert data['num_results'] == 15
 
     def test_alternate_primary_key(self):
         """Tests that models with primary keys which are not ``id`` columns are
@@ -1161,7 +1161,7 @@ class TestAPI(TestSupport):
 
         """
         self.manager.create_api(self.Person, methods=['POST', 'GET'])
-        for n in range(150):
+        for n in range(25):
             response = self.app.post('/api/person', data=dumps({}))
             assert 201 == response.status_code
         response = self.app.get('/api/person?results_per_page=20')
@@ -1174,10 +1174,10 @@ class TestAPI(TestSupport):
         data = loads(response.data)
         assert 10 == len(data['objects'])
         # Only return max number of results per page.
-        response = self.app.get('/api/person?results_per_page=120')
+        response = self.app.get('/api/person?results_per_page=30')
         assert 200 == response.status_code
         data = loads(response.data)
-        assert 100 == len(data['objects'])
+        assert 25 == len(data['objects'])
 
     def test_get_string_pk(self):
         """Tests for getting a row which has a string primary key, including
