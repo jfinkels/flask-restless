@@ -43,6 +43,17 @@ dumps = json.dumps
 loads = json.loads
 
 
+#: The User-Agent string for Microsoft Internet Explorer 8.
+#:
+#: From <http://blogs.msdn.com/b/ie/archive/2008/02/21/the-internet-explorer-8-user-agent-string.aspx>.
+MSIE8_UA = 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0)'
+
+#: The User-Agent string for Microsoft Internet Explorer 9.
+#:
+#: From <http://blogs.msdn.com/b/ie/archive/2010/03/23/introducing-ie9-s-user-agent-string.aspx>.
+MSIE9_UA = 'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)'
+
+
 @skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')
 class TestFSAModel(FlaskTestBase):
     """Tests for functions which operate on Flask-SQLAlchemy models."""
@@ -1368,6 +1379,48 @@ class TestHeaders(TestSupportPrefilled):
         assert 'Content-Type' in response.headers
         assert 'application/json' == response.headers['Content-Type']
         assert 'x' == loads(response.data)['name']
+
+    def test_content_type_msie(self):
+        """Tests for compatibility with Microsoft Internet Explorer 8 and 9.
+
+        According to issue #267, making requests using JavaScript from these
+        web browsers does not allow changing the content type of the request
+        (it is always ``text/html``). Therefore :http:method:`post` and
+        :http:method:`patch` should ignore the content type when a request is
+        coming from these old browsers.
+
+        """
+        # Test for Microsoft Internet Explorer 8.
+        headers = {'User-Agent': '{0}'.format(MSIE8_UA)}
+        content_type = 'text/html'
+        data = dict(name=u'foo')
+        response = self.app.post('/api/person', data=dumps(data),
+                                 headers=headers, content_type=content_type)
+        assert response.status_code == 201
+        person = loads(response.data)
+        assert person['name'] == 'foo'
+        personid = person['id']
+        data = dict(name=u'bar')
+        response = self.app.patch('/api/person/{0}'.format(personid),
+                                  data=dumps(data), headers=headers,
+                                  content_type=content_type)
+        assert response.status_code == 200
+        person = loads(response.data)
+        assert person['name'] == 'bar'
+
+        # Test for Microsoft Internet Explorer 9.
+        headers = {'User-Agent': '{0}'.format(MSIE9_UA)}
+        data = dict(name=u'foo2')
+        response = self.app.post('/api/person', data=dumps(data),
+                                 headers=headers, content_type=content_type)
+        assert response.status_code == 201
+        personid = loads(response.data)['id']
+        data = dict(name=u'bar2')
+        response = self.app.patch('/api/person/{0}'.format(personid),
+                                  data=dumps(data), headers=headers,
+                                  content_type=content_type)
+        assert response.status_code == 200
+        assert loads(response.data)['name'] == 'bar2'
 
     def test_accept(self):
         """Tests that the server responds to the ``Accept`` with a response of

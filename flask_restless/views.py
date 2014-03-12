@@ -90,6 +90,19 @@ class ProcessingException(HTTPException):
         self.description = description
 
 
+def _is_msie8or9():
+    """Returns ``True`` if and only if the user agent of the client making the
+    request indicates that it is Microsoft Internet Explorer 8 or 9.
+
+    """
+    if request.user_agent is None or request.user_agent.version is None:
+        return False
+    ua = request.user_agent
+    # request.user_agent.version comes as a string, so we have to parse it
+    ua_version = tuple(int(d) for d in ua.version.split('.'))
+    return ua.browser == 'msie' and (8, 0) <= ua_version < (10, 0)
+
+
 def create_link_string(page, last_page, per_page):
     """Returns a string representing the value of the ``Link`` header.
 
@@ -1094,14 +1107,25 @@ class API(ModelView):
 
         """
         content_type = request.headers.get('Content-Type', None)
-        if not content_type.startswith('application/json'):
+        content_is_json = content_type.startswith('application/json')
+        is_msie = _is_msie8or9()
+        # Request must have the Content-Type: application/json header, unless
+        # the User-Agent string indicates that the client is Microsoft Internet
+        # Explorer 8 or 9 (which has a fixed Content-Type of 'text/html'; see
+        # issue #267).
+        if not is_msie and not content_is_json:
             msg = 'Request must have "Content-Type: application/json" header'
             return jsonify(message=msg), 415
 
         # try to read the parameters for the model from the body of the request
         try:
-            params = request.get_json() or {}
-        except BadRequest as exception:
+            # HACK Requests made from Internet Explorer 8 or 9 don't have the
+            # correct content type, so request.get_json() doesn't work.
+            if is_msie:
+                params = json.loads(request.get_data()) or {}
+            else:
+                params = request.get_json() or {}
+        except (BadRequest, TypeError, ValueError, OverflowError) as exception:
             current_app.logger.exception(str(exception))
             return jsonify(message='Unable to decode data'), 400
 
@@ -1200,19 +1224,30 @@ class API(ModelView):
 
         """
         content_type = request.headers.get('Content-Type', None)
-        if not content_type.startswith('application/json'):
+        content_is_json = content_type.startswith('application/json')
+        is_msie = _is_msie8or9()
+        # Request must have the Content-Type: application/json header, unless
+        # the User-Agent string indicates that the client is Microsoft Internet
+        # Explorer 8 or 9 (which has a fixed Content-Type of 'text/html'; see
+        # issue #267).
+        if not is_msie and not content_is_json:
             msg = 'Request must have "Content-Type: application/json" header'
             return jsonify(message=msg), 415
 
         # try to load the fields/values to update from the body of the request
         try:
-            data = request.get_json() or {}
-        except BadRequest as exception:
+            # HACK Requests made from Internet Explorer 8 or 9 don't have the
+            # correct content type, so request.get_json() doesn't work.
+            if is_msie:
+                data = json.loads(request.get_data()) or {}
+            else:
+                data = request.get_json() or {}
+        except (BadRequest, TypeError, ValueError, OverflowError) as exception:
             # this also happens when request.data is empty
             current_app.logger.exception(str(exception))
             return jsonify(message='Unable to decode data'), 400
-        # Check if the request is to patch many instances of the current model.
 
+        # Check if the request is to patch many instances of the current model.
         patchmany = instid is None
         # Perform any necessary preprocessing.
         if patchmany:
