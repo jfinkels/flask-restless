@@ -419,7 +419,7 @@ class TestAPI(TestSupport):
         class IntervalJSONEncoder(oldJSONEncoder):
             def default(self, obj):
                 if isinstance(obj, timedelta):
-                    return int(obj.days*86400 + obj.seconds)
+                    return int(obj.days * 86400 + obj.seconds)
                 return oldJSONEncoder.default(self, obj)
         self.flaskapp.json_encoder = IntervalJSONEncoder
 
@@ -430,7 +430,8 @@ class TestAPI(TestSupport):
         response = self.app.get('/api/satellite/Callufrax_Minor')
         assert response.status_code == 200
         assert loads(response.data)['period'] == 300
-        assert self.session.query(self.Satellite).all()[0].period == timedelta(0, 300)
+        satellite = self.session.query(self.Satellite).first()
+        assert satellite.period == timedelta(0, 300)
 
     def test_post_with_submodels(self):
         """Tests the creation of a model with a related field."""
