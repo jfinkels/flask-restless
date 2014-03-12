@@ -627,12 +627,19 @@ Also suppose we have registered an API for these models at ``/api/person`` and
    The changes reflected in this response have been made to the ``Computer``
    instance with ID 1.
 
-One final note on setting date or time fields. If you want the server to set
-the value of a date or time field of a model as the current time (as measured
-at the server), use one of the special strings ``"CURRENT_TIMESTAMP"``,
-``"CURRENT_DATE"``, or ``"LOCALTIMESTAMP"``. When the server receives one of
-these strings in a request, it will use the corresponding SQL function to set
-the date or time of the field in the model.
+Date and time fields
+--------------------
+
+Flask-Restless will automatically parse and convert date and time strings into
+the corresponding Python objects. Flask-Restless also understands intervals
+(also known as durations), if you specify the interval as an integer
+representing the number of seconds that the interval spans.
+
+If you want the server to set the value of a date or time field of a model as
+the current time (as measured at the server), use one of the special strings
+``"CURRENT_TIMESTAMP"``, ``"CURRENT_DATE"``, or ``"LOCALTIMESTAMP"``. When the
+server receives one of these strings in a request, it will use the
+corresponding SQL function to set the date or time of the field in the model.
 
 Error messages
 --------------
