@@ -241,6 +241,7 @@ class TestFunctionAPI(TestSupportPrefilled):
         response = self.app.get('/api/eval/person?'
                                 'q={0}&callback=baz'.format(query))
         assert response.status_code == 200
+        assert response.mimetype == 'application/javascript'
         assert response.data.startswith(b'baz(')
         assert response.data.endswith(b')')
 
@@ -1428,21 +1429,25 @@ class TestHeaders(TestSupportPrefilled):
 
         """
         # A request without an Accept header should return JSON.
-        response = self.app.get('/api/person/1')
+        headers = None
+        response = self.app.get('/api/person/1', headers=headers)
         assert 200 == response.status_code
         assert 'Content-Type' in response.headers
         assert 'application/json' == response.headers['Content-Type']
         assert 1 == loads(response.data)['id']
-        response = self.app.get('/api/person/1',
-                                headers=dict(Accept='application/json'))
+        headers = dict(Accept='application/json')
+        response = self.app.get('/api/person/1', headers=headers)
         assert 200 == response.status_code
         assert 'Content-Type' in response.headers
         assert 'application/json' == response.headers['Content-Type']
         assert 1 == loads(response.data)['id']
-        #headers = dict(Accept='application/xml')
-        #assert 'Content-Type' in response.headers
-        #assert 'application/xml' == response.headers['Content-Type']
-        #assert '<id>1</id>' in response.data
+        # Check for accepting XML.
+        # headers = dict(Accept='application/xml')
+        # response = self.app.get('/api/person/1', headers=headers)
+        # assert 200 == response.status_code
+        # assert 'Content-Type' in response.headers
+        # assert 'application/xml' == response.headers['Content-Type']
+        # assert '<id>1</id>' in response.data
 
 
 class TestSearch(TestSupportPrefilled):

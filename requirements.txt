@@ -2,3 +2,4 @@ flask>=0.10
 flask-sqlalchemy
 sqlalchemy>=0.8
 python-dateutil>2.0
+mimerender>=0.5.2
