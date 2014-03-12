@@ -782,7 +782,7 @@ class API(ModelView):
            }
 
         """
-        if type(instances) == list:
+        if isinstance(instances, list):
             num_results = len(instances)
         else:
             num_results = count(self.session, instances)
