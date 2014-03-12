@@ -165,6 +165,6 @@ the URL is the value of ``Person.__tablename__``::
     }
 
 If the primary key is a :class:`~sqlalchemy.Unicode` instead of an
-:class:`~sqlalchemy.Integer`, the instances will be accesible at URL endpoints
+:class:`~sqlalchemy.Integer`, the instances will be accessible at URL endpoints
 like ``http://<host>:<port>/api/person/foo`` instead of
 ``http://<host>:<port>/api/person/1``.
