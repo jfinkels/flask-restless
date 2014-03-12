@@ -561,7 +561,7 @@ authentication::
 
     def auth_func(*args, **kw):
         if not current_user.is_authenticated():
-            raise ProcessingException(message='Not authenticated!')
+            raise ProcessingException(description='Not authenticated!', code=401)
 
     app = Flask(__name__)
     api_manager = APIManager(app, session=session,
@@ -611,10 +611,10 @@ If you want certain HTTP methods to require authentication, use preprocessors::
     from flask.ext.login import current_user
     from mymodels import User
 
-    def auth_func(params):
+    def auth_func(*args, **kwargs):
         if not current_user.is_authenticated():
-            raise ProcessingException(message='Not authenticated!')
-        return NO_CHANGE
+            raise ProcessingException(description='Not authenticated!', code=401)
+        return True
 
     app = Flask(__name__)
     api_manager = APIManager(app)
