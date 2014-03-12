@@ -40,7 +40,7 @@ Using `jQuery <http://jquery.com/>`_:
 
 .. sourcecode:: javascript
 
-   var filters = [{"name": "id", "op": "lte", "val": 5}];
+   var filters = [{"name": "id", "op": "like", "val": "%y%"}];
    $.ajax({
      url: 'http://127.0.0.1:5000/api/person',
      data: {"q": JSON.stringify({"filters": filters})},
