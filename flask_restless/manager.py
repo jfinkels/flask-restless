@@ -202,7 +202,8 @@ class APIManager(object):
                              include_methods=None, validation_exceptions=None,
                              results_per_page=10, max_results_per_page=100,
                              post_form_preprocessor=None,
-                             preprocessors=None, postprocessors=None):
+                             preprocessors=None, postprocessors=None,
+                             primary_key=None):
         """Creates an returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
 
@@ -333,6 +334,15 @@ class APIManager(object):
         other code. For more information on preprocessors and postprocessors,
         see :ref:`processors`.
 
+        `primary_key` is a string specifying the name of the column of `model`
+        to use as the primary key for the purposes of creating URLs. If the
+        `model` has exactly one primary key, there is no need to provide a
+        value for this. If `model` has two or more primary keys, you must
+        specify which one to use.
+
+        .. versionadded:: 0.13.0
+           Added the `primary_key` keyword argument.
+
         .. versionadded:: 0.10.2
            Added the `include_methods` keyword argument.
 
@@ -408,7 +418,7 @@ class APIManager(object):
                                include_columns, include_methods,
                                validation_exceptions, results_per_page,
                                max_results_per_page, post_form_preprocessor,
-                               preprocessors_, postprocessors_)
+                               preprocessors_, postprocessors_, primary_key)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = self._next_blueprint_name(apiname)
         # add the URL rules to the blueprint: the first is for methods on the

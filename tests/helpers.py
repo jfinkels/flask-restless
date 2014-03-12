@@ -235,6 +235,11 @@ class TestSupport(DatabaseTestBase):
             id = Column(Integer, primary_key=True)
             name = Column(Unicode)
 
+        class User(self.Base):
+            __tablename__ = 'user'
+            id = Column(Integer, primary_key=True)
+            email = Column(Unicode, primary_key=True)
+
         class Planet(self.Base):
             __tablename__ = 'planet'
             name = Column(Unicode, primary_key=True)
@@ -269,6 +274,7 @@ class TestSupport(DatabaseTestBase):
         self.ComputerProgram = ComputerProgram
         self.LazyComputer = LazyComputer
         self.LazyPerson = LazyPerson
+        self.User = User
         self.Computer = Computer
         self.Planet = Planet
         self.Star = Star

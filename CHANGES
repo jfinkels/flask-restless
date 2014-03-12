@@ -21,6 +21,7 @@ Version 0.13.0-dev
 Not yet released.
 
 - Allows universal preprocessors or postprocessors; see :ref:`universal`.
+- Allows specifying which primary key to use when creating endpoint URLs.
 - #17: use Flask's :attr:`flask.Request.json` to parse incoming JSON requests.
 - #29: replace custom ``jsonify_status_code`` function with built-in support
   for ``return jsonify(), status_code`` style return statements (new in Flask

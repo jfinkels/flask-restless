@@ -399,7 +399,8 @@ class API(ModelView):
                  include_columns=None, include_methods=None,
                  validation_exceptions=None, results_per_page=10,
                  max_results_per_page=100, post_form_preprocessor=None,
-                 preprocessors=None, postprocessors=None, *args, **kw):
+                 preprocessors=None, postprocessors=None, primary_key=None,
+                 *args, **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -479,6 +480,15 @@ class API(ModelView):
         other code. For more information on preprocessors and postprocessors,
         see :ref:`processors`.
 
+        `primary_key` is a string specifying the name of the column of `model`
+        to use as the primary key for the purposes of creating URLs. If the
+        `model` has exactly one primary key, there is no need to provide a
+        value for this. If `model` has two or more primary keys, you must
+        specify which one to use.
+
+        .. versionadded:: 0.13.0
+           Added the `primary_key` keyword argument.
+
         .. versionadded:: 0.10.2
            Added the `include_methods` keyword argument.
 
@@ -519,6 +529,7 @@ class API(ModelView):
         self.validation_exceptions = tuple(validation_exceptions or ())
         self.results_per_page = results_per_page
         self.max_results_per_page = max_results_per_page
+        self.primary_key = primary_key
         self.postprocessors = defaultdict(list)
         self.preprocessors = defaultdict(list)
         self.postprocessors.update(upper_keys(postprocessors or {}))
@@ -839,7 +850,7 @@ class API(ModelView):
         :http:statuscode:`404`.
 
         """
-        inst = get_by(self.session, self.model, instid)
+        inst = get_by(self.session, self.model, instid, self.primary_key)
         if inst is None:
             abort(404)
         return self._inst_to_dict(inst)
@@ -990,7 +1001,7 @@ class API(ModelView):
         for preprocessor in self.preprocessors['GET_SINGLE']:
             preprocessor(instance_id=instid)
         # get the instance of the "main" model whose ID is instid
-        instance = get_by(self.session, self.model, instid)
+        instance = get_by(self.session, self.model, instid, self.primary_key)
         if instance is None:
             abort(404)
         # If no relation is requested, just return the instance. Otherwise,
@@ -1040,7 +1051,7 @@ class API(ModelView):
         for preprocessor in self.preprocessors['DELETE']:
             preprocessor(instance_id=instid, relation_name=relationname,
                          relation_instance_id=relationinstid)
-        inst = get_by(self.session, self.model, instid)
+        inst = get_by(self.session, self.model, instid, self.primary_key)
         if relationname:
             # If the request is ``DELETE /api/person/1/computers``, error 400.
             if not relationinstid:
@@ -1143,6 +1154,7 @@ class API(ModelView):
             self.session.add(instance)
             self.session.commit()
             result = self._inst_to_dict(instance)
+
             primary_key = str(result[primary_key_name(instance)])
 
             # The URL at which a client can access the newly created instance
