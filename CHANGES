@@ -45,6 +45,7 @@ Not yet released.
 - #284: catch ``DataError`` and ``ProgrammingError`` exceptions when bad data
   are sent to the server.
 - #286: speed up paginated responses by using optimized count() function.
+- #293: allows :class:`sqlalchemy.Time` fields in JSON responses.
 
 Version 0.12.1
 --------------

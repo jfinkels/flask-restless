@@ -443,6 +443,19 @@ class TestAPI(TestSupport):
         assert diff.days == 0
         assert (diff.seconds + diff.microseconds / 1000000.0) < 3600
 
+    def test_serialize_time(self):
+        """Test for getting the JSON representation of a time field."""
+        self.manager.create_api(self.User, primary_key='id')
+        now = datetime.now().time()
+        user = self.User(id=1, email='foo', wakeup=now)
+        self.session.add(user)
+        self.session.commit()
+
+        response = self.app.get('/api/user/1')
+        assert response.status_code == 200
+        data = loads(response.data)
+        assert data['wakeup'] == now.isoformat()
+
     def test_post_interval_functions(self):
         oldJSONEncoder = self.flaskapp.json_encoder
         class IntervalJSONEncoder(oldJSONEncoder):

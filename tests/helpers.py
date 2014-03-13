@@ -13,6 +13,7 @@ import uuid
 
 from flask import Flask
 from nose import SkipTest
+from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import Date
@@ -21,7 +22,7 @@ from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Interval
-from sqlalchemy import Boolean
+from sqlalchemy import Time
 from sqlalchemy import Unicode
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
@@ -240,6 +241,7 @@ class TestSupport(DatabaseTestBase):
             __tablename__ = 'user'
             id = Column(Integer, primary_key=True)
             email = Column(Unicode, primary_key=True)
+            wakeup = Column(Time)
 
         class Planet(self.Base):
             __tablename__ = 'planet'

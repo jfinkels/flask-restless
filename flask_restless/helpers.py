@@ -321,11 +321,10 @@ def to_dict(instance, deep=None, exclude=None, include=None,
                            for method in include_methods
                            if not '.' in method))
     # Check for objects in the dictionary that may not be serializable by
-    # default. Specifically, convert datetime and date objects to ISO 8601
-    # format, and convert UUID objects to hexadecimal strings.
+    # default. Convert datetime objects to ISO 8601 format, convert UUID
+    # objects to hexadecimal strings, etc.
     for key, value in result.items():
-        # TODO We can get rid of this when issue #33 is resolved.
-        if isinstance(value, datetime.date):
+        if isinstance(value, (datetime.date, datetime.time)):
             result[key] = value.isoformat()
         elif isinstance(value, uuid.UUID):
             result[key] = str(value)
