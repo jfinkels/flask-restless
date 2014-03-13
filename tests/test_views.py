@@ -1584,7 +1584,7 @@ class TestSearch(TestSupportPrefilled):
         # Looking for something that does not exist on the database
         search['filters'][0]['val'] = 'Sammy'
         resp = self.app.search('/api/person', dumps(search))
-        assert resp.status_code == 400
+        assert resp.status_code == 404
         assert loads(resp.data)['message'] == 'No result found'
 
         # We have to receive an error if the user provides an invalid
