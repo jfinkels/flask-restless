@@ -28,7 +28,6 @@ from functools import wraps
 import math
 import warnings
 
-from flask import abort
 from flask import current_app
 from flask import json
 from flask import jsonify as _jsonify

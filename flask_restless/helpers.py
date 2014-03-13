@@ -22,13 +22,10 @@ from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.ext import hybrid
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import ColumnProperty
-from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm import RelationshipProperty as RelProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.attributes import QueryableAttribute
-from sqlalchemy.orm.exc import UnmappedInstanceError
 from sqlalchemy.orm.query import Query
-from sqlalchemy.orm.util import class_mapper
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import _BinaryExpression
 from sqlalchemy.sql.expression import ColumnElement
@@ -302,8 +299,9 @@ def to_dict(instance, deep=None, exclude=None, include=None,
     try:
         inspected_instance = sqlalchemy_inspect(instance_type)
         column_attrs = inspected_instance.column_attrs.keys()
-        hybrid_columns = [ k for k, descriptor in inspected_instance.all_orm_descriptors.items()\
-            if descriptor.extension_type == hybrid.HYBRID_PROPERTY ]
+        descriptors = inspected_instance.all_orm_descriptors.items()
+        hybrid_columns = [k for k, d in descriptors
+                          if d.extension_type == hybrid.HYBRID_PROPERTY]
         columns = column_attrs + hybrid_columns
     except NoInspectionAvailable:
         return instance
@@ -543,8 +541,8 @@ def strings_to_dates(model, dictionary):
                 result[fieldname] = getattr(func, value.lower())()
             else:
                 result[fieldname] = parse_datetime(value)
-        elif is_interval_field(model, fieldname) and value is not None\
-            and isinstance(value, int):
+        elif (is_interval_field(model, fieldname) and value is not None
+              and isinstance(value, int)):
             result[fieldname] = datetime.timedelta(seconds=value)
         else:
             result[fieldname] = value
