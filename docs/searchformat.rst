@@ -281,7 +281,7 @@ error response is returned instead:
 
 .. sourcecode:: http
 
-   HTTP/1.1 400 Bad Request
+   HTTP/1.1 404 Bad Request
 
    {"message": "No result found"}
 
