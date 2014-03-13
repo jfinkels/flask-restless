@@ -24,11 +24,13 @@ else:
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import Unicode
 from sqlalchemy.ext.associationproxy import association_proxy as prox
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship as rel
+from sqlalchemy.orm.collections import column_mapped_collection as col_mapped
 
 from flask.ext.restless.helpers import to_dict
 from flask.ext.restless.manager import APIManager
@@ -1740,15 +1742,41 @@ class TestAssociationProxy(DatabaseTestBase):
                                    ForeignKey('product.id'),
                                    primary_key=True))
 
+        # Metadata is a key-value pair, used to test for association
+        # proxies that use AssociationDict types
+        # this is the association table for Image->metadata
+        product_meta = Table('product_meta', self.Base.metadata,
+                 Column('image_id', Integer, ForeignKey('image.id')),
+                 Column('meta_id', Integer, ForeignKey('meta.id')))
+
         # For brevity, create this association proxy creator functions here.
         creator1 = lambda product: ChosenProductImage(product=product)
         creator2 = lambda image: ChosenProductImage(image=image)
+        creator3 = lambda key, value: Metadata(key, value)
+        class Metadata(self.Base):
+            def __init__(self, key, value):
+                super(Metadata, self).__init__()
+                self.key = key
+                self.value = value
+
+            __tablename__ = 'meta'
+            id = Column(Integer, primary_key=True)
+            key = Column(String(256), nullable=False)
+            value = Column(String(256))
 
         class Image(self.Base):
             __tablename__ = 'image'
             id = Column(Integer, primary_key=True)
             products = prox('chosen_product_images', 'product',
                             creator=creator1)
+
+            meta_store = rel('Metadata',
+                             cascade='all',
+                             backref=backref(name='metadata'),
+                             collection_class=col_mapped(
+                                                    Metadata.__table__.c.key),
+                             secondary=lambda: product_meta)
+            meta = prox('meta_store', 'value', creator=creator3)
 
         class ChosenProductImage(self.Base):
             __tablename__ = 'chosen_product_image'
@@ -1814,6 +1842,12 @@ class TestAssociationProxy(DatabaseTestBase):
         assert 'products' in data
         assert {'id': 1} in data['products']
 
+    def _check_meta_relation(self):
+        response = self.app.get('/api/image/1')
+        data = loads(response.data)
+        assert 'meta_store' in data
+        assert 'file type' in data['meta_store']
+
     def _check_relations_two(self):
         """Makes :http:method:`get` requests for the product with ID 1 and the
         images with ID 1 and 2, ensuring that the product has a relationship
@@ -1841,6 +1875,15 @@ class TestAssociationProxy(DatabaseTestBase):
         data = loads(response.data)
         assert 'products' in data
         assert {'id': 1} in data['products']
+
+    def test_assoc_dict_put(self):
+        data = {'products': [{'id': 1}],
+                'meta':[{'key':'file type', 'value': 'png'}]
+               }
+        response = self.app.post('/api/image', data=dumps(data))
+        assert response.status_code == 201
+
+        self._check_meta_relation()
 
     def test_get_data(self):
         """Tests that a :http:method:`get` request exhibits the correct
