@@ -1074,7 +1074,7 @@ class API(ModelView):
                 related_value_instance = get_by(self.session, related_model,
                                                 relationinstid)
                 if related_value_instance is None:
-                    abort(404)
+                    return {_STATUS: 404}, 404
                 result = to_dict(related_value_instance, deep)
             else:
                 # for security purposes, don't transmit list as top-level JSON
@@ -1083,7 +1083,7 @@ class API(ModelView):
                 else:
                     result = to_dict(related_value, deep)
         if result is None:
-            abort(404)
+            return {_STATUS: 404}, 404
         for postprocessor in self.postprocessors['GET_SINGLE']:
             postprocessor(result=result)
         return result
