@@ -1212,13 +1212,11 @@ class API(ModelView):
                     for subparams in params[col]:
                         subinst = get_or_create(self.session, submodel,
                                                 subparams)
-
                         try:
                             getattr(instance, col).append(subinst)
                         except AttributeError:
                             attribute = getattr(instance, col)
                             attribute[subinst.key] = subinst.value
-
                 else:
                     # model has single related object
                     subinst = get_or_create(self.session, submodel,
