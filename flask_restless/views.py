@@ -988,7 +988,7 @@ class API(ModelView):
         try:
             result = search(self.session, self.model, search_params)
         except NoResultFound:
-            return dict(message='No result found'), 400
+            return dict(message='No result found'), 404
         except MultipleResultsFound:
             return dict(message='Multiple results found'), 400
         except Exception as exception:
