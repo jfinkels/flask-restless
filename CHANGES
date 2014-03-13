@@ -35,6 +35,7 @@ Not yet released.
 - #263: Adds Python 3.3 support; drops Python 2.5 support.
 - #267: Adds compatibility for legacy Microsoft Internet Explorer versions 8
   and 9.
+- #270: allows the ``query`` attribute on models to be a callable.
 - #282: order responses by primary key if no order is specified.
 - #284: catch ``DataError`` and ``ProgrammingError`` exceptions when bad data
   are sent to the server.
