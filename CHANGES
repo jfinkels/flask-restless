@@ -29,6 +29,8 @@ Not yet released.
   0.9).
 - #51: Use `mimerender <http://mimerender.readthedocs.org>`_ to render
   dictionaries to JSON format.
+- #247: adds support for making :http:method:`post` requests to dictionary-like
+  association proxies.
 - #249: returns :http:status:`404` if a search reveals no matching results.
 - #254: returns :http:status:`404` if no related field exists for a request
   with a related field in the URL.
