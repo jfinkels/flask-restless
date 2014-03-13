@@ -653,6 +653,10 @@ receive a response like this:
 
    {"message": "Unable to decode data"}
 
+If your request triggers a SQLAlchemy :exc:`~sqlalchemy.exc.DataError`,
+:exc:`~sqlalchemy.exc.IntegrityError`, or
+:exc:`~sqlalchemy.exc.ProgrammingError`, the session will be rolled back.
+
 .. _functionevaluation:
 
 Function evaluation
