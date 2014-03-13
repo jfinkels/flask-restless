@@ -332,7 +332,6 @@ class TestAPI(TestSupport):
                                  data=dumps({'name': u'Benjamin', 'age': 23}))
         assert response.status_code == 201
 
-
         response = self.app.post('/api/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
         assert response.status_code == 201
