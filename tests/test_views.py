@@ -1397,13 +1397,13 @@ class TestAPI(TestSupport):
           assert car['manufacturer']['name'] == manufacturer_name
 
         for car in [car1, car2]:
-          response = self.app.get('/api/car_model/{}'.format(car.id))
+          response = self.app.get('/api/car_model/{0}'.format(car.id))
           assert 200 == response.status_code
           data = loads(response.data)
           assert data['manufacturer_id'] == cm1.id
           assert data['name'] == car.name
 
-        response = self.app.get('/api/car_model/{}'.format(car3.id))
+        response = self.app.get('/api/car_model/{0}'.format(car3.id))
         assert 404 == response.status_code
 
 
