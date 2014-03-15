@@ -27,6 +27,7 @@ from flask.ext.restless.helpers import primary_key_name
 from flask.ext.restless.helpers import to_dict
 from flask.ext.restless.helpers import upper_keys
 from flask.ext.restless.helpers import get_by
+from flask.ext.restless.helpers import is_like_list
 
 from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
@@ -243,6 +244,21 @@ class TestModelHelpers(TestSupport):
         """Tests getting the names of the relations of a model as strings."""
         relations = get_relations(self.Person)
         assert relations == ['computers']
+
+    def test_is_like_list(self):
+        """Tests if the relation of `instance` whose name is `relation` is
+        list-like.
+
+        """
+        person = self.Person(name=u'Frankie', age=29)
+        project = self.Project(person=person)
+        proof = self.Proof(project=project)
+
+        self.session.add_all([person, project, proof])
+        self.session.commit()
+
+        assert is_like_list(proof, 'person') == False
+        assert is_like_list(proof, 'person_id') == False
 
 
 class TestFunctionEvaluation(TestSupportPrefilled):
