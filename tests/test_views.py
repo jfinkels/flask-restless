@@ -352,7 +352,7 @@ class TestAPI(TestSupport):
         response = self.app.get('/api/person/1')
         assert response.status_code == 200
 
-        deep = {'computers': []}
+        deep = {'computers': [], 'projects': []}
         person = self.session.query(self.Person).filter_by(id=1).first()
         inst = to_dict(person, deep)
         assert loads(response.data) == inst
@@ -674,7 +674,7 @@ class TestAPI(TestSupport):
         assert 'id' in loads(response.data)
 
         # Making sure it has been created
-        deep = {'computers': []}
+        deep = {'computers': [], 'projects': []}
         person = self.session.query(self.Person).filter_by(id=1).first()
         inst = to_dict(person, deep)
         response = self.app.get('/api/person/1')
