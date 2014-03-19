@@ -235,7 +235,11 @@ def is_like_list(instance, relation):
     if relation in instance._sa_class_manager:
         return instance._sa_class_manager[relation].property.uselist
     related_value = getattr(type(instance), relation, None)
-    return isinstance(related_value, AssociationProxy)
+    if isinstance(related_value, AssociationProxy):
+        local_prop = related_value.local_attr.prop
+        if isinstance(local_prop, RelProperty):
+            return local_prop.uselist
+    return False
 
 
 def is_mapped_class(cls):

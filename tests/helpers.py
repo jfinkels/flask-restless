@@ -33,6 +33,8 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.types import CHAR
 from sqlalchemy.types import TypeDecorator
+from sqlalchemy.ext.associationproxy import association_proxy
+
 
 from flask.ext.restless import APIManager
 
@@ -277,6 +279,21 @@ class TestSupport(DatabaseTestBase):
             name = Column(Unicode)
             models = relationship('CarModel')
 
+        class Project(self.Base):
+            __tablename__ = 'project'
+            id = Column(Integer, primary_key=True)
+            person_id = Column(Integer, ForeignKey('person.id'))
+            person = relationship('Person',
+                                 backref=backref('projects', lazy='dynamic'))
+
+        class Proof(self.Base):
+            __tablename__ = 'proof'
+            id = Column(Integer, primary_key=True)
+            project = relationship('Project', backref=backref('proofs', lazy='dynamic'))
+            project_id = Column(Integer, ForeignKey('project.id'))
+            person = association_proxy('project', 'person')
+            person_id = association_proxy('project', 'person_id')
+
         self.Person = Person
         self.Program = Program
         self.ComputerProgram = ComputerProgram
@@ -290,6 +307,8 @@ class TestSupport(DatabaseTestBase):
         self.Vehicle = Vehicle
         self.CarManufacturer = CarManufacturer
         self.CarModel = CarModel
+        self.Project = Project
+        self.Proof = Proof
 
         # create all the tables required for the models
         self.Base.metadata.create_all()
