@@ -383,7 +383,7 @@ and `postprocessors` can be one of the following strings:
   model.
 * ``'PATCH_SINGLE'`` or ``'PUT_SINGLE'`` for requests to patch a single
   instance of the model.
-* ``'PATCH_MANY'`` or ``'PATCH_SINGLE'`` for requests to patch the entire
+* ``'PATCH_MANY'`` or ``'PUT_MANY'`` for requests to patch the entire
   collection of instances of the model.
 * ``'POST'`` for requests to post a new instance of the model.
 * ``'DELETE'`` for requests to delete an instance of the model.
