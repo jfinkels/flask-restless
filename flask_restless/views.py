@@ -347,8 +347,8 @@ def _parse_excludes(column_names):
 #: :class:`mimerender.FlaskMimeRender` class. The second pair of parentheses
 #: creates the decorator, so that we can simply use the variable ``mimerender``
 #: as a decorator.
-mimerender = FlaskMimeRender()(default='json', json=jsonpify,
-                               xml=lambda: None)  # TODO fill in xml renderer
+# TODO fill in xml renderer
+mimerender = FlaskMimeRender()(default='json', json=jsonpify)
 
 
 class ModelView(MethodView):
