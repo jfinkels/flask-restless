@@ -51,6 +51,6 @@ setup(
     test_suite='nose.collector',
     tests_require=['nose'],
     url='http://github.com/jfinkels/flask-restless',
-    version='0.13.1-dev',
+    version='0.13.1',
     zip_safe=False
 )
