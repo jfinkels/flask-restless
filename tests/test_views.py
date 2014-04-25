@@ -1816,7 +1816,7 @@ class TestAssociationProxy(DatabaseTestBase):
             chosen_images = prox('chosen_product_images', 'image',
                                  creator=creator2)
             image_names = prox('chosen_product_images', 'name')
-            tags = rel(Tag, secondary=tag_product,
+            tags = rel(Tag, secondary=tag_product, lazy='joined',
                        backref=backref(name='products', lazy='dynamic'))
             tag_names = prox('tags', 'name',
                              creator=lambda tag_name: Tag(name=tag_name))
@@ -2066,3 +2066,12 @@ class TestAssociationProxy(DatabaseTestBase):
         data = loads(response.data)
 
         assert sorted(data['tag_names']), sorted(['tag1' == 'tag2'])
+
+    def test_num_results(self):
+        self.session.add(self.Product(tag_names=['tag1', 'tag2']))
+        self.session.commit()
+
+        response = self.app.get('/api/product')
+        assert response.status_code == 200
+        data = loads(response.data)
+        assert data['num_results'] == 1
