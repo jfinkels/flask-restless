@@ -15,7 +15,7 @@ from __future__ import with_statement
 from datetime import date
 
 from flask import json
-from flask.ext.restless.views import ProcessingException
+from flask.ext.restless import ProcessingException
 from .helpers import TestSupport
 
 
@@ -54,6 +54,8 @@ class TestProcessors(TestSupport):
         assert 201 == response.status_code
         response = self.app.get('/api/person/1')
         assert response.status_code == 403
+        json_resp = loads(response.data)
+        assert 'Permission denied' == json_resp['message']
 
     def test_change_instance_id(self):
         """Tests that return values from preprocessors set the instance ID."""
@@ -201,6 +203,8 @@ class TestProcessors(TestSupport):
         response = self.app.post('/api/v3/person',
                                  data=dumps({'name': u'Lincoln', 'age': 23}))
         assert response.status_code == 403
+        json_resp = loads(response.data)
+        assert 'Permission denied' == json_resp['message']
 
     def test_delete_preprocessor(self):
         """Tests for using a preprocessor with :http:method:`delete` requests.
@@ -227,6 +231,8 @@ class TestProcessors(TestSupport):
         # Try deleting it
         response = self.app.delete('/api/person/1')
         assert response.status_code == 403
+        json_resp = loads(response.data)
+        assert 'Permission denied' == json_resp['message']
 
         # Making sure it has been not deleted
         people = self.session.query(self.Person).filter_by(id=1)
@@ -258,6 +264,8 @@ class TestProcessors(TestSupport):
         # Try updating people with id=1
         response = self.app.patch('/api/person/1', data=dumps({'age': 27}))
         assert response.status_code == 403
+        json_resp = loads(response.data)
+        assert 'Permission denied' == json_resp['message']
 
     def test_patch_single_preprocessor2(self):
         """Tests for using a preprocessor with :http:method:`patch` requests.

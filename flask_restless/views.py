@@ -88,10 +88,10 @@ class ProcessingException(HTTPException):
     preprocessing or postprocessing halts, so any processors appearing later in
     the list will not be invoked.
 
-    `status_code` is the HTTP status code of the response supplied to the
-    client in the case that this exception is raised. `message` is an error
-    message describing the cause of this exception. This message will appear in
-    the JSON object in the body of the response to the client.
+    `code` is the HTTP status code of the response supplied to the client in
+    the case that this exception is raised. `description` is an error message
+    describing the cause of this exception. This message will appear in the
+    JSON object in the body of the response to the client.
 
     """
     def __init__(self, description='', code=400, *args, **kwargs):
