@@ -562,7 +562,6 @@ def count(session, query):
 
     """
     num_results = None
-    if len(query.statement._froms) == 1:
-        counts = query.statement.with_only_columns([func.count()])
-        num_results = session.execute(counts.order_by(None)).scalar()
+    counts = query.selectable.with_only_columns([func.count()])
+    num_results = session.execute(counts.order_by(None)).scalar()
     return query.count() if num_results is None else num_results
