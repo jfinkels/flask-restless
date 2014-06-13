@@ -535,8 +535,8 @@ authentication function can be implemented like this::
         # Next, check if the user is authorized to modify the specified
         # instance of the model.
         if not is_authorized_to_modify(current_user, instance_id):
-            raise ProcessingException(message='Not Authorized',
-                                      status_code=401)
+            raise ProcessingException(description='Not Authorized',
+                                      code=401)
     manager.create_api(Person, preprocessors=dict(GET_SINGLE=[check_auth]))
 
 The :exc:`ProcessingException` allows you to specify an HTTP status code for
