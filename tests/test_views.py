@@ -692,12 +692,11 @@ class TestAPI(TestSupport):
         """Test that deleting an instance of the model which does not exist
         fails.
 
-        This should give us the same response as when there is an object there,
-        since the :http:method:`delete` method is an idempotent method.
+        This should give us a 404 when the object is not found.
 
         """
         response = self.app.delete('/api/person/1')
-        assert response.status_code == 204
+        assert response.status_code == 404
 
     def test_disallow_patch_many(self):
         """Tests that disallowing "patch many" requests responds with a
