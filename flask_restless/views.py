@@ -1124,8 +1124,8 @@ class API(ModelView):
             relation.remove(relation_instance)
         elif inst is not None:
             self.session.delete(inst)
-            self.session.commit()
             is_deleted = True
+        self.session.commit()
         for postprocessor in self.postprocessors['DELETE']:
             postprocessor(is_deleted=is_deleted)
         return {}, 204
