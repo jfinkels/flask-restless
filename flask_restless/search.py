@@ -41,7 +41,7 @@ def _sub_operator(model, argument, fieldname):
     if isinstance(argument, dict):
         fieldname = argument['name']
         operator = argument['op']
-        argument = argument['val']
+        argument = argument.get('val')
         relation = None
         if '__' in fieldname:
             fieldname, relation = fieldname.split('__')

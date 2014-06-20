@@ -200,7 +200,7 @@ class TestSupport(DatabaseTestBase):
             owner_id = Column(Integer, ForeignKey('person.id'))
             owner = relationship('Person')
             programs = relationship('ComputerProgram',
-                                    cascade="all, delete-orphan")
+                                    cascade="all, delete-orphan", backref='computer')
 
             def speed(self):
                 return 42
