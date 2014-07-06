@@ -76,8 +76,11 @@ def session_query(session, model):
     """
     if hasattr(model, 'query'):
         if callable(model.query):
-            return model.query()
-        return model.query
+            query = model.query()
+        else:
+            query = model.query
+        if hasattr(query, 'filter'):
+            return query
     return session.query(model)
 
 
