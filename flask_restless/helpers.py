@@ -564,4 +564,4 @@ def count(session, query):
     num_results = None
     counts = query.selectable.with_only_columns([func.count()])
     num_results = session.execute(counts.order_by(None)).scalar()
-    return query.count() if num_results is None else num_results
+    return query.count() if num_results is None or query._limit else num_results
