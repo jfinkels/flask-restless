@@ -41,6 +41,7 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
+from werkzeug.exceptions import BadRequest
 from werkzeug.exceptions import HTTPException
 
 from .helpers import count
@@ -59,8 +60,6 @@ from .helpers import session_query
 from .helpers import strings_to_dates
 from .helpers import to_dict
 from .helpers import upper_keys
-from werkzeug.exceptions import BadRequest
-
 from .search import create_query
 from .search import search
 
