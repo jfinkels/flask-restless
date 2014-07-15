@@ -1090,9 +1090,11 @@ class API(ModelView):
         """Removes the specified instance of the model with the specified name
         from the database.
 
-        Since :http:method:`delete` is an idempotent method according to the
-        :rfc:`2616`, this method responds with :http:status:`204` regardless of
-        whether an object was deleted.
+        Although :http:method:`delete` is an idempotent method according to
+        :rfc:`2616`, idempotency only means that subsequent identical requests
+        cannot have additional side-effects. Since the response code is not a
+        side effect, this method responds with :http:status:`204` only if an
+        object is deleted, and with :http:status:`404` when nothing is deleted.
 
         If `relationname
 
@@ -1121,13 +1123,14 @@ class API(ModelView):
                                        relationinstid)
             # Removes an object from the relation list.
             relation.remove(relation_instance)
+            is_deleted = len(self.session.dirty) > 0
         elif inst is not None:
             self.session.delete(inst)
-            self.session.commit()
-            is_deleted = True
+            is_deleted = len(self.session.deleted) > 0
+        self.session.commit()
         for postprocessor in self.postprocessors['DELETE']:
             postprocessor(is_deleted=is_deleted)
-        return {}, 204
+        return {}, 204 if is_deleted else 404
 
     def post(self):
         """Creates a new instance of a given model based on request data.
