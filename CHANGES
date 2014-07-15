@@ -20,6 +20,15 @@ Version 0.14.0-dev
 
 Not yet released.
 
+- #299: show error message if search query tests for ``NULL`` using comparison
+  operators.
+- #315: check for query object being ``None``.
+- #324: :http:method:`delete` should only return :http:status:`204` if
+  something is actuall deleted.
+- #325: support ``null`` inside ``has`` search operators.
+- #328: enable automatic testing for Python 3.4.
+- #333: enforce limit in :func:`helpers.count`.
+
 Version 0.13.1
 --------------
 
