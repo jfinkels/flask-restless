@@ -1165,20 +1165,20 @@ class API(ModelView):
             # HACK Requests made from Internet Explorer 8 or 9 don't have the
             # correct content type, so request.get_json() doesn't work.
             if is_msie:
-                params = json.loads(request.get_data()) or {}
+                data = json.loads(request.get_data()) or {}
             else:
-                params = request.get_json() or {}
+                data = request.get_json() or {}
         except (BadRequest, TypeError, ValueError, OverflowError) as exception:
             current_app.logger.exception(str(exception))
             return dict(message='Unable to decode data'), 400
 
         # apply any preprocessors to the POST arguments
         for preprocessor in self.preprocessors['POST']:
-            preprocessor(data=params)
+            preprocessor(data=data)
 
         # Check for any request parameter naming a column which does not exist
         # on the current model.
-        for field in params:
+        for field in data:
             if not has_field(self.model, field):
                 msg = "Model does not have field '{0}'".format(field)
                 return dict(message=msg), 400
@@ -1189,25 +1189,25 @@ class API(ModelView):
 
         # Looking for what we're going to set on the model right now
         colkeys = cols.keys()
-        paramkeys = params.keys()
+        paramkeys = data.keys()
         props = set(colkeys).intersection(paramkeys).difference(relations)
 
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
-        params = strings_to_dates(self.model, params)
+        data = strings_to_dates(self.model, data)
 
         try:
             # Instantiate the model with the parameters.
-            modelargs = dict([(i, params[i]) for i in props])
+            modelargs = dict([(i, data[i]) for i in props])
             instance = self.model(**modelargs)
 
             # Handling relations, a single level is allowed
             for col in set(relations).intersection(paramkeys):
                 submodel = get_related_model(self.model, col)
 
-                if type(params[col]) == list:
+                if type(data[col]) == list:
                     # model has several related objects
-                    for subparams in params[col]:
+                    for subparams in data[col]:
                         subinst = get_or_create(self.session, submodel,
                                                 subparams)
                         try:
@@ -1218,7 +1218,7 @@ class API(ModelView):
                 else:
                     # model has single related object
                     subinst = get_or_create(self.session, submodel,
-                                            params[col])
+                                            data[col])
                     setattr(instance, col, subinst)
 
             # add the created model to the session
