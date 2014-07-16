@@ -343,7 +343,7 @@ class QueryBuilder(object):
             return opfunc(field)
         if argument is None:
             msg = ('To compare a value to NULL, use the is_null/is_not_null '
-                'operators.')
+                   'operators.')
             raise TypeError(msg)
         if numargs == 2:
             return opfunc(field, argument)

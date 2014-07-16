@@ -148,7 +148,6 @@ class TestOperators(TestSupportPrefilled):
         d = dict(filters=[dict(name='birth_date', op='eq', val=None)])
         assert_raises(TypeError, search, self.session, self.Person, d)
 
-
     def test_desc_and_asc(self):
         """Tests for the ``"desc"`` and ``"asc"`` operators."""
         # TODO Not yet implemented because I don't understand these operators.
