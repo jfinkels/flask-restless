@@ -40,6 +40,7 @@ from .helpers import FlaskTestBase
 from .helpers import skip_unless
 from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
+from .helpers import unregister_fsa_session_signals
 
 
 dumps = json.dumps
@@ -97,6 +98,7 @@ class TestFSAModel(FlaskTestBase):
     def tearDown(self):
         """Drops all tables."""
         self.db.drop_all()
+        unregister_fsa_session_signals()
 
     def test_get(self):
         """Test for the :meth:`views.API.get` method with models defined using
