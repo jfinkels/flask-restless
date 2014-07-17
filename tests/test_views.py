@@ -1209,8 +1209,8 @@ class TestAPI(TestSupport):
         assert loads(response.data) == dict(name='Earth')
 
     def test_specified_primary_key(self):
-        """Tests that models with more than one primary keys are
-        accessible via a specified primary keys.
+        """Tests that models with more than one primary key are
+        accessible via a specified primary key.
 
         """
         self.manager.create_api(self.User, methods=['GET', 'POST', 'PATCH'],
