@@ -1225,7 +1225,6 @@ class TestAPI(TestSupport):
         assert len(loads(response.data)['objects']) == 1
         response = self.app.get('/api/user/foo')
         assert response.status_code == 200
-        print response.data
         assert loads(response.data) == data
         response = self.app.patch('/api/user/foo', data=dumps(dict(id=2)),
                                   content_type='application/json')
