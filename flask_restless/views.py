@@ -1327,7 +1327,8 @@ class API(ModelView):
                 return dict(message='Unable to construct query'), 400
         else:
             # create a SQLAlchemy Query which has exactly the specified row
-            query = query_by_primary_key(self.session, self.model, instid)
+            query = query_by_primary_key(self.session, self.model, instid,
+                                         self.primary_key)
             if query.count() == 0:
                 return {_STATUS: 404}, 404
             assert query.count() == 1, 'Multiple rows with same ID'
