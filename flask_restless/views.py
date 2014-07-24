@@ -41,6 +41,7 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
+from werkzeug.exceptions import BadRequest
 from werkzeug.exceptions import HTTPException
 
 from .helpers import count
@@ -59,8 +60,6 @@ from .helpers import session_query
 from .helpers import strings_to_dates
 from .helpers import to_dict
 from .helpers import upper_keys
-from werkzeug.exceptions import BadRequest
-
 from .search import create_query
 from .search import search
 
@@ -1091,9 +1090,11 @@ class API(ModelView):
         """Removes the specified instance of the model with the specified name
         from the database.
 
-        Since :http:method:`delete` is an idempotent method according to the
-        :rfc:`2616`, this method responds with :http:status:`204` regardless of
-        whether an object was deleted.
+        Although :http:method:`delete` is an idempotent method according to
+        :rfc:`2616`, idempotency only means that subsequent identical requests
+        cannot have additional side-effects. Since the response code is not a
+        side effect, this method responds with :http:status:`204` only if an
+        object is deleted, and with :http:status:`404` when nothing is deleted.
 
         If `relationname
 
@@ -1122,13 +1123,14 @@ class API(ModelView):
                                        relationinstid)
             # Removes an object from the relation list.
             relation.remove(relation_instance)
+            is_deleted = len(self.session.dirty) > 0
         elif inst is not None:
             self.session.delete(inst)
-            self.session.commit()
-            is_deleted = True
+            is_deleted = len(self.session.deleted) > 0
+        self.session.commit()
         for postprocessor in self.postprocessors['DELETE']:
             postprocessor(is_deleted=is_deleted)
-        return {}, 204
+        return {}, 204 if is_deleted else 404
 
     def post(self):
         """Creates a new instance of a given model based on request data.
@@ -1166,20 +1168,20 @@ class API(ModelView):
             # HACK Requests made from Internet Explorer 8 or 9 don't have the
             # correct content type, so request.get_json() doesn't work.
             if is_msie:
-                params = json.loads(request.get_data()) or {}
+                data = json.loads(request.get_data()) or {}
             else:
-                params = request.get_json() or {}
+                data = request.get_json() or {}
         except (BadRequest, TypeError, ValueError, OverflowError) as exception:
             current_app.logger.exception(str(exception))
             return dict(message='Unable to decode data'), 400
 
         # apply any preprocessors to the POST arguments
         for preprocessor in self.preprocessors['POST']:
-            preprocessor(data=params)
+            preprocessor(data=data)
 
         # Check for any request parameter naming a column which does not exist
         # on the current model.
-        for field in params:
+        for field in data:
             if not has_field(self.model, field):
                 msg = "Model does not have field '{0}'".format(field)
                 return dict(message=msg), 400
@@ -1190,25 +1192,25 @@ class API(ModelView):
 
         # Looking for what we're going to set on the model right now
         colkeys = cols.keys()
-        paramkeys = params.keys()
+        paramkeys = data.keys()
         props = set(colkeys).intersection(paramkeys).difference(relations)
 
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
-        params = strings_to_dates(self.model, params)
+        data = strings_to_dates(self.model, data)
 
         try:
             # Instantiate the model with the parameters.
-            modelargs = dict([(i, params[i]) for i in props])
+            modelargs = dict([(i, data[i]) for i in props])
             instance = self.model(**modelargs)
 
             # Handling relations, a single level is allowed
             for col in set(relations).intersection(paramkeys):
                 submodel = get_related_model(self.model, col)
 
-                if type(params[col]) == list:
+                if type(data[col]) == list:
                     # model has several related objects
-                    for subparams in params[col]:
+                    for subparams in data[col]:
                         subinst = get_or_create(self.session, submodel,
                                                 subparams)
                         try:
@@ -1219,7 +1221,7 @@ class API(ModelView):
                 else:
                     # model has single related object
                     subinst = get_or_create(self.session, submodel,
-                                            params[col])
+                                            data[col])
                     setattr(instance, col, subinst)
 
             # add the created model to the session
@@ -1330,7 +1332,11 @@ class API(ModelView):
                 return {_STATUS: 404}, 404
             assert query.count() == 1, 'Multiple rows with same ID'
 
-        relations = self._update_relations(query, data)
+        try:
+            relations = self._update_relations(query, data)
+        except self.validation_exceptions as exception:
+            current_app.logger.exception(str(exception))
+            return self._handle_validation_exception(exception)
         field_list = frozenset(data) ^ relations
         data = dict((field, data[field]) for field in field_list)
 

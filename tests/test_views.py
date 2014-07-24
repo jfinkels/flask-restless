@@ -692,12 +692,11 @@ class TestAPI(TestSupport):
         """Test that deleting an instance of the model which does not exist
         fails.
 
-        This should give us the same response as when there is an object there,
-        since the :http:method:`delete` method is an idempotent method.
+        This should give us a 404 when the object is not found.
 
         """
         response = self.app.delete('/api/person/1')
-        assert response.status_code == 204
+        assert response.status_code == 404
 
     def test_disallow_patch_many(self):
         """Tests that disallowing "patch many" requests responds with a
@@ -1694,6 +1693,30 @@ class TestSearch(TestSupportPrefilled):
         resp = self.app.search('/api/person', dumps(search))
         assert resp.status_code == 200
         assert 1 == len(loads(resp.data)['objects'])
+        assert loads(resp.data)['num_results'] == 1
+        assert loads(resp.data)['objects'][0]['name'] == u'Mary'
+
+        # Testing limit by itself
+        search = {'limit': 1}
+        resp = self.app.search('/api/person', dumps(search))
+        assert resp.status_code == 200
+        assert 1 == len(loads(resp.data)['objects'])
+        assert loads(resp.data)['num_results'] == 1
+        assert loads(resp.data)['objects'][0]['name'] == u'Lincoln'
+
+        search = {'limit': 5000}
+        resp = self.app.search('/api/person', dumps(search))
+        assert resp.status_code == 200
+        assert 5 == len(loads(resp.data)['objects'])
+        assert loads(resp.data)['num_results'] == 5
+        assert loads(resp.data)['objects'][0]['name'] == u'Lincoln'
+
+         # Testing offset by itself
+        search = {'offset': 1}
+        resp = self.app.search('/api/person', dumps(search))
+        assert resp.status_code == 200
+        assert 4 == len(loads(resp.data)['objects'])
+        assert loads(resp.data)['num_results'] == 4
         assert loads(resp.data)['objects'][0]['name'] == u'Mary'
 
         # Testing multiple results when calling .one()

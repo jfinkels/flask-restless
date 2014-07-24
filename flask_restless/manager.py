@@ -204,7 +204,7 @@ class APIManager(object):
                              post_form_preprocessor=None,
                              preprocessors=None, postprocessors=None,
                              primary_key=None):
-        """Creates an returns a ReSTful API interface as a blueprint, but does
+        """Creates and returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
 
         The endpoints for the API for ``model`` will be available at
