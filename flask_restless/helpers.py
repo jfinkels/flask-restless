@@ -121,7 +121,6 @@ def get_related_model(model, relationname):
     whose name is `relationname`.
 
     """
-
     if hasattr(model, relationname):
         attr = getattr(model, relationname)
         if hasattr(attr, 'property') and isinstance(attr.property, RelProperty):
@@ -241,7 +240,7 @@ def is_like_list(instance, relation):
     elif hasattr(instance, relation):
         attr = getattr(instance._sa_instance_state.class_, relation)
         if hasattr(attr, 'property'):
-            return getattr(instance._sa_instance_state.class_, relation).property.uselist
+            return attr.property.uselist
     related_value = getattr(type(instance), relation, None)
     if isinstance(related_value, AssociationProxy):
         local_prop = related_value.local_attr.prop
@@ -313,7 +312,8 @@ def to_dict(instance, deep=None, exclude=None, include=None,
         column_attrs = inspected_instance.column_attrs.keys()
         descriptors = inspected_instance.all_orm_descriptors.items()
         hybrid_columns = [k for k, d in descriptors
-                          if d.extension_type == hybrid.HYBRID_PROPERTY and not (deep and k in deep)]
+                          if d.extension_type == hybrid.HYBRID_PROPERTY
+                          and not (deep and k in deep)]
         columns = column_attrs + hybrid_columns
     except NoInspectionAvailable:
         return instance
