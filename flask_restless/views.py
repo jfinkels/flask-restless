@@ -1247,7 +1247,7 @@ class API(ModelView):
         except (DataError, IntegrityError, ProgrammingError) as exception:
             self.session.rollback()
             current_app.logger.exception(str(exception))
-            return dict(message=str(exception)), 400
+            return dict(message=type(exception).__name__), 400
 
     def patch(self, instid, relationname, relationinstid):
         """Updates the instance specified by ``instid`` of the named model, or
@@ -1358,7 +1358,7 @@ class API(ModelView):
             return self._handle_validation_exception(exception)
         except (DataError, IntegrityError, ProgrammingError) as exception:
             current_app.logger.exception(str(exception))
-            return dict(message=str(exception)), 400
+            return dict(message=type(exception).__name__), 400
 
         # Perform any necessary postprocessing.
         if patchmany:

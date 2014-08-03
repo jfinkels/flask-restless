@@ -337,6 +337,7 @@ class TestAPI(TestSupport):
         response = self.app.post('/api/person',
                                  data=dumps({'name': u'George', 'age': 23}))
         assert response.status_code == 400
+        assert json.loads(response.data)['message'] == 'IntegrityError'
 
         # For issue #158 we make sure that the previous failure is rolled back
         # so that we can add valid entries again
@@ -661,6 +662,17 @@ class TestAPI(TestSupport):
         assert 200 == response.status_code
         assert vim_relation not in computer['programs']
         assert emacs_relation in computer['programs']
+
+    def test_patch_integrity_error(self):
+        self.session.add(self.Person(name=u"Waldorf", age=89))
+        self.session.add(self.Person(name=u"Statler", age=91))
+        self.session.commit()
+
+        # This errors as expected
+        response = self.app.patch('/api/person/1',
+                                 data=dumps({'name': u'Statler'}))
+        assert response.status_code == 400
+        assert json.loads(response.data)['message'] == 'IntegrityError'
 
     def test_delete(self):
         """Test for deleting an instance of the database using the
