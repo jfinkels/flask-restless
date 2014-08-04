@@ -1210,6 +1210,29 @@ class TestAPI(TestSupport):
         assert response.status_code == 200
         assert loads(response.data) == dict(name='Earth')
 
+    def test_specified_primary_key(self):
+        """Tests that models with more than one primary key are
+        accessible via a specified primary key.
+
+        """
+        self.manager.create_api(self.User, methods=['GET', 'POST', 'PATCH'],
+                                primary_key='email')
+        data = dict(id=1, email='foo', wakeup=None)
+        response = self.app.post('/api/user', data=dumps(data))
+        assert response.status_code == 201
+        response = self.app.get('/api/user/1')
+        assert response.status_code == 404
+        response = self.app.get('/api/user')
+        assert response.status_code == 200
+        assert len(loads(response.data)['objects']) == 1
+        response = self.app.get('/api/user/foo')
+        assert response.status_code == 200
+        assert loads(response.data) == data
+        response = self.app.patch('/api/user/foo', data=dumps(dict(id=2)),
+                                  content_type='application/json')
+        assert 200 == response.status_code
+        assert loads(response.data)['id'] == 2
+
     def test_post_form_preprocessor(self):
         """Tests POST method decoration using a custom function."""
         def decorator_function(data=None, **kw):
