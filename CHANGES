@@ -20,6 +20,7 @@ Version 0.14.0-dev
 
 Not yet released.
 
+- #280: don't expose raw SQL in responses on database errors.
 - #299: show error message if search query tests for ``NULL`` using comparison
   operators.
 - #315: check for query object being ``None``.
@@ -28,6 +29,8 @@ Not yet released.
 - #325: support ``null`` inside ``has`` search operators.
 - #328: enable automatic testing for Python 3.4.
 - #333: enforce limit in :func:`helpers.count`.
+- #338: catch validation exceptions when attempting to update relations.
+- #339: use user-specified primary key on :http:method:`patch` requests.
 
 Version 0.13.1
 --------------
