@@ -23,6 +23,12 @@
 """
 from __future__ import division
 
+try:
+    from urllib.parse import quote_plus
+except ImportError:
+    # then its python 2
+    from urllib import quote_plus
+
 from collections import defaultdict
 from functools import wraps
 import math
@@ -1228,9 +1234,11 @@ class API(ModelView):
             self.session.add(instance)
             self.session.commit()
             result = self._inst_to_dict(instance)
-
-            primary_key = str(result[primary_key_name(instance)])
-
+            primary_key_obj = result[primary_key_name(instance)]
+            try:
+                primary_key = str(primary_key_obj)
+            except UnicodeEncodeError:
+                primary_key = quote_plus(primary_key_obj.encode('utf-8'))
             # The URL at which a client can access the newly created instance
             # of the model.
 
