@@ -314,7 +314,7 @@ class TestAPI(TestSupport):
                                 methods=['GET', 'PATCH', 'POST', 'DELETE'])
 
         self.manager.create_api(self.Tag,
-                                methods=['GET', 'PATCH', 'POST', 'DELETE'])
+                                methods=['POST'])
 
         # to facilitate searching
         self.app.search = lambda url, q: self.app.get(url + '?q={0}'.format(q))
@@ -509,14 +509,9 @@ class TestAPI(TestSupport):
     def test_post_unicode_primary_key(self):
         """Test for creating a new instance of the database model using the
         :http:method:`post` method and unicode primary key.
-
         """
-
-        # Test the integrity exception by violating the unique 'name' field
-        # of person
-
         response = self.app.post('/api/tags',
-                                 data=dumps({'name': u'Юникод', }))
+                                 data=dumps({'name': u'Юникод'}))
         assert response.status_code == 201
 
     def test_post_with_single_submodel(self):

@@ -23,12 +23,6 @@
 """
 from __future__ import division
 
-try:
-    from urllib.parse import quote_plus
-except ImportError:
-    # then its python 2
-    from urllib import quote_plus
-
 from collections import defaultdict
 from functools import wraps
 import math
@@ -49,6 +43,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
 from werkzeug.exceptions import BadRequest
 from werkzeug.exceptions import HTTPException
+from werkzeug.urls import url_quote_plus
 
 from .helpers import count
 from .helpers import evaluate_functions
@@ -1238,7 +1233,7 @@ class API(ModelView):
             try:
                 primary_key = str(primary_key_obj)
             except UnicodeEncodeError:
-                primary_key = quote_plus(primary_key_obj.encode('utf-8'))
+                primary_key = url_quote_plus(primary_key_obj.encode('utf-8'))
             # The URL at which a client can access the newly created instance
             # of the model.
 
