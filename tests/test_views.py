@@ -28,7 +28,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import Unicode
-from sqlalchemy import UnicodeText
 from sqlalchemy.ext.associationproxy import association_proxy as prox
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship as rel
@@ -312,8 +311,7 @@ class TestAPI(TestSupport):
         self.manager.create_api(self.CarModel,
                                 methods=['GET', 'PATCH', 'POST', 'DELETE'])
 
-        self.manager.create_api(self.Tag,
-                                methods=['POST'])
+        self.manager.create_api(self.Tag, methods=['POST'])
 
         # to facilitate searching
         self.app.search = lambda url, q: self.app.get(url + '?q={0}'.format(q))
@@ -507,10 +505,10 @@ class TestAPI(TestSupport):
 
     def test_post_unicode_primary_key(self):
         """Test for creating a new instance of the database model using the
-        :http:method:`post` method and unicode primary key.
+        :http:method:`post` method with a Unicode primary key.
+
         """
-        response = self.app.post('/api/tags',
-                                 data=dumps({'name': u'Юникод'}))
+        response = self.app.post('/api/tags', data=dumps({'name': u'Юникод'}))
         assert response.status_code == 201
 
     def test_post_with_single_submodel(self):
