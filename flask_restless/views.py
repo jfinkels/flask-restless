@@ -43,6 +43,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
 from werkzeug.exceptions import BadRequest
 from werkzeug.exceptions import HTTPException
+from werkzeug.urls import url_quote_plus
 
 from .helpers import count
 from .helpers import evaluate_functions
@@ -1228,9 +1229,11 @@ class API(ModelView):
             self.session.add(instance)
             self.session.commit()
             result = self._inst_to_dict(instance)
-
-            primary_key = str(result[primary_key_name(instance)])
-
+            primary_key_obj = result[primary_key_name(instance)]
+            try:
+                primary_key = str(primary_key_obj)
+            except UnicodeEncodeError:
+                primary_key = url_quote_plus(primary_key_obj.encode('utf-8'))
             # The URL at which a client can access the newly created instance
             # of the model.
 
