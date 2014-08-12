@@ -311,7 +311,7 @@ class TestAPI(TestSupport):
         self.manager.create_api(self.CarModel,
                                 methods=['GET', 'PATCH', 'POST', 'DELETE'])
 
-        self.manager.create_api(self.Tag, methods=['POST'])
+        self.manager.create_api(self.User, methods=['POST'], primary_key='email')
 
         # to facilitate searching
         self.app.search = lambda url, q: self.app.get(url + '?q={0}'.format(q))
@@ -508,7 +508,8 @@ class TestAPI(TestSupport):
         :http:method:`post` method with a Unicode primary key.
 
         """
-        response = self.app.post('/api/tags', data=dumps({'name': u'Юникод'}))
+        response = self.app.post('/api/user', data=dumps({'id': 1,
+                                                          'email': u'Юникод'}))
         assert response.status_code == 201
 
     def test_post_with_single_submodel(self):

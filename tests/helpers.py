@@ -37,7 +37,6 @@ from sqlalchemy import Integer
 from sqlalchemy import Interval
 from sqlalchemy import Time
 from sqlalchemy import Unicode
-from sqlalchemy import UnicodeText
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -341,10 +340,6 @@ class TestSupport(DatabaseTestBase):
             person = association_proxy('project', 'person')
             person_id = association_proxy('project', 'person_id')
 
-        class Tag(self.Base):
-            __tablename__ = 'tags'
-            name = Column(UnicodeText, primary_key=True)
-
         self.Person = Person
         self.Program = Program
         self.ComputerProgram = ComputerProgram
@@ -360,7 +355,6 @@ class TestSupport(DatabaseTestBase):
         self.CarModel = CarModel
         self.Project = Project
         self.Proof = Proof
-        self.Tag = Tag
 
         # create all the tables required for the models
         self.Base.metadata.create_all()
