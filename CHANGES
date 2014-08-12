@@ -20,6 +20,8 @@ Version 0.14.0-dev
 
 Not yet released.
 
+- Fixes bug where primary key specified by user was not being checked in some
+  :http:method:`post` requests and some search queries.
 - #223: documents CORS example.
 - #280: don't expose raw SQL in responses on database errors.
 - #299: show error message if search query tests for ``NULL`` using comparison
@@ -32,6 +34,7 @@ Not yet released.
 - #333: enforce limit in :func:`helpers.count`.
 - #338: catch validation exceptions when attempting to update relations.
 - #339: use user-specified primary key on :http:method:`patch` requests.
+- #344: correctly encodes Unicode fields in responses.
 
 Version 0.13.1
 --------------

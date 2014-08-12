@@ -1017,7 +1017,7 @@ class API(ModelView):
                                             self._compute_results_per_page())
             headers = dict(Link=linkstring)
         else:
-            primary_key = primary_key_name(result)
+            primary_key = self.primary_key or primary_key_name(result)
             result = to_dict(result, deep, exclude=self.exclude_columns,
                              exclude_relations=self.exclude_relations,
                              include=self.include_columns,
@@ -1228,15 +1228,19 @@ class API(ModelView):
             # add the created model to the session
             self.session.add(instance)
             self.session.commit()
+            # Get the dictionary representation of the new instance.
             result = self._inst_to_dict(instance)
-            primary_key_obj = result[primary_key_name(instance)]
+            # Determine the value of the primary key for this instance and
+            # encode URL-encode it (in case it is a Unicode string).
+            pk_name = self.primary_key or primary_key_name(instance)
+            primary_key = result[pk_name]
             try:
-                primary_key = str(primary_key_obj)
+                primary_key = str(primary_key)
             except UnicodeEncodeError:
-                primary_key = url_quote_plus(primary_key_obj.encode('utf-8'))
+                primary_key = url_quote_plus(primary_key.encode('utf-8'))
+
             # The URL at which a client can access the newly created instance
             # of the model.
-
             url = '{0}/{1}'.format(request.base_url, primary_key)
             # Provide that URL in the Location header in the response.
             headers = dict(Location=url)
