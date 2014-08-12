@@ -24,7 +24,7 @@ Not yet released.
 - #299: show error message if search query tests for ``NULL`` using comparison
   operators.
 - #315: check for query object being ``None``.
-- #324: :http:method:`delete` should only return :http:status:`204` if
+- #324: :http:method:`delete` should only return :http:statuscode:`204` if
   something is actuall deleted.
 - #325: support ``null`` inside ``has`` search operators.
 - #328: enable automatic testing for Python 3.4.
@@ -55,8 +55,8 @@ Released on April 6, 2014.
   dictionaries to JSON format.
 - #247: adds support for making :http:method:`post` requests to dictionary-like
   association proxies.
-- #249: returns :http:status:`404` if a search reveals no matching results.
-- #254: returns :http:status:`404` if no related field exists for a request
+- #249: returns :http:statuscode:`404` if a search reveals no matching results.
+- #254: returns :http:statuscode:`404` if no related field exists for a request
   with a related field in the URL.
 - #256: makes search parameters available to postprocessors for
   :http:method:`get` and :http:method:`patch` requests that access multiple
