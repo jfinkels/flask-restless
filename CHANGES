@@ -20,6 +20,7 @@ Version 0.14.0-dev
 
 Not yet released.
 
+- #223: documents CORS example.
 - #280: don't expose raw SQL in responses on database errors.
 - #299: show error message if search query tests for ``NULL`` using comparison
   operators.

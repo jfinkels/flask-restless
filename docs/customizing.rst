@@ -660,3 +660,31 @@ For a more complete example using `Flask-Login
 :file:`examples/server_configurations/authentication` directory in the source
 distribution, or view it online at `GitHub
 <https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/authentication>`_.
+
+Enabling Cross-Origin Resource Sharing (CORS)
+---------------------------------------------
+
+`Cross-Origin Resource Sharing (CORS) <http://enable-cors.org>`_ is a protocol
+that allows JavaScript HTTP clients to make HTTP requests across Internet
+domain boundaries while still protecting against cross-site scripting (XSS)
+attacks. If you have access to the HTTP server that serves your Flask
+application, I recommend configuring CORS there, since such concerns are beyond
+the scope of Flask-Restless. However, in case you need to support CORS at the
+application level, you should create a function that adds the necessary HTTP
+headers after the request has been processed by Flask-Restless (that is, just
+before the HTTP response is sent from the server to the client) using the
+:meth:`flask.Blueprint.after_request` method::
+
+    from flask import Flask
+    from flask.ext.restless import APIManager
+
+    def add_cors_headers(response):
+        response.headers['Access-Control-Allow-Origin'] = 'example.com'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        # Set whatever other headers you like...
+        return response
+
+    app = Flask(__name__)
+    manager = APIManager(app)
+    blueprint = manager.create_api(Person)
+    blueprint.after_request(add_cors_headers)
