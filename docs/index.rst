@@ -32,5 +32,6 @@ Additional information
 .. toctree::
    :maxdepth: 2
 
+   similarprojects
    license
    changelog
