@@ -311,7 +311,8 @@ class TestAPI(TestSupport):
         self.manager.create_api(self.CarModel,
                                 methods=['GET', 'PATCH', 'POST', 'DELETE'])
 
-        self.manager.create_api(self.User, methods=['POST'], primary_key='email')
+        self.manager.create_api(self.User, methods=['POST'],
+                                primary_key='email')
 
         # to facilitate searching
         self.app.search = lambda url, q: self.app.get(url + '?q={0}'.format(q))
@@ -464,11 +465,13 @@ class TestAPI(TestSupport):
 
     def test_post_interval_functions(self):
         oldJSONEncoder = self.flaskapp.json_encoder
+
         class IntervalJSONEncoder(oldJSONEncoder):
             def default(self, obj):
                 if isinstance(obj, timedelta):
                     return int(obj.days * 86400 + obj.seconds)
                 return oldJSONEncoder.default(self, obj)
+
         self.flaskapp.json_encoder = IntervalJSONEncoder
 
         self.manager.create_api(self.Satellite, methods=['GET', 'POST'])
@@ -493,10 +496,9 @@ class TestAPI(TestSupport):
         assert len(loads(response.data)['objects']) == 1
 
         # Test with nested objects
-        data = dict(name='Rodriguez', age=70,
-                    computers=[dict(name='iMac', vendor='Apple',
-                                    programs=[dict(program=
-                                                   dict(name='iPhoto'))])])
+        data = {'name': 'Rodriguez', 'age': 70,
+                'computers': [{'name': 'iMac', 'vendor': 'Apple',
+                               'programs': [{'program': {'name': 'iPhoto'}}]}]}
         response = self.app.post('/api/person', data=dumps(data))
         assert 201 == response.status_code
         response = self.app.get('/api/computer/2/programs')
@@ -546,21 +548,19 @@ class TestAPI(TestSupport):
         assert 200 == response.status_code
         assert 'foo' == loads(response.data)['name']
         # Add a new computer by patching person
-        data = dict(computers=[dict(id=1),
-                               dict(name='iMac', vendor='Apple',
-                                    programs=[dict(program=
-                                                   dict(name='iPhoto'))])])
+        data = {'computers': [{'id': 1},
+                              {'name': 'iMac', 'vendor': 'Apple',
+                               'programs': [{'program': {'name': 'iPhoto'}}]}]}
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert 200 == response.status_code
         response = self.app.get('/api/computer/2/programs')
         programs = loads(response.data)['objects']
         assert programs[0]['program']['name'] == 'iPhoto'
         # Add a program to the computer through the person
-        data = dict(computers=[dict(id=1),
-                               dict(id=2,
-                                    programs=[dict(program_id=1),
-                                              dict(program=
-                                                   dict(name='iMovie'))])])
+        data = {'computers': [{'id': 1},
+                              {'id': 2,
+                               'programs': [{'program_id': 1},
+                                            {'program': {'name': 'iMovie'}}]}]}
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert 200 == response.status_code
         response = self.app.get('/api/computer/2/programs')
@@ -1432,8 +1432,8 @@ class TestAPI(TestSupport):
         # create a custom query method for the CarModel class
         def query(cls):
             car_model = self.session.query(CarModel)
-            return car_model.join(CarManufacturer).filter(
-                CarManufacturer.name==manufacturer_name)
+            name_filter = (CarManufacturer.name == manufacturer_name)
+            return car_model.join(CarManufacturer).filter(name_filter)
         CarModel.query = classmethod(query)
 
         response = self.app.get('/api/car_model')
@@ -1442,14 +1442,14 @@ class TestAPI(TestSupport):
         assert 2 == len(data['objects'])
 
         for car in data['objects']:
-          assert car['manufacturer']['name'] == manufacturer_name
+            assert car['manufacturer']['name'] == manufacturer_name
 
         for car in [car1, car2]:
-          response = self.app.get('/api/car_model/{0}'.format(car.id))
-          assert 200 == response.status_code
-          data = loads(response.data)
-          assert data['manufacturer_id'] == cm1.id
-          assert data['name'] == car.name
+            response = self.app.get('/api/car_model/{0}'.format(car.id))
+            assert 200 == response.status_code
+            data = loads(response.data)
+            assert data['manufacturer_id'] == cm1.id
+            assert data['name'] == car.name
 
         response = self.app.get('/api/car_model/{0}'.format(car3.id))
         assert 404 == response.status_code
@@ -1838,6 +1838,7 @@ class TestAssociationProxy(DatabaseTestBase):
         creator1 = lambda product: ChosenProductImage(product=product)
         creator2 = lambda image: ChosenProductImage(image=image)
         creator3 = lambda key, value: Metadata(key, value)
+
         class Metadata(self.Base):
             def __init__(self, key, value):
                 super(Metadata, self).__init__()
@@ -1963,7 +1964,7 @@ class TestAssociationProxy(DatabaseTestBase):
 
     def test_assoc_dict_put(self):
         data = {'products': [{'id': 1}],
-                'meta':[{'key':'file type', 'value': 'png'}]
+                'meta': [{'key':'file type', 'value': 'png'}]
                }
         response = self.app.post('/api/image', data=dumps(data))
         assert response.status_code == 201

@@ -139,7 +139,8 @@ def catch_processing_exceptions(func):
             return func(*args, **kw)
         except ProcessingException as exception:
             current_app.logger.exception(str(exception))
-            status, message = exception.code, exception.description or str(exception)
+            status = exception.code
+            message = exception.description or str(exception)
             return jsonify(message=message), status
     return decorator
 

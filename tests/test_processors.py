@@ -301,6 +301,7 @@ class TestProcessors(TestSupport):
         person3 = self.Person(name=u'baz')
         self.session.add_all((person1, person2, person3))
         self.session.commit()
+
         # Create a preprocessor function that adds a filter.
         def add_filter(search_params=None, **kw):
             if search_params is None:

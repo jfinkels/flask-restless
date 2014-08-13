@@ -123,7 +123,8 @@ def get_related_model(model, relationname):
     """
     if hasattr(model, relationname):
         attr = getattr(model, relationname)
-        if hasattr(attr, 'property') and isinstance(attr.property, RelProperty):
+        if hasattr(attr, 'property') \
+                and isinstance(attr.property, RelProperty):
             return attr.property.mapper.class_
     if isinstance(attr, AssociationProxy):
         return get_related_association_proxy_model(attr)
@@ -572,4 +573,6 @@ def count(session, query):
     num_results = None
     counts = query.selectable.with_only_columns([func.count()])
     num_results = session.execute(counts.order_by(None)).scalar()
-    return query.count() if num_results is None or query._limit else num_results
+    if num_results is None or query._limit:
+        return query.count()
+    return num_results

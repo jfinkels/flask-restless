@@ -22,9 +22,7 @@ else:
 from flask.ext.restless import APIManager
 from flask.ext.restless.helpers import get_columns
 
-from sqlalchemy import Column
 from sqlalchemy import func
-from sqlalchemy import Unicode
 from sqlalchemy.ext.hybrid import hybrid_property
 
 from .helpers import FlaskTestBase
@@ -575,17 +573,24 @@ class TestAPIManager(TestSupport):
 
         """
         class Counter(object):
-            def __init__(s): s.count = 0
-            def increment(s): s.count += 1
+            def __init__(s):
+                s.count = 0
+
+            def increment(s):
+                s.count += 1
+
             def __eq__(s, o):
                 return s.count == o.count if isinstance(o, Counter) \
                     else s.count == o
         precount = Counter()
         postcount = Counter()
+
         def preget(**kw):
             precount.increment()
+
         def postget(**kw):
             postcount.increment()
+
         manager = APIManager(self.flaskapp, self.session,
                              preprocessors=dict(GET_MANY=[preget]),
                              postprocessors=dict(GET_MANY=[postget]))
