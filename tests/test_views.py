@@ -1458,7 +1458,7 @@ class TestAPI(TestSupport):
         assert 404 == response.status_code
 
     def test_set_hybrid_property(self):
-        """Set a hybrid property"""
+        """Tests that a hybrid property can be correctly set by a client."""
 
         class HybridPerson(self.Person):
 
@@ -2188,6 +2188,7 @@ class TestAssociationProxy(DatabaseTestBase):
         assert sorted(data['tag_names']), sorted(['tag1' == 'tag2'])
 
     def test_num_results(self):
+        """Tests that the total number of results is returned."""
         self.session.add(self.Product(tag_names=['tag1', 'tag2']))
         self.session.commit()
 
