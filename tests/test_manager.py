@@ -9,7 +9,6 @@
 
 """
 import datetime
-import math
 
 from flask import json
 try:
@@ -21,9 +20,6 @@ else:
 
 from flask.ext.restless import APIManager
 from flask.ext.restless.helpers import get_columns
-
-from sqlalchemy import func
-from sqlalchemy.ext.hybrid import hybrid_property
 
 from .helpers import FlaskTestBase
 from .helpers import skip_unless
@@ -522,50 +518,6 @@ class TestAPIManager(TestSupport):
         assert 'objects' in data
         assert 1 == len(data['objects'])
         assert 'foo' == data['objects'][0]['name']
-
-    def test_set_hybrid_property(self):
-        """Set a hybrid property"""
-
-        class HybridPerson(self.Person):
-
-            @hybrid_property
-            def abs_other(self):
-                return self.other is not None and abs(self.other) or 0
-
-            @abs_other.expression
-            def abs_other(self):
-                return func.sum(HybridPerson.other)
-
-            @abs_other.setter
-            def abs_other(self, v):
-                self.other = v
-
-            @hybrid_property
-            def sq_other(self):
-                if not isinstance(self.other, float):
-                    return None
-
-                return self.other ** 2
-
-            @sq_other.setter
-            def sq_other(self, v):
-                self.other = math.sqrt(v)
-
-        self.manager.create_api(HybridPerson, methods=['POST', 'PATCH'])
-        response = self.app.post('/api/person', data=dumps({'abs_other': 1}))
-        assert 201 == response.status_code
-        data = loads(response.data)
-        assert 1 == data['other']
-        assert 1 == data['abs_other']
-
-        response = self.app.post('/api/person',
-                                 data=dumps({'name': u'Rodriguez'}))
-        assert 201 == response.status_code
-        response = self.app.patch('/api/person/2', data=dumps({'sq_other': 4}))
-        assert 200 == response.status_code
-        data = loads(response.data)
-        assert 2 == data['other']
-        assert 4 == data['sq_other']
 
     def test_universal_preprocessor(self):
         """Tests universal preprocessor and postprocessor applied to all

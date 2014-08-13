@@ -13,6 +13,7 @@
 from datetime import date
 from datetime import datetime
 from datetime import timedelta
+import math
 
 import dateutil
 from flask import json
@@ -24,11 +25,13 @@ else:
     has_flask_sqlalchemy = True
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import Unicode
 from sqlalchemy.ext.associationproxy import association_proxy as prox
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship as rel
 from sqlalchemy.orm.collections import column_mapped_collection as col_mapped
@@ -1453,6 +1456,50 @@ class TestAPI(TestSupport):
 
         response = self.app.get('/api/car_model/{0}'.format(car3.id))
         assert 404 == response.status_code
+
+    def test_set_hybrid_property(self):
+        """Set a hybrid property"""
+
+        class HybridPerson(self.Person):
+
+            @hybrid_property
+            def abs_other(self):
+                return self.other is not None and abs(self.other) or 0
+
+            @abs_other.expression
+            def abs_other(self):
+                return func.sum(HybridPerson.other)
+
+            @abs_other.setter
+            def abs_other(self, v):
+                self.other = v
+
+            @hybrid_property
+            def sq_other(self):
+                if not isinstance(self.other, float):
+                    return None
+
+                return self.other ** 2
+
+            @sq_other.setter
+            def sq_other(self, v):
+                self.other = math.sqrt(v)
+
+        self.manager.create_api(HybridPerson, methods=['POST', 'PATCH'],
+                                collection_name='hybrid')
+        response = self.app.post('/api/hybrid', data=dumps({'abs_other': 1}))
+        assert 201 == response.status_code
+        data = loads(response.data)
+        assert 1 == data['other']
+        assert 1 == data['abs_other']
+
+        response = self.app.post('/api/hybrid', data=dumps({'name': u'Rod'}))
+        assert 201 == response.status_code
+        response = self.app.patch('/api/hybrid/2', data=dumps({'sq_other': 4}))
+        assert 200 == response.status_code
+        data = loads(response.data)
+        assert 2 == data['other']
+        assert 4 == data['sq_other']
 
 
 class TestHeaders(TestSupportPrefilled):
