@@ -21,6 +21,7 @@ Version 0.14.1-dev
 Not yet released.
 
 - #210: lists some related projects in the documentation.
+- #347: adds automated build testing for PyPy 3.
 
 Version 0.14.0
 --------------
