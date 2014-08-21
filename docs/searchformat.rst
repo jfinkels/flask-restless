@@ -191,7 +191,7 @@ On request:
 
 .. sourcecode:: http
 
-   GET /api/person?q={"filters":[{"name":"age","op":"le","val":10},{"name":"age","op":"ge","val":20}],"disjunction":true} HTTP/1.1
+   GET /api/person?q={"filters":[{"name":"age","op":"lt","val":10},{"name":"age","op":"gt","val":20}],"disjunction":true} HTTP/1.1
    Host: example.com
 
 the response will include only those ``Person`` instances that have ``age``
@@ -207,9 +207,9 @@ attribute either less than 10 or greater than 20:
      "page": 1,
      "objects":
      [
-       {"id": 4, "name": "Abraham", "age": 11},
-       {"id": 5, "name": "Isaac", "age": 15},
-       {"id": 6, "name": "Job", "age": 13}
+       {"id": 4, "name": "Abraham", "age": 9},
+       {"id": 5, "name": "Isaac", "age": 25},
+       {"id": 6, "name": "Job", "age": 37}
      ]
    }
 
