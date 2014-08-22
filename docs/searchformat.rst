@@ -123,6 +123,17 @@ mappings, all of which are optional:
   ``<fieldname>`` may alternately specify a field on a related model, if it is
   a string of the form ``<relationname>__<fieldname>``.
 
+``group_by``
+  A list of objects of the form::
+
+      {"field": <fieldname>}
+
+  where ``<fieldname>`` is a string corresponding to the name of a field of the
+  requested model.
+
+  ``<fieldname>`` may alternately specify a field on a related model, if it is
+  a string of the form ``<relationname>__<fieldname>``.
+
 ``single``
   A Boolean representing whether a single result is expected as a result of the
   search. If this is ``true`` and either no results or multiple results meet

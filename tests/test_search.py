@@ -63,6 +63,12 @@ class TestQueryCreation(TestSupportPrefilled):
         ages = [p.age for p in query]
         assert ages == [7, 19, 23, 25, 28]
 
+        d = {'order_by': [{'field': 'other', 'direction': 'asc'}],
+             'group_by': [{'field': 'other'}]}
+        query = create_query(self.session, self.Person, d)
+        data = [p.other for p in query]
+        assert data == [10.0, 19.0, 20.0, 22.0]
+
         d = {'filters': [{'name': 'age', 'val': [7, 28], 'op': 'in'}]}
         query = create_query(self.session, self.Person, d)
         ages = [p.age for p in query]
