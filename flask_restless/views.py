@@ -1107,7 +1107,7 @@ class API(ModelView):
            Added the `relationname` keyword argument.
 
         """
-        is_deleted = False
+        was_deleted = False
         for preprocessor in self.preprocessors['DELETE']:
             preprocessor(instance_id=instid, relation_name=relationname,
                          relation_instance_id=relationinstid)
@@ -1125,14 +1125,14 @@ class API(ModelView):
                                        relationinstid)
             # Removes an object from the relation list.
             relation.remove(relation_instance)
-            is_deleted = len(self.session.dirty) > 0
+            was_deleted = len(self.session.dirty) > 0
         elif inst is not None:
             self.session.delete(inst)
-            is_deleted = len(self.session.deleted) > 0
+            was_deleted = len(self.session.deleted) > 0
         self.session.commit()
         for postprocessor in self.postprocessors['DELETE']:
-            postprocessor(is_deleted=is_deleted)
-        return {}, 204 if is_deleted else 404
+            postprocessor(was_deleted=was_deleted)
+        return {}, 204 if was_deleted else 404
 
     def post(self):
         """Creates a new instance of a given model based on request data.
