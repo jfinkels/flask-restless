@@ -126,8 +126,8 @@ def get_related_model(model, relationname):
         if hasattr(attr, 'property') \
                 and isinstance(attr.property, RelProperty):
             return attr.property.mapper.class_
-    if isinstance(attr, AssociationProxy):
-        return get_related_association_proxy_model(attr)
+        if isinstance(attr, AssociationProxy):
+            return get_related_association_proxy_model(attr)
     return None
 
 
