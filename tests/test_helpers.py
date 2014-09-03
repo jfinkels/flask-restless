@@ -259,8 +259,8 @@ class TestModelHelpers(TestSupport):
         self.session.add_all([person, project, proof])
         self.session.commit()
 
-        assert is_like_list(proof, 'person') == False
-        assert is_like_list(proof, 'person_id') == False
+        assert not is_like_list(proof, 'person')
+        assert not is_like_list(proof, 'person_id')
 
     def test_get_related_model_hybrid(self):
         """Tests that the :func:`flask.ext.restless.get_related_model` function
