@@ -690,6 +690,7 @@ class TestAPI(TestSupport):
                                  data=dumps({'name': u'Statler'}))
         assert response.status_code == 400
         assert json.loads(response.data)['message'] == 'IntegrityError'
+        assert self.session.is_active, "Session is in `partial rollback` state"
 
     def test_delete(self):
         """Test for deleting an instance of the database using the

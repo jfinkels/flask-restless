@@ -1366,6 +1366,7 @@ class API(ModelView):
             current_app.logger.exception(str(exception))
             return self._handle_validation_exception(exception)
         except (DataError, IntegrityError, ProgrammingError) as exception:
+            self.session.rollback()
             current_app.logger.exception(str(exception))
             return dict(message=type(exception).__name__), 400
 
