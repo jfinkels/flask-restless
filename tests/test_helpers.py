@@ -20,15 +20,15 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import relationship
 
 from flask.ext.restless.helpers import evaluate_functions
+from flask.ext.restless.helpers import get_by
 from flask.ext.restless.helpers import get_columns
+from flask.ext.restless.helpers import get_related_model
 from flask.ext.restless.helpers import get_relations
+from flask.ext.restless.helpers import is_like_list
 from flask.ext.restless.helpers import partition
 from flask.ext.restless.helpers import primary_key_name
 from flask.ext.restless.helpers import to_dict
 from flask.ext.restless.helpers import upper_keys
-from flask.ext.restless.helpers import get_by
-from flask.ext.restless.helpers import is_like_list
-from flask.ext.restless.helpers import get_related_model
 
 from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
