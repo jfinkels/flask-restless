@@ -35,6 +35,7 @@ from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Interval
+from sqlalchemy import select
 from sqlalchemy import Time
 from sqlalchemy import Unicode
 from sqlalchemy.dialects.postgresql import UUID
@@ -265,6 +266,17 @@ class TestSupport(DatabaseTestBase):
                 if getattr(self, 'age') is None:
                     return None
                 return self.age < 18
+
+            @hybrid_property
+            def is_above_21(self):
+                if getattr(self, 'age') is None:
+                    return None
+                return self.age > 21
+
+            @is_above_21.expression
+            def is_above_21(cls):
+                return select([cls.age > 21]).as_scalar()
+
 
             def name_and_age(self):
                 return "{0} (aged {1:d})".format(self.name, self.age)

@@ -28,6 +28,7 @@ from flask.ext.restless.helpers import to_dict
 from flask.ext.restless.helpers import upper_keys
 from flask.ext.restless.helpers import get_by
 from flask.ext.restless.helpers import is_like_list
+from flask.ext.restless.helpers import get_related_model
 
 from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
@@ -153,7 +154,7 @@ class TestModelHelpers(TestSupport):
 
         me_dict = to_dict(me)
         expectedfields = sorted(['birth_date', 'age', 'id', 'name',
-                                 'other', 'is_minor'])
+                                 'other', 'is_minor', 'is_above_21'])
         assert sorted(me_dict) == expectedfields
         assert me_dict['name'] == u'Lincoln'
         assert me_dict['age'] == 24
@@ -236,6 +237,7 @@ class TestModelHelpers(TestSupport):
         assert sorted(columns.keys()) == sorted(['age', 'birth_date',
                                                  'computers',
                                                  'id',
+                                                 'is_above_21',
                                                  'is_minor',
                                                  'name',
                                                  'other'])
@@ -259,6 +261,14 @@ class TestModelHelpers(TestSupport):
 
         assert is_like_list(proof, 'person') == False
         assert is_like_list(proof, 'person_id') == False
+
+    def test_get_related_model(self):
+        """Test the get_related_model method."""
+
+        assert get_related_model(self.Person, 'is_minor') is None,\
+            'Person.is_minor should not have a model'
+        assert get_related_model(self.Person, 'is_above_21') is None,\
+            'Person.is_above_21 should not have a model'
 
 
 class TestFunctionEvaluation(TestSupportPrefilled):
