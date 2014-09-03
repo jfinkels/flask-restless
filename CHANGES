@@ -20,6 +20,9 @@ Version 0.14.2-dev
 
 Not yet released.
 
+- #351, #355: fixes bug in getting related models from a model with hybrid
+  properties.
+
 Version 0.14.1
 --------------
 
