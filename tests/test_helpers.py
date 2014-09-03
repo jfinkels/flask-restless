@@ -262,12 +262,14 @@ class TestModelHelpers(TestSupport):
         assert is_like_list(proof, 'person') == False
         assert is_like_list(proof, 'person_id') == False
 
-    def test_get_related_model(self):
-        """Test the get_related_model method."""
+    def test_get_related_model_hybrid(self):
+        """Tests that the :func:`flask.ext.restless.get_related_model` function
+        does not return hybrid properties.
 
-        assert get_related_model(self.Person, 'is_minor') is None,\
+        """
+        assert get_related_model(self.Person, 'is_minor') is None, \
             'Person.is_minor should not have a model'
-        assert get_related_model(self.Person, 'is_above_21') is None,\
+        assert get_related_model(self.Person, 'is_above_21') is None, \
             'Person.is_above_21 should not have a model'
 
 
