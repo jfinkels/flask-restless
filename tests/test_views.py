@@ -347,6 +347,7 @@ class TestAPI(TestSupport):
                                  data=dumps({'name': u'George', 'age': 23}))
         assert response.status_code == 400
         assert json.loads(response.data)['message'] == 'IntegrityError'
+        assert self.session.is_active, "Session is in `partial rollback` state"
 
         # For issue #158 we make sure that the previous failure is rolled back
         # so that we can add valid entries again
