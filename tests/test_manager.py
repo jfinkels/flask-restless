@@ -205,6 +205,25 @@ class TestAPIManager(TestSupport):
         response = self.app.get('/api2/person/{0}'.format(person.id))
         assert 'computers' not in loads(response.data)
 
+    def test_include_column_attributes(self):
+        """Test for specifying included columns as SQLAlchemy column attributes.
+
+        """
+        date = datetime.date(1999, 12, 31)
+        person = self.Person(name=u'Test', age=10, other=20, birth_date=date)
+        self.session.add(person)
+        self.session.commit()
+
+        include = frozenset([self.Person.name, self.Person.age])
+        self.manager.create_api(self.Person, include_columns=include)
+
+        response = self.app.get('/api/person/{0}'.format(person.id))
+        person_dict = loads(response.data)
+        for column in 'name', 'age':
+            assert column in person_dict
+        for column in 'id', 'other', 'birth_date':
+            assert column not in person_dict
+
     def test_exclude_related(self):
         """Test for specifying excluded columns on related models."""
         date = datetime.date(1999, 12, 31)
@@ -235,6 +254,25 @@ class TestAPIManager(TestSupport):
             assert column not in person_dict['computers'][0]
         for column in 'vendor', 'owner_id', 'buy_date':
             assert column in person_dict['computers'][0]
+
+    def test_exclude_column_attributes(self):
+        """Test for specifying excluded columns as SQLAlchemy column attributes.
+
+        """
+        date = datetime.date(1999, 12, 31)
+        person = self.Person(name=u'Test', age=10, other=20, birth_date=date)
+        self.session.add(person)
+        self.session.commit()
+
+        exclude = frozenset([self.Person.name, self.Person.age])
+        self.manager.create_api(self.Person, exclude_columns=exclude)
+
+        response = self.app.get('/api/person/{0}'.format(person.id))
+        person_dict = loads(response.data)
+        for column in 'name', 'age':
+            assert column not in person_dict
+        for column in 'id', 'other', 'birth_date':
+            assert column in person_dict
 
     def test_include_columns(self):
         """Tests that the `include_columns` argument specifies which columns to

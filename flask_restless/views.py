@@ -41,6 +41,7 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
+from sqlalchemy.sql.schema import Column
 from werkzeug.exceptions import BadRequest
 from werkzeug.exceptions import HTTPException
 from werkzeug.urls import url_quote_plus
@@ -284,15 +285,12 @@ def _parse_includes(column_names):
     left and a dictionary mapping relation name to a list containing the names
     of fields on the related model which should be included.
 
-    `column_names` is either ``None`` or a list of strings. If it is ``None``,
-    the returned pair will be ``(None, None)``.
+    `column_names` must be a list of strings.
 
     If the name of a relation appears as a key in the dictionary, then it will
     not appear in the list.
 
     """
-    if column_names is None:
-        return None, None
     dotted_names, columns = partition(column_names, lambda name: '.' in name)
     # Create a dictionary mapping relation names to fields on the related
     # model.
@@ -315,15 +313,12 @@ def _parse_excludes(column_names):
     left and a dictionary mapping relation name to a list containing the names
     of fields on the related model which should be excluded.
 
-    `column_names` is either ``None`` or a list of strings. If it is ``None``,
-    the returned pair will be ``(None, None)``.
+    `column_names` must be a list of strings.
 
     If the name of a relation appears in the list then it will not appear in
     the dictionary.
 
     """
-    if column_names is None:
-        return None, None
     dotted_names, columns = partition(column_names, lambda name: '.' in name)
     # Create a dictionary mapping relation names to fields on the related
     # model.
@@ -573,10 +568,16 @@ class API(ModelView):
 
         """
         super(API, self).__init__(session, model, *args, **kw)
-        self.exclude_columns, self.exclude_relations = \
-            _parse_excludes(exclude_columns)
-        self.include_columns, self.include_relations = \
-            _parse_includes(include_columns)
+        if exclude_columns is None:
+            self.exclude_columns, self.exclude_relations = (None, None)
+        else:
+            self.exclude_columns, self.exclude_relations = _parse_excludes(
+                [self._get_column_name(column) for column in exclude_columns])
+        if include_columns is None:
+            self.include_columns, self.include_relations = (None, None)
+        else:
+            self.include_columns, self.include_relations = _parse_includes(
+                [self._get_column_name(column) for column in include_columns])
         self.include_methods = include_methods
         self.validation_exceptions = tuple(validation_exceptions or ())
         self.results_per_page = results_per_page
@@ -603,6 +604,33 @@ class API(ModelView):
             self.postprocessors['PATCH_MANY'].append(postprocessor)
         for preprocessor in self.preprocessors['PUT_MANY']:
             self.preprocessors['PATCH_MANY'].append(preprocessor)
+
+    def _get_column_name(self, column):
+        """Retrieve a column name from a column attribute of SQLAlchemy
+        model class, or a string.
+
+        Raises `TypeError` when argument does not fall into either of those
+        options.
+
+        Raises `ValueError` if argument is a column attribute that belongs
+        to an incorrect model class.
+
+        """
+        if hasattr(column, '__clause_element__'):
+            clause_element = column.__clause_element__()
+            if not isinstance(clause_element, Column):
+                msg = ('Column must be a string or a column attribute'
+                       ' of SQLAlchemy ORM class')
+                raise TypeError(msg)
+            model = column.class_
+            if model is not self.model:
+                msg = ('Cannot specify column of model %s'
+                       ' while creating API for model %s' % (
+                        model.__name__, self.model.__name__))
+                raise ValueError(msg)
+            return clause_element.key
+
+        return column
 
     def _add_to_relation(self, query, relationname, toadd=None):
         """Adds a new or existing related model to each model specified by
