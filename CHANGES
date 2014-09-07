@@ -20,6 +20,9 @@ Version 0.14.3-dev
 
 Not yet released.
 
+- #356: rollback the SQLAlchemy session on a failed :http:method:`patch`
+  request
+
 Version 0.14.2
 --------------
 
