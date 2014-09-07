@@ -641,8 +641,8 @@ the current time (as measured at the server), use one of the special strings
 server receives one of these strings in a request, it will use the
 corresponding SQL function to set the date or time of the field in the model.
 
-Error messages
---------------
+Errors and error messages
+-------------------------
 
 Most errors return :http:statuscode:`400`. A bad request, for example, will
 receive a response like this:
