@@ -402,12 +402,22 @@ and `postprocessors` can be one of the following strings:
    :http:method:`patch` method.
 
 The preprocessors and postprocessors for each type of request accept different
-arguments, but none of them has a return value (more specifically, any returned
-value is ignored). Those preprocessors and postprocessors that accept
-dictionaries as parameters can (and should) modify their arguments
-*in-place*. That means the changes made to, for example, the ``result``
-dictionary will be seen by the Flask-Restless view functions and ultimately
-returned to the client.
+arguments. Most of them should have no return value (more specifically, any
+returned value is ignored). The return value from the ``GET_SINGLE``,
+``PATCH_SINGLE``, and ``DELETE`` preprocessors is interpreted as a value with
+which to replace ``instance_id``, the variable containing the value of the
+primary key of the requested instance of the model. For example, if a request
+for :http:get:`/api/person/1` encounters a preprocessor (for ``GET_SINGLE``)
+that returns the integer ``8``, Flask-Restless will continue to process the
+request as if it had received :http:get:`/api/person/8`. (If multiple
+preprocessors are specified for a single HTTP method and each one has a return
+value, Flask-Restless will only remember the value returned by the last
+preprocessor function.)
+
+Those preprocessors and postprocessors that accept dictionaries as parameters
+can (and should) modify their arguments *in-place*. That means the changes made
+to, for example, the ``result`` dictionary will be seen by the Flask-Restless
+view functions and ultimately returned to the client.
 
 The arguments to the preprocessor and postprocessor functions will be provided
 as keyword arguments, so you should always add ``**kw`` as the final argument

@@ -54,6 +54,79 @@ class TestProcessors(TestSupport):
         response = self.app.get('/api/person/1')
         assert response.status_code == 403
 
+    def test_change_instance_id(self):
+        """Tests that return values from preprocessors set the instance ID."""
+        # Create some people.
+        alice = self.Person(id=1, name=u'Alice')
+        bob = self.Person(id=2, name=u'Bob')
+        eve = self.Person(id=3, name=u'Eve')
+        self.session.add_all((alice, bob, eve))
+        self.session.commit()
+
+        # Define the preprocessor function, which increments the primary key.
+        def increment(instance_id=None, **kw):
+            if instance_id is None:
+                raise Exception
+            return int(instance_id) + 1
+
+        # Create an API with the incrementing preprocessor.
+        pre = dict(GET_SINGLE=[increment], PATCH_SINGLE=[increment],
+                   DELETE=[increment])
+        self.manager.create_api(self.Person,
+                                methods=['GET', 'PATCH', 'DELETE'],
+                                preprocessors=pre)
+
+        # Create an API where the incrementing preprocessor happens twice.
+        pre = dict(GET_SINGLE=[increment, increment])
+        self.manager.create_api(self.Person, url_prefix='/api/v2',
+                                methods=['GET'], preprocessors=pre)
+
+        # Request the person with ID 1; the preprocessor should cause this to
+        # return the person with ID 2. Similarly for the person with ID 2.
+        response = self.app.get('/api/person/1')
+        assert response.status_code == 200
+        data = loads(response.data)
+        assert data['id'] == 2
+        assert data['name'] == u'Bob'
+        response = self.app.get('/api/person/2')
+        assert response.status_code == 200
+        data = loads(response.data)
+        assert data['id'] == 3
+        assert data['name'] == u'Eve'
+
+        # Request the person with ID 1; the preprocessor should cause this to
+        # return the person with ID 3.
+        response = self.app.get('/api/v2/person/1')
+        assert response.status_code == 200
+        data = loads(response.data)
+        assert data['id'] == 3
+        assert data['name'] == u'Eve'
+
+        # After this patch request, the person with ID *2* should have the name
+        # Paul. The response should include the JSON representation of the
+        # person with ID *2*, since that is how the view function acts as if it
+        # receives ID 2.
+        data = dumps(dict(name='Paul'))
+        response = self.app.patch('/api/person/1', data=data)
+        assert response.status_code == 200
+        data = loads(response.data)
+        assert data['id'] == 2
+        assert data['name'] == u'Paul'
+
+        # Finally, send a request to delete the person with ID 1, but the
+        # preprocessor increments the ID, so person number 2 should actually be
+        # deleted.
+        response = self.app.delete('/api/person/1')
+        assert response.status_code == 204
+        # Check that there are only two people in the database, and neither of
+        # them is the person with ID 2.
+        response = self.app.get('/api/person')
+        assert response.status_code == 200
+        data = loads(response.data)['objects']
+        assert len(data) == 2
+        assert data[0]['id'] != 2
+        assert data[1]['id'] != 2
+
     def test_get_many_postprocessor(self):
         filt = dict(name='id', op='in', val=[1, 3])
 
