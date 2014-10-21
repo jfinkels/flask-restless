@@ -398,12 +398,18 @@ and `postprocessors` can be one of the following strings:
 
 The preprocessors and postprocessors for each type of request accept different
 arguments, but none of them has a return value (more specifically, any returned
-value is ignored). Preprocessors and postprocessors *modify their arguments
-in-place*. The arguments to the preprocessor and postprocessor functions will
-be provided as keyword arguments, so you should always add ``**kw`` as the
-final argument when defining a preprocessor or postprocessor function. This
-way, you can specify only the keyword arguments you need when defining your
-functions.
+value is ignored). Those preprocessors and postprocessors that accept
+dictionaries as parameters can (and should) modify their arguments
+*in-place*. That means the changes made to, for example, the ``result``
+dictionary will be seen by the Flask-Restless view functions and ultimately
+returned to the client.
+
+The arguments to the preprocessor and postprocessor functions will be provided
+as keyword arguments, so you should always add ``**kw`` as the final argument
+when defining a preprocessor or postprocessor function. This way, you can
+specify only the keyword arguments you need when defining your
+functions. Furthermore, if a new version of Flask-Restless changes the API,
+you can update Flask-Restless without breaking your code.
 
 .. versionadded:: 0.13.0
    Functions provided as postprocessors for ``GET_MANY`` and ``PATCH_MANY``
