@@ -103,13 +103,18 @@ def _is_msie8or9():
     """Returns ``True`` if and only if the user agent of the client making the
     request indicates that it is Microsoft Internet Explorer 8 or 9.
 
+    .. note::
+
+       We have no way of knowing if the user agent is lying, so we just make
+       our best guess based on the information provided.
+
     """
-    if request.user_agent is None or request.user_agent.version is None:
-        return False
-    ua = request.user_agent
     # request.user_agent.version comes as a string, so we have to parse it
-    ua_version = tuple(int(d) for d in ua.version.split('.'))
-    return ua.browser == 'msie' and (8, 0) <= ua_version < (10, 0)
+    version = lambda ua: tuple(int(d) for d in ua.version.split('.'))
+    return (request.user_agent is not None
+            and request.user_agent.version is not None
+            and request.user_agent.browser == 'msie'
+            and (8, 0) <= version(request.user_agent) < (10, 0))
 
 
 def create_link_string(page, last_page, per_page):
