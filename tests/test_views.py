@@ -1436,7 +1436,7 @@ class TestAPI(TestSupport):
 
         # create a custom query method for the CarModel class
         def query(cls):
-            car_model = self.session.query(CarModel)
+            car_model = self.session.query(cls)
             name_filter = (CarManufacturer.name == manufacturer_name)
             return car_model.join(CarManufacturer).filter(name_filter)
         CarModel.query = classmethod(query)

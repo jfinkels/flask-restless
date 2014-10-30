@@ -619,23 +619,39 @@ Custom queries
 
 In cases where it is not possible to use preprocessors or postprocessors
 (:ref:`processors`) efficiently, you can provide a custom ``query`` attribute
-to your model instead. The attribute can either be a callable that returns a
-query::
+to your model instead. The attribute can either be a SQLAlchemy query
+expression or a class method that returns a SQLAlchemy query
+expression. Flask-Restless will use this ``query`` attribute internally,
+however it is defined, instead of the default ``session.query(Model)`` (in the
+pure SQLAlchemy case) or ``Model.query`` (in the Flask-SQLAlchemy
+case). Flask-Restless uses a query during most :http:method:`get` and
+:http:method:`patch` requests to find the model(s) being requested.
+
+You may want to use a custom query attribute if you want to reveal only certain
+information to the client. For example, if you have a set of people and you
+only want to reveal information about people from the group named "students",
+define a query class method this way::
+
+    class Group(Base):
+        __tablename__ = 'group'
+        id = Column(Integer, primary_key=True)
+        groupname = Column(Unicode)
+        people = relationship('Person')
 
     class Person(Base):
         __tablename__ = 'person'
         id = Column(Integer, primary_key=True)
+        group_id = Column(Integer, ForeignKey('group.id'))
+        group = relationship('Group')
 
         @classmethod
         def query(cls):
-            return get_query_for_current_user(cls)
+            original_query = session.query(cls)
+            condition = (Group.groupname == 'students')
+            return original_query.join(Group).filter(condition)
 
-or a SQLAlchemy query expression::
-
-    class Person(Base):
-        __tablename__ = 'person'
-        id = Column(Integer, primary_key=True)
-        query = get_some_query()
+Then requests to, for example, :http:get:`/api/person` will only reveal
+instances of ``Person`` who also are in the group named "students".
 
 .. _authentication:
 
