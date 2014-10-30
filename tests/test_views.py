@@ -797,6 +797,8 @@ class TestAPI(TestSupport):
         assert 201 == response.status_code
         response = self.app.patch('/api/person/1', data=dumps(dict(bogus=0)))
         assert 400 == response.status_code
+        response = self.app.patch('/api/person/1', data=dumps(dict(is_minor=True)))
+        assert 400 == response.status_code
 
     def test_patch_many(self):
         """Test for updating a collection of instances of the model using the
@@ -1502,6 +1504,19 @@ class TestAPI(TestSupport):
         data = loads(response.data)
         assert 2 == data['other']
         assert 4 == data['sq_other']
+
+    def test_patch_with_hybrid_property(self):
+        """Tests that a hybrid property can be correctly posted from a client."""
+
+        self.session.add(self.Screen(id=1, width=5, height=4))
+        self.session.commit()
+        self.manager.create_api(self.Screen, methods=['PATCH'], collection_name='screen')
+        response = self.app.patch('/api/screen/1', data=dumps({"number_of_pixels": 50}))
+        assert 200 == response.status_code
+        data = loads(response.data)
+        assert 5 == data['width']
+        assert 10 == data['height']
+        assert 50 == data['number_of_pixels']
 
 
 class TestHeaders(TestSupportPrefilled):

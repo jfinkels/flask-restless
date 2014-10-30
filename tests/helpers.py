@@ -252,6 +252,20 @@ class TestSupport(DatabaseTestBase):
             def speed(self):
                 return 42
 
+        class Screen(self.Base):
+            __tablename__ = 'screen'
+            id = Column(Integer, primary_key=True)
+            width = Column(Integer, nullable=False)
+            height = Column(Integer, nullable=False)
+
+            @hybrid_property
+            def number_of_pixels(self):
+                return self.width * self.height
+
+            @number_of_pixels.setter
+            def number_of_pixels(self, value):
+                self.height = value / self.width
+
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
@@ -367,6 +381,7 @@ class TestSupport(DatabaseTestBase):
         self.CarModel = CarModel
         self.Project = Project
         self.Proof = Proof
+        self.Screen = Screen
 
         # create all the tables required for the models
         self.Base.metadata.create_all()

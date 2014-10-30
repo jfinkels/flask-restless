@@ -146,12 +146,14 @@ def get_related_association_proxy_model(attr):
 
 
 def has_field(model, fieldname):
-    """Returns ``True`` if the `model` has the specified field, and it is not
-    a hybrid property.
+    """Returns ``True`` if the `model` has the specified field
+    or if it has a settable hybrid property for this field name.
 
     """
-    return (hasattr(model, fieldname) and
-            not isinstance(getattr(model, fieldname), _BinaryExpression))
+    descriptors_data = sqlalchemy_inspect(model).all_orm_descriptors._data
+    if fieldname in descriptors_data and hasattr(descriptors_data[fieldname], 'fset'):
+        return getattr(descriptors_data[fieldname], 'fset') is not None
+    return hasattr(model, fieldname)
 
 
 def get_field_type(model, fieldname):
