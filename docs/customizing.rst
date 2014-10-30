@@ -614,6 +614,8 @@ filters* to the ``search_params`` keyword argument. For example::
 
     apimanager.create_api(Person, preprocessors=dict(GET_MANY=[preprocessor]))
 
+.. _customqueries:
+
 Custom queries
 ~~~~~~~~~~~~~~
 

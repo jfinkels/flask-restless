@@ -20,10 +20,13 @@ Version 0.15.0-dev
 
 Not yet released.
 
+- #320: detect settable hybrid properties instead of raising an exception.
 - #350: allows exclude/include columns to be specified as SQLAlchemy column
   objects in addition to strings.
 - #356: rollback the SQLAlchemy session on a failed :http:method:`patch`
   request.
+- #368: adds missing documentation on using custom queries (see
+  :ref:`customqueries`)
 
 Version 0.14.2
 --------------
