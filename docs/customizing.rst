@@ -615,7 +615,7 @@ filters* to the ``search_params`` keyword argument. For example::
     apimanager.create_api(Person, preprocessors=dict(GET_MANY=[preprocessor]))
 
 Custom queries
---------------
+~~~~~~~~~~~~~~
 
 In cases where it is not possible to use preprocessors or postprocessors
 (:ref:`processors`) efficiently, you can provide a custom ``query`` attribute
