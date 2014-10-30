@@ -151,6 +151,38 @@ def catch_processing_exceptions(func):
     return decorator
 
 
+def catch_integrity_errors(session):
+    """Returns a decorator that catches database integrity errors.
+
+    `session` is the SQLAlchemy session in which all database transactions will
+    be performed.
+
+    View methods can be wrapped like this::
+
+        @catch_integrity_errors(session)
+        def get(self, *args, **kw):
+            return '...'
+
+    Specifically, functions wrapped with the returned decorator catch
+    :exc:`IntegrityError`s, :exc:`DataError`s, and
+    :exc:`ProgrammingError`s. After the exceptions are caught, the session is
+    rolled back, the exception is logged on the current Flask application, and
+    an error response is returned to the client.
+
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapped(*args, **kw):
+            try:
+                return func(*args, **kw)
+            except (DataError, IntegrityError, ProgrammingError) as exception:
+                session.rollback()
+                current_app.logger.exception(str(exception))
+                return dict(message=type(exception).__name__), 400
+        return wrapped
+    return decorator
+
+
 def set_headers(response, headers):
     """Sets the specified headers on the specified response.
 
@@ -609,6 +641,15 @@ class API(ModelView):
             self.postprocessors['PATCH_MANY'].append(postprocessor)
         for preprocessor in self.preprocessors['PUT_MANY']:
             self.preprocessors['PATCH_MANY'].append(preprocessor)
+
+        # HACK: We would like to use the :attr:`API.decorators` class attribute
+        # in order to decorate each view method with a decorator that catches
+        # database integrity errors. However, in order to rollback the session,
+        # we need to have a session object available to roll back. Therefore we
+        # need to manually decorate each of the view functions here.
+        decorate = lambda name, f: setattr(self, name, f(getattr(self, name)))
+        for method in ['get', 'post', 'patch', 'put', 'delete']:
+            decorate(method, catch_integrity_errors(self.session))
 
     def _get_column_name(self, column):
         """Retrieve a column name from a column attribute of SQLAlchemy
@@ -1285,10 +1326,6 @@ class API(ModelView):
             return result, 201, headers
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
-        except (DataError, IntegrityError, ProgrammingError) as exception:
-            self.session.rollback()
-            current_app.logger.exception(str(exception))
-            return dict(message=type(exception).__name__), 400
 
     def patch(self, instid, relationname, relationinstid):
         """Updates the instance specified by ``instid`` of the named model, or
@@ -1398,10 +1435,6 @@ class API(ModelView):
         except self.validation_exceptions as exception:
             current_app.logger.exception(str(exception))
             return self._handle_validation_exception(exception)
-        except (DataError, IntegrityError, ProgrammingError) as exception:
-            self.session.rollback()
-            current_app.logger.exception(str(exception))
-            return dict(message=type(exception).__name__), 400
 
         # Perform any necessary postprocessing.
         if patchmany:

@@ -719,6 +719,15 @@ class TestAPI(TestSupport):
         people = self.session.query(self.Person).filter_by(id=1)
         assert people.count() == 0
 
+    def test_delete_integrity_error(self):
+        """Tests that an :exc:`IntegrityError` raised in a
+        :http:method:`delete` request is caught and returned to the client
+        safely.
+
+        """
+        # TODO Fill me in.
+        pass
+
     def test_delete_absent_instance(self):
         """Test that deleting an instance of the model which does not exist
         fails.

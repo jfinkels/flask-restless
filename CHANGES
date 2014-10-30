@@ -20,6 +20,9 @@ Version 0.15.1-dev
 
 Not yet released.
 
+- #367: catch :exc:`IntegrityError`, :exc:`DataError`, and
+  :exc:`ProgrammingError` exceptions in all view methods.
+
 Version 0.15.0
 --------------
 
