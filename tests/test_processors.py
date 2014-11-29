@@ -4,7 +4,7 @@
 
     Provides unit tests for pre- and post-processors hooks.
 
-    :copyright: 2013 "klinkin" <klinkin@gmail.com>
+    :copyright: 2013 Mike Klimin <klinkin@gmail.com>
     :copyright: 2013 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
     :license: GNU AGPLv3+ or BSD
 
