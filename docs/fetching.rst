@@ -945,7 +945,7 @@ The operators recognized by the API incude:
 * ``>=``, ``ge``, ``gte``, ``geq``, ``<=``, ``le``, ``lte``, ``leq``
 * ``in``, ``not_in``
 * ``is_null``, ``is_not_null``
-* ``like``, ``ilike``
+* ``like``, ``ilike``, ``not_like``
 * ``has``
 * ``any``
 

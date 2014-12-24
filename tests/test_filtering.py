@@ -792,6 +792,20 @@ class TestOperators(SearchTestBase):
         assert ['bar', 'baz'] == sorted(person['attributes']['name']
                                         for person in people)
 
+    def test_not_like(self):
+        """Tests for the ``not_like`` operator."""
+        person1 = self.Person(name=u'foo')
+        person2 = self.Person(name=u'bar')
+        person3 = self.Person(name=u'baz')
+        self.session.add_all([person1, person2, person3])
+        self.session.commit()
+        filters = [dict(name='name', op='not_like', val='%fo%')]
+        response = self.search('/api/person', filters)
+        document = loads(response.data)
+        people = document['data']
+        assert ['bar', 'baz'] == sorted(person['attributes']['name']
+                                        for person in people)
+
     def test_ilike(self):
         """Tests for the ``ilike`` operator."""
         person1 = self.Person(name=u'foo')

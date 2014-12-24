@@ -22,6 +22,7 @@ Not yet released.
   greater than 2.2 to avoid parsing bug.
 - #331, #415: documents the importance of URL encoding when using the ``like``
   operator to filter results.
+- #376: add a ``not_like`` operator for filter objects.
 - #449: roll back the session on any SQLAlchemy error, not just a few.
 - #436, #453: use ``__table__.name`` instead of ``__tablename__`` to infer the
   collection name for the SQLAlchemy model.
