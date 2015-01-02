@@ -22,6 +22,8 @@ Not yet released.
 
 - #367: catch :exc:`IntegrityError`, :exc:`DataError`, and
   :exc:`ProgrammingError` exceptions in all view methods.
+- #374: import :class:`sqlalchemy.Column` from :mod:`sqlalchemy` directly,
+  instead of :mod:`sqlalchemy.sql.schema`
 
 Version 0.15.0
 --------------
