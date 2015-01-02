@@ -70,7 +70,7 @@ not supported by Flask and therefore cannot be supported by Flask-Restless.
 This application requires the following libraries to be installed:
 
 * [Flask][1] version 0.10 or greater
-* [SQLAlchemy][sa] version 0.8 or greater
+* [SQLAlchemy][sa] version 0.9 or greater
 * [python-dateutil][5] version greater than 2.0
 * [Flask-SQLAlchemy][fsa] only if your models are defined using Flask-SQLAlchemy
 
