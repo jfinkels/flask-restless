@@ -562,7 +562,11 @@ def strings_to_dates(model, dictionary):
             elif value in CURRENT_TIME_MARKERS:
                 result[fieldname] = getattr(func, value.lower())()
             else:
-                result[fieldname] = parse_datetime(value)
+                fieldtype = get_field_type(model, fieldname)
+                if isinstance(fieldtype, Date):
+                    result[fieldname] = parse_datetime(value).date()
+                else:
+                    result[fieldname] = parse_datetime(value)
         elif (is_interval_field(model, fieldname) and value is not None
               and isinstance(value, int)):
             result[fieldname] = datetime.timedelta(seconds=value)

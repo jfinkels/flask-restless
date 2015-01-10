@@ -1878,6 +1878,36 @@ class TestSearch(TestSupportPrefilled):
         assert resp.status_code == 400
         assert loads(resp.data)['message'] == 'Multiple results found'
 
+    def test_search_dates(self):
+        """Test date parsing"""
+        # Lincoln has been allocated a birthday of 1900-01-02.
+        # We'll ask for dates in a variety of formats, including invalid ones.
+        search = {
+            'single': True,
+            'filters': [{'name': 'birth_date', 'op': 'eq'}]
+        }
+
+        # 1900-01-02
+        search['filters'][0]['val'] = '1900-01-02'
+        resp = self.app.search('/api/person', dumps(search))
+        assert loads(resp.data)['name'] == u'Lincoln'
+
+        # 2nd Jan 1900
+        search['filters'][0]['val'] = '2nd Jan 1900'
+        resp = self.app.search('/api/person', dumps(search))
+        assert loads(resp.data)['name'] == u'Lincoln'
+
+        # Invalid Date
+        search['filters'][0]['val'] = 'REALLY-BAD-DATE'
+        resp = self.app.search('/api/person', dumps(search))
+        assert resp.status_code == 400
+
+        # DateTime
+        # This will be cropped to a date, since birth_date is a Date column
+        search['filters'][0]['val'] = '2nd Jan 1900 14:35'
+        resp = self.app.search('/api/person', dumps(search))
+        assert loads(resp.data)['name'] == u'Lincoln'
+
     def test_search_boolean_formula(self):
         """Tests for Boolean formulas of filters in a search query."""
         # This searches for people whose name is John, or people older than age
