@@ -81,14 +81,19 @@ argument::
 
 Then your API for ``Person`` will be available at ``/api/v2/person``.
 
+.. _collectionname:
+
 Collection name
 ~~~~~~~~~~~~~~~
 
 By default, the name of the collection which appears in the URLs of the API
-will be the name of the table which backs your model. If your model is a
-SQLAlchemy model, this will be the value of ``__tablename__``. If your model is
-a Flask-SQLAlchemy model, this will be the lowercase name of the model with
-``CamelCase`` changed to ``camel_case``.
+will be the name of the table that backs your model. If your model is a
+SQLAlchemy model, this will be the value of its ``__tablename__`` attribute. If
+your model is a Flask-SQLAlchemy model, this will be the lowercase name of the
+model with camel case changed to all-lowercase with underscore separators. For
+example, a class named ``MyModel`` implies a collection name of
+``'my_model'``. Furthermore, the URL at which this collection is accessible by
+default is ``/api/my_model``.
 
 To provide a different name for the model, provide a string to the
 `collection_name` keyword argument of the :meth:`APIManager.create_api`
