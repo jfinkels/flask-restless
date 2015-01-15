@@ -175,6 +175,13 @@ def main():
     set_setup_version(dev_version)
     add_new_changelog_section(version, dev_version)
     make_git_commit('Set development version number to %s', dev_version)
+    print('*************************************')
+    print('*                                   *')
+    print('* Now run                           *')
+    print('*                                   *')
+    print('*     git push --tags origin master *')
+    print('*                                   *')
+    print('*************************************')
 
 
 if __name__ == '__main__':
