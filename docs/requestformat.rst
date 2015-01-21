@@ -42,6 +42,11 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
 .. note::
 
+   API endpoints do not have trailing slashes. A request to, for example,
+   ``/api/person/`` will result in a :http:statuscode:`404` response.
+
+.. note::
+
    For all requests that would return a list of results, the top-level JSON
    object is a mapping from ``"objects"`` to the list. JSON lists are not sent
    as top-level objects for security reasons. For more information, see `this
