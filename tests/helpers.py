@@ -252,6 +252,10 @@ class TestSupport(DatabaseTestBase):
             def speed(self):
                 return 42
 
+            @property
+            def speed_property(self):
+                return self.speed()
+
         class Screen(self.Base):
             __tablename__ = 'screen'
             id = Column(Integer, primary_key=True)
@@ -290,7 +294,6 @@ class TestSupport(DatabaseTestBase):
             @is_above_21.expression
             def is_above_21(cls):
                 return select([cls.age > 21]).as_scalar()
-
 
             def name_and_age(self):
                 return "{0} (aged {1:d})".format(self.name, self.age)

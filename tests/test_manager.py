@@ -336,6 +336,10 @@ class TestAPIManager(TestSupport):
         self.manager.create_api(self.Computer, url_prefix='/included',
                                 include_methods=['owner.name_and_age'])
 
+        # included non-callable property
+        self.manager.create_api(self.Computer, url_prefix='/included_property',
+                                 include_methods=['speed_property'])
+
         # create a test person
         date = datetime.date(1999, 12, 31)
         person = self.Person(name=u'Test', age=10, other=20, birth_date=date)
@@ -366,6 +370,11 @@ class TestAPIManager(TestSupport):
         response = self.app.get('/included/person')
         response_data = loads(response.data)
         assert response_data['objects'][0]['computers'][0]['speed'] == 42
+
+        # get one with included property
+        response = self.app.get('/included_property/computer/{0}'.format(computer.id))
+        response_data = loads(response.data)
+        assert response_data['speed_property'] == 42
 
     def test_included_method_returns_object(self):
         """Tests that objects are serialized when returned from a method listed
