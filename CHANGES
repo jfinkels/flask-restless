@@ -20,6 +20,8 @@ Version 0.15.2-dev
 
 Not yet released.
 
+- #385: makes the `include_methods` keywords argument respect model properties.
+
 Version 0.15.1
 --------------
 
