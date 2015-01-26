@@ -331,7 +331,7 @@ def to_dict(instance, deep=None, exclude=None, include=None,
     # add any included methods
     if include_methods is not None:
         for method in include_methods:
-            if not '.' in method:
+            if '.' not in method:
                 value = getattr(instance, method)
                 # Allow properties and static attributes in include_methods
                 if callable(value):
