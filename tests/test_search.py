@@ -89,7 +89,6 @@ class TestQueryCreation(TestSupportPrefilled):
         assert results[0].other == 10
         assert results[1].other == 19
 
-
     def test_order_by_relation_field_ascending(self):
 
         # Given
@@ -110,7 +109,6 @@ class TestQueryCreation(TestSupportPrefilled):
         results = query.all()
         assert results[0].owner.name == u'Lucy'
         assert results[1].owner.name == u'Mary'
-
 
     def test_order_by_relation_field_descending(self):
 
@@ -133,8 +131,7 @@ class TestQueryCreation(TestSupportPrefilled):
         assert results[0].owner.name == u'Mary'
         assert results[1].owner.name == u'Lucy'
 
-
-    def test_order_by_relation_field_when_already_filtering_on_the_same_relation(self):
+    def test_order_by_and_filter_on_the_same_relation(self):
 
         # Given
         computer_for_mary = self.Computer(name=u'1st', vendor=u'vendor')
@@ -147,7 +144,17 @@ class TestQueryCreation(TestSupportPrefilled):
 
         # When
         d = {
-            'filters': [{'name': 'owner', 'op': 'has', 'val': {'name': 'name', 'op': 'like', 'val': '%y'}}],
+            'filters': [
+                {
+                    'name': 'owner',
+                    'op': 'has',
+                    'val': {
+                        'name': 'name',
+                        'op': 'like',
+                        'val': '%y'
+                    }
+                }
+            ],
             'order_by': [{'field': 'owner__name', 'direction': 'asc'}]
         }
         query = create_query(self.session, self.Computer, d)
@@ -157,7 +164,6 @@ class TestQueryCreation(TestSupportPrefilled):
         results = query.all()
         assert results[0].owner.name == u'Lucy'
         assert results[1].owner.name == u'Mary'
-
 
     def test_order_by_two_different_fields_of_the_same_relation(self):
 
@@ -185,7 +191,6 @@ class TestQueryCreation(TestSupportPrefilled):
         results = query.all()
         assert results[0].owner.name == u'Mary'
         assert results[1].owner.name == u'Lucy'
-
 
 
 class TestOperators(TestSupportPrefilled):
