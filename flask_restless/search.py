@@ -416,9 +416,19 @@ class QueryBuilder(object):
         # parameters, order by primary key.
         if search_params.order_by:
             for val in search_params.order_by:
-                field = getattr(model, val.field)
-                direction = getattr(field, val.direction)
-                query = query.order_by(direction())
+                field_name = val.field
+                if '__' in field_name:
+                    field_name, field_name_in_relation = field_name.split('__')
+                    relation = getattr(model, field_name)
+                    relation_model = relation.mapper.class_
+                    field = getattr(relation_model, field_name_in_relation)
+                    direction = getattr(field, val.direction)
+                    query = query.join(relation_model)
+                    query = query.order_by(direction())
+                else:
+                    field = getattr(model, val.field)
+                    direction = getattr(field, val.direction)
+                    query = query.order_by(direction())
         else:
             pks = primary_key_names(model)
             pk_order = (getattr(model, field).asc() for field in pks)
