@@ -35,6 +35,9 @@ under the following two copyright licenses:
 For more information, see the files `LICENSE.AGPL` and `LICENSE.BSD` in this
 directory.
 
+The documentation is licensed under the Creative Commons Attribution-ShareAlike
+3.0 license.
+
 ## Contents ##
 
 This is a partial listing of the contents of this package.
@@ -188,6 +191,24 @@ opening `docs/_build/html/index.html`.
 [6]: http://sphinx.pocoo.org/
 [7]: http://packages.python.org/sphinxcontrib-httpdomain/
 [8]: http://docutils.sourceforge.net/rst.html
+
+## Contributing ##
+
+Please report any issues on the [GitHub Issue Tracker][11].
+
+To suggest a change to the code or documentation, please create a new pull
+request on GitHub. Contributed code must come with an appropriate unit
+test. Please ensure that your code follows [PEP8][12], by running, for example,
+[flake8][13] before submitting a pull request.
+
+By contributing to this project, you are agreeing to license your code
+contributions under both the GNU Affero General Public License, either version
+3 or any later version, and the 3-clause BSD License, as described in the
+copyright license section above.
+
+[11]: http://github.com/jfinkels/flask-restless/issues
+[12]: https://www.python.org/dev/peps/pep-0008/
+[13]: http://flake8.readthedocs.org/en/latest/
 
 ## Authors ##
 
