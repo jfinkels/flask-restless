@@ -39,8 +39,8 @@ from sqlalchemy.orm.collections import column_mapped_collection as col_mapped
 from flask.ext.restless.helpers import to_dict
 from flask.ext.restless.manager import APIManager
 
-from .helpers import DatabaseTestBase
 from .helpers import FlaskTestBase
+from .helpers import ManagerTestBase
 from .helpers import skip_unless
 from .helpers import TestSupport
 from .helpers import TestSupportPrefilled
@@ -1879,7 +1879,7 @@ class TestSearch(TestSupportPrefilled):
         assert resp.status_code == 400
 
 
-class TestAssociationProxy(DatabaseTestBase):
+class TestAssociationProxy(ManagerTestBase):
     """Unit tests for models which have a relationship involving an association
     proxy.
 
