@@ -1172,6 +1172,16 @@ class API(ModelView):
         return result
 
     def _delete_many(self):
+        """Deletes multiple instances of the model.
+
+        If search parameters are provided via the ``q`` query parameter, only
+        those instances matching the search parameters will be deleted.
+
+        If no instances were deleted, this returns a
+        :http:status:`404`. Otherwise, it returns a :http:status:`200` with the
+        number of deleted instances in the body of the response.
+
+        """
         # try to get search query from the request query parameters
         try:
             search_params = json.loads(request.args.get('q', '{}'))
@@ -1217,8 +1227,7 @@ class API(ModelView):
         self.session.commit()
         result = dict(num_deleted=num_deleted)
         for postprocessor in self.postprocessors['DELETE_MANY']:
-            postprocessor(query=query, result=result,
-                          search_params=search_params)
+            postprocessor(result=result, search_params=search_params)
         return (result, 200) if num_deleted > 0 else 404
 
     def delete(self, instid, relationname, relationinstid):

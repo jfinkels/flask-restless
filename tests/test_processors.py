@@ -289,6 +289,38 @@ class TestProcessors(TestSupport):
         assert loads(resp.data)['age'] == 27
         assert loads(resp.data)['other'] == 27
 
+    def test_delete_many_preprocessor(self):
+        # Create a preprocessor function that adds a filter.
+        def add_filter(search_params=None, **kw):
+            filt = dict(name='age', op='eq', val=23)
+            if search_params is None:
+                search_params = {}
+            if 'filters' not in search_params:
+                search_params['filters'] = []
+            search_params['filters'].append(filt)
+
+        pre = dict(DELETE_MANY=[add_filter])
+        # recreate the api at /api/v1/person
+        self.manager.create_api(self.Person, methods=['GET', 'POST', 'DELETE'],
+                                allow_delete_many=True, preprocessors=pre)
+
+        self.session.add(self.Person(name=u'foo', age=23))
+        self.session.add(self.Person(name=u'bar', age=23))
+        self.session.add(self.Person(name=u'baz', age=25))
+        self.session.commit()
+
+        # Deleting only those that have age 23 by using the filter added by the
+        # preprocessor.
+        response = self.app.delete('/api/person')
+        assert response.status_code == 200
+        assert loads(response.data)['num_deleted'] == 2
+
+        # Finally, testing if the change was made
+        response = self.app.get('/api/person')
+        data = loads(response.data)['objects']
+        assert len(data) == 1
+        assert data[0]['name'] == u'baz'
+
     def test_patch_many_preprocessor(self):
         """Tests for using a preprocessor with :http:method:`patch` requests
         which request changes to many objects.
