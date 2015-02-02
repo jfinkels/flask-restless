@@ -1129,7 +1129,16 @@ class API(ModelView):
         if instid is None:
             return self._search()
         for preprocessor in self.preprocessors['GET_SINGLE']:
-            preprocessor(instance_id=instid)
+            temp_result = preprocessor(instance_id=instid)
+            # Let the return value of the preprocessor be the new value of
+            # instid, thereby allowing the preprocessor to effectively specify
+            # which instance of the model to process on.
+            #
+            # We assume that if the preprocessor returns None, it really just
+            # didn't return anything, which means we shouldn't overwrite the
+            # instid.
+            if temp_result is not None:
+                instid = temp_result
         # get the instance of the "main" model whose ID is instid
         instance = get_by(self.session, self.model, instid, self.primary_key)
         if instance is None:
@@ -1183,8 +1192,12 @@ class API(ModelView):
         """
         was_deleted = False
         for preprocessor in self.preprocessors['DELETE']:
-            preprocessor(instance_id=instid, relation_name=relationname,
-                         relation_instance_id=relationinstid)
+            temp_result = preprocessor(instance_id=instid,
+                                       relation_name=relationname,
+                                       relation_instance_id=relationinstid)
+            # See the note under the preprocessor in the get() method.
+            if temp_result is not None:
+                instid = temp_result
         inst = get_by(self.session, self.model, instid, self.primary_key)
         if relationname:
             # If the request is ``DELETE /api/person/1/computers``, error 400.
@@ -1387,7 +1400,10 @@ class API(ModelView):
                 preprocessor(search_params=search_params, data=data)
         else:
             for preprocessor in self.preprocessors['PATCH_SINGLE']:
-                preprocessor(instance_id=instid, data=data)
+                temp_result = preprocessor(instance_id=instid, data=data)
+                # See the note under the preprocessor in the get() method.
+                if temp_result is not None:
+                    instid = temp_result
 
         # Check for any request parameter naming a column which does not exist
         # on the current model.

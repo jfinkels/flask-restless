@@ -21,6 +21,8 @@ Version 0.16.0-dev
 Not yet released.
 
 - #327, #391: allows ordering searches by fields on related instances.
+- #365: allows preprocessors to specify return values on :http:method:`get`
+  requests.
 - #385: makes the `include_methods` keywords argument respect model properties.
 
 Version 0.15.1
