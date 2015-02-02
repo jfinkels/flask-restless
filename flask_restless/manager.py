@@ -229,13 +229,13 @@ class APIManager(object):
 
     def create_api_blueprint(self, model, app=None, methods=READONLY_METHODS,
                              url_prefix='/api', collection_name=None,
-                             allow_patch_many=False, allow_functions=False,
-                             exclude_columns=None, include_columns=None,
-                             include_methods=None, validation_exceptions=None,
-                             results_per_page=10, max_results_per_page=100,
-                             post_form_preprocessor=None,
-                             preprocessors=None, postprocessors=None,
-                             primary_key=None):
+                             allow_patch_many=False, allow_delete_many=False,
+                             allow_functions=False, exclude_columns=None,
+                             include_columns=None, include_methods=None,
+                             validation_exceptions=None, results_per_page=10,
+                             max_results_per_page=100,
+                             post_form_preprocessor=None, preprocessors=None,
+                             postprocessors=None, primary_key=None):
         """Creates and returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
 
@@ -294,6 +294,12 @@ class APIManager(object):
         the specified search query. This is ``False`` by default. For
         information on the search query parameter ``q``, see
         :ref:`searchformat`.
+
+        If `allow_delete_many` is ``True``, then requests to
+        :http:delete:`/api/<collection_name>?q=<searchjson>` will attempt to
+        delete each instance of the model that matches the specified search
+        query. This is ``False`` by default. For information on the search
+        query parameter ``q``, see :ref:`searchformat`.
 
         `validation_exceptions` is the tuple of possible exceptions raised by
         validation of your database models. If this is specified, validation
@@ -379,7 +385,7 @@ class APIManager(object):
         specify which one to use.
 
         .. versionadded:: 0.16.0
-           Added the `app` keyword argument.
+           Added the `app` and `allow_delete_many` keyword arguments.
 
         .. versionadded:: 0.13.0
            Added the `primary_key` keyword argument.
@@ -438,13 +444,13 @@ class APIManager(object):
         methods = frozenset((m.upper() for m in methods))
         # sets of methods used for different types of endpoints
         no_instance_methods = methods & frozenset(('POST', ))
-        if allow_patch_many:
-            possibly_empty_instance_methods = \
-                methods & frozenset(('GET', 'PATCH', 'PUT'))
-        else:
-            possibly_empty_instance_methods = methods & frozenset(('GET', ))
         instance_methods = \
             methods & frozenset(('GET', 'PATCH', 'DELETE', 'PUT'))
+        possibly_empty_instance_methods = methods & frozenset(('GET', ))
+        if allow_patch_many and ('PATCH' in methods or 'PUT' in methods):
+            possibly_empty_instance_methods |= frozenset(('PATCH', 'PUT'))
+        if allow_delete_many and 'DELETE' in methods:
+            possibly_empty_instance_methods |= frozenset(('DELETE', ))
         # the base URL of the endpoints on which requests will be made
         collection_endpoint = '/{0}'.format(collection_name)
         # the name of the API, for use in creating the view and the blueprint

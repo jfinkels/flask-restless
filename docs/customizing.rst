@@ -42,6 +42,16 @@ with data respond with serialized JSON strings.
 
    Deletes the person with the given ``id`` and returns :http:statuscode:`204`.
 
+.. http:delete:: /api/person
+
+   This is only available if the ``allow_delete_many`` keyword argument is set
+   to ``True`` when calling the :meth:`~APIManager.create_api` method. For more
+   information, see :ref:`allowmany`.
+
+   Deletes all instances of ``Person`` that match the search query provided in
+   the ``q`` URL query paremeter. For more information on search parameters,
+   see :ref:`searchformat`.
+
 .. http:post:: /api/person
 
    Creates a new person in the database and returns its ``id``. The initial
@@ -114,10 +124,10 @@ If your model has more than one primary key (one called ``id`` and one called
 If you do this, Flask-Restless will create URLs like ``/api/user/myusername``
 instead of ``/api/user/137``.
 
-.. _allowpatchmany:
+.. _allowmany:
 
-Enable patching all instances
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Enable bulk patching or deleting
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 By default, a :http:patch:`/api/person` request (note the missing ID) will
 cause a :http:statuscode:`405` response. By setting the ``allow_patch_many``
@@ -126,6 +136,12 @@ keyword argument of the :meth:`APIManager.create_api` method to be ``True``,
 instances of ``Person``::
 
     apimanager.create_api(Person, methods=['PATCH'], allow_patch_many=True)
+
+If search parameters are provided via the ``q`` query parameter as described in
+:ref:`searchformat`, only those instances matching the search will be patched.
+
+Similarly, to allow bulk deletions, set the ``allow_delete_many`` keyword
+argument to be ``True``.
 
 .. _validation:
 

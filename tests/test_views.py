@@ -719,6 +719,35 @@ class TestAPI(TestSupport):
         people = self.session.query(self.Person).filter_by(id=1)
         assert people.count() == 0
 
+    def test_disallow_delete_many(self):
+        """Tests for deleting many instances of a collection by using a search
+        query to select instances to delete.
+
+        """
+        # Don't allow deleting many unless explicitly requested.
+        response = self.app.delete('/api/person')
+        assert response.status_code == 405
+
+    def test_delete_many(self):
+        """Tests for deleting many instances of a collection by using a search
+        query to select instances to delete.
+
+        """
+        # Recreate the API to allow delete many at /api2/person.
+        self.manager.create_api(self.Person, methods=['DELETE'],
+                                allow_delete_many=True, url_prefix='/api2')
+        person1 = self.Person(name=u'foo')
+        person2 = self.Person(name=u'bar')
+        person3 = self.Person(name=u'baz')
+        self.session.add_all([person1, person2, person3])
+        self.session.commit()
+
+        search = {'filters': [{'name': 'name', 'val': 'ba%', 'op': 'like'}]}
+        response = self.app.delete('/api2/person?q={0}'.format(dumps(search)))
+        assert response.status_code == 200
+        data = loads(response.data)
+        assert data['num_deleted'] == 2
+
     def test_delete_integrity_error(self):
         """Tests that an :exc:`IntegrityError` raised in a
         :http:method:`delete` request is caught and returned to the client
