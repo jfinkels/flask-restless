@@ -399,15 +399,15 @@ example::
 As introduced in the above example, the dictionary keys for the `preprocessors`
 and `postprocessors` can be one of the following strings:
 
+* ``'POST'`` for requests to post a new instance of the model.
 * ``'GET_SINGLE'`` for requests to get a single instance of the model.
-* ``'GET_MANY'`` for requests to get the entire collection of instances of the
-  model.
+* ``'GET_MANY'`` for requests to get multiple instances of the model.
 * ``'PATCH_SINGLE'`` or ``'PUT_SINGLE'`` for requests to patch a single
   instance of the model.
-* ``'PATCH_MANY'`` or ``'PUT_MANY'`` for requests to patch the entire
-  collection of instances of the model.
-* ``'POST'`` for requests to post a new instance of the model.
-* ``'DELETE'`` for requests to delete an instance of the model.
+* ``'PATCH_MANY'`` or ``'PUT_MANY'`` for requests to patch multiple instances
+  of the model.
+* ``'DELETE_SINGLE'`` for requests to delete an instance of the model.
+* ``'DELETE_MANY'`` for requests to delete multiple instances of the model.
 
 .. note::
 
@@ -419,9 +419,9 @@ and `postprocessors` can be one of the following strings:
 
 The preprocessors and postprocessors for each type of request accept different
 arguments. Most of them should have no return value (more specifically, any
-returned value is ignored). The return value from the ``GET_SINGLE``,
-``PATCH_SINGLE``, and ``DELETE`` preprocessors is interpreted as a value with
-which to replace ``instance_id``, the variable containing the value of the
+returned value is ignored). The return value from each of the ``GET_SINGLE``,
+``PATCH_SINGLE``, and ``DELETE_SINGLE`` preprocessors is interpreted as a value
+with which to replace ``instance_id``, the variable containing the value of the
 primary key of the requested instance of the model. For example, if a request
 for :http:get:`/api/person/1` encounters a preprocessor (for ``GET_SINGLE``)
 that returns the integer ``8``, Flask-Restless will continue to process the
@@ -441,6 +441,9 @@ when defining a preprocessor or postprocessor function. This way, you can
 specify only the keyword arguments you need when defining your
 functions. Furthermore, if a new version of Flask-Restless changes the API,
 you can update Flask-Restless without breaking your code.
+
+.. versionchanged:: 0.16.0
+   Replaced ``DELETE`` with ``DELETE_MANY`` and ``DELETE_SINGLE``.
 
 .. versionadded:: 0.13.0
    Functions provided as postprocessors for ``GET_MANY`` and ``PATCH_MANY``
@@ -537,9 +540,10 @@ you can update Flask-Restless without breaking your code.
           """
           pass
 
-* :http:method:`delete`::
 
-      def delete_preprocessor(instance_id=None, **kw):
+* :http:method:`delete` for a single instance::
+
+      def delete_single_preprocessor(instance_id=None, **kw):
           """Accepts a single argument, `instance_id`, which is the primary key
           of the instance which will be deleted.
 
@@ -549,6 +553,25 @@ you can update Flask-Restless without breaking your code.
       def delete_postprocessor(was_deleted=None, **kw):
           """Accepts a single argument, `was_deleted`, which represents whether
           the instance has been deleted.
+
+          """
+          pass
+
+  and for the collection::
+
+      def delete_many_preprocessor(search_params=None, **kw):
+          """Accepts a single argument, `search_params`, which is a dictionary
+          containing the search parameters for the request.
+
+          """
+          pass
+
+      def delete_many_postprocessor(result=None, search_params=None, **kw):
+          """Accepts two arguments: `result`, which is the dictionary
+          representation of which is the dictionary representation of the JSON
+          response which will be returned to the client, and `search_params`,
+          which is a dictionary containing the search parameters for the
+          request.
 
           """
           pass
