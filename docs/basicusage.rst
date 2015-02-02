@@ -235,3 +235,9 @@ single instance of :class:`APIManager`. For example::
     # should be handling these requests.
     manager.create_api(Person, app=app1)
     manager.create_api(Computer, app=app2)
+
+.. versionchanged:: 0.16.0
+   The :meth:`APIManager.init_app` method behaved incorrectly before version
+   0.16.0. From that version on, you must provide the Flask application when
+   you call :meth:`APIManager.create_api` after having performed the delayed
+   initialization described in this section.
