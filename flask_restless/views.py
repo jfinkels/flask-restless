@@ -1171,6 +1171,56 @@ class API(ModelView):
             postprocessor(result=result)
         return result
 
+    def _delete_many(self):
+        # try to get search query from the request query parameters
+        try:
+            search_params = json.loads(request.args.get('q', '{}'))
+        except (TypeError, ValueError, OverflowError) as exception:
+            current_app.logger.exception(str(exception))
+            return dict(message='Unable to decode search query'), 400
+
+        for preprocessor in self.preprocessors['DELETE_MANY']:
+            preprocessor(search_params=search_params)
+
+        # perform a filtered search
+        try:
+            # HACK We need to ignore any ``order_by`` request from the client,
+            # because for some reason, SQLAlchemy does not allow calling
+            # delete() on a query that has an ``order_by()`` on it. If you
+            # attempt to call delete(), you get this error:
+            #
+            #     sqlalchemy.exc.InvalidRequestError: Can't call Query.delete()
+            #     when order_by() has been called
+            #
+            result = search(self.session, self.model, search_params,
+                            _ignore_order_by=True)
+        except NoResultFound:
+            return dict(message='No result found'), 404
+        except MultipleResultsFound:
+            return dict(message='Multiple results found'), 400
+        except Exception as exception:
+            current_app.logger.exception(str(exception))
+            return dict(message='Unable to construct query'), 400
+
+        # for security purposes, don't transmit list as top-level JSON
+        if isinstance(result, Query):
+            # Implementation note: `synchronize_session=False`, described in
+            # the SQLAlchemy documentation for
+            # :meth:`sqlalchemy.orm.query.Query.delete`, states that this is
+            # the most efficient option for bulk deletion, and is reliable once
+            # the session has expired, which occurs after the session commit
+            # below.
+            num_deleted = result.delete(synchronize_session=False)
+        else:
+            self.session.delete(result)
+            num_deleted = 1
+        self.session.commit()
+        result = dict(num_deleted=num_deleted)
+        for postprocessor in self.postprocessors['DELETE_MANY']:
+            postprocessor(query=query, result=result,
+                          search_params=search_params)
+        return (result, 200) if num_deleted > 0 else 404
+
     def delete(self, instid, relationname, relationinstid):
         """Removes the specified instance of the model with the specified name
         from the database.
@@ -1190,6 +1240,11 @@ class API(ModelView):
            Added the `relationname` keyword argument.
 
         """
+        if instid is None:
+            # If no instance ID is provided, this request is an attempt to
+            # delete many instances of the model via a search with possible
+            # filters.
+            return self._delete_many()
         was_deleted = False
         for preprocessor in self.preprocessors['DELETE']:
             temp_result = preprocessor(instance_id=instid,

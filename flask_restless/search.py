@@ -383,7 +383,7 @@ class QueryBuilder(object):
         return filters
 
     @staticmethod
-    def create_query(session, model, search_params):
+    def create_query(session, model, search_params, _ignore_order_by=False):
         """Builds an SQLAlchemy query instance based on the search parameters
         present in ``search_params``, an instance of :class:`SearchParameters`.
 
@@ -394,6 +394,11 @@ class QueryBuilder(object):
 
         `search_params` is an instance of :class:`SearchParameters` which
         specify the filters, order, limit, offset, etc. of the query.
+
+        If `_ignore_order_by` is ``True``, no ``order_by`` method will be
+        called on the query, regardless of whether the search parameters
+        indicate that there should be an ``order_by``. (This is used internally
+        by Flask-Restless to work around a limitation in SQLAlchemy.)
 
         Building the query proceeds in this order:
         1. filtering the query
@@ -414,25 +419,27 @@ class QueryBuilder(object):
 
         # Order the search. If no order field is specified in the search
         # parameters, order by primary key.
-        if search_params.order_by:
-            for val in search_params.order_by:
-                field_name = val.field
-                if '__' in field_name:
-                    field_name, field_name_in_relation = field_name.split('__')
-                    relation = getattr(model, field_name)
-                    relation_model = relation.mapper.class_
-                    field = getattr(relation_model, field_name_in_relation)
-                    direction = getattr(field, val.direction)
-                    query = query.join(relation_model)
-                    query = query.order_by(direction())
-                else:
-                    field = getattr(model, val.field)
-                    direction = getattr(field, val.direction)
-                    query = query.order_by(direction())
-        else:
-            pks = primary_key_names(model)
-            pk_order = (getattr(model, field).asc() for field in pks)
-            query = query.order_by(*pk_order)
+        if not _ignore_order_by:
+            if search_params.order_by:
+                for val in search_params.order_by:
+                    field_name = val.field
+                    if '__' in field_name:
+                        field_name, field_name_in_relation = \
+                            field_name.split('__')
+                        relation = getattr(model, field_name)
+                        relation_model = relation.mapper.class_
+                        field = getattr(relation_model, field_name_in_relation)
+                        direction = getattr(field, val.direction)
+                        query = query.join(relation_model)
+                        query = query.order_by(direction())
+                    else:
+                        field = getattr(model, val.field)
+                        direction = getattr(field, val.direction)
+                        query = query.order_by(direction())
+            else:
+                pks = primary_key_names(model)
+                pk_order = (getattr(model, field).asc() for field in pks)
+                query = query.order_by(*pk_order)
 
         # Limit it
         if search_params.limit:
@@ -442,7 +449,7 @@ class QueryBuilder(object):
         return query
 
 
-def create_query(session, model, searchparams):
+def create_query(session, model, searchparams, _ignore_order_by=False):
     """Returns a SQLAlchemy query object on the given `model` where the search
     for the query is defined by `searchparams`.
 
@@ -458,13 +465,19 @@ def create_query(session, model, searchparams):
     the parameters of the query (as returned by
     :func:`SearchParameters.from_dictionary`, for example).
 
+    If `_ignore_order_by` is ``True``, no ``order_by`` method will be called on
+    the query, regardless of whether the search parameters indicate that there
+    should be an ``order_by``. (This is used internally by Flask-Restless to
+    work around a limitation in SQLAlchemy.)
+
     """
     if isinstance(searchparams, dict):
         searchparams = SearchParameters.from_dictionary(searchparams)
-    return QueryBuilder.create_query(session, model, searchparams)
+    return QueryBuilder.create_query(session, model, searchparams,
+                                     _ignore_order_by)
 
 
-def search(session, model, search_params):
+def search(session, model, search_params, _ignore_order_by=False):
     """Performs the search specified by the given parameters on the model
     specified in the constructor of this class.
 
@@ -489,12 +502,17 @@ def search(session, model, search_params):
     :class:`SearchParameters` object when the :func:`create_query` function is
     called.
 
+    If `_ignore_order_by` is ``True``, no ``order_by`` method will be called on
+    the query, regardless of whether the search parameters indicate that there
+    should be an ``order_by``. (This is used internally by Flask-Restless to
+    work around a limitation in SQLAlchemy.)
+
     """
     # `is_single` is True when 'single' is a key in ``search_params`` and its
     # corresponding value is anything except those values which evaluate to
     # False (False, 0, the empty string, the empty list, etc.).
     is_single = search_params.get('single')
-    query = create_query(session, model, search_params)
+    query = create_query(session, model, search_params, _ignore_order_by)
     if is_single:
         # may raise NoResultFound or MultipleResultsFound
         return query.one()
