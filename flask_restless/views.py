@@ -175,6 +175,7 @@ def catch_integrity_errors(session):
         def wrapped(*args, **kw):
             try:
                 return func(*args, **kw)
+            # TODO should `sqlalchemy.exc.InvalidRequestError`s also be caught?
             except (DataError, IntegrityError, ProgrammingError) as exception:
                 session.rollback()
                 current_app.logger.exception(str(exception))
