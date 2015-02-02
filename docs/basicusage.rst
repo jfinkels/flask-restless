@@ -168,3 +168,70 @@ If the primary key is a :class:`~sqlalchemy.Unicode` instead of an
 :class:`~sqlalchemy.Integer`, the instances will be accessible at URL endpoints
 like ``http://<host>:<port>/api/person/foo`` instead of
 ``http://<host>:<port>/api/person/1``.
+
+Initializing the Flask application after creating the API manager
+-----------------------------------------------------------------
+
+Instead of providing the Flask application at instantiation time, you can
+initialize the Flask application after instantiating the :class:`APIManager`
+object by using the :meth:`APIManager.init_app` method. If you do this, you
+will need to provide the Flask application object using the ``app`` keyword
+argument to the :meth:`APIManager.create_api` method::
+
+    from flask import Flask
+    from flask.ext.restless import APIManager
+    from flask.ext.sqlalchemy import SQLAlchemy
+
+    app = Flask(__name__)
+    db = SQLAlchemy(app)
+    manager = APIManager(flask_sqlalchemy_db=db)
+
+    # later...
+
+    manager.init_app(app)
+    manager.create_api(Person, app=app)
+
+You can also use this approach to initialize multiple Flask applications with a
+single instance of :class:`APIManager`. For example::
+
+    from flask import Flask
+    from flask.ext.restless import APIManager
+    from flask.ext.sqlalchemy import SQLAlchemy
+
+    # Create two Flask applications, both backed by the same database.
+    app1 = Flask(__name__)
+    app2 = Flask(__name__ + '2')
+    app1.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
+    app2.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
+    db = SQLAlchemy(app1)
+
+    # Create the Flask-SQLAlchemy models.
+    class Person(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.Unicode, unique=True)
+        birth_date = db.Column(db.Date)
+        computers = db.relationship('Computer',
+                                    backref=db.backref('owner',
+                                                       lazy='dynamic'))
+
+
+    class Computer(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.Unicode, unique=True)
+        vendor = db.Column(db.Unicode)
+        owner_id = db.Column(db.Integer, db.ForeignKey('person.id'))
+        purchase_time = db.Column(db.DateTime)
+
+
+    # Create the database tables.
+    db.create_all()
+
+    # Create the APIManager and initialize it with the different Flask objects.
+    manager = APIManager(flask_sqlalchemy_db=db)
+    manager.init_app(app1)
+    manager.init_app(app2)
+
+    # When creating each API, you need to specify which Flask application
+    # should be handling these requests.
+    manager.create_api(Person, app=app1)
+    manager.create_api(Computer, app=app2)

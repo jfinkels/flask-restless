@@ -10,6 +10,7 @@
 """
 import datetime
 
+from flask import Flask
 from flask import json
 try:
     from flask.ext.sqlalchemy import SQLAlchemy
@@ -17,11 +18,15 @@ except:
     has_flask_sqlalchemy = False
 else:
     has_flask_sqlalchemy = True
+from sqlalchemy import Column
+from sqlalchemy import Integer
 
 from flask.ext.restless import APIManager
 from flask.ext.restless.helpers import get_columns
 
+from .helpers import DatabaseTestBase
 from .helpers import FlaskTestBase
+from .helpers import force_json_contenttype
 from .helpers import skip_unless
 from .helpers import TestSupport
 from .helpers import unregister_fsa_session_signals
@@ -31,10 +36,99 @@ dumps = json.dumps
 loads = json.loads
 
 
-class TestAPIManager(TestSupport):
-    """Unit tests for the :class:`flask_restless.manager.APIManager` class.
+class TestLocalAPIManager(DatabaseTestBase):
+    """Provides tests for :class:`flask.ext.restless.APIManager` when the tests
+    require that the instance of :class:`flask.ext.restless.APIManager` has not
+    yet been instantiated.
 
     """
+    def setUp(self):
+        super(TestLocalAPIManager, self).setUp()
+        class Person(self.Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+        class Computer(self.Base):
+            __tablename__ = 'computer'
+            id = Column(Integer, primary_key=True)
+        self.Person = Person
+        self.Computer = Computer
+        self.Base.metadata.create_all()
+
+    def test_init_app(self):
+        """Tests for initializing the Flask application after instantiating the
+        :class:`flask.ext.restless.APIManager` object.
+
+        """
+        manager = APIManager()
+        manager.init_app(self.flaskapp, session=self.session)
+        manager.create_api(self.Person, app=self.flaskapp)
+        response = self.app.get('/api/person')
+        assert response.status_code == 200
+
+    def test_init_app_split_initialization(self):
+        manager = APIManager(session=self.session)
+        manager.init_app(self.flaskapp)
+        manager.create_api(self.Person, app=self.flaskapp)
+        response = self.app.get('/api/person')
+        assert response.status_code == 200
+
+    def test_init_multiple(self):
+        manager = APIManager(session=self.session)
+        flaskapp1 = self.flaskapp
+        flaskapp2 = Flask(__name__)
+        testclient1 = self.app
+        testclient2 = flaskapp2.test_client()
+        force_json_contenttype(testclient2)
+        manager.init_app(flaskapp1)
+        manager.init_app(flaskapp2)
+        manager.create_api(self.Person, app=flaskapp1)
+        manager.create_api(self.Computer, app=flaskapp2)
+        response = testclient1.get('/api/person')
+        assert response.status_code == 200
+        response = testclient1.get('/api/computer')
+        assert response.status_code == 404
+        response = testclient2.get('/api/person')
+        assert response.status_code == 404
+        response = testclient2.get('/api/computer')
+        assert response.status_code == 200
+
+    def test_universal_preprocessor(self):
+        """Tests universal preprocessor and postprocessor applied to all
+        methods created with the API manager.
+
+        """
+        class Counter(object):
+            def __init__(s):
+                s.count = 0
+
+            def increment(s):
+                s.count += 1
+
+            def __eq__(s, o):
+                return s.count == o.count if isinstance(o, Counter) \
+                    else s.count == o
+        precount = Counter()
+        postcount = Counter()
+
+        def preget(**kw):
+            precount.increment()
+
+        def postget(**kw):
+            postcount.increment()
+
+        manager = APIManager(self.flaskapp, session=self.session,
+                             preprocessors=dict(GET_MANY=[preget]),
+                             postprocessors=dict(GET_MANY=[postget]))
+        manager.create_api(self.Person)
+        manager.create_api(self.Computer)
+        self.app.get('/api/person')
+        self.app.get('/api/computer')
+        self.app.get('/api/person')
+        assert precount == postcount == 3
+
+
+class TestAPIManager(TestSupport):
+    """Unit tests for the :class:`flask_restless.manager.APIManager` class."""
 
     def test_constructor(self):
         """Tests that no error occurs on instantiation without any arguments to
@@ -42,22 +136,6 @@ class TestAPIManager(TestSupport):
 
         """
         APIManager()
-
-    def test_init_app(self):
-        """Tests for initializing the Flask application after instantiating the
-        :class:`flask.ext.restless.APIManager` object.
-
-        """
-        # initialize the Flask application
-        self.manager.init_app(self.flaskapp, self.session)
-
-        # create an API
-        self.manager.create_api(self.Person)
-
-        # make a request on the API
-        #client = app.test_client()
-        response = self.app.get('/api/person')
-        assert response.status_code == 200
 
     def test_create_api(self):
         """Tests that the :meth:`flask_restless.manager.APIManager.create_api`
@@ -566,40 +644,6 @@ class TestAPIManager(TestSupport):
         assert 1 == len(data['objects'])
         assert 'foo' == data['objects'][0]['name']
 
-    def test_universal_preprocessor(self):
-        """Tests universal preprocessor and postprocessor applied to all
-        methods created with the API manager.
-
-        """
-        class Counter(object):
-            def __init__(s):
-                s.count = 0
-
-            def increment(s):
-                s.count += 1
-
-            def __eq__(s, o):
-                return s.count == o.count if isinstance(o, Counter) \
-                    else s.count == o
-        precount = Counter()
-        postcount = Counter()
-
-        def preget(**kw):
-            precount.increment()
-
-        def postget(**kw):
-            postcount.increment()
-
-        manager = APIManager(self.flaskapp, self.session,
-                             preprocessors=dict(GET_MANY=[preget]),
-                             postprocessors=dict(GET_MANY=[postget]))
-        manager.create_api(self.Person)
-        manager.create_api(self.Computer)
-        self.app.get('/api/person')
-        self.app.get('/api/computer')
-        self.app.get('/api/person')
-        assert precount == postcount == 3
-
 
 @skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')
 class TestFSA(FlaskTestBase):
@@ -617,7 +661,6 @@ class TestFSA(FlaskTestBase):
 
         # initialize SQLAlchemy and Flask-Restless
         self.db = SQLAlchemy(self.flaskapp)
-        self.manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
 
         # for the sake of brevity...
         db = self.db
@@ -656,12 +699,13 @@ class TestFSA(FlaskTestBase):
         models defined using Flask-SQLAlchemy.
 
         """
+        manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
+
         # create three different APIs for the same model
-        self.manager.create_api(self.Person, methods=['GET', 'POST'])
-        self.manager.create_api(self.Person, methods=['PATCH'],
-                                url_prefix='/api2')
-        self.manager.create_api(self.Person, methods=['GET'],
-                                url_prefix='/readonly')
+        manager.create_api(self.Person, methods=['GET', 'POST'])
+        manager.create_api(self.Person, methods=['PATCH'], url_prefix='/api2')
+        manager.create_api(self.Person, methods=['GET'],
+                           url_prefix='/readonly')
 
         # test that specified endpoints exist
         response = self.app.post('/api/person', data=dumps(dict(name='foo')))
@@ -683,3 +727,17 @@ class TestFSA(FlaskTestBase):
         assert len(loads(response.data)['objects']) == 1
         assert loads(response.data)['objects'][0]['id'] == 1
         assert loads(response.data)['objects'][0]['name'] == 'bar'
+
+    def test_init_app(self):
+        manager = APIManager()
+        manager.init_app(self.flaskapp, flask_sqlalchemy_db=self.db)
+        manager.create_api(self.Person, app=self.flaskapp)
+        response = self.app.get('/api/person')
+        assert response.status_code == 200
+
+    def test_init_app_split_initialization(self):
+        manager = APIManager(flask_sqlalchemy_db=self.db)
+        manager.init_app(self.flaskapp)
+        manager.create_api(self.Person, app=self.flaskapp)
+        response = self.app.get('/api/person')
+        assert response.status_code == 200

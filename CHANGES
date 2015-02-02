@@ -20,6 +20,8 @@ Version 0.16.0-dev
 
 Not yet released.
 
+- #313, #389: :meth:`APIManager.init_app` now can be correctly used to
+  initialize multiple Flask applications.
 - #327, #391: allows ordering searches by fields on related instances.
 - #365: allows preprocessors to specify return values on :http:method:`get`
   requests.

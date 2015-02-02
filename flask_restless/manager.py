@@ -12,6 +12,7 @@
 
 """
 from collections import defaultdict
+from collections import namedtuple
 
 from flask import Blueprint
 
@@ -20,6 +21,17 @@ from .views import FunctionAPI
 
 #: The set of methods which are allowed by default when creating an API
 READONLY_METHODS = frozenset(('GET', ))
+
+
+#: A triple that stores the SQLAlchemy session and the universal pre- and post-
+#: processors to be applied to any API created for a particular Flask
+#: application.
+#:
+#: These tuples are used by :class:`APIManager` to store information about
+#: Flask applications registered using :meth:`APIManager.init_app`.
+RestlessInfo = namedtuple('RestlessInfo', ['session',
+                                           'universal_preprocessors',
+                                           'universal_postprocessors'])
 
 
 class IllegalArgumentError(Exception):
@@ -92,12 +104,15 @@ class APIManager(object):
     #:    has been registered.
     BLUEPRINTNAME_FORMAT = '{0}{1}'
 
-    def __init__(self, app=None, session=None, flask_sqlalchemy_db=None,
-                 preprocessors=None, postprocessors=None):
-        self.init_app(app, session, flask_sqlalchemy_db, preprocessors,
-                      postprocessors)
+    def __init__(self, app=None, **kw):
+        self.app = app
+        self.flask_sqlalchemy_db = kw.pop('flask_sqlalchemy_db', None)
+        self.session = kw.pop('session', None)
+        if self.app is not None:
+            self.init_app(self.app, **kw)
 
-    def _next_blueprint_name(self, basename):
+    @staticmethod
+    def _next_blueprint_name(blueprints, basename):
         """Returns the next name for a blueprint with the specified base name.
 
         This method returns a string of the form ``'{0}{1}'.format(basename,
@@ -110,9 +125,13 @@ class APIManager(object):
         expect that code which calls this function will subsequently register a
         blueprint with that name, but that is not necessary.
 
+        `blueprints` is the list of blueprint names that already exist, as read
+        from :attr:`Flask.blueprints` (that attribute is really a dictionary,
+        but we simply iterate over the keys, which are names of the
+        blueprints).
+
         """
         # blueprints is a dict whose keys are the names of the blueprints
-        blueprints = self.app.blueprints
         existing = [name for name in blueprints if name.startswith(basename)]
         # if this is the first one...
         if not existing:
@@ -190,12 +209,25 @@ class APIManager(object):
            Added the `preprocessors` and `postprocessors` keyword arguments.
 
         """
-        self.app = app
-        self.session = session or getattr(flask_sqlalchemy_db, 'session', None)
-        self.universal_preprocessors = preprocessors or {}
-        self.universal_postprocessors = postprocessors or {}
+        # If the SQLAlchemy database was provided in the constructor, use that.
+        if flask_sqlalchemy_db is None:
+            flask_sqlalchemy_db = self.flask_sqlalchemy_db
+        # If the session was provided in the constructor, use that.
+        if session is None:
+            session = self.session
+        session = session or getattr(flask_sqlalchemy_db, 'session', None)
+        # Use the `extensions` dictionary on the provided Flask object to store
+        # extension-specific information.
+        if not hasattr(app, 'extensions'):
+            app.extensions = {}
+        if 'restless' in app.extensions:
+            raise ValueError('Flask-Restless has already been initialized on'
+                             ' this application: {0}'.format(app))
+        app.extensions['restless'] = RestlessInfo(session,
+                                                  preprocessors or {},
+                                                  postprocessors or {})
 
-    def create_api_blueprint(self, model, methods=READONLY_METHODS,
+    def create_api_blueprint(self, model, app=None, methods=READONLY_METHODS,
                              url_prefix='/api', collection_name=None,
                              allow_patch_many=False, allow_functions=False,
                              exclude_columns=None, include_columns=None,
@@ -226,6 +258,11 @@ class APIManager(object):
 
         `model` is the SQLAlchemy model class for which a ReSTful interface
         will be created. Note this must be a class, not an instance of a class.
+
+        `app` is the :class:`Flask` object on which we expect the blueprint
+        created in this method to be eventually registered. If not specified,
+        the Flask application specified in the constructor of this class is
+        used.
 
         `methods` specify the HTTP methods which will be made available on the
         ReSTful API for the specified model, subject to the following caveats:
@@ -341,6 +378,9 @@ class APIManager(object):
         value for this. If `model` has two or more primary keys, you must
         specify which one to use.
 
+        .. versionadded:: 0.16.0
+           Added the `app` keyword argument.
+
         .. versionadded:: 0.13.0
            Added the `primary_key` keyword argument.
 
@@ -387,6 +427,11 @@ class APIManager(object):
             msg = ('Cannot simultaneously specify both include columns and'
                    ' exclude columns.')
             raise IllegalArgumentError(msg)
+        # If no Flask application is specified, use the one (we assume) was
+        # specified in the constructor.
+        if app is None:
+            app = self.app
+        restlessinfo = app.extensions['restless']
         if collection_name is None:
             collection_name = model.__tablename__
         # convert all method names to upper case
@@ -410,18 +455,20 @@ class APIManager(object):
         postprocessors_ = defaultdict(list)
         preprocessors_.update(preprocessors or {})
         postprocessors_.update(postprocessors or {})
-        for key, value in self.universal_preprocessors.items():
+        for key, value in restlessinfo.universal_preprocessors.items():
             preprocessors_[key] = value + preprocessors_[key]
-        for key, value in self.universal_postprocessors.items():
+        for key, value in restlessinfo.universal_postprocessors.items():
             postprocessors_[key] = value + postprocessors_[key]
         # the view function for the API for this model
-        api_view = API.as_view(apiname, self.session, model, exclude_columns,
-                               include_columns, include_methods,
-                               validation_exceptions, results_per_page,
-                               max_results_per_page, post_form_preprocessor,
-                               preprocessors_, postprocessors_, primary_key)
+        api_view = API.as_view(apiname, restlessinfo.session, model,
+                               exclude_columns, include_columns,
+                               include_methods, validation_exceptions,
+                               results_per_page, max_results_per_page,
+                               post_form_preprocessor, preprocessors_,
+                               postprocessors_, primary_key)
         # suffix an integer to apiname according to already existing blueprints
-        blueprintname = self._next_blueprint_name(apiname)
+        blueprintname = APIManager._next_blueprint_name(app.blueprints,
+                                                        apiname)
         # add the URL rules to the blueprint: the first is for methods on the
         # collection only, the second is for methods which may or may not
         # specify an instance, the third is for methods which must specify an
@@ -464,8 +511,8 @@ class APIManager(object):
         # evaluating functions on all instances of the specified model
         if allow_functions:
             eval_api_name = apiname + 'eval'
-            eval_api_view = FunctionAPI.as_view(eval_api_name, self.session,
-                                                model)
+            eval_api_view = FunctionAPI.as_view(eval_api_name,
+                                                restlessinfo.session, model)
             eval_endpoint = '/eval' + collection_endpoint
             blueprint.add_url_rule(eval_endpoint, methods=['GET'],
                                    view_func=eval_api_view)
@@ -490,4 +537,7 @@ class APIManager(object):
 
         """
         blueprint = self.create_api_blueprint(*args, **kw)
-        self.app.register_blueprint(blueprint)
+        # Use the Flask application provided in the constructor if no
+        # application is provided in the keyword arguments.
+        app = kw['app'] if 'app' in kw else self.app
+        app.register_blueprint(blueprint)

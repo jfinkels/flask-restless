@@ -108,6 +108,26 @@ def unregister_fsa_session_signals():
                  flask_sa._SessionSignalEvents.session_signal_after_rollback)
 
 
+def force_json_contenttype(test_client):
+    """Ensures that all requests made by the specified Flask test client have
+    the ``Content-Type`` header set to ``application/json``, unless another
+    content type is explicitly specified.
+
+    """
+    for methodname in ('get', 'put', 'patch', 'post', 'delete'):
+        # Create a decorator for the test client request methods that adds
+        # a JSON Content-Type by default if none is specified.
+        def set_content_type(func):
+            def new_func(*args, **kw):
+                if 'content_type' not in kw:
+                    kw['content_type'] = 'application/json'
+                return func(*args, **kw)
+            return new_func
+        # Decorate the original test client request method.
+        old_method = getattr(test_client, methodname)
+        setattr(test_client, methodname, set_content_type(old_method))
+
+
 # This code adapted from
 # http://docs.sqlalchemy.org/en/rel_0_8/core/types.html#backend-agnostic-guid-type
 class GUID(TypeDecorator):
@@ -160,42 +180,25 @@ class FlaskTestBase(object):
         # create the test client
         self.app = app.test_client()
 
-        # Ensure that all requests have Content-Type set to "application/json"
-        # unless otherwise specified.
-        for methodname in ('get', 'put', 'patch', 'post', 'delete'):
-            # Create a decorator for the test client request methods that adds
-            # a JSON Content-Type by default if none is specified.
-            def set_content_type(func):
-                def new_func(*args, **kw):
-                    if 'content_type' not in kw:
-                        kw['content_type'] = 'application/json'
-                    return func(*args, **kw)
-                return new_func
-            # Decorate the original test client request method.
-            old_method = getattr(self.app, methodname)
-            setattr(self.app, methodname, set_content_type(old_method))
+        force_json_contenttype(self.app)
 
 
 class DatabaseTestBase(FlaskTestBase):
-    """Base class for tests which use a database and have an
-    :class:`flask_restless.APIManager`.
+    """Base class for tests that use a SQLAlchemy database.
 
     The :meth:`setUp` method does the necessary SQLAlchemy initialization, and
     the subclasses should populate the database with models and then create the
     database (by calling ``self.Base.metadata.create_all()``).
 
-    The :class:`flask_restless.APIManager` is accessible at ``self.manager``.
-
     """
 
     def setUp(self):
         """Initializes the components necessary for models in a SQLAlchemy
-        database, as well as for Flask-Restless.
+        database.
 
         """
         super(DatabaseTestBase, self).setUp()
-
-        # initialize SQLAlchemy and Flask-Restless
+        # initialize SQLAlchemy
         app = self.flaskapp
         engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'],
                                convert_unicode=True)
@@ -204,11 +207,25 @@ class DatabaseTestBase(FlaskTestBase):
         self.session = scoped_session(self.Session)
         self.Base = declarative_base()
         self.Base.metadata.bind = engine
-        #Base.query = self.session.query_property()
-        self.manager = APIManager(app, self.session)
 
 
-class TestSupport(DatabaseTestBase):
+class ManagerTestBase(DatabaseTestBase):
+    """Base class for tests that use a SQLAlchemy database and an
+    :class:`flask_restless.APIManager`.
+
+    The :class:`flask_restless.APIManager` is accessible at ``self.manager``.
+
+    """
+
+    def setUp(self):
+        """Initializes an instance of :class:`flask.ext.restless.APIManager`.
+
+        """
+        super(ManagerTestBase, self).setUp()
+        self.manager = APIManager(self.flaskapp, session=self.session)
+
+
+class TestSupport(ManagerTestBase):
     """Base class for test cases which use a database with some basic models.
 
     """
