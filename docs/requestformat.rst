@@ -351,7 +351,7 @@ Also suppose we have registered an API for these models at ``/api/person`` and
 
    .. sourcecode:: http
 
-      HTTP/1.1 201 Created
+      HTTP/1.1 200 OK
 
       {"num_modified": 3}
 
