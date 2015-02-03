@@ -7,7 +7,8 @@
     which have been described using `SQLAlchemy <http://sqlalchemy.org>`_.
 
     :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
-    :copyright:2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
+    :copyright: 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+                <jeffrey.finkelstein@gmail.com> and contributors.
     :license: GNU AGPLv3+ or BSD
 
 """
