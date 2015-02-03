@@ -365,9 +365,9 @@ class QueryBuilder(object):
         """
         # raises KeyError if operator not in OPERATORS
         opfunc = OPERATORS[operator]
-        argspec = inspect.getargspec(opfunc)
-        # in Python 2.6 or later, this should be `argspec.args`
-        numargs = len(argspec[0])
+        # In Python 3.0 or later, this should be `inspect.getfullargspec`
+        # because `inspect.getargspec` is deprecated.
+        numargs = len(inspect.getargspec(opfunc).args)
         # raises AttributeError if `fieldname` or `relation` does not exist
         field = getattr(model, relation or fieldname)
         # each of these will raise a TypeError if the wrong number of argments
