@@ -199,7 +199,9 @@ Please report any issues on the [GitHub Issue Tracker][11].
 To suggest a change to the code or documentation, please create a new pull
 request on GitHub. Contributed code must come with an appropriate unit
 test. Please ensure that your code follows [PEP8][12], by running, for example,
-[flake8][13] before submitting a pull request.
+[flake8][13] before submitting a pull request. Also, please squash multiple
+commits into a single commit in your pull request by [rebasing][14] onto the
+master branch.
 
 By contributing to this project, you are agreeing to license your code
 contributions under both the GNU Affero General Public License, either version
@@ -209,6 +211,7 @@ copyright license section above.
 [11]: http://github.com/jfinkels/flask-restless/issues
 [12]: https://www.python.org/dev/peps/pep-0008/
 [13]: http://flake8.readthedocs.org/en/latest/
+[14]: https://help.github.com/articles/about-git-rebase/
 
 ## Authors ##
 
