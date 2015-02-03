@@ -688,7 +688,7 @@ class TestAPI(TestSupport):
 
         # This errors as expected
         response = self.app.patch('/api/person/1',
-                                 data=dumps({'name': u'Statler'}))
+                                  data=dumps({'name': u'Statler'}))
         assert response.status_code == 400
         assert json.loads(response.data)['message'] == 'IntegrityError'
         assert self.session.is_active, "Session is in `partial rollback` state"
@@ -835,7 +835,8 @@ class TestAPI(TestSupport):
         assert 201 == response.status_code
         response = self.app.patch('/api/person/1', data=dumps(dict(bogus=0)))
         assert 400 == response.status_code
-        response = self.app.patch('/api/person/1', data=dumps(dict(is_minor=True)))
+        response = self.app.patch('/api/person/1',
+                                  data=dumps(dict(is_minor=True)))
         assert 400 == response.status_code
 
     def test_patch_many(self):
@@ -1544,12 +1545,15 @@ class TestAPI(TestSupport):
         assert 4 == data['sq_other']
 
     def test_patch_with_hybrid_property(self):
-        """Tests that a hybrid property can be correctly posted from a client."""
+        """Tests that a hybrid property can be correctly posted from a client.
 
+        """
         self.session.add(self.Screen(id=1, width=5, height=4))
         self.session.commit()
-        self.manager.create_api(self.Screen, methods=['PATCH'], collection_name='screen')
-        response = self.app.patch('/api/screen/1', data=dumps({"number_of_pixels": 50}))
+        self.manager.create_api(self.Screen, methods=['PATCH'],
+                                collection_name='screen')
+        response = self.app.patch('/api/screen/1',
+                                  data=dumps({"number_of_pixels": 50}))
         assert 200 == response.status_code
         data = loads(response.data)
         assert 5 == data['width']
@@ -1761,8 +1765,6 @@ class TestSearch(TestSupportPrefilled):
         }
         resp = self.app.search('/api/person', dumps(search))
         assert resp.status_code == 200
-        #assert loads(resp.data)['error_list'][0] == \
-        #    {'age': 'Please enter a number'}
         assert len(loads(resp.data)['objects']) == 0
 
         # Testing the order_by stuff
@@ -1862,7 +1864,7 @@ class TestSearch(TestSupportPrefilled):
         assert loads(resp.data)['num_results'] == 5
         assert loads(resp.data)['objects'][0]['name'] == u'Lincoln'
 
-         # Testing offset by itself
+        # Testing offset by itself
         search = {'offset': 1}
         resp = self.app.search('/api/person', dumps(search))
         assert resp.status_code == 200
@@ -1933,8 +1935,9 @@ class TestAssociationProxy(ManagerTestBase):
         # proxies that use AssociationDict types
         # this is the association table for Image->metadata
         product_meta = Table('product_meta', self.Base.metadata,
-                 Column('image_id', Integer, ForeignKey('image.id')),
-                 Column('meta_id', Integer, ForeignKey('meta.id')))
+                             Column('image_id', Integer,
+                                    ForeignKey('image.id')),
+                             Column('meta_id', Integer, ForeignKey('meta.id')))
 
         # For brevity, create this association proxy creator functions here.
         creator1 = lambda product: ChosenProductImage(product=product)
@@ -1961,8 +1964,7 @@ class TestAssociationProxy(ManagerTestBase):
             meta_store = rel('Metadata',
                              cascade='all',
                              backref=backref(name='metadata'),
-                             collection_class=col_mapped(
-                                                    Metadata.__table__.c.key),
+                             collection_class=col_mapped(Metadata.__table__.c.key),
                              secondary=lambda: product_meta)
             meta = prox('meta_store', 'value', creator=creator3)
 
@@ -2066,8 +2068,7 @@ class TestAssociationProxy(ManagerTestBase):
 
     def test_assoc_dict_put(self):
         data = {'products': [{'id': 1}],
-                'meta': [{'key':'file type', 'value': 'png'}]
-               }
+                'meta': [{'key': 'file type', 'value': 'png'}]}
         response = self.app.post('/api/image', data=dumps(data))
         assert response.status_code == 201
 

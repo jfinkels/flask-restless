@@ -671,9 +671,9 @@ class API(ModelView):
                 raise TypeError(msg)
             model = column.class_
             if model is not self.model:
-                msg = ('Cannot specify column of model %s'
-                       ' while creating API for model %s' % (
-                        model.__name__, self.model.__name__))
+                msg = ('Cannot specify column of model {0} while creating API'
+                       ' for model {1}').format(model.__name__,
+                                                self.model.__name__)
                 raise ValueError(msg)
             return clause_element.key
 

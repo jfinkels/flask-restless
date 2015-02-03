@@ -376,12 +376,13 @@ class TestSupport(ManagerTestBase):
             id = Column(Integer, primary_key=True)
             person_id = Column(Integer, ForeignKey('person.id'))
             person = relationship('Person',
-                                 backref=backref('projects', lazy='dynamic'))
+                                  backref=backref('projects', lazy='dynamic'))
 
         class Proof(self.Base):
             __tablename__ = 'proof'
             id = Column(Integer, primary_key=True)
-            project = relationship('Project', backref=backref('proofs', lazy='dynamic'))
+            project = relationship('Project', backref=backref('proofs',
+                                                              lazy='dynamic'))
             project_id = Column(Integer, ForeignKey('project.id'))
             person = association_proxy('project', 'person')
             person_id = association_proxy('project', 'person_id')
@@ -408,7 +409,6 @@ class TestSupport(ManagerTestBase):
 
     def tearDown(self):
         """Drops all tables from the temporary database."""
-        #self.session.remove()
         self.Base.metadata.drop_all()
 
 

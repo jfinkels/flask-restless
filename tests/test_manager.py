@@ -44,12 +44,15 @@ class TestLocalAPIManager(DatabaseTestBase):
     """
     def setUp(self):
         super(TestLocalAPIManager, self).setUp()
+
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
+
         class Computer(self.Base):
             __tablename__ = 'computer'
             id = Column(Integer, primary_key=True)
+
         self.Person = Person
         self.Computer = Computer
         self.Base.metadata.create_all()
@@ -416,7 +419,7 @@ class TestAPIManager(TestSupport):
 
         # included non-callable property
         self.manager.create_api(self.Computer, url_prefix='/included_property',
-                                 include_methods=['speed_property'])
+                                include_methods=['speed_property'])
 
         # create a test person
         date = datetime.date(1999, 12, 31)
@@ -450,7 +453,8 @@ class TestAPIManager(TestSupport):
         assert response_data['objects'][0]['computers'][0]['speed'] == 42
 
         # get one with included property
-        response = self.app.get('/included_property/computer/{0}'.format(computer.id))
+        url = '/included_property/computer/{0}'.format(computer.id)
+        response = self.app.get(url)
         response_data = loads(response.data)
         assert response_data['speed_property'] == 42
 

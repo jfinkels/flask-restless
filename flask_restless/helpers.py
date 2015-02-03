@@ -27,7 +27,6 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.attributes import QueryableAttribute
 from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import func
-from sqlalchemy.sql.expression import _BinaryExpression
 from sqlalchemy.sql.expression import ColumnElement
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 
@@ -146,18 +145,19 @@ def get_related_association_proxy_model(attr):
 
 
 def has_field(model, fieldname):
-    """Returns ``True`` if the `model` has the specified field
-    or if it has a settable hybrid property for this field name.
+    """Returns ``True`` if the `model` has the specified field or if it has a
+    settable hybrid property for this field name.
 
     """
-    descriptors_data = sqlalchemy_inspect(model).all_orm_descriptors._data
-    if fieldname in descriptors_data and hasattr(descriptors_data[fieldname], 'fset'):
-        return getattr(descriptors_data[fieldname], 'fset') is not None
+    descriptors = sqlalchemy_inspect(model).all_orm_descriptors._data
+    if fieldname in descriptors and hasattr(descriptors[fieldname], 'fset'):
+        return descriptors[fieldname].fset is not None
     return hasattr(model, fieldname)
 
 
 def get_field_type(model, fieldname):
     """Helper which returns the SQLAlchemy type of the field.
+
     """
     field = getattr(model, fieldname)
     if isinstance(field, ColumnElement):
@@ -179,6 +179,7 @@ def is_date_field(model, fieldname):
     """Returns ``True`` if and only if the field of `model` with the specified
     name corresponds to either a :class:`datetime.date` object or a
     :class:`datetime.datetime` object.
+
     """
     fieldtype = get_field_type(model, fieldname)
     return isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime)
@@ -187,6 +188,7 @@ def is_date_field(model, fieldname):
 def is_interval_field(model, fieldname):
     """Returns ``True`` if and only if the field of `model` with the specified
     name corresponds to a :class:`datetime.timedelta` object.
+
     """
     fieldtype = get_field_type(model, fieldname)
     return isinstance(fieldtype, Interval)
