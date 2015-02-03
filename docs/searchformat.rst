@@ -359,6 +359,15 @@ response will include only those ``Person`` instances that are related to any
 Using ``has`` and ``any``
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Use the ``has`` and ``any`` operators to search for instances by fields on
+related instances. For example, you can search for all ``Person`` instances
+that have a related ``Computer`` with a certain ID number by using the ``any``
+operator. For another example, you can search for all ``Computer`` instances
+that have an owner with a certain name by using the ``has`` operator. In
+general, use the ``any`` operator if the relation is a list of objects and use
+the ``has`` operator if the relation is a single object. For more information,
+see the SQLAlchemy documentation.
+
 On request:
 
 .. sourcecode:: http
@@ -381,5 +390,30 @@ the response will include only those ``Person`` instances that have a related
      [
        {"id": 1, "name": "John", "age": 80, "height": 65, "computers": [...]},
        {"id": 2, "name": "Mary", "age": 73, "height": 60, "computers": [...]}
+     ]
+   }
+
+On request:
+
+.. sourcecode:: http
+
+   GET /api/computers?q={"filters":[{"name":"owner","op":"has","val":{"name":"vendor","op":"ilike","val":"%John%"}}]} HTTP/1.1
+   Host: example.com
+
+the response will include only those ``Computer`` instances that have an owner
+with ``name`` field that includes ``'John'``:
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+
+   {
+     "num_results": 6,
+     "total_pages": 3,
+     "page": 2,
+     "objects":
+     [
+       {"id": 1, "name": "pluto", vendor="Apple", ...},
+       {"id": 2, "name": "jupiter", vendor="Dell", ...}
      ]
    }
