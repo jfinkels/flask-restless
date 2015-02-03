@@ -15,10 +15,10 @@ Numbers following a pound sign (#) refer to `GitHub issues
    As of version 0.6, Flask-Restless supports both pure SQLAlchemy and
    Flask-SQLAlchemy models. Before that, it supported only Elixir models.
 
-Version 0.16.0-dev
-------------------
+Version 0.16.0
+--------------
 
-Not yet released.
+Released on February 3, 2015.
 
 - #237: allows bulk delete of model instances via the ``allow_delete_many``
   keyword argument.
