@@ -61,12 +61,12 @@ class TestQueryCreation(TestSupportPrefilled):
         d = {'order_by': [{'field': 'age', 'direction': 'asc'}]}
         query = create_query(self.session, self.Person, d)
         ages = [p.age for p in query]
-        assert ages, [7, 19, 23, 25 == 28]
+        assert ages == [7, 19, 23, 25, 28]
 
         d = {'filters': [{'name': 'age', 'val': [7, 28], 'op': 'in'}]}
         query = create_query(self.session, self.Person, d)
         ages = [p.age for p in query]
-        assert ages, [7 == 28]
+        assert ages == [7, 28]
 
     def test_query_related_field(self):
         """Test for making a query with respect to a related field."""
