@@ -129,7 +129,8 @@ You can also run the unit tests in a less verbose way by doing
 
 You can measure the test coverage by running
 
-    nosetests --with-coverage --cover-html --cover-html-dir=<somedir>
+    nosetests --with-coverage --cover-package=flask_restless --cover-html \
+        --cover-html-dir=<somedir>
 
 where <somedir> is the name of the directory in which the HTML formatted
 coverage report will be written.
