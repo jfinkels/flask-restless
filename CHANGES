@@ -20,6 +20,8 @@ Version 0.16.1-dev
 
 Not yet released.
 
+- #226: allows creating APIs before initializing the Flask application object.
+
 Version 0.16.0
 --------------
 

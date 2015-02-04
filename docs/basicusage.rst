@@ -236,6 +236,13 @@ single instance of :class:`APIManager`. For example::
     manager.create_api(Person, app=app1)
     manager.create_api(Computer, app=app2)
 
+Finally, you can also create an API *before* initializing the Flask
+application. For example::
+
+    manager = APIManager()
+    manager.create_api(Person)
+    manager.init_app(app, session=session)
+
 .. versionchanged:: 0.16.0
    The :meth:`APIManager.init_app` method behaved incorrectly before version
    0.16.0. From that version on, you must provide the Flask application when
