@@ -104,6 +104,33 @@ class TestLocalAPIManager(DatabaseTestBase):
         response = self.app.get('/api/person')
         assert response.status_code == 200
 
+    def test_multiple_app_delayed_init(self):
+        manager = APIManager(session=self.session)
+
+        # Create the Flask applications and the test clients.
+        flaskapp1 = self.flaskapp
+        flaskapp2 = Flask(__name__)
+        testclient1 = self.app
+        testclient2 = flaskapp2.test_client()
+        force_json_contenttype(testclient2)
+
+        # First create the API, then initialize the Flask applications after.
+        manager.create_api(self.Person, app=flaskapp1)
+        manager.create_api(self.Computer, app=flaskapp2)
+        manager.init_app(flaskapp1)
+        manager.init_app(flaskapp2)
+
+        # Tests that only the first Flask application gets requests for
+        # /api/person and only the second gets requests for /api/computer.
+        response = testclient1.get('/api/person')
+        assert response.status_code == 200
+        response = testclient1.get('/api/computer')
+        assert response.status_code == 404
+        response = testclient2.get('/api/person')
+        assert response.status_code == 404
+        response = testclient2.get('/api/computer')
+        assert response.status_code == 200
+
     def test_universal_preprocessor(self):
         """Tests universal preprocessor and postprocessor applied to all
         methods created with the API manager.

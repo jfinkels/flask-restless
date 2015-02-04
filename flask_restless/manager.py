@@ -107,7 +107,12 @@ class APIManager(object):
 
     def __init__(self, app=None, **kw):
         self.app = app
-        self.apis = []
+
+        #: Dictionary mapping Flask application objects to a list of (args, kw)
+        #: pairs for which API creation has been delayed, as when calling
+        #: :meth:`create_api` before calling :meth:`init_app`.
+        self.apis_to_create = defaultdict(list)
+
         self.flask_sqlalchemy_db = kw.pop('flask_sqlalchemy_db', None)
         self.session = kw.pop('session', None)
         if self.app is not None:
@@ -228,11 +233,20 @@ class APIManager(object):
         app.extensions['restless'] = RestlessInfo(session,
                                                   preprocessors or {},
                                                   postprocessors or {})
-
-        for args, kw in self.apis:
+        # Now that this application has been initialized, create blueprints for
+        # which API creation was deferred in :meth:`create_api`. This includes
+        # all (args, kw) pairs for the key in :attr:`apis_to_create`
+        # corresponding to ``app``, as well as any (args, kw) pairs
+        # corresponding to the ``None`` key, which represents a call to
+        # :meth:`create_api` that is just waiting for any Flask application to
+        # be initialized.
+        #
+        # Rename apis_to_create for the sake of brevity
+        apis = self.apis_to_create
+        to_create = apis.pop(app, []) + apis.pop(None, [])
+        for args, kw in to_create:
             blueprint = self.create_api_blueprint(app=app, *args, **kw)
             app.register_blueprint(blueprint)
-        self.apis = []
 
     def create_api_blueprint(self, model, app=None, methods=READONLY_METHODS,
                              url_prefix='/api', collection_name=None,
@@ -549,11 +563,41 @@ class APIManager(object):
            :meth:`create_api_blueprint`; the registration remains here.
 
         """
-        # Use the Flask application provided in the constructor if no
-        # application is provided in the keyword arguments.
-        app = kw['app'] if 'app' in kw else self.app
-        if app is not None:
-            blueprint = self.create_api_blueprint(*args, **kw)
-            app.register_blueprint(blueprint)
+        # Check if the user is providing a specific Flask application with
+        # which the model's API will be associated.
+        if 'app' in kw:
+            # If an application object was already provided in the constructor,
+            # raise an error indicating that the user is being confusing.
+            if self.app is not None:
+                msg = ('Cannot provide a Flask application in the APIManager'
+                       ' constructor and in create_api(); must choose exactly'
+                       ' one')
+                raise IllegalArgumentError(msg)
+            app = kw.pop('app')
+            # If the Flask application has already been initialized, then
+            # immediately create the API blueprint.
+            #
+            # TODO This is something of a fragile check for whether or not
+            # init_app() has been called on kw['app'], since some other
+            # (malicious) code could simply add the key 'restless' to the
+            # extensions dictionary.
+            if 'restless' in app.extensions:
+                blueprint = self.create_api_blueprint(app=app, *args, **kw)
+                app.register_blueprint(blueprint)
+            # If the Flask application has not yet been initialized, then stash
+            # the positional and keyword arguments for later initialization.
+            else:
+                self.apis_to_create[app].append((args, kw))
+        # The user did not provide a Flask application here.
         else:
-            self.apis.append((args, kw))
+            # If a Flask application object was already provided in the
+            # constructor, immediately create the API blueprint.
+            if self.app is not None:
+                app = self.app
+                blueprint = self.create_api_blueprint(app=app, *args, **kw)
+                app.register_blueprint(blueprint)
+            # If no Flask application was provided in the constructor either,
+            # then stash the positional and keyword arguments for later
+            # initalization.
+            else:
+                self.apis_to_create[None].append((args, kw))

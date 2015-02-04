@@ -20,6 +20,7 @@ Version 0.16.1-dev
 
 Not yet released.
 
+- Corrects bug to allow delayed initilalization of multiple Flask applications.
 - #226: allows creating APIs before initializing the Flask application object.
 
 Version 0.16.0
