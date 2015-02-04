@@ -96,6 +96,14 @@ class TestLocalAPIManager(DatabaseTestBase):
         response = testclient2.get('/api/computer')
         assert response.status_code == 200
 
+    def test_creation_api_without_app_dependency(self):
+        """Tests that api can be added before app will be passed to manager."""
+        manager = APIManager()
+        manager.create_api(self.Person)
+        manager.init_app(self.flaskapp, self.session)
+        response = self.app.get('/api/person')
+        assert response.status_code == 200
+
     def test_universal_preprocessor(self):
         """Tests universal preprocessor and postprocessor applied to all
         methods created with the API manager.

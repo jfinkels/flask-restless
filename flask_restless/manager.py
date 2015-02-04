@@ -107,6 +107,7 @@ class APIManager(object):
 
     def __init__(self, app=None, **kw):
         self.app = app
+        self.apis = []
         self.flask_sqlalchemy_db = kw.pop('flask_sqlalchemy_db', None)
         self.session = kw.pop('session', None)
         if self.app is not None:
@@ -227,6 +228,11 @@ class APIManager(object):
         app.extensions['restless'] = RestlessInfo(session,
                                                   preprocessors or {},
                                                   postprocessors or {})
+
+        for args, kw in self.apis:
+            blueprint = self.create_api_blueprint(app=app, *args, **kw)
+            app.register_blueprint(blueprint)
+        self.apis = []
 
     def create_api_blueprint(self, model, app=None, methods=READONLY_METHODS,
                              url_prefix='/api', collection_name=None,
@@ -543,8 +549,11 @@ class APIManager(object):
            :meth:`create_api_blueprint`; the registration remains here.
 
         """
-        blueprint = self.create_api_blueprint(*args, **kw)
         # Use the Flask application provided in the constructor if no
         # application is provided in the keyword arguments.
         app = kw['app'] if 'app' in kw else self.app
-        app.register_blueprint(blueprint)
+        if app is not None:
+            blueprint = self.create_api_blueprint(*args, **kw)
+            app.register_blueprint(blueprint)
+        else:
+            self.apis.append((args, kw))
