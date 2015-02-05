@@ -67,30 +67,31 @@ class TestLocalAPIManager(DatabaseTestBase):
         :class:`flask.ext.restless.APIManager` object.
 
         """
-        manager = APIManager()
-        manager.init_app(self.flaskapp, session=self.session)
-        manager.create_api(self.Person, app=self.flaskapp)
+        manager = APIManager(session=self.session)
+        manager.create_api(self.Person)
+        manager.init_app(self.flaskapp)
         response = self.app.get('/api/person')
         assert response.status_code == 200
 
     def test_init_app_split_initialization(self):
         manager = APIManager(session=self.session)
+        manager.create_api(self.Person)
         manager.init_app(self.flaskapp)
-        manager.create_api(self.Person, app=self.flaskapp)
         response = self.app.get('/api/person')
         assert response.status_code == 200
 
     def test_init_multiple(self):
-        manager = APIManager(session=self.session)
+        manager1 = APIManager(session=self.session)
+        manager2 = APIManager(session=self.session)
         flaskapp1 = self.flaskapp
         flaskapp2 = Flask(__name__)
         testclient1 = self.app
         testclient2 = flaskapp2.test_client()
         force_json_contenttype(testclient2)
-        manager.init_app(flaskapp1)
-        manager.init_app(flaskapp2)
-        manager.create_api(self.Person, app=flaskapp1)
-        manager.create_api(self.Article, app=flaskapp2)
+        manager1.create_api(self.Person)
+        manager2.create_api(self.Computer)
+        manager1.init_app(flaskapp1)
+        manager2.init_app(flaskapp2)
         response = testclient1.get('/api/person')
         assert response.status_code == 200
         response = testclient1.get('/api/article')
@@ -102,14 +103,15 @@ class TestLocalAPIManager(DatabaseTestBase):
 
     def test_creation_api_without_app_dependency(self):
         """Tests that api can be added before app will be passed to manager."""
-        manager = APIManager()
+        manager = APIManager(session=self.session)
         manager.create_api(self.Person)
-        manager.init_app(self.flaskapp, self.session)
+        manager.init_app(self.flaskapp)
         response = self.app.get('/api/person')
         assert response.status_code == 200
 
     def test_multiple_app_delayed_init(self):
-        manager = APIManager(session=self.session)
+        manager1 = APIManager(session=self.session)
+        manager2 = APIManager(session=self.session)
 
         # Create the Flask applications and the test clients.
         flaskapp1 = self.flaskapp
@@ -119,10 +121,10 @@ class TestLocalAPIManager(DatabaseTestBase):
         force_json_contenttype(testclient2)
 
         # First create the API, then initialize the Flask applications after.
-        manager.create_api(self.Person, app=flaskapp1)
-        manager.create_api(self.Article, app=flaskapp2)
-        manager.init_app(flaskapp1)
-        manager.init_app(flaskapp2)
+        manager1.create_api(self.Person)
+        manager2.create_api(self.Computer)
+        manager1.init_app(flaskapp1)
+        manager2.init_app(flaskapp2)
 
         # Tests that only the first Flask application gets requests for
         # /api/person and only the second gets requests for /api/article.
@@ -346,15 +348,8 @@ class TestFSA(FlaskTestBase):
         unregister_fsa_session_signals()
 
     def test_init_app(self):
-        manager = APIManager()
-        manager.init_app(self.flaskapp, flask_sqlalchemy_db=self.db)
-        manager.create_api(self.Person, app=self.flaskapp)
-        response = self.app.get('/api/person')
-        assert response.status_code == 200
-
-    def test_init_app_split_initialization(self):
         manager = APIManager(flask_sqlalchemy_db=self.db)
+        manager.create_api(self.Person)
         manager.init_app(self.flaskapp)
-        manager.create_api(self.Person, app=self.flaskapp)
         response = self.app.get('/api/person')
         assert response.status_code == 200
