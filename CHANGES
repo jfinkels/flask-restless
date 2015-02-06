@@ -22,6 +22,7 @@ Not yet released.
 
 - Corrects bug to allow delayed initilalization of multiple Flask applications.
 - #226: allows creating APIs before initializing the Flask application object.
+- #398: fixes bug where DELETE_SINGLE processors were not actually used.
 
 Version 0.16.0
 --------------

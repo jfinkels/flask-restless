@@ -1257,7 +1257,7 @@ class API(ModelView):
             # filters.
             return self._delete_many()
         was_deleted = False
-        for preprocessor in self.preprocessors['DELETE']:
+        for preprocessor in self.preprocessors['DELETE_SINGLE']:
             temp_result = preprocessor(instance_id=instid,
                                        relation_name=relationname,
                                        relation_instance_id=relationinstid)
@@ -1283,7 +1283,7 @@ class API(ModelView):
             self.session.delete(inst)
             was_deleted = len(self.session.deleted) > 0
         self.session.commit()
-        for postprocessor in self.postprocessors['DELETE']:
+        for postprocessor in self.postprocessors['DELETE_SINGLE']:
             postprocessor(was_deleted=was_deleted)
         return {}, 204 if was_deleted else 404
 

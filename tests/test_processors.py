@@ -74,7 +74,7 @@ class TestProcessors(TestSupport):
 
         # Create an API with the incrementing preprocessor.
         pre = dict(GET_SINGLE=[increment], PATCH_SINGLE=[increment],
-                   DELETE=[increment])
+                   DELETE_SINGLE=[increment])
         self.manager.create_api(self.Person,
                                 methods=['GET', 'PATCH', 'DELETE'],
                                 preprocessors=pre)
@@ -214,7 +214,7 @@ class TestProcessors(TestSupport):
             raise ProcessingException(code=403,
                                       description='Permission denied')
 
-        pre = dict(DELETE=[check_permissions])
+        pre = dict(DELETE_SINGLE=[check_permissions])
         # recreate the api at /api/v1/person
         self.manager.create_api(self.Person,
                                 methods=['POST', 'DELETE'],
@@ -297,6 +297,40 @@ class TestProcessors(TestSupport):
         assert resp.status_code == 200
         assert loads(resp.data)['age'] == 27
         assert loads(resp.data)['other'] == 27
+
+    def test_delete_single(self):
+        """Test for the DELETE_SINGLE preprocessor."""
+        # Create a preprocessor function that only allows deleting a Person
+        # instance with ID 2.
+        def must_have_id_2(instance_id=None, **kw):
+            if int(instance_id) != 2:
+                raise ProcessingException(description='hey', code=400)
+
+        pre = dict(DELETE_SINGLE=[must_have_id_2])
+        self.manager.create_api(self.Person, methods=['GET', 'DELETE'],
+                                preprocessors=pre)
+
+        # Add three people to the database.
+        self.session.add(self.Person(id=1))
+        self.session.add(self.Person(id=2))
+        self.session.add(self.Person(id=3))
+        self.session.commit()
+
+        # Trying to delete Person instances with ID 1 and 3 should cause a
+        # processing exception, resulting in a HTTP 400 response.
+        response = self.app.delete('/api/person/1')
+        assert response.status_code == 400
+        response = self.app.delete('/api/person/3')
+        assert response.status_code == 400
+
+        # Trying to delete person 2 should work
+        response = self.app.delete('/api/person/2')
+        print(response.data)
+        assert response.status_code == 204
+        response = self.app.get('/api/person')
+        assert response.status_code == 200
+        data = loads(response.data)['objects']
+        assert 2 not in [person['id'] for person in data]
 
     def test_delete_many_preprocessor(self):
         # Create a preprocessor function that adds a filter.
