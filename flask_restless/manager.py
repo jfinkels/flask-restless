@@ -17,6 +17,7 @@ from collections import namedtuple
 
 from flask import Blueprint
 
+from .helpers import primary_key_name
 from .views import API
 from .views import FunctionAPI
 
@@ -347,6 +348,10 @@ class APIManager(object):
         `exclude_columns` contains a string which does not name a column in
         `model`, it will be ignored.
 
+        If you attempt to either exclude a primary key field or not include a
+        primary key field for :http:method:`post` requests, this method will
+        raise an :exc:`IllegalArgumentError`.
+
         If `include_columns` is an iterable of length zero (like the empty
         tuple or the empty list), then the returned dictionary will be
         empty. If `include_columns` is ``None``, then the returned dictionary
@@ -472,6 +477,15 @@ class APIManager(object):
             possibly_empty_instance_methods |= frozenset(('PATCH', 'PUT'))
         if allow_delete_many and 'DELETE' in methods:
             possibly_empty_instance_methods |= frozenset(('DELETE', ))
+
+        # Check that primary_key is included for no_instance_methods
+        if no_instance_methods:
+            pk_name = primary_key or primary_key_name(model)
+            if (include_columns and pk_name not in include_columns or
+                exclude_columns and pk_name in exclude_columns):
+                msg = ('The primary key must be included for APIs with POST.')
+                raise IllegalArgumentError(msg)
+
         # the base URL of the endpoints on which requests will be made
         collection_endpoint = '/{0}'.format(collection_name)
         # the name of the API, for use in creating the view and the blueprint

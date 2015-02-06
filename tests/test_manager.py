@@ -19,11 +19,13 @@ except:
     has_flask_sqlalchemy = False
 else:
     has_flask_sqlalchemy = True
+from nose.tools import raises
 from sqlalchemy import Column
 from sqlalchemy import Integer
 
 from flask.ext.restless import APIManager
 from flask.ext.restless.helpers import get_columns
+from flask.ext.restless.manager import IllegalArgumentError
 
 from .helpers import DatabaseTestBase
 from .helpers import FlaskTestBase
@@ -561,6 +563,15 @@ class TestAPIManager(TestSupport):
         response = self.app.get('/none/person/{0}'.format(personid))
         for column in 'name', 'age', 'other', 'birth_date', 'computers':
             assert column not in loads(response.data)
+
+    @raises(IllegalArgumentError)
+    def test_exclude_primary_key_column(self):
+        """Tests that trying to create a writable API while excluding the
+        primary key field raises an error.
+
+        """
+        self.manager.create_api(self.Person, exclude_columns=['id'],
+                                methods=['POST'])
 
     def test_different_urls(self):
         """Tests that establishing different URL endpoints for the same model
