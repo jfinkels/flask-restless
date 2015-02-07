@@ -21,4 +21,5 @@ __version__ = '0.16.1-dev'
 
 # make the following names available as part of the public API
 from .manager import APIManager
+from .manager import IllegalArgumentError
 from .views import ProcessingException
