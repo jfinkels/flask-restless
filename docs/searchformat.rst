@@ -96,13 +96,9 @@ mappings, all of which are optional:
   The returned list of matching instances will include only those instances
   that satisfy all of the given filters.
 
-``disjunction``
-  A Boolean that specifies whether the list of filters should be treated as a
-  disjunction or a conjunction. If this is ``true``, the response will include
-  all instances of the model that match *any* of the filters. If this is
-  ``false`` the response will include all instances of the model that match
-  *all* of the filters. This will be treated as ``false`` if not specified by
-  the client (in other words, the default is conjunction).
+  Filter objects can also be arbitrary Boolean formulas. For example::
+
+      {"or": [<filterobject>, {"and": [<filterobject>, ...]}, ...]}
 
 ``limit`` 
   A positive integer which specifies the maximum number of objects to return.
@@ -141,6 +137,10 @@ mappings, all of which are optional:
 
 If a filter is poorly formatted (for example, ``op`` is set to ``'=='`` but
 ``val`` is not set), the server responds with :http:statuscode:`400`.
+
+.. versionchanged:: 0.17.0
+   Removed the ``disjunction`` mapping in favor of a more robust Boolean
+   expression system.
 
 .. _operators:
 
@@ -198,14 +198,14 @@ attribute greater than or equal to 10:
      ]
    }
 
-Disjunction of filters
-~~~~~~~~~~~~~~~~~~~~~~
+Arbitrary Boolean expression of filters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 On request:
 
 .. sourcecode:: http
 
-   GET /api/person?q={"filters":[{"name":"age","op":"lt","val":10},{"name":"age","op":"gt","val":20}],"disjunction":true} HTTP/1.1
+   GET /api/person?q={"filters":[{"or":[{"name":"age","op":"lt","val":10},{"name":"age","op":"gt","val":20}]}]} HTTP/1.1
    Host: example.com
 
 the response will include only those ``Person`` instances that have ``age``

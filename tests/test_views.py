@@ -1878,16 +1878,27 @@ class TestSearch(TestSupportPrefilled):
         assert resp.status_code == 400
         assert loads(resp.data)['message'] == 'Multiple results found'
 
-    def test_search_disjunction(self):
-        """Tests for search with disjunctive filters."""
-        data = dict(filters=[dict(name='age', op='le', val=10),
-                             dict(name='age', op='ge', val=25)],
-                    disjunction=True)
+    def test_search_boolean_formula(self):
+        """Tests for Boolean formulas of filters in a search query."""
+        # This searches for people whose name is John, or people older than age
+        # 10 who have a "y" in their names.
+        #
+        # According to the pre-filled database, this should return three
+        # people: John, Lucy, and Mary.
+        data = {'filters':
+                    [{'or':
+                          [{'and':
+                                [dict(name='name', op='like', val='%y%'),
+                                 dict(name='age', op='ge', val=10)]},
+                           dict(name='name', op='eq', val='John')
+                           ]
+                      }]
+                }
         response = self.app.search('/api/person', dumps(data))
         assert 200 == response.status_code
         data = loads(response.data)['objects']
         assert 3 == len(data)
-        assert set(['Lucy', 'Katy', 'John']) == \
+        assert set(['Lucy', 'Mary', 'John']) == \
             set([person['name'] for person in data])
 
     def test_search_bad_arguments(self):

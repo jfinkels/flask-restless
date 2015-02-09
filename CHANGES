@@ -21,6 +21,7 @@ Version 0.16.1-dev
 Not yet released.
 
 - Corrects bug to allow delayed initilalization of multiple Flask applications.
+- #198: allows arbitrary Boolean expressions in search query filters.
 - #226: allows creating APIs before initializing the Flask application object.
 - #398: fixes bug where DELETE_SINGLE processors were not actually used.
 - #400: disallows excluding a primary key on a :http:method:`POST` request.
