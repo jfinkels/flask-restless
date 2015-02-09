@@ -130,6 +130,8 @@ mappings, all of which are optional:
   ``<fieldname>`` may alternately specify a field on a related model, if it is
   a string of the form ``<relationname>__<fieldname>``.
 
+  .. versionadded:: 0.16.0
+
 ``single``
   A Boolean representing whether a single result is expected as a result of the
   search. If this is ``true`` and either no results or multiple results meet
