@@ -26,7 +26,6 @@ from sqlalchemy import Integer
 from flask.ext.restless import APIManager
 from flask.ext.restless import IllegalArgumentError
 from flask.ext.restless.helpers import get_columns
-from flask.ext.restless.manager import IllegalArgumentError
 
 from .helpers import DatabaseTestBase
 from .helpers import FlaskTestBase
