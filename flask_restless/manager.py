@@ -14,18 +14,35 @@
 """
 from collections import defaultdict
 from collections import namedtuple
+try:
+    from urllib.parse import urljoin
+except ImportError:
+    from urlparse import urljoin
 
 import flask
+from flask import request
 from flask import Blueprint
 
-from .helpers import primary_key_name
+from .helpers import collection_name
+from .helpers import model_for
 from .helpers import url_for
+from .serialization import DefaultSerializer
+from .serialization import DefaultDeserializer
+from .serialization import DeserializationException
+from .serialization import SerializationException
 from .views import API
 from .views import FunctionAPI
+from .views import RelationshipAPI
 
-#: The set of methods which are allowed by default when creating an API
+#: The names of HTTP methods that allow fetching information.
 READONLY_METHODS = frozenset(('GET', ))
 
+#: The names of HTTP methods that allow creating, updating, or deleting
+#: information.
+WRITEONLY_METHODS = frozenset(('PATCH', 'POST', 'DELETE'))
+
+#: The set of all recognized HTTP methods.
+ALL_METHODS = READONLY_METHODS | WRITEONLY_METHODS
 
 #: A triple that stores the SQLAlchemy session and the universal pre- and post-
 #: processors to be applied to any API created for a particular Flask
@@ -36,9 +53,6 @@ READONLY_METHODS = frozenset(('GET', ))
 RestlessInfo = namedtuple('RestlessInfo', ['session',
                                            'universal_preprocessors',
                                            'universal_postprocessors'])
-
-#: A global list of created :class:`APIManager` objects.
-created_managers = []
 
 #: A tuple that stores information about a created API.
 #:
@@ -131,9 +145,14 @@ class APIManager(object):
         #: the corresponding collection names for those models.
         self.created_apis_for = {}
 
-        # Stash this instance so that it can be examined later by other
-        # functions in this module.
-        url_for.created_managers.append(self)
+        # Stash this instance so that it can be examined later by the global
+        # `url_for`, `model_for`, and `collection_name` functions.
+        #
+        # TODO This is a bit of poor code style because it requires the
+        # APIManager to know about these global functions that use it.
+        url_for.register(self)
+        model_for.register(self)
+        collection_name.register(self)
 
         self.flask_sqlalchemy_db = kw.pop('flask_sqlalchemy_db', None)
         self.session = kw.pop('session', None)
@@ -182,32 +201,65 @@ class APIManager(object):
         """
         return APIManager.APINAME_FORMAT.format(collection_name)
 
-    def collection_name(self, model):
-        """Returns the name by which the user told us to call collections of
-        instances of this model.
+    def model_for(self, collection_name):
+        """Returns the SQLAlchemy model class whose type is given by the
+        specified collection name.
 
-        `model` is a SQLAlchemy model class. This must be a model on which
-        :meth:`create_api_blueprint` has been invoked previously.
+        `collection_name` is a string containing the collection name as
+        provided to the ``collection_name`` keyword argument to
+        :meth:`create_api_blueprint`.
+
+        The collection name should correspond to a model on which
+        :meth:`create_api_blueprint` has been invoked previously. If it doesn't
+        this method raises :exc:`ValueError`.
+
+        This method is the inverse of :meth:`collection_name`::
+
+            >>> from mymodels import Person
+            >>> manager.create_api(Person, collection_name='people')
+            >>> manager.collection_name(manager.model_for('people'))
+            'people'
+            >>> manager.model_for(manager.collection_name(Person))
+            <class 'mymodels.Person'>
 
         """
-        return self.created_apis_for[model].collection_name
+        # Reverse the dictionary.
+        #
+        # In Python 3 this should be:
+        #
+        #     models = {info.collection_name: model
+        #               for model, info in self.created_apis_for.items()}
+        #
+        models = dict((info.collection_name, model)
+                      for model, info in self.created_apis_for.items())
+        try:
+            return models[collection_name]
+        except KeyError:
+            raise ValueError('Collection name {0} unknown. Be sure to set the'
+                             ' `collection_name` keyword argument when calling'
+                             ' `create_api()`.'.format(collection_name))
 
-    def blueprint_name(self, model):
-        """Returns the name of the blueprint in which an API was created for
-        the specified model.
-
-        `model` is a SQLAlchemy model class. This must be a model on which
-        :meth:`create_api_blueprint` has been invoked previously.
-
-        """
-        return self.created_apis_for[model].blueprint_name
-
-    def url_for(self, model, **kw):
+    def url_for(self, model, _absolute_url=True, **kw):
         """Returns the URL for the specified model, similar to
         :func:`flask.url_for`.
 
-        `model` is a SQLAlchemy model class. This must be a model on which
-        :meth:`create_api_blueprint` has been invoked previously.
+        `model` is a SQLAlchemy model class. This should be a model on which
+        :meth:`create_api_blueprint` has been invoked previously. If not, this
+        method raises a :exc:`ValueError`.
+
+        If `_absolute_url` is ``False``, this function will return just the URL
+        path without the ``scheme`` and ``netloc`` part of the URL. If it is
+        ``True``, this function joins the relative URL to the url root for the
+        current request. This means `_absolute_url` can only be set to ``True``
+        if this function is called from within a `Flask request context`_. For
+        example::
+
+            >>> from mymodels import Person
+            >>> manager.create_api(Person)
+            >>> manager.url_for(Person, instid=3)
+            'http://example.com/api/people/3'
+            >>> manager.url_for(Person, instid=3, _absolute_url=False)
+            '/api/people/3'
 
         This method only returns URLs for endpoints created by this
         :class:`APIManager`.
@@ -215,12 +267,44 @@ class APIManager(object):
         The remaining keyword arguments are passed directly on to
         :func:`flask.url_for`.
 
+        .. _Flask request context: http://flask.pocoo.org/docs/0.10/reqcontext/
+
         """
-        collection_name = self.collection_name(model)
+        try:
+            collection_name = self.created_apis_for[model].collection_name
+            blueprint_name = self.created_apis_for[model].blueprint_name
+        except KeyError:
+            raise ValueError('Model {0} unknown. Maybe you need to call'
+                             ' `create_api()`?'.format(model))
         api_name = APIManager.api_name(collection_name)
-        blueprint_name = self.blueprint_name(model)
-        joined = '.'.join([blueprint_name, api_name])
-        return flask.url_for(joined, **kw)
+        parts = [blueprint_name, api_name]
+        # If we are looking for a relationship URL, the view name ends with
+        # '.links'.
+        if 'relationship' in kw and kw.pop('relationship'):
+            parts.append('links')
+        url = flask.url_for('.'.join(parts), **kw)
+        if _absolute_url:
+            url = urljoin(request.url_root, url)
+        return url
+
+    def collection_name(self, model):
+        """Returns the collection name for the specified model, as specified by
+        the ``collection_name`` keyword argument to
+        :meth:`create_api_blueprint`.
+
+        `model` is a SQLAlchemy model class. This should be a model on which
+        :meth:`create_api_blueprint` has been invoked previously. If not, this
+        method raises a :exc:`ValueError`.
+
+        This method only returns URLs for endpoints created by this
+        :class:`APIManager`.
+
+        """
+        try:
+            return self.created_apis_for[model].collection_name
+        except KeyError:
+            raise ValueError('Model {0} unknown. Maybe you need to call'
+                             ' `create_api()`?'.format(model))
 
     def init_app(self, app, session=None, flask_sqlalchemy_db=None,
                  preprocessors=None, postprocessors=None):
@@ -322,14 +406,15 @@ class APIManager(object):
 
     def create_api_blueprint(self, model, app=None, methods=READONLY_METHODS,
                              url_prefix='/api', collection_name=None,
-                             allow_patch_many=False, allow_delete_many=False,
-                             allow_functions=False, exclude_columns=None,
-                             include_columns=None, include_methods=None,
-                             validation_exceptions=None, results_per_page=10,
-                             max_results_per_page=100,
-                             post_form_preprocessor=None, preprocessors=None,
+                             allow_functions=False, only=None, exclude=None,
+                             additional_attributes=None,
+                             validation_exceptions=None, page_size=10,
+                             max_page_size=100, preprocessors=None,
                              postprocessors=None, primary_key=None,
-                             serializer=None, deserializer=None):
+                             serializer=None, deserializer=None,
+                             includes=None, allow_to_many_replacement=False,
+                             allow_delete_from_to_many_relationships=False,
+                             allow_client_generated_ids=False):
         """Creates and returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
 
@@ -538,9 +623,16 @@ class APIManager(object):
            Force the model name in the URL to lowercase.
 
         """
-        if exclude_columns is not None and include_columns is not None:
+        # Perform some sanity checks on the provided keyword arguments.
+        if only is not None and exclude is not None:
             msg = ('Cannot simultaneously specify both include columns and'
                    ' exclude columns.')
+            raise IllegalArgumentError(msg)
+        if not hasattr(model, 'id'):
+            msg = 'Provided model must have an `id` attribute'
+            raise IllegalArgumentError(msg)
+        if collection_name == '':
+            msg = 'Collection name must be nonempty'
             raise IllegalArgumentError(msg)
         # If no Flask application is specified, use the one (we assume) was
         # specified in the constructor.
@@ -551,26 +643,6 @@ class APIManager(object):
             collection_name = model.__tablename__
         # convert all method names to upper case
         methods = frozenset((m.upper() for m in methods))
-        # sets of methods used for different types of endpoints
-        no_instance_methods = methods & frozenset(('POST', ))
-        instance_methods = \
-            methods & frozenset(('GET', 'PATCH', 'DELETE', 'PUT'))
-        possibly_empty_instance_methods = methods & frozenset(('GET', ))
-        if allow_patch_many and ('PATCH' in methods or 'PUT' in methods):
-            possibly_empty_instance_methods |= frozenset(('PATCH', 'PUT'))
-        if allow_delete_many and 'DELETE' in methods:
-            possibly_empty_instance_methods |= frozenset(('DELETE', ))
-
-        # Check that primary_key is included for no_instance_methods
-        if no_instance_methods:
-            pk_name = primary_key or primary_key_name(model)
-            if (include_columns and pk_name not in include_columns or
-                exclude_columns and pk_name in exclude_columns):
-                msg = ('The primary key must be included for APIs with POST.')
-                raise IllegalArgumentError(msg)
-
-        # the base URL of the endpoints on which requests will be made
-        collection_endpoint = '/{0}'.format(collection_name)
         # the name of the API, for use in creating the view and the blueprint
         apiname = APIManager.api_name(collection_name)
         # Prepend the universal preprocessors and postprocessors specified in
@@ -583,14 +655,36 @@ class APIManager(object):
             preprocessors_[key] = value + preprocessors_[key]
         for key, value in restlessinfo.universal_postprocessors.items():
             postprocessors_[key] = value + postprocessors_[key]
-        # the view function for the API for this model
+        # Create a default serializer and deserializer if none have been
+        # provided.
+        if serializer is None:
+            serializer = DefaultSerializer(only, exclude,
+                                           additional_attributes)
+            # if validation_exceptions is None:
+            #     validation_exceptions = [DeserializationException]
+            # else:
+            #     validation_exceptions.append(DeserializationException)
+        if deserializer is None:
+            deserializer = DefaultDeserializer(restlessinfo.session, model)
+        # Create the view function for the API for this model.
+        #
+        # Rename some variables with long names for the sake of brevity.
+        atmr = allow_to_many_replacement
+        acgi = allow_client_generated_ids
         api_view = API.as_view(apiname, restlessinfo.session, model,
-                               exclude_columns, include_columns,
-                               include_methods, validation_exceptions,
-                               results_per_page, max_results_per_page,
-                               post_form_preprocessor, preprocessors_,
-                               postprocessors_, primary_key, serializer,
-                               deserializer)
+                               # Keyword arguments for APIBase.__init__()
+                               preprocessors=preprocessors_,
+                               postprocessors=postprocessors_,
+                               primary_key=primary_key,
+                               validation_exceptions=validation_exceptions,
+                               allow_to_many_replacement=atmr,
+                               # Keyword arguments for API.__init__()
+                               page_size=page_size,
+                               max_page_size=max_page_size,
+                               serializer=serializer,
+                               deserializer=deserializer,
+                               includes=includes,
+                               allow_client_generated_ids=acgi)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = APIManager._next_blueprint_name(app.blueprints,
                                                         apiname)
@@ -601,46 +695,98 @@ class APIManager(object):
         # TODO what should the second argument here be?
         # TODO should the url_prefix be specified here or in register_blueprint
         blueprint = Blueprint(blueprintname, __name__, url_prefix=url_prefix)
-        # For example, /api/person.
-        blueprint.add_url_rule(collection_endpoint,
-                               methods=no_instance_methods, view_func=api_view)
-        # For example, /api/person/1.
-        blueprint.add_url_rule(collection_endpoint,
-                               defaults={'instid': None, 'relationname': None,
-                                         'relationinstid': None},
-                               methods=possibly_empty_instance_methods,
-                               view_func=api_view)
-        # the per-instance endpoints will allow both integer and string primary
-        # key accesses
-        instance_endpoint = '{0}/<instid>'.format(collection_endpoint)
-        # For example, /api/person/1.
-        blueprint.add_url_rule(instance_endpoint, methods=instance_methods,
-                               defaults={'relationname': None,
-                                         'relationinstid': None},
-                               view_func=api_view)
-        # add endpoints which expose related models
-        relation_endpoint = '{0}/<relationname>'.format(instance_endpoint)
-        relation_instance_endpoint = \
-            '{0}/<relationinstid>'.format(relation_endpoint)
-        # For example, /api/person/1/computers.
-        blueprint.add_url_rule(relation_endpoint,
-                               methods=possibly_empty_instance_methods,
-                               defaults={'relationinstid': None},
-                               view_func=api_view)
-        # For example, /api/person/1/computers/2.
-        blueprint.add_url_rule(relation_instance_endpoint,
-                               methods=instance_methods,
-                               view_func=api_view)
+        add_rule = blueprint.add_url_rule
+
+        # The URLs that will be routed below.
+        collection_url = '/{0}'.format(collection_name)
+        resource_url = '{0}/<resource_id>'.format(collection_url)
+        related_resource_url = '{0}/<relation_name>'.format(resource_url)
+        to_many_resource_url = \
+            '{0}/<related_resource_id>'.format(related_resource_url)
+        relationship_url = '{0}/links/<relation_name>'.format(resource_url)
+
+        # Create relationship URL endpoints.
+        #
+        # Due to a limitation in Flask's routing (which is actually Werkzeug's
+        # routing), this needs to be declared *before* the rest of the API
+        # views. Otherwise, requests like :http:get:`/articles/1/links/author`
+        # interpret the word `links` as the name of a relation of an article
+        # object.
+        relationship_api_name = '{0}.links'.format(apiname)
+        rapi_view = RelationshipAPI.as_view
+        adftmr = allow_delete_from_to_many_relationships
+        relationship_api_view = \
+            rapi_view(relationship_api_name, restlessinfo.session, model,
+                      # Keyword arguments for APIBase.__init__()
+                      preprocessors=preprocessors_,
+                      postprocessors=postprocessors_,
+                      primary_key=primary_key,
+                      validation_exceptions=validation_exceptions,
+                      allow_to_many_replacement=allow_to_many_replacement,
+                      # Keyword arguments RelationshipAPI.__init__()
+                      allow_delete_from_to_many_relationships=adftmr)
+        # TODO Document this rather mysterious behavior, that these non-PATCH
+        # methods are allowed on relationship URLs.
+        relationship_methods = READONLY_METHODS & methods
+        if 'PATCH' in methods:
+            relationship_methods |= WRITEONLY_METHODS
+        add_rule(relationship_url, methods=relationship_methods,
+                 view_func=relationship_api_view)
+
+        # The URL for accessing the entire collection. (POST is special because
+        # the :meth:`API.post` method doesn't have any arguments.)
+        #
+        # For example, /api/people.
+        collection_methods = frozenset(('POST', )) & methods
+        add_rule(collection_url, view_func=api_view,
+                 methods=collection_methods)
+        collection_methods = frozenset(('GET', )) & methods
+        collection_defaults = dict(resource_id=None, relation_name=None,
+                                   related_resource_id=None)
+        add_rule(collection_url, view_func=api_view,
+                 methods=collection_methods, defaults=collection_defaults)
+
+        # The URL for accessing a single resource. (DELETE and PATCH are
+        # special because the :meth:`API.delete` and :meth:`API.patch` methods
+        # don't have the `relationname` and `relationinstid` arguments.)
+        #
+        # For example, /api/people/1.
+        resource_methods = frozenset(('DELETE', 'PATCH')) & methods
+        add_rule(resource_url, view_func=api_view, methods=resource_methods)
+        resource_methods = frozenset(('GET', )) & methods
+        resource_defaults = dict(relation_name=None, related_resource_id=None)
+        add_rule(resource_url, view_func=api_view, methods=resource_methods,
+                 defaults=resource_defaults)
+
+        # The URL for accessing a related resource, which may be a to-many or a
+        # to-one relationship.
+        #
+        # For example, /api/people/1/articles.
+        related_resource_methods = READONLY_METHODS & methods
+        related_resource_defaults = dict(related_resource_id=None)
+        add_rule(related_resource_url, view_func=api_view,
+                 methods=related_resource_methods,
+                 defaults=related_resource_defaults)
+
+        # The URL for accessing a to-many related resource.
+        #
+        # For example, /api/people/1/articles/1.
+        to_many_resource_methods = READONLY_METHODS & methods
+        add_rule(to_many_resource_url, view_func=api_view,
+                 methods=to_many_resource_methods)
+
         # if function evaluation is allowed, add an endpoint at /api/eval/...
         # which responds only to GET requests and responds with the result of
         # evaluating functions on all instances of the specified model
         if allow_functions:
-            eval_api_name = apiname + 'eval'
+            eval_api_name = '{0}.eval'.format(apiname)
             eval_api_view = FunctionAPI.as_view(eval_api_name,
                                                 restlessinfo.session, model)
-            eval_endpoint = '/eval' + collection_endpoint
-            blueprint.add_url_rule(eval_endpoint, methods=['GET'],
+            eval_endpoint = '/eval{0}'.format(collection_url)
+            eval_methods = ['GET']
+            blueprint.add_url_rule(eval_endpoint, methods=eval_methods,
                                    view_func=eval_api_view)
+
         # Finally, record that this APIManager instance has created an API for
         # the specified model.
         self.created_apis_for[model] = APIInfo(collection_name, blueprint.name)

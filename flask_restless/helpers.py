@@ -11,35 +11,30 @@
 """
 import datetime
 import inspect
-import uuid
 
 from dateutil.parser import parse as parse_datetime
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import Interval
+from sqlalchemy import Time
 from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.associationproxy import AssociationProxy
-from sqlalchemy.ext import hybrid
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import ColumnProperty
+from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import RelationshipProperty as RelProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.attributes import QueryableAttribute
-from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import ColumnElement
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
+from werkzeug.urls import url_quote_plus
 
 #: Names of attributes which should definitely not be considered relations when
 #: dynamically computing a list of relations of a SQLAlchemy model.
 RELATION_BLACKLIST = ('query', 'query_class', '_sa_class_manager',
                       '_decl_class_registry')
-
-
-#: Names of columns which should definitely not be considered user columns to
-#: be included in a dictionary representation of a model.
-COLUMN_BLACKLIST = ('_sa_polymorphic_on', )
 
 #: Types which should be considered columns of a model when iterating over all
 #: attributes of a model class.
@@ -92,23 +87,6 @@ def upper_keys(d):
     return dict(zip((k.upper() for k in d.keys()), d.values()))
 
 
-def get_columns(model):
-    """Returns a dictionary-like object containing all the columns of the
-    specified `model` class.
-
-    This includes `hybrid attributes`_.
-
-    .. _hybrid attributes: http://docs.sqlalchemy.org/en/latest/orm/extensions/hybrid.html
-
-    """
-    columns = {}
-    for superclass in model.__mro__:
-        for name, column in superclass.__dict__.items():
-            if isinstance(column, COLUMN_TYPES):
-                columns[name] = column
-    return columns
-
-
 def get_relations(model):
     """Returns a list of relation names of `model` (as a list of strings)."""
     return [k for k in dir(model)
@@ -122,6 +100,10 @@ def get_related_model(model, relationname):
 
     """
     if hasattr(model, relationname):
+        # inspector = sqlalchemy_inspect(model)
+        # attributes = inspector.attrs
+        # if relationname in attributes:
+        #     state = attributes[relationname]
         attr = getattr(model, relationname)
         if hasattr(attr, 'property') \
                 and isinstance(attr.property, RelProperty):
@@ -145,6 +127,29 @@ def get_related_association_proxy_model(attr):
     return None
 
 
+def foreign_key_columns(model):
+    """Returns a list of the :class:`sqlalchemy.Column` objects that contain
+    foreign keys for relationships in the specified model class.
+
+    """
+    try:
+        inspector = sqlalchemy_inspect(model)
+    except NoInspectionAvailable:
+        # Well, the inspection of a model class returns a mapper anyway, so
+        # let's just assume the inspection would have returned the mapper.
+        inspector = class_mapper(model)
+    all_columns = inspector.columns
+    return [c for c in all_columns if c.foreign_keys]
+
+
+def foreign_keys(model):
+    """Returns a list of the names of columns that contain foreign keys for
+    relationships in the specified model class.
+
+    """
+    return [column.name for column in foreign_key_columns(model)]
+
+
 def has_field(model, fieldname):
     """Returns ``True`` if the `model` has the specified field or if it has a
     settable hybrid property for this field name.
@@ -157,56 +162,18 @@ def has_field(model, fieldname):
 
 
 def get_field_type(model, fieldname):
-    """Helper which returns the SQLAlchemy type of the field.
-
-    """
+    """Helper which returns the SQLAlchemy type of the field."""
     field = getattr(model, fieldname)
     if isinstance(field, ColumnElement):
-        fieldtype = field.type
-    else:
-        if isinstance(field, AssociationProxy):
-            field = field.remote_attr
-        if hasattr(field, 'property'):
-            prop = field.property
-            if isinstance(prop, RelProperty):
-                return None
-            fieldtype = prop.columns[0].type
-        else:
+        return field.type
+    if isinstance(field, AssociationProxy):
+        field = field.remote_attr
+    if hasattr(field, 'property'):
+        prop = field.property
+        if isinstance(prop, RelProperty):
             return None
-    return fieldtype
-
-
-def is_date_field(model, fieldname):
-    """Returns ``True`` if and only if the field of `model` with the specified
-    name corresponds to either a :class:`datetime.date` object or a
-    :class:`datetime.datetime` object.
-
-    """
-    fieldtype = get_field_type(model, fieldname)
-    return isinstance(fieldtype, Date) or isinstance(fieldtype, DateTime)
-
-
-def is_interval_field(model, fieldname):
-    """Returns ``True`` if and only if the field of `model` with the specified
-    name corresponds to a :class:`datetime.timedelta` object.
-
-    """
-    fieldtype = get_field_type(model, fieldname)
-    return isinstance(fieldtype, Interval)
-
-
-def assign_attributes(model, **kwargs):
-    """Assign all attributes from the supplied `kwargs` dictionary to the
-    model. This does the same thing as the default declarative constructor,
-    when provided a dictionary of attributes and values.
-
-    """
-    cls = type(model)
-    for field, value in kwargs.items():
-        if not hasattr(cls, field):
-            msg = '{0} has no field named "{1!r}"'.format(cls.__name__, field)
-            raise TypeError(msg)
-        setattr(model, field, value)
+        return prop.columns[0].type
+    return None
 
 
 def primary_key_names(model):
@@ -231,6 +198,26 @@ def primary_key_name(model_or_instance):
     model = model_or_instance if its_a_model else model_or_instance.__class__
     pk_names = primary_key_names(model)
     return 'id' if 'id' in pk_names else pk_names[0]
+
+
+def primary_key_value(instance, as_string=False):
+    """Returns the value of the primary key field of the specified `instance`
+    of a SQLAlchemy model.
+
+    This is a convenience function for::
+
+        getattr(instance, primary_key_name(instance))
+
+    If `as_string` is ``True``, try to coerce the return value to a string.
+
+    """
+    result = getattr(instance, primary_key_name(instance))
+    if not as_string:
+        return result
+    try:
+        return str(result)
+    except UnicodeEncodeError:
+        return url_quote_plus(result.encode('utf-8'))
 
 
 def is_like_list(instance, relation):
@@ -265,132 +252,6 @@ def is_mapped_class(cls):
         return True
     except:
         return False
-
-
-# This code was adapted from :meth:`elixir.entity.Entity.to_dict` and
-# http://stackoverflow.com/q/1958219/108197.
-def to_dict(instance, deep=None, exclude=None, include=None,
-            exclude_relations=None, include_relations=None,
-            include_methods=None):
-    """Returns a dictionary representing the fields of the specified `instance`
-    of a SQLAlchemy model.
-
-    The returned dictionary is suitable as an argument to
-    :func:`flask.jsonify`; :class:`datetime.date` and :class:`uuid.UUID`
-    objects are converted to string representations, so no special JSON encoder
-    behavior is required.
-
-    `deep` is a dictionary containing a mapping from a relation name (for a
-    relation of `instance`) to either a list or a dictionary. This is a
-    recursive structure which represents the `deep` argument when calling
-    :func:`!_to_dict` on related instances. When an empty list is encountered,
-    :func:`!_to_dict` returns a list of the string representations of the
-    related instances.
-
-    If either `include` or `exclude` is not ``None``, exactly one of them must
-    be specified. If both are not ``None``, then this function will raise a
-    :exc:`ValueError`. `exclude` must be a list of strings specifying the
-    columns which will *not* be present in the returned dictionary
-    representation of the object (in other words, it is a
-    blacklist). Similarly, `include` specifies the only columns which will be
-    present in the returned dictionary (in other words, it is a whitelist).
-
-    .. note::
-
-       If `include` is an iterable of length zero (like the empty tuple or the
-       empty list), then the returned dictionary will be empty. If `include` is
-       ``None``, then the returned dictionary will include all columns not
-       excluded by `exclude`.
-
-    `include_relations` is a dictionary mapping strings representing relation
-    fields on the specified `instance` to a list of strings representing the
-    names of fields on the related model which should be included in the
-    returned dictionary; `exclude_relations` is similar.
-
-    `include_methods` is a list mapping strings to method names which will
-    be called and their return values added to the returned dictionary.
-
-    """
-    if (exclude is not None or exclude_relations is not None) and \
-            (include is not None or include_relations is not None):
-        raise ValueError('Cannot specify both include and exclude.')
-    # create a list of names of columns, including hybrid properties
-    instance_type = type(instance)
-    columns = []
-    try:
-        inspected_instance = sqlalchemy_inspect(instance_type)
-        column_attrs = inspected_instance.column_attrs.keys()
-        descriptors = inspected_instance.all_orm_descriptors.items()
-        hybrid_columns = [k for k, d in descriptors
-                          if d.extension_type == hybrid.HYBRID_PROPERTY
-                          and not (deep and k in deep)]
-        columns = column_attrs + hybrid_columns
-    except NoInspectionAvailable:
-        return instance
-    # filter the columns based on exclude and include values
-    if exclude is not None:
-        columns = (c for c in columns if c not in exclude)
-    elif include is not None:
-        columns = (c for c in columns if c in include)
-    # create a dictionary mapping column name to value
-    result = dict((col, getattr(instance, col)) for col in columns
-                  if not (col.startswith('__') or col in COLUMN_BLACKLIST))
-    # add any included methods
-    if include_methods is not None:
-        for method in include_methods:
-            if '.' not in method:
-                value = getattr(instance, method)
-                # Allow properties and static attributes in include_methods
-                if callable(value):
-                    value = value()
-                result[method] = value
-    # Check for objects in the dictionary that may not be serializable by
-    # default. Convert datetime objects to ISO 8601 format, convert UUID
-    # objects to hexadecimal strings, etc.
-    for key, value in result.items():
-        if isinstance(value, (datetime.date, datetime.time)):
-            result[key] = value.isoformat()
-        elif isinstance(value, uuid.UUID):
-            result[key] = str(value)
-        elif key not in column_attrs and is_mapped_class(type(value)):
-            result[key] = to_dict(value)
-    # recursively call _to_dict on each of the `deep` relations
-    deep = deep or {}
-    for relation, rdeep in deep.items():
-        # Get the related value so we can see if it is None, a list, a query
-        # (as specified by a dynamic relationship loader), or an actual
-        # instance of a model.
-        relatedvalue = getattr(instance, relation)
-        if relatedvalue is None:
-            result[relation] = None
-            continue
-        # Determine the included and excluded fields for the related model.
-        newexclude = None
-        newinclude = None
-        if exclude_relations is not None and relation in exclude_relations:
-            newexclude = exclude_relations[relation]
-        elif (include_relations is not None and
-              relation in include_relations):
-            newinclude = include_relations[relation]
-        # Determine the included methods for the related model.
-        newmethods = None
-        if include_methods is not None:
-            newmethods = [method.split('.', 1)[1] for method in include_methods
-                          if method.split('.', 1)[0] == relation]
-        if is_like_list(instance, relation):
-            result[relation] = [to_dict(inst, rdeep, exclude=newexclude,
-                                        include=newinclude,
-                                        include_methods=newmethods)
-                                for inst in relatedvalue]
-            continue
-        # If the related value is dynamically loaded, resolve the query to get
-        # the single instance.
-        if isinstance(relatedvalue, Query):
-            relatedvalue = relatedvalue.one()
-        result[relation] = to_dict(relatedvalue, rdeep, exclude=newexclude,
-                                   include=newinclude,
-                                   include_methods=newmethods)
-    return result
 
 
 def evaluate_functions(session, model, functions):
@@ -432,10 +293,14 @@ def evaluate_functions(session, model, functions):
 
     """
     if not model or not functions:
-        return {}
+        return []
     processed = []
-    funcnames = []
+    # funcnames = []
     for function in functions:
+        if 'name' not in function:
+            raise KeyError('Missing `name` key in function object')
+        if 'field' not in function:
+            raise KeyError('Missing `field` key in function object')
         funcname, fieldname = function['name'], function['field']
         # We retrieve the function by name from the SQLAlchemy ``func``
         # module and the field by name from the model class.
@@ -447,11 +312,8 @@ def evaluate_functions(session, model, functions):
         except AttributeError as exception:
             exception.field = fieldname
             raise exception
-        # Time to store things to be executed. The processed list stores
-        # functions that will be executed in the database and funcnames
-        # contains names of the entries that will be returned to the
-        # caller.
-        funcnames.append('{0}__{1}'.format(funcname, fieldname))
+        # Store the functions that will be executed in the database.
+        # funcnames.append('{0}__{1}'.format(funcname, fieldname))
         processed.append(funcobj(field))
     # Evaluate all the functions at once and get an iterable of results.
     try:
@@ -460,11 +322,12 @@ def evaluate_functions(session, model, functions):
         # HACK original error message is of the form:
         #
         #    '(OperationalError) no such function: bogusfuncname'
+        #
         original_error_msg = exception.args[0]
         bad_function = original_error_msg[37:]
         exception.function = bad_function
         raise exception
-    return dict(zip(funcnames, evaluated))
+    return list(evaluated)
 
 
 def query_by_primary_key(session, model, primary_key_value, primary_key=None):
@@ -495,54 +358,37 @@ def get_by(session, model, primary_key_value, primary_key=None):
     return result.first()
 
 
-def get_or_create(session, model, attrs):
-    """Returns the single instance of `model` whose primary key has the
-    value found in `attrs`, or initializes a new instance if no primary key
-    is specified.
-
-    Before returning the new or existing instance, its attributes are
-    assigned to the values supplied in the `attrs` dictionary.
-
-    This method does not commit the changes made to the session; the
-    calling function has that responsibility.
-
-    """
-    # Not a full relation, probably just an association proxy to a scalar
-    # attribute on the remote model.
-    if not isinstance(attrs, dict):
-        return attrs
-    # Recurse into nested relationships
-    for rel in get_relations(model):
-        if rel not in attrs:
-            continue
-        if isinstance(attrs[rel], list):
-            attrs[rel] = [get_or_create(session, get_related_model(model, rel),
-                                        r) for r in attrs[rel]]
-        else:
-            attrs[rel] = get_or_create(session, get_related_model(model, rel),
-                                       attrs[rel])
-    # Find private key names
-    pk_names = primary_key_names(model)
-    attrs = strings_to_dates(model, attrs)
-    # If all of the primary keys were included in `attrs`, try to update
-    # an existing row.
-    if all(k in attrs for k in pk_names):
-        # Determine the sub-dictionary of `attrs` which contains the mappings
-        # for the primary keys.
-        pk_values = dict((k, v) for (k, v) in attrs.items()
-                         if k in pk_names)
-        # query for an existing row which matches all the specified
-        # primary key values.
-        instance = session_query(session, model).filter_by(**pk_values).first()
-        if instance is not None:
-            assign_attributes(instance, **attrs)
-            return instance
-    # If some of the primary keys were missing, or the row wasn't found,
-    # create a new row.
-    return model(**attrs)
+def string_to_datetime(model, fieldname, value):
+    if value is None:
+        return value
+    # If this is a date, time or datetime field, parse it and convert it to
+    # the appropriate type.
+    field_type = get_field_type(model, fieldname)
+    if isinstance(field_type, (Date, Time, DateTime)):
+        # If the string is empty, no datetime can be inferred from it.
+        if value.strip() == '':
+            return None
+        # If the string is a string indicating that the value of should be the
+        # current datetime on the server, get the current datetime that way.
+        if value in CURRENT_TIME_MARKERS:
+            return getattr(func, value.lower())()
+        value_as_datetime = parse_datetime(value)
+        # If the attribute on the model needs to be a Date or Time object as
+        # opposed to a DateTime object, just get the date component of the
+        # datetime.
+        if isinstance(field_type, Date):
+            return value_as_datetime.date()
+        if isinstance(field_type, Time):
+            return value_as_datetime.time()
+        return value_as_datetime
+    # If this is an Interval field, convert the integer value to a timedelta.
+    if isinstance(field_type, Interval) and isinstance(value, int):
+        return datetime.timedelta(seconds=value)
+    # In any other case, simply copy the value unchanged.
+    return value
 
 
-def strings_to_dates(model, dictionary):
+def strings_to_datetimes(model, dictionary):
     """Returns a new dictionary with all the mappings of `dictionary` but
     with date strings and intervals mapped to :class:`datetime.datetime` or
     :class:`datetime.timedelta` objects.
@@ -558,28 +404,12 @@ def strings_to_dates(model, dictionary):
     This function outputs a new dictionary; it does not modify the argument.
 
     """
-    result = {}
-    for fieldname, value in dictionary.items():
-        if is_date_field(model, fieldname) and value is not None:
-            if value.strip() == '':
-                result[fieldname] = None
-            elif value in CURRENT_TIME_MARKERS:
-                result[fieldname] = getattr(func, value.lower())()
-            else:
-                value_as_datetime = parse_datetime(value)
-                result[fieldname] = value_as_datetime
-                # If the attribute on the model needs to be a Date object as
-                # opposed to a DateTime object, just get the date component of
-                # the datetime.
-                fieldtype = get_field_type(model, fieldname)
-                if isinstance(fieldtype, Date):
-                    result[fieldname] = value_as_datetime.date()
-        elif (is_interval_field(model, fieldname) and value is not None
-              and isinstance(value, int)):
-            result[fieldname] = datetime.timedelta(seconds=value)
-        else:
-            result[fieldname] = value
-    return result
+    # In Python 3, this should be
+    #     return {k: string_to_datetime(model, k, v)
+    #             for k, v in dictionary.items() if k not in ('type', 'links')}
+    #
+    return dict((k, string_to_datetime(model, k, v))
+                for k, v in dictionary.items() if k not in ('type', 'links'))
 
 
 def count(session, query):
@@ -595,6 +425,23 @@ def count(session, query):
     if num_results is None or query._limit:
         return query.count()
     return num_results
+
+
+def get_model(instance):
+    """Returns the model class of which the specified object is an instance."""
+    return type(instance)
+
+
+def changes_on_update(model):
+    """Returns a best guess at whether the specified SQLAlchemy model class is
+    modified on updates.
+
+    We guess whether this happens by checking whether any columns of model have
+    the :attr:`sqlalchemy.Column.onupdate` attribute set.
+
+    """
+    return any(column.onupdate is not None
+               for column in sqlalchemy_inspect(model).columns)
 
 
 # This code comes from <http://stackoverflow.com/a/6798042/108197>, which is
@@ -626,33 +473,79 @@ class Singleton(_Singleton('SingletonMeta', (object,), {})):
     pass
 
 
-class UrlFinder(Singleton):
-    """The singleton class that backs the :func:`url_for` function."""
+class KnowsAPIManagers:
 
     def __init__(self):
-
         #: A global list of created :class:`APIManager` objects.
-        self.created_managers = []
+        self.created_managers = set()
 
-    def __call__(self, model, instid=None, relationname=None,
-                 relationinstid=None, _apimanager=None, **kw):
+    def register(self, apimanager):
+        self.created_managers.add(apimanager)
+
+
+class ModelFinder(KnowsAPIManagers, Singleton):
+    """The singleton class that backs the :func:`model_for` function."""
+
+    def __call__(self, collection_name, _apimanager=None, **kw):
+        if _apimanager is not None:
+            # This may raise ValueError.
+            return _apimanager.model_for(collection_name, **kw)
+        for manager in self.created_managers:
+            try:
+                return self(collection_name, _apimanager=manager, **kw)
+            except ValueError:
+                pass
+        message = ('No model with collection name {0} is known to any'
+                   ' APIManager objects; maybe you have not set the'
+                   ' `collection_name` keyword argument when calling'
+                   ' `APIManager.create_api()`?').format(collection_name)
+        raise ValueError(message)
+
+
+class CollectionNameFinder(KnowsAPIManagers, Singleton):
+    """The singleton class that backs the :func:`collection_name` function."""
+
+    def __call__(self, model, _apimanager=None, **kw):
         if _apimanager is not None:
             if model not in _apimanager.created_apis_for:
                 message = ('APIManager {0} has not created an API for model '
                            ' {1}').format(_apimanager, model)
                 raise ValueError(message)
-            return _apimanager.url_for(model, instid=instid,
-                                       relationname=relationname,
-                                       relationinstid=relationinstid, **kw)
+            return _apimanager.collection_name(model, **kw)
         for manager in self.created_managers:
             try:
-                return self(model, instid=instid, relationname=relationname,
-                            relationinstid=relationinstid,
+                return self(model, _apimanager=manager, **kw)
+            except ValueError:
+                pass
+        message = ('Model {0} is not known to any APIManager'
+                   ' objects; maybe you have not called'
+                   ' APIManager.create_api() for this model.').format(model)
+        raise ValueError(message)
+
+
+class UrlFinder(KnowsAPIManagers, Singleton):
+    """The singleton class that backs the :func:`url_for` function."""
+
+    def __call__(self, model, resource_id=None, relation_name=None,
+                 related_resource_id=None, _apimanager=None, **kw):
+        if _apimanager is not None:
+            if model not in _apimanager.created_apis_for:
+                message = ('APIManager {0} has not created an API for model '
+                           ' {1}').format(_apimanager, model)
+                raise ValueError(message)
+            return _apimanager.url_for(model, resource_id=resource_id,
+                                       relation_name=relation_name,
+                                       related_resource_id=related_resource_id, **kw)
+        for manager in self.created_managers:
+            try:
+                return self(model, resource_id=resource_id, relation_name=relation_name,
+                            related_resource_id=related_resource_id,
                             _apimanager=manager, **kw)
             except ValueError:
                 pass
         message = ('Model {0} is not known to any APIManager'
-                   ' objects').format(model)
+                   ' objects; maybe you have not called'
+                   ' APIManager.create_api() for this model.').format(model)
         raise ValueError(message)
 
 
@@ -667,7 +560,7 @@ class UrlFinder(Singleton):
 #: :class:`APIManager`. Restrict our search for endpoints exposing `model` to
 #: only endpoints created by the specified :class:`APIManager` instance.
 #:
-#: `instid`, `relationname`, and `relationinstid` allow you to get a more
+#: `resource_id`, `relation_name`, and `relationresource_id` allow you to get a more
 #: specific sub-resource.
 #:
 #: For example, suppose you have a model class ``Person`` and have created the
@@ -675,13 +568,81 @@ class UrlFinder(Singleton):
 #:
 #:     >>> manager = APIManager(app, session=session)
 #:     >>> manager.create_api(Person, collection_name='people')
-#:     >>> url_for(Person, instid=3)
+#:     >>> url_for(Person, resource_id=3)
 #:     'http://example.com/api/people/3'
-#:     >>> url_for(Person, instid=3, relationname=computers)
+#:     >>> url_for(Person, resource_id=3, relation_name=computers)
 #:     'http://example.com/api/people/3/computers'
-#:     >>> url_for(Person, instid=3, relationname=computers, relationinstid=9)
+#:     >>> url_for(Person, resource_id=3, relation_name=computers, related_resource_id=9)
 #:     'http://example.com/api/people/3/computers/9'
 #:
 #: The remaining keyword arguments, `kw`, are passed directly on to
 #: :func:`flask.url_for`.
+#:
+#: Since this function creates absolute URLs to resources linked to the given
+#: instance, it must be called within a `Flask request context`_.
+#:
+#:  .. _Flask request context: http://flask.pocoo.org/docs/0.10/reqcontext/
+#:
 url_for = UrlFinder()
+
+#: Returns the collection name for the specified model, as specified by the
+#: ``collection_name`` keyword argument to :meth:`APIManager.create_api` when
+#: it was previously invoked on the model.
+#:
+#: `model` is a SQLAlchemy model class. This should be a model on which
+#: :meth:`APIManager.create_api_blueprint` (or :meth:`APIManager.create_api`)
+#: has been invoked previously. If no API has been created for it, this
+#: function raises a `ValueError`.
+#:
+#: If `_apimanager` is not ``None``, it must be an instance of
+#: :class:`APIManager`. Restrict our search for endpoints exposing `model` to
+#: only endpoints created by the specified :class:`APIManager` instance.
+#:
+#: For example, suppose you have a model class ``Person`` and have created the
+#: appropriate Flask application and SQLAlchemy session::
+#:
+#:     >>> from mymodels import Person
+#:     >>> manager = APIManager(app, session=session)
+#:     >>> manager.create_api(Person, collection_name='people')
+#:     >>> collection_name(Person)
+#:     'people'
+#:
+#: This function is the inverse of :func:`model_for`::
+#:
+#:     >>> manager.collection_name(manager.model_for('people'))
+#:     'people'
+#:     >>> manager.model_for(manager.collection_name(Person))
+#:     <class 'mymodels.Person'>
+#:
+collection_name = CollectionNameFinder()
+
+#: Returns the model corresponding to the given collection name, as specified
+#: by the ``collection_name`` keyword argument to :meth:`APIManager.create_api`
+#: when it was previously invoked on the model.
+#:
+#: `collection_name` is a string corresponding to the "type" of a model. This
+#: should be a model on which :meth:`APIManager.create_api_blueprint` (or
+#: :meth:`APIManager.create_api`) has been invoked previously. If no API has
+#: been created for it, this function raises a `ValueError`.
+#:
+#: If `_apimanager` is not ``None``, it must be an instance of
+#: :class:`APIManager`. Restrict our search for endpoints exposing `model` to
+#: only endpoints created by the specified :class:`APIManager` instance.
+#:
+#: For example, suppose you have a model class ``Person`` and have created the
+#: appropriate Flask application and SQLAlchemy session::
+#:
+#:     >>> from mymodels import Person
+#:     >>> manager = APIManager(app, session=session)
+#:     >>> manager.create_api(Person, collection_name='people')
+#:     >>> model_for('people')
+#:     <class 'mymodels.Person'>
+#:
+#: This function is the inverse of :func:`collection_name`::
+#:
+#:     >>> manager.collection_name(manager.model_for('people'))
+#:     'people'
+#:     >>> manager.model_for(manager.collection_name(Person))
+#:     <class 'mymodels.Person'>
+#:
+model_for = ModelFinder()

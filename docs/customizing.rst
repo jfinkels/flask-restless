@@ -113,6 +113,21 @@ method::
 
 Then the API will be exposed at ``/api/people`` instead of ``/api/person``.
 
+.. note::
+
+   According to the `JSON API standard`_,
+
+   .. blockquote::
+
+      Note: This spec is agnostic about inflection rules, so the value of type
+      can be either plural or singular. However, the same value should be used
+      consistently throughout an implementation.
+
+   It's up to you to make sure your collection names are either all plural or
+   all singular!
+
+.. _JSON API standard: http://jsonapi.org/format/#document-structure-resource-types
+
 Specifying one of many primary keys
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

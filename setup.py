@@ -17,6 +17,13 @@
 import sys
 from setuptools import setup
 
+# TODO We require Flask version 1.0 or greater if we want Flask to recognize
+# the JSON API mimetype as a form of JSON and therefore automatically be able
+# to deserialize JSON to Python via the Request.get_json() method. On the other
+# hand, we could keep the 0.10 requirement and simply rely on the ``force``
+# keyword argument of that method, which also works around the limitations in
+# MSIE8 and MSIE9...
+
 #: The installation requirements for Flask-Restless. Flask-SQLAlchemy is not
 #: required, so the user must install it explicitly.
 requirements = ['flask>=0.10', 'sqlalchemy>=0.8', 'python-dateutil>2.2',

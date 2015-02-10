@@ -21,9 +21,15 @@ from sqlalchemy import or_
 from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
-from .helpers import session_query
+from .helpers import get_related_model
 from .helpers import get_related_association_proxy_model
 from .helpers import primary_key_names
+from .helpers import session_query
+from .helpers import string_to_datetime
+
+
+class ComparisonToNull(Exception):
+    pass
 
 
 def _sub_operator(model, argument, fieldname):
@@ -73,9 +79,8 @@ OPERATORS = {
     # Operators which accept a single argument.
     'is_null': lambda f: f == None,
     'is_not_null': lambda f: f != None,
-    # TODO what are these?
-    'desc': lambda f: f.desc,
-    'asc': lambda f: f.asc,
+    # 'desc': lambda f: f.desc,
+    # 'asc': lambda f: f.asc,
     # Operators which accept two arguments.
     '==': lambda f, a: f == a,
     'eq': lambda f, a: f == a,
@@ -106,42 +111,6 @@ OPERATORS = {
     'has': lambda f, a, fn: f.has(_sub_operator(f, a, fn)),
     'any': lambda f, a, fn: f.any(_sub_operator(f, a, fn)),
 }
-
-
-class OrderBy(object):
-    """Represents an "order by" in a SQL query expression."""
-
-    def __init__(self, field, direction='asc'):
-        """Instantiates this object with the specified attributes.
-
-        `field` is the name of the field by which to order the result set.
-
-        `direction` is either ``'asc'`` or ``'desc'``, for "ascending" and
-        "descending", respectively.
-
-        """
-        self.field = field
-        self.direction = direction
-
-    def __repr__(self):
-        """Returns a string representation of this object."""
-        return '<OrderBy {0}, {1}>'.format(self.field, self.direction)
-
-
-class GroupBy(object):
-    """Represents a "group by" in a SQL query expression."""
-
-    def __init__(self, field):
-        """Instantiates this object with the specified attributes.
-
-        `field` is the name of the field by which to group the result set.
-
-        """
-        self.field = field
-
-    def __repr__(self):
-        """Returns a string representation of this object."""
-        return '<GroupBy {0}>'.format(self.field)
 
 
 class Filter(object):
@@ -186,7 +155,7 @@ class Filter(object):
                                              self.argument or self.otherfield)
 
     @staticmethod
-    def from_dictionary(dictionary):
+    def from_dictionary(model, dictionary):
         """Returns a new :class:`Filter` object with arguments parsed from
         `dictionary`.
 
@@ -222,8 +191,10 @@ class Filter(object):
         if 'or' not in dictionary and 'and' not in dictionary:
             fieldname = dictionary.get('name')
             operator = dictionary.get('op')
-            argument = dictionary.get('val')
             otherfield = dictionary.get('field')
+            argument = dictionary.get('val')
+            # Need to deal with the special case of converting dates.
+            argument = string_to_datetime(model, fieldname, argument)
             return Filter(fieldname, operator, argument, otherfield)
         # For the sake of brevity, rename this method.
         from_dict = Filter.from_dictionary
@@ -231,15 +202,19 @@ class Filter(object):
         # provided list of filters.
         if 'or' in dictionary:
             subfilters = dictionary.get('or')
-            return DisjunctionFilter(*(from_dict(f) for f in subfilters))
+            return DisjunctionFilter(*[from_dict(model, filter_)
+                                       for filter_ in subfilters])
         if 'and' in dictionary:
             subfilters = dictionary.get('and')
-            return ConjunctionFilter(*(from_dict(f) for f in subfilters))
+            return ConjunctionFilter(*[from_dict(model, filter_)
+                                       for filter_ in subfilters])
 
 
 class JunctionFilter(Filter):
+
     def __init__(self, *subfilters):
         self.subfilters = subfilters
+
     def __iter__(self):
         return iter(self.subfilters)
 
@@ -252,91 +227,6 @@ class ConjunctionFilter(JunctionFilter):
 class DisjunctionFilter(JunctionFilter):
     def __repr__(self):
         return 'or_{0}'.format(tuple(repr(f) for f in self))
-
-
-class SearchParameters(object):
-    """Aggregates the parameters for a search, including filters, search type,
-    limit, offset, and order by directives.
-
-    """
-
-    def __init__(self, filters=None, limit=None, offset=None, order_by=None,
-                 group_by=None):
-        """Instantiates this object with the specified attributes.
-
-        `filters` is a list of :class:`Filter` objects, representing filters to
-        be applied during the search.
-
-        `limit`, if not ``None``, specifies the maximum number of results to
-        return in the search.
-
-        `offset`, if not ``None``, specifies the number of initial results to
-        skip in the result set.
-
-        `order_by` is a list of :class:`OrderBy` objects, representing the
-        ordering directives to apply to the result set that matches the
-        search.
-
-        `group_by` is a list of :class:`GroupBy` objects, representing the
-        grouping directives to apply to the result set that matches the
-        search.
-
-        """
-        self.filters = filters or []
-        self.limit = limit
-        self.offset = offset
-        self.order_by = order_by or []
-        self.group_by = group_by or []
-
-    def __repr__(self):
-        """Returns a string representation of the search parameters."""
-        template = ('<SearchParameters filters={0}, order_by={1}, limit={2},'
-                    ' group_by={3}, offset={4}, junction={5}>')
-        return template.format(self.filters, self.order_by, self.limit,
-                               self.group_by, self.offset)
-
-    @staticmethod
-    def from_dictionary(dictionary):
-        """Returns a new :class:`SearchParameters` object with arguments parsed
-        from `dictionary`.
-
-        `dictionary` is a dictionary of the form::
-
-            {
-              'filters': [{'name': 'age', 'op': 'lt', 'val': 20}, ...],
-              'order_by': [{'field': 'name', 'direction': 'desc'}, ...]
-              'group_by': [{'field': 'age'}, ...]
-              'limit': 10,
-              'offset': 3,
-            }
-
-        where
-        - ``dictionary['filters']`` is the list of :class:`Filter` objects
-          (in dictionary form),
-        - ``dictionary['order_by']`` is the list of :class:`OrderBy` objects
-          (in dictionary form),
-        - ``dictionary['group_by']`` is the list of :class:`GroupBy` objects
-          (in dictionary form),
-        - ``dictionary['limit']`` is the maximum number of matching entries to
-          return,
-        - ``dictionary['offset']`` is the number of initial entries to skip in
-          the matching result set,
-
-        The provided dictionary may have other key/value pairs, but they are
-        ignored.
-
-        """
-        # for the sake of brevity...
-        from_dict = Filter.from_dictionary
-        filters = [from_dict(f) for f in dictionary.get('filters', [])]
-        order_by_list = dictionary.get('order_by', [])
-        order_by = [OrderBy(**o) for o in order_by_list]
-        group_by_list = dictionary.get('group_by', [])
-        group_by = [GroupBy(**o) for o in group_by_list]
-        limit = dictionary.get('limit')
-        offset = dictionary.get('offset')
-        return SearchParameters(filters=filters, limit=limit, offset=offset,
-                                order_by=order_by, group_by=group_by)
 
 
 class QueryBuilder(object):
@@ -405,7 +295,7 @@ class QueryBuilder(object):
         if argument is None:
             msg = ('To compare a value to NULL, use the is_null/is_not_null '
                    'operators.')
-            raise TypeError(msg)
+            raise ComparisonToNull(msg)
         if numargs == 2:
             return opfunc(field, argument)
         return opfunc(field, argument, fieldname)
@@ -444,7 +334,8 @@ class QueryBuilder(object):
         return or_(create_filt(model, f) for f in filt)
 
     @staticmethod
-    def create_query(session, model, search_params, _ignore_order_by=False):
+    def create_query(session, model, filters=None, sort=None, group_by=None,
+                     _ignore_order_by=False):
         """Builds an SQLAlchemy query instance based on the search parameters
         present in ``search_params``, an instance of :class:`SearchParameters`.
 
@@ -474,32 +365,30 @@ class QueryBuilder(object):
 
         """
         query = session_query(session, model)
-        # For the sake of brevity, rename this method.
-        create_filt = QueryBuilder._create_filter
+
+        # Filter the query.
+        filters = [Filter.from_dictionary(model, f) for f in filters]
         # This function call may raise an exception.
-        filters = [create_filt(model, filt) for filt in search_params.filters]
-        # Multiple filter criteria at the top level of the provided search
-        # parameters are interpreted as a conjunction (AND).
+        filters = [QueryBuilder._create_filter(model, f) for f in filters]
         query = query.filter(*filters)
 
-        # Order the search. If no order field is specified in the search
-        # parameters, order by primary key.
+        # Order the query. If no order field is specified, order by primary
+        # key.
         if not _ignore_order_by:
-            if search_params.order_by:
-                for val in search_params.order_by:
-                    field_name = val.field
-                    if '__' in field_name:
+            if sort:
+                for (symbol, field_name) in sort:
+                    direction_name = 'asc' if symbol == '+' else 'desc'
+                    if '.' in field_name:
                         field_name, field_name_in_relation = \
-                            field_name.split('__')
-                        relation = getattr(model, field_name)
-                        relation_model = relation.mapper.class_
+                            field_name.split('.')
+                        relation_model = get_related_model(model, field_name)
                         field = getattr(relation_model, field_name_in_relation)
-                        direction = getattr(field, val.direction)
+                        direction = getattr(field, direction_name)
                         query = query.join(relation_model)
                         query = query.order_by(direction())
                     else:
-                        field = getattr(model, val.field)
-                        direction = getattr(field, val.direction)
+                        field = getattr(model, field_name)
+                        direction = getattr(field, direction_name)
                         query = query.order_by(direction())
             else:
                 pks = primary_key_names(model)
@@ -507,49 +396,23 @@ class QueryBuilder(object):
                 query = query.order_by(*pk_order)
 
         # Group the query.
-        if search_params.group_by:
-            for groupby in search_params.group_by:
-                field = getattr(model, groupby.field)
-                query = query.group_by(field)
-
-        # Apply limit and offset to the query.
-        if search_params.limit:
-            query = query.limit(search_params.limit)
-        if search_params.offset:
-            query = query.offset(search_params.offset)
+        if group_by:
+            for field_name in group_by:
+                if '.' in field_name:
+                    field_name, field_name_in_relation = field_name.split('.')
+                    relation_model = get_related_model(model, field_name)
+                    field = getattr(relation_model, field_name_in_relation)
+                    query = query.join(relation_model)
+                    query = query.group_by(field)
+                else:
+                    field = getattr(model, field_name)
+                    query = query.group_by(field)
 
         return query
 
 
-def create_query(session, model, searchparams, _ignore_order_by=False):
-    """Returns a SQLAlchemy query object on the given `model` where the search
-    for the query is defined by `searchparams`.
-
-    The returned query matches the set of all instances of `model` which meet
-    the parameters of the search given by `searchparams`. For more information
-    on search parameters, see :ref:`search`.
-
-    `model` is a SQLAlchemy declarative model representing the database model
-    to query.
-
-    `searchparams` is either a dictionary (as parsed from a JSON request from
-    the client, for example) or a :class:`SearchParameters` instance defining
-    the parameters of the query (as returned by
-    :func:`SearchParameters.from_dictionary`, for example).
-
-    If `_ignore_order_by` is ``True``, no ``order_by`` method will be called on
-    the query, regardless of whether the search parameters indicate that there
-    should be an ``order_by``. (This is used internally by Flask-Restless to
-    work around a limitation in SQLAlchemy.)
-
-    """
-    if isinstance(searchparams, dict):
-        searchparams = SearchParameters.from_dictionary(searchparams)
-    return QueryBuilder.create_query(session, model, searchparams,
-                                     _ignore_order_by)
-
-
-def search(session, model, search_params, _ignore_order_by=False):
+def search(session, model, filters=None, sort=None, group_by=None,
+           single=False, _ignore_order_by=False):
     """Performs the search specified by the given parameters on the model
     specified in the constructor of this class.
 
@@ -568,6 +431,11 @@ def search(session, model, search_params, _ignore_order_by=False):
     `model` is a SQLAlchemy declarative model class representing the database
     model to query.
 
+    `sort` is a list of two-tuples of the form ``(direction, fieldname)``,
+    where ``direction`` is either ``'+'`` or ``'-'`` and ``fieldname`` is a
+    string representing an attribute of the model or a dot-separated
+    relationship path (for example, ``'owner.name'``).
+
     `search_params` is a dictionary containing all available search
     parameters. For more information on available search parameters, see
     :ref:`search`. Implementation note: this dictionary will be converted to a
@@ -580,12 +448,13 @@ def search(session, model, search_params, _ignore_order_by=False):
     work around a limitation in SQLAlchemy.)
 
     """
-    # `is_single` is True when 'single' is a key in ``search_params`` and its
-    # corresponding value is anything except those values which evaluate to
-    # False (False, 0, the empty string, the empty list, etc.).
-    is_single = search_params.get('single')
-    query = create_query(session, model, search_params, _ignore_order_by)
-    if is_single:
+    # # `is_single` is True when 'single' is a key in ``search_params`` and its
+    # # corresponding value is anything except those values which evaluate to
+    # # False (False, 0, the empty string, the empty list, etc.).
+    # is_single = search_params.get('single')
+    query = QueryBuilder.create_query(session, model, filters, sort, group_by,
+                                      _ignore_order_by)
+    if single:
         # may raise NoResultFound or MultipleResultsFound
         return query.one()
     return query

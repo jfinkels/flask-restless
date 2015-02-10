@@ -14,10 +14,8 @@
     :license: GNU AGPLv3+ or BSD
 
 """
-import re
 import sys
 
-from flask import json
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import Unicode
@@ -33,20 +31,13 @@ else:
     sav_version = tuple(int(n) for n in _sav.VERSION.split('.'))
     has_savalidation = True
 
+from .helpers import dumps
+from .helpers import loads
+from .helpers import ManagerTestBase
 from .helpers import skip_unless
-from .helpers import TestSupport
 
 
-#: A regular expression for email addresses.
-EMAIL_REGEX = re.compile("[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^"
-                         "_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a"
-                         "-z0-9](?:[a-z0-9-]*[a-z0-9])")
-
-dumps = json.dumps
-loads = json.loads
-
-
-class TestSimpleValidation(TestSupport):
+class TestSimpleValidation(ManagerTestBase):
     """Tests for validation errors raised by the SQLAlchemy's simple built-in
     validation.
 
@@ -62,23 +53,10 @@ class TestSimpleValidation(TestSupport):
         class CoolValidationError(Exception):
             pass
 
-        # create the validated class
-        # NOTE: don't name this `Person`, as in self.Person
-        class Test(self.Base):
-            __tablename__ = 'test'
+        class Person(self.Base):
+            __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
-            name = Column(Unicode(30), nullable=False, index=True)
-            email = Column(Unicode, nullable=False)
             age = Column(Integer, nullable=False)
-
-            @validates('email')
-            def validate_email(self, key, string):
-                if len(EMAIL_REGEX.findall(string)) != 1:
-                    exception = CoolValidationError()
-                    exception.errors = dict(email=('Must be in valid email'
-                                                   ' format'))
-                    raise exception
-                return string
 
             @validates('age')
             def validate_age(self, key, number):
@@ -88,58 +66,76 @@ class TestSimpleValidation(TestSupport):
                     raise exception
                 return number
 
-            @validates('name')
-            def validate_name(self, key, string):
-                if string is None:
-                    exception = CoolValidationError()
-                    exception.errors = dict(name='Must not be empty')
-                    raise exception
-                return string
+        self.Person = Person
         self.Base.metadata.create_all()
-        self.manager.create_api(Test, methods=['GET', 'POST', 'PATCH'],
+        self.manager.create_api(Person, methods=['POST', 'PATCH'],
                                 validation_exceptions=[CoolValidationError])
 
-    def test_validations(self):
-        """Test SQLAlchemy's built-in simple validations."""
-        # test posting a person with a badly formatted email field
-        person = dict(name='Jeffrey', email='bogus!!!email', age=1)
-        response = self.app.post('/api/test', data=dumps(person))
-        assert response.status_code == 400
-        data = loads(response.data)
-        assert 'validation_errors' in data
-        errors = data['validation_errors']
-        assert 'email' in errors
-        assert 'format' in errors['email'].lower()
+    def test_create_valid(self):
+        """Tests that an attempt to create a valid resource yields no error
+        response.
 
-        # posting a new person with valid email format should be fine
-        person = dict(name='John', email='foo@example.com', age=1)
-        response = self.app.post('/api/test', data=dumps(person))
+        """
+        data = dict(data=dict(type='person', age=1))
+        response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 201
-        personid = loads(response.data)['id']
+        document = loads(response.data)
+        person = document['data']
+        assert person['age'] == 1
 
-        # test patching a person to with badly formatted data
-        person = dict(name='Jeffrey', email='bogus!!!email', age=24)
-        response = self.app.patch('/api/test/' + str(personid),
-                                  data=dumps(person))
-        data = loads(response.data)
-        assert 'validation_errors' in data
-        errors = data['validation_errors']
-        assert 'email' in errors
-        assert 'format' in errors['email'].lower()
+    def test_create_invalid(self):
+        """Tests that an attempt to create an invalid resource yields an error
+        response.
 
-        # patching a person with correctly formatted fields should be fine
-        person = dict(email='foo@example.com')
-        response = self.app.patch('/api/test/' + str(personid),
-                                  data=dumps(person))
-        data = loads(response.data)
-        if 'validation_errors' in data and \
-                'email' in data['validation_errors']:
-            assert 'format' not in errors['email'].lower()
+        """
+        data = dict(data=dict(type='person', age=-1))
+        response = self.app.post('/api/person', data=dumps(data))
+        assert response.status_code == 400
+        document = loads(response.data)
+        errors = document['errors']
+        error = errors[0]
+        assert 'validation' in error['title'].lower()
+        assert 'must be between' in error['detail'].lower()
+        # Check that the person was not created.
+        assert self.session.query(self.Person).count() == 0
+
+    def test_update_valid(self):
+        """Tests that an attempt to update a resource with valid data yields no
+        error response.
+
+        """
+        person = self.Person(id=1, age=1)
+        self.session.add(person)
+        self.session.commit()
+        data = dict(data=dict(type='person', id='1', age=2))
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        print(response.data)
+        assert response.status_code == 204
+        assert person.age == 2
+
+    def test_update_invalid(self):
+        """Tests that an attempt to update a resource with invalid data yields
+        an error response.
+
+        """
+        person = self.Person(id=1, age=1)
+        self.session.add(person)
+        self.session.commit()
+        data = dict(data=dict(type='person', id='1', age=-1))
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        assert response.status_code == 400
+        document = loads(response.data)
+        errors = document['errors']
+        error = errors[0]
+        assert 'validation' in error['title'].lower()
+        assert 'must be between' in error['detail'].lower()
+        # Check that the person was not updated.
+        assert person.age == 1
 
 
 @skip_unless(has_savalidation and sav_version >= (0, 2) and
              sys.version < (3, 0, 0), 'savalidation not found.')
-class TestSAV(TestSupport):
+class TestSAValidation(ManagerTestBase):
     """Tests for validation errors raised by the ``savalidation`` package. For
     more information about this package, see `its PyPI page
     <http://pypi.python.org/pypi/SAValidation>`_.
@@ -148,98 +144,94 @@ class TestSAV(TestSupport):
 
     def setUp(self):
         """Create APIs for the validated models."""
-        super(TestSAV, self).setUp()
+        super(TestSAValidation, self).setUp()
 
-        class Test(self.Base, _sav.ValidationMixin):
-            __tablename__ = 'test'
+        class Person(self.Base, _sav.ValidationMixin):
+            __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
-            name = Column(Unicode(30))
             email = Column(Unicode)
-            age = Column(Integer)
 
-            sav.validates_presence_of('name', 'email')
+            sav.validates_presence_of('email')
             sav.validates_email('email')
 
+        self.Person = Person
         self.Base.metadata.create_all()
-
         exceptions = [_sav.ValidationError]
-        self.manager.create_api(Test, methods=['GET', 'POST', 'PATCH'],
+        self.manager.create_api(Person, methods=['POST', 'PATCH'],
                                 validation_exceptions=exceptions)
 
-    def test_format_validations(self):
-        """Tests that errors from validators which check if fields match a
-        format specified by a regular expression are correctly captured and
-        returned to the client.
+    def test_create_valid(self):
+        """Tests that an attempt to create a valid resource yields no error
+        response.
 
         """
-        # test posting a person with a badly formatted email field
-        person = dict(name='Jeffrey', email='bogus!!!email', age=1)
-        response = self.app.post('/api/test', data=dumps(person))
-        assert response.status_code == 400
-        data = loads(response.data)
-        assert 'validation_errors' in data
-        errors = data['validation_errors']
-        assert 'email' in errors
-        assert 'email address' in errors['email'].lower()
-
-        # posting a new person with valid email format should be fine
-        person = dict(name='John', email='foo@example.com', age=1)
-        response = self.app.post('/api/test', data=dumps(person))
+        data = dict(data=dict(type='person', email=u'example@example.com'))
+        response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 201
-        personid = loads(response.data)['id']
+        document = loads(response.data)
+        person = document['data']
+        assert person['email'] == u'example@example.com'
 
-        # test patching a person to with badly formatted data
-        person = dict(name='Jeffrey', email='bogus!!!email', age=24)
-        response = self.app.patch('/api/test/' + str(personid),
-                                  data=dumps(person))
-        assert 'validation_errors' in data
-        errors = data['validation_errors']
-        assert 'email' in errors
-        assert 'email address' in errors['email'].lower()
-
-        # patching a person with correctly formatted fields should be fine
-        person = dict(email='foo@example.com')
-        response = self.app.patch('/api/test/' + str(personid),
-                                  data=dumps(person))
-        data = loads(response.data)
-        if 'validation_errors' in data and \
-                'email' in data['validation_errors']:
-            assert 'email address' not in errors['email'].lower()
-
-    def test_presence_validations(self):
-        """Tests that errors from validators which check for presence are
-        correctly captured and returned to the client.
+    def test_create_absent(self):
+        """Tests that an attempt to create a resource with a missing required
+        attribute yields an error response.
 
         """
-        # missing required name field
-        person = dict(email='example@example.com')
-        response = self.app.post('/api/test', data=dumps(person))
+        data = dict(data=dict(type='person'))
+        response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 400
-        data = loads(response.data)
-        assert 'validation_errors' in data
-        errors = data['validation_errors']
-        assert 'name' in errors
-        assert 'enter a value' in errors['name'].lower()
+        document = loads(response.data)
+        errors = document['errors']
+        error = errors[0]
+        assert 'validation' in error['title'].lower()
+        assert 'email' in error['detail'].lower()
+        # Check that the person was not created.
+        assert self.session.query(self.Person).count() == 0
 
-        # missing required email field
-        person = dict(name='Jeffrey')
-        response = self.app.post('/api/test', data=dumps(person))
+    def test_create_invalid(self):
+        """Tests that an attempt to create an invalid resource yields an error
+        response.
+
+        """
+        data = dict(data=dict(type='person', email='bogus'))
+        response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 400
-        data = loads(response.data)
-        assert 'validation_errors' in data
-        errors = data['validation_errors']
-        assert 'email' in errors
-        assert 'enter a value' in errors['email'].lower()
+        document = loads(response.data)
+        errors = document['errors']
+        error = errors[0]
+        assert 'validation' in error['title'].lower()
+        assert 'email' in error['detail'].lower()
+        # Check that the person was not created.
+        assert self.session.query(self.Person).count() == 0
 
-        # everything required is now provided
-        person = dict(name='Jeffrey', email='example@example.com', age=24)
-        response = self.app.post('/api/test', data=dumps(person))
-        assert response.status_code == 201
-        personid = loads(response.data)['id']
+    def test_update_valid(self):
+        """Tests that an attempt to update a resource with valid data yields no
+        error response.
 
-        # check that the provided field values are in there
-        response = self.app.get('/api/test/' + str(personid))
-        assert response.status_code == 200
-        data = loads(response.data)
-        assert data['name'] == 'Jeffrey'
-        assert data['email'] == 'example@example.com'
+        """
+        person = self.Person(id=1, email='example@example.com')
+        self.session.add(person)
+        self.session.commit()
+        data = dict(data=dict(type='person', id='1', email='foo@example.com'))
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        assert response.status_code == 204
+        assert person.email == u'foo@example.com'
+
+    def test_update_invalid(self):
+        """Tests that an attempt to update a resource with invalid data yields
+        an error response.
+
+        """
+        person = self.Person(id=1, email='example@example.com')
+        self.session.add(person)
+        self.session.commit()
+        data = dict(data=dict(type='person', id='1', email='bogus'))
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        assert response.status_code == 400
+        document = loads(response.data)
+        errors = document['errors']
+        error = errors[0]
+        assert 'validation' in error['title'].lower()
+        assert 'email' in error['detail'].lower()
+        # Check that the person was not updated.
+        assert person.email == u'example@example.com'

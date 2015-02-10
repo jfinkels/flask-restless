@@ -20,7 +20,13 @@
 __version__ = '0.17.1-dev'
 
 # make the following names available as part of the public API
+from .helpers import collection_name
+from .helpers import model_for
 from .helpers import url_for
 from .manager import APIManager
 from .manager import IllegalArgumentError
+from .serialization import simple_serialize
+from .serialization import SerializationException
+from .serialization import DeserializationException
+from .views import CONTENT_TYPE
 from .views import ProcessingException
