@@ -20,7 +20,7 @@
 __version__ = '0.17.0-dev'
 
 # make the following names available as part of the public API
+from .helpers import url_for
 from .manager import APIManager
 from .manager import IllegalArgumentError
-from .manager import url_for
 from .views import ProcessingException
