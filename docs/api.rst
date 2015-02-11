@@ -14,6 +14,6 @@ in Flask-Restless.
 
    .. automethod:: create_api_blueprint
 
-.. autofunc:: url_for
+.. autofunction:: url_for
 
 .. autoclass:: ProcessingException
