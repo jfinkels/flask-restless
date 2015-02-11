@@ -69,7 +69,7 @@ with data respond with serialized JSON strings.
 
    This is only available if the ``allow_patch_many`` keyword argument is set
    to ``True`` when calling the :meth:`~APIManager.create_api` method. For more
-   information, see :ref:`allowpatchmany`.
+   information, see :ref:`allowmany`.
 
    Updates the attributes of all ``Person`` instances. The attributes are read
    as JSON from the body of the request. For information about the format of
