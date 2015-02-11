@@ -47,7 +47,8 @@ created_managers = []
 APIInfo = namedtuple('APIInfo', 'collection_name blueprint_name')
 
 
-def url_for(model, _apimanager=None, **kw):
+def url_for(model, instid=None, relationname=None, relationinstid=None,
+            _apimanager=None, **kw):
     """Returns the URL for the specified model, similar to
     :func:`flask.url_for`.
 
@@ -59,7 +60,22 @@ def url_for(model, _apimanager=None, **kw):
     :class:`APIManager`. Restrict our search for endpoints exposing `model` to
     only endpoints created by the specified :class:`APIManager` instance.
 
-    The remaining keyword arguments are passed directly on to
+    `instid`, `relationname`, and `relationinstid` allow you to get a more
+    specific sub-resource.
+
+    For example, suppose you have a model class ``Person`` and have created the
+    appropriate Flask application and SQLAlchemy session::
+
+        >>> manager = APIManager(app, session=session)
+        >>> manager.create_api(Person, collection_name='people')
+        >>> url_for(Person, instid=3)
+        'http://example.com/api/people/3'
+        >>> url_for(Person, instid=3, relationname=computers)
+        'http://example.com/api/people/3/computers'
+        >>> url_for(Person, instid=3, relationname=computers, relationinstid=9)
+        'http://example.com/api/people/3/computers/9'
+
+    The remaining keyword arguments, `kw`, are passed directly on to
     :func:`flask.url_for`.
 
     """
@@ -68,10 +84,14 @@ def url_for(model, _apimanager=None, **kw):
             message = ('APIManager {0} has not created an API for model '
                        ' {1}').format(_apimanager, model)
             raise ValueError(message)
-        return _apimanager.url_for(model, **kw)
+        return _apimanager.url_for(model, instid=instid,
+                                   relationname=relationname,
+                                   relationinstid=relationinstid, **kw)
     for manager in created_managers:
         try:
-            return url_for(model, _apimanager=manager, **kw)
+            return url_for(model, instid=instid, relationname=relationname,
+                           relationinstid=relationinstid, _apimanager=manager,
+                           **kw)
         except ValueError:
             pass
     message = 'Model {0} is not known to any APIManager objects'.format(model)
