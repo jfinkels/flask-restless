@@ -24,6 +24,7 @@ from sqlalchemy import Column
 from sqlalchemy import Integer
 
 from flask.ext.restless import APIManager
+from flask.ext.restless import url_for
 from flask.ext.restless import IllegalArgumentError
 from flask.ext.restless.helpers import get_columns
 
@@ -59,6 +60,21 @@ class TestLocalAPIManager(DatabaseTestBase):
         self.Person = Person
         self.Computer = Computer
         self.Base.metadata.create_all()
+
+    def test_url_for(self):
+        manager = APIManager(self.flaskapp, session=self.session)
+        manager.create_api(self.Person, collection_name='people')
+        manager.create_api(self.Computer, collection_name='computers')
+        with self.flaskapp.app_context():
+            url = url_for(self.Computer)
+            assert url.endswith('/api/computers')
+            assert url_for(self.Person).endswith('/api/people')
+            assert url_for(self.Person, instid=1).endswith('/api/people/1')
+            url = url_for(self.Person, instid=1, relationname='computers')
+            assert url.endswith('/api/people/1/computers')
+            url = url_for(self.Person, instid=1, relationname='computers',
+                          relationinstid=2)
+            assert url.endswith('/api/people/1/computers/2')
 
     def test_init_app(self):
         """Tests for initializing the Flask application after instantiating the

@@ -15,6 +15,7 @@
 from collections import defaultdict
 from collections import namedtuple
 
+import flask
 from flask import Blueprint
 
 from .helpers import primary_key_name
@@ -34,6 +35,47 @@ READONLY_METHODS = frozenset(('GET', ))
 RestlessInfo = namedtuple('RestlessInfo', ['session',
                                            'universal_preprocessors',
                                            'universal_postprocessors'])
+
+#: A global list of created :class:`APIManager` objects.
+created_managers = []
+
+#: A tuple that stores information about a created API.
+#:
+#: The first element, `collection_name`, is the name by which a collection of
+#: instances of the model which this API exposes is known. The second element,
+#: `blueprint_name`, is the name of the blueprint that contains this API.
+APIInfo = namedtuple('APIInfo', 'collection_name blueprint_name')
+
+
+def url_for(model, _apimanager=None, **kw):
+    """Returns the URL for the specified model, similar to
+    :func:`flask.url_for`.
+
+    `model` is a SQLAlchemy model class. This should be a model on which
+    :meth:`create_api_blueprint` has been invoked previously. If no API has
+    been created for it, this function raises a `ValueError`.
+
+    If `_apimanager` is not ``None``, it must be an instance of
+    :class:`APIManager`. Restrict our search for endpoints exposing `model` to
+    only endpoints created by the specified :class:`APIManager` instance.
+
+    The remaining keyword arguments are passed directly on to
+    :func:`flask.url_for`.
+
+    """
+    if _apimanager is not None:
+        if model not in _apimanager.created_apis_for:
+            message = ('APIManager {0} has not created an API for model '
+                       ' {1}').format(_apimanager, model)
+            raise ValueError(message)
+        return _apimanager.url_for(model, **kw)
+    for manager in created_managers:
+        try:
+            return url_for(model, _apimanager=manager, **kw)
+        except ValueError:
+            pass
+    message = 'Model {0} is not known to any APIManager objects'.format(model)
+    raise ValueError(message)
 
 
 class IllegalArgumentError(Exception):
@@ -114,6 +156,15 @@ class APIManager(object):
         #: :meth:`create_api` before calling :meth:`init_app`.
         self.apis_to_create = defaultdict(list)
 
+        #: A mapping whose keys are models for which this object has created an
+        #: API via the :meth:`create_api_blueprint` method and whose values are
+        #: the corresponding collection names for those models.
+        self.created_apis_for = {}
+
+        # Stash this instance so that it can be examined later by other
+        # functions in this module.
+        created_managers.append(self)
+
         self.flask_sqlalchemy_db = kw.pop('flask_sqlalchemy_db', None)
         self.session = kw.pop('session', None)
         if self.app is not None:
@@ -150,6 +201,56 @@ class APIManager(object):
             existing_numbers = [int(n.partition(b)[-1]) for n in existing]
             next_number = max(existing_numbers) + 1
         return APIManager.BLUEPRINTNAME_FORMAT.format(basename, next_number)
+
+    @staticmethod
+    def api_name(collection_name):
+        """Returns the name of the :class:`API` instance exposing models of the
+        specified type of collection.
+
+        `collection_name` must be a string.
+
+        """
+        return APIManager.APINAME_FORMAT.format(collection_name)
+
+    def collection_name(self, model):
+        """Returns the name by which the user told us to call collections of
+        instances of this model.
+
+        `model` is a SQLAlchemy model class. This must be a model on which
+        :meth:`create_api_blueprint` has been invoked previously.
+
+        """
+        return self.created_apis_for[model].collection_name
+
+    def blueprint_name(self, model):
+        """Returns the name of the blueprint in which an API was created for
+        the specified model.
+
+        `model` is a SQLAlchemy model class. This must be a model on which
+        :meth:`create_api_blueprint` has been invoked previously.
+
+        """
+        return self.created_apis_for[model].blueprint_name
+
+    def url_for(self, model, **kw):
+        """Returns the URL for the specified model, similar to
+        :func:`flask.url_for`.
+
+        `model` is a SQLAlchemy model class. This must be a model on which
+        :meth:`create_api_blueprint` has been invoked previously.
+
+        This method only returns URLs for endpoints created by this
+        :class:`APIManager`.
+
+        The remaining keyword arguments are passed directly on to
+        :func:`flask.url_for`.
+
+        """
+        collection_name = self.collection_name(model)
+        api_name = APIManager.api_name(collection_name)
+        blueprint_name = self.blueprint_name(model)
+        joined = '.'.join([blueprint_name, api_name])
+        return flask.url_for(joined, **kw)
 
     def init_app(self, app, session=None, flask_sqlalchemy_db=None,
                  preprocessors=None, postprocessors=None):
@@ -489,7 +590,7 @@ class APIManager(object):
         # the base URL of the endpoints on which requests will be made
         collection_endpoint = '/{0}'.format(collection_name)
         # the name of the API, for use in creating the view and the blueprint
-        apiname = APIManager.APINAME_FORMAT.format(collection_name)
+        apiname = APIManager.api_name(collection_name)
         # Prepend the universal preprocessors and postprocessors specified in
         # the constructor of this class.
         preprocessors_ = defaultdict(list)
@@ -557,6 +658,9 @@ class APIManager(object):
             eval_endpoint = '/eval' + collection_endpoint
             blueprint.add_url_rule(eval_endpoint, methods=['GET'],
                                    view_func=eval_api_view)
+        # Finally, record that this APIManager instance has created an API for
+        # the specified model.
+        self.created_apis_for[model] = APIInfo(collection_name, blueprint.name)
         return blueprint
 
     def create_api(self, *args, **kw):

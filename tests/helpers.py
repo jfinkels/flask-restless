@@ -175,6 +175,9 @@ class FlaskTestBase(object):
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
+        # This is required by `manager.url_for()` in order to construct
+        # absolute URLs.
+        app.config['SERVER_NAME'] = 'localhost'
         app.logger.disabled = True
         self.flaskapp = app
 

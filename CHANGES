@@ -23,6 +23,7 @@ Not yet released.
 - Corrects bug to allow delayed initilalization of multiple Flask applications.
 - #198: allows arbitrary Boolean expressions in search query filters.
 - #226: allows creating APIs before initializing the Flask application object.
+- #274: adds the :func:`url_for` function for computing URLs from models.
 - #398: fixes bug where DELETE_SINGLE processors were not actually used.
 - #400: disallows excluding a primary key on a :http:method:`POST` request.
 
