@@ -648,8 +648,9 @@ class UrlFinder(Singleton):
 #: Returns the URL for the specified model, similar to :func:`flask.url_for`.
 #:
 #: `model` is a SQLAlchemy model class. This should be a model on which
-#: :meth:`create_api_blueprint` has been invoked previously. If no API has been
-#: created for it, this function raises a `ValueError`.
+#: :meth:`APIManager.create_api_blueprint` (or :meth:`APIManager.create_api`)
+#: has been invoked previously. If no API has been created for it, this
+#: function raises a `ValueError`.
 #:
 #: If `_apimanager` is not ``None``, it must be an instance of
 #: :class:`APIManager`. Restrict our search for endpoints exposing `model` to
