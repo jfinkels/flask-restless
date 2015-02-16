@@ -9,4 +9,5 @@ of Web frameworks and database backends):
 - `Flask-Peewee <https://flask-peewee.readthedocs.org>`_
 - `Flask-RESTful <https://flask-restful.readthedocs.org>`_
 - `simpleapi <https://simpleapi.readthedocs.org>`_
-- `Tastypie <https://flask-restful.readthedocs.org>`_
+- `Tastypie <https://django-tastypie.readthedocs.org/>`_
+- `Django REST framework <http://www.django-rest-framework.org/>`_
