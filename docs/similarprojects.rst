@@ -11,3 +11,4 @@ of Web frameworks and database backends):
 - `simpleapi <https://simpleapi.readthedocs.org>`_
 - `Tastypie <https://django-tastypie.readthedocs.org/>`_
 - `Django REST framework <http://www.django-rest-framework.org/>`_
+- `Restless <https://restless.readthedocs.org>`_
