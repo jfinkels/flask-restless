@@ -385,6 +385,39 @@ def _parse_excludes(column_names):
             del relations[column]
     return columns, relations
 
+
+def extract_error_messages(exception):
+    """Tries to extract a dictionary mapping field name to validation error
+    messages from `exception`, which is a validation exception as provided in
+    the ``validation_exceptions`` keyword argument in the constructor of this
+    class.
+
+    Since the type of the exception is provided by the user in the constructor
+    of this class, we don't know for sure where the validation error messages
+    live inside `exception`. Therefore this method simply attempts to access a
+    few likely attributes and returns the first one it finds (or ``None`` if no
+    error messages dictionary can be extracted).
+
+    """
+    # 'errors' comes from sqlalchemy_elixir_validations
+    if hasattr(exception, 'errors'):
+        return exception.errors
+    # 'message' comes from savalidation
+    if hasattr(exception, 'message'):
+        # TODO this works only if there is one validation error
+        try:
+            left, right = str(exception).rsplit(':', 1)
+            left_bracket = left.rindex('[')
+            right_bracket = right.rindex(']')
+        except ValueError as exc:
+            current_app.logger.exception(str(exc))
+            # could not parse the string; we're not trying too hard here...
+            return None
+        msg = right[:right_bracket].strip(' "')
+        fieldname = left[left_bracket + 1:].strip()
+        return {fieldname: msg}
+    return None
+
 #: Creates the mimerender object necessary for decorating responses with a
 #: function that automatically formats the dictionary in the appropriate format
 #: based on the ``Accept`` header.
@@ -881,41 +914,9 @@ class API(ModelView):
 
         """
         self.session.rollback()
-        errors = self._extract_error_messages(exception) or \
+        errors = extract_error_messages(exception) or \
             'Could not determine specific validation errors'
         return dict(validation_errors=errors), 400
-
-    def _extract_error_messages(self, exception):
-        """Tries to extract a dictionary mapping field name to validation error
-        messages from `exception`, which is a validation exception as provided
-        in the ``validation_exceptions`` keyword argument in the constructor of
-        this class.
-
-        Since the type of the exception is provided by the user in the
-        constructor of this class, we don't know for sure where the validation
-        error messages live inside `exception`. Therefore this method simply
-        attempts to access a few likely attributes and returns the first one it
-        finds (or ``None`` if no error messages dictionary can be extracted).
-
-        """
-        # 'errors' comes from sqlalchemy_elixir_validations
-        if hasattr(exception, 'errors'):
-            return exception.errors
-        # 'message' comes from savalidation
-        if hasattr(exception, 'message'):
-            # TODO this works only if there is one validation error
-            try:
-                left, right = str(exception).rsplit(':', 1)
-                left_bracket = left.rindex('[')
-                right_bracket = right.rindex(']')
-            except ValueError as exc:
-                current_app.logger.exception(str(exc))
-                # could not parse the string; we're not trying too hard here...
-                return None
-            msg = right[:right_bracket].strip(' "')
-            fieldname = left[left_bracket + 1:].strip()
-            return {fieldname: msg}
-        return None
 
     def _compute_results_per_page(self):
         """Helper function which returns the number of results per page based
