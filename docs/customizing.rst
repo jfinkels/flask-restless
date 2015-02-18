@@ -199,7 +199,7 @@ serialization functions as follows::
 For a complete version of this example, see the
 :file:`examples/server_configurations/custom_serialization.py` module in the
 source distribution, or view it online at `GitHub
-<https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/custom_serialization.py>`_.
+<https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/custom_serialization.py>`__.
 
 .. _validation:
 
@@ -803,7 +803,7 @@ For a more complete example using `Flask-Login
 <packages.python.org/Flask-Login/>`_, see the
 :file:`examples/server_configurations/authentication` directory in the source
 distribution, or view it online at `GitHub
-<https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/authentication>`_.
+<https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/authentication>`__.
 
 Enabling Cross-Origin Resource Sharing (CORS)
 ---------------------------------------------
