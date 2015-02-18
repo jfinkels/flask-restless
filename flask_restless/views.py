@@ -100,6 +100,14 @@ class ProcessingException(HTTPException):
         self.description = description
 
 
+class ValidationError(Exception):
+    """Raised when there is a problem deserializing a dictionary into an
+    instance of a SQLAlchemy model.
+
+    """
+    pass
+
+
 def _is_msie8or9():
     """Returns ``True`` if and only if the user agent of the client making the
     request indicates that it is Microsoft Internet Explorer 8 or 9.
@@ -486,7 +494,7 @@ class API(ModelView):
                  validation_exceptions=None, results_per_page=10,
                  max_results_per_page=100, post_form_preprocessor=None,
                  preprocessors=None, postprocessors=None, primary_key=None,
-                 *args, **kw):
+                 serializer=None, deserializer=None, *args, **kw):
         """Instantiates this view with the specified attributes.
 
         `session` is the SQLAlchemy session in which all database transactions
@@ -572,6 +580,17 @@ class API(ModelView):
         value for this. If `model` has two or more primary keys, you must
         specify which one to use.
 
+        `serializer` and `deserializer` are custom serialization functions. The
+        former function must take a single argument representing the instance
+        of the model to serialize, and must return a dictionary representation
+        of that instance. The latter function must take a single argument
+        representing the dictionary representation of an instance of the model
+        and must return an instance of `model` that has those attributes. For
+        more information, see :ref:`serialization`.
+
+        .. versionadded:: 0.17.0
+           Added the `serializer` and `deserializer` keyword arguments.
+
         .. versionadded:: 0.13.0
            Added the `primary_key` keyword argument.
 
@@ -622,6 +641,18 @@ class API(ModelView):
         self.results_per_page = results_per_page
         self.max_results_per_page = max_results_per_page
         self.primary_key = primary_key
+        # Use our default serializer and deserializer if none are specified.
+        if serializer is None:
+            self.serialize = self._inst_to_dict
+        else:
+            self.serialize = serializer
+        if deserializer is None:
+            self.deserialize = self._dict_to_inst
+            # And check for our own default ValidationErrors here
+            self.validation_exceptions = tuple(list(self.validation_exceptions)
+                                               + [ValidationError])
+        else:
+            self.deserialize = deserializer
         self.postprocessors = defaultdict(list)
         self.preprocessors = defaultdict(list)
         self.postprocessors.update(upper_keys(postprocessors or {}))
@@ -970,6 +1001,54 @@ class API(ModelView):
                        include_relations=self.include_relations,
                        include_methods=self.include_methods)
 
+    def _dict_to_inst(self, data):
+        """Returns an instance of the model with the specified attributes."""
+        # Check for any request parameter naming a column which does not exist
+        # on the current model.
+        for field in data:
+            if not has_field(self.model, field):
+                msg = "Model does not have field '{0}'".format(field)
+                raise ValidationError(msg)
+
+        # Getting the list of relations that will be added later
+        cols = get_columns(self.model)
+        relations = get_relations(self.model)
+
+        # Looking for what we're going to set on the model right now
+        colkeys = cols.keys()
+        paramkeys = data.keys()
+        props = set(colkeys).intersection(paramkeys).difference(relations)
+
+        # Special case: if there are any dates, convert the string form of the
+        # date into an instance of the Python ``datetime`` object.
+        data = strings_to_dates(self.model, data)
+
+        # Instantiate the model with the parameters.
+        modelargs = dict([(i, data[i]) for i in props])
+        instance = self.model(**modelargs)
+
+        # Handling relations, a single level is allowed
+        for col in set(relations).intersection(paramkeys):
+            submodel = get_related_model(self.model, col)
+
+            if type(data[col]) == list:
+                # model has several related objects
+                for subparams in data[col]:
+                    subinst = get_or_create(self.session, submodel,
+                                            subparams)
+                    try:
+                        getattr(instance, col).append(subinst)
+                    except AttributeError:
+                        attribute = getattr(instance, col)
+                        attribute[subinst.key] = subinst.value
+            else:
+                # model has single related object
+                subinst = get_or_create(self.session, submodel,
+                                        data[col])
+                setattr(instance, col, subinst)
+
+        return instance
+
     def _instid_to_dict(self, instid):
         """Returns the dictionary representation of the instance specified by
         `instid`.
@@ -1148,7 +1227,7 @@ class API(ModelView):
         # If no relation is requested, just return the instance. Otherwise,
         # get the value of the relation specified by `relationname`.
         if relationname is None:
-            result = self._inst_to_dict(instance)
+            result = self.serialize(instance)
         else:
             related_value = getattr(instance, relationname)
             # create a placeholder for the relations of the returned models
@@ -1334,77 +1413,34 @@ class API(ModelView):
         for preprocessor in self.preprocessors['POST']:
             preprocessor(data=data)
 
-        # Check for any request parameter naming a column which does not exist
-        # on the current model.
-        for field in data:
-            if not has_field(self.model, field):
-                msg = "Model does not have field '{0}'".format(field)
-                return dict(message=msg), 400
-
-        # Getting the list of relations that will be added later
-        cols = get_columns(self.model)
-        relations = get_relations(self.model)
-
-        # Looking for what we're going to set on the model right now
-        colkeys = cols.keys()
-        paramkeys = data.keys()
-        props = set(colkeys).intersection(paramkeys).difference(relations)
-
-        # Special case: if there are any dates, convert the string form of the
-        # date into an instance of the Python ``datetime`` object.
-        data = strings_to_dates(self.model, data)
-
         try:
-            # Instantiate the model with the parameters.
-            modelargs = dict([(i, data[i]) for i in props])
-            instance = self.model(**modelargs)
-
-            # Handling relations, a single level is allowed
-            for col in set(relations).intersection(paramkeys):
-                submodel = get_related_model(self.model, col)
-
-                if type(data[col]) == list:
-                    # model has several related objects
-                    for subparams in data[col]:
-                        subinst = get_or_create(self.session, submodel,
-                                                subparams)
-                        try:
-                            getattr(instance, col).append(subinst)
-                        except AttributeError:
-                            attribute = getattr(instance, col)
-                            attribute[subinst.key] = subinst.value
-                else:
-                    # model has single related object
-                    subinst = get_or_create(self.session, submodel,
-                                            data[col])
-                    setattr(instance, col, subinst)
-
-            # add the created model to the session
+            # Convert the dictionary representation into an instance of the
+            # model.
+            instance = self.deserialize(data)
+            # Add the created model to the session.
             self.session.add(instance)
             self.session.commit()
-            # Get the dictionary representation of the new instance.
-            result = self._inst_to_dict(instance)
-            # Determine the value of the primary key for this instance and
-            # encode URL-encode it (in case it is a Unicode string).
-            pk_name = self.primary_key or primary_key_name(instance)
-            primary_key = result[pk_name]
-            try:
-                primary_key = str(primary_key)
-            except UnicodeEncodeError:
-                primary_key = url_quote_plus(primary_key.encode('utf-8'))
-
-            # The URL at which a client can access the newly created instance
-            # of the model.
-            url = '{0}/{1}'.format(request.base_url, primary_key)
-            # Provide that URL in the Location header in the response.
-            headers = dict(Location=url)
-
-            for postprocessor in self.postprocessors['POST']:
-                postprocessor(result=result)
-
-            return result, 201, headers
+            # Get the dictionary representation of the new instance as it
+            # appears in the database.
+            result = self.serialize(instance)
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
+        # Determine the value of the primary key for this instance and
+        # encode URL-encode it (in case it is a Unicode string).
+        pk_name = self.primary_key or primary_key_name(instance)
+        primary_key = result[pk_name]
+        try:
+            primary_key = str(primary_key)
+        except UnicodeEncodeError:
+            primary_key = url_quote_plus(primary_key.encode('utf-8'))
+        # The URL at which a client can access the newly created instance
+        # of the model.
+        url = '{0}/{1}'.format(request.base_url, primary_key)
+        # Provide that URL in the Location header in the response.
+        headers = dict(Location=url)
+        for postprocessor in self.postprocessors['POST']:
+            postprocessor(result=result)
+        return result, 201, headers
 
     def patch(self, instid, relationname, relationinstid):
         """Updates the instance specified by ``instid`` of the named model, or

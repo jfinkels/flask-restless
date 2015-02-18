@@ -143,6 +143,60 @@ If search parameters are provided via the ``q`` query parameter as described in
 Similarly, to allow bulk deletions, set the ``allow_delete_many`` keyword
 argument to be ``True``.
 
+.. _serialization:
+
+Custom serialization
+~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 0.17.0
+
+Flask-Restless provides very basic object serialization and deserialization. If
+you wish to have more control over the way instances of your models are
+converted to Python dictionary representations, you can specify a custom
+serialization function by providing it to :meth:`APIManager.create_api` via the
+``serializer`` keyword argument. Similarly, to provide a deserialization
+function that converts a Python dictionary representation to an instance of
+your model, use the ``deserializer`` keyword argument.
+
+The serialization function must take a single argument representing the
+instance of the model to serialize, and must return a dictionary representation
+of that instance. The deserialization function must take a single argument
+representing the dictionary representation of an instance of the model and must
+return an instance of `model` that has those attributes.
+
+We **strongly suggest** using a Python object serialization library instead of
+writing your own serialization functions.
+
+For example, if you create schema for your database models using `Marshmallow
+<https://marshmallow.readthedocs.org>`_), then you use that library's built-in
+serialization functions as follows::
+
+    class PersonSchema(Schema):
+        id = fields.Integer()
+        name = fields.String()
+
+        def make_object(self, data):
+            print('MAKING OBJECT FROM', data)
+            return Person(**data)
+
+    person_schema = PersonSchema()
+
+    def person_serializer(instance):
+        return person_schema.dump(instance).data
+
+    def person_deserializer(data):
+        return person_schema.load(data).data
+
+    manager = APIManager(app, session=session)
+    manager.create_api(Person, methods=['GET', 'POST'],
+                       serializer=person_serializer,
+                       deserializer=person_deserializer)
+
+For a complete version of this example, see the
+:file:`examples/server_configurations/custom_serialization.py` module in the
+source distribution, or view it online at `GitHub
+<https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/custom_serialization.py>`_.
+
 .. _validation:
 
 Capturing validation errors

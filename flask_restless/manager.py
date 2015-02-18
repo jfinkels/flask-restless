@@ -328,7 +328,8 @@ class APIManager(object):
                              validation_exceptions=None, results_per_page=10,
                              max_results_per_page=100,
                              post_form_preprocessor=None, preprocessors=None,
-                             postprocessors=None, primary_key=None):
+                             postprocessors=None, primary_key=None,
+                             serializer=None, deserializer=None):
         """Creates and returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
 
@@ -481,6 +482,17 @@ class APIManager(object):
         value for this. If `model` has two or more primary keys, you must
         specify which one to use.
 
+        `serializer` and `deserializer` are custom serialization functions. The
+        former function must take a single argument representing the instance
+        of the model to serialize, and must return a dictionary representation
+        of that instance. The latter function must take a single argument
+        representing the dictionary representation of an instance of the model
+        and must return an instance of `model` that has those attributes. For
+        more information, see :ref:`serialization`.
+
+        .. versionadded:: 0.17.0
+           Added the `serializer` and `deserializer` keyword arguments.
+
         .. versionadded:: 0.16.0
            Added the `app` and `allow_delete_many` keyword arguments.
 
@@ -577,7 +589,8 @@ class APIManager(object):
                                include_methods, validation_exceptions,
                                results_per_page, max_results_per_page,
                                post_form_preprocessor, preprocessors_,
-                               postprocessors_, primary_key)
+                               postprocessors_, primary_key, serializer,
+                               deserializer)
         # suffix an integer to apiname according to already existing blueprints
         blueprintname = APIManager._next_blueprint_name(app.blueprints,
                                                         apiname)

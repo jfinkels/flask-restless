@@ -21,6 +21,7 @@ Version 0.17.0-dev
 Not yet released.
 
 - Corrects bug to allow delayed initilalization of multiple Flask applications.
+- #167: allows custom serialization/deserialization functions.
 - #198: allows arbitrary Boolean expressions in search query filters.
 - #226: allows creating APIs before initializing the Flask application object.
 - #274: adds the :func:`url_for` function for computing URLs from models.

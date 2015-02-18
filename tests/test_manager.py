@@ -26,6 +26,7 @@ from sqlalchemy import Integer
 from flask.ext.restless import APIManager
 from flask.ext.restless import url_for
 from flask.ext.restless import IllegalArgumentError
+from flask.ext.restless.helpers import to_dict
 from flask.ext.restless.helpers import get_columns
 
 from .helpers import DatabaseTestBase
@@ -710,6 +711,42 @@ class TestAPIManager(TestSupport):
         assert 'objects' in data
         assert 1 == len(data['objects'])
         assert 'foo' == data['objects'][0]['name']
+
+
+class TestSerialization(TestSupport):
+
+    def serializer(self, instance):
+        result = to_dict(instance)
+        # Add extra information.
+        result['foo'] = 'bar'
+        return result
+
+    def deserializer(self, data):
+        # Remove the extra information.
+        data.pop('foo')
+        instance = self.Person(**data)
+        return instance
+
+    def test_custom_serializer_get(self):
+        self.session.add(self.Person(id=1))
+        self.session.commit()
+        self.manager.create_api(self.Person, methods=['GET'],
+                                serializer=self.serializer)
+        response = self.app.get('/api/person/1')
+        assert response.status_code == 200
+        data = loads(response.data)
+        assert data['foo'] == 'bar'
+
+    def test_custom_serializer_post(self):
+        self.manager.create_api(self.Person, methods=['POST'],
+                                serializer=self.serializer,
+                                deserializer=self.deserializer)
+        # POST will deserialize once and serialize once
+        response = self.app.post('/api/person',
+                                 data=dumps(dict(id=1, foo='bar')))
+        assert response.status_code == 201
+        data = loads(response.data)
+        assert data['foo'] == 'bar'
 
 
 @skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')
