@@ -164,8 +164,12 @@ of that instance. The deserialization function must take a single argument
 representing the dictionary representation of an instance of the model and must
 return an instance of `model` that has those attributes.
 
-We **strongly suggest** using a Python object serialization library instead of
-writing your own serialization functions.
+.. note::
+
+   We **strongly suggest** using a Python object serialization library instead
+   of writing your own serialization functions. This is also likely a better
+   approach than specifying which columns to include or exclude
+   (:ref:`includes`) or preprocessors and postprocessors (:ref:`processors`).
 
 For example, if you create schema for your database models using `Marshmallow
 <https://marshmallow.readthedocs.org>`_), then you use that library's built-in
@@ -259,6 +263,14 @@ For information about the request and response formats for this endpoint, see
 
 Specifying which columns are provided in responses
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. warning::
+
+   The include/exclude system described in this section is very simplistic; a
+   much better way to specify which columns are included in your responses is
+   to use a Python object serialization library and specify custom
+   serialization and deserialization functions as described in
+   :ref:`serialization`.
 
 By default, all columns of your model will be exposed by the API. If the
 ``include_columns`` keyword argument is an iterable of strings, *only* columns
