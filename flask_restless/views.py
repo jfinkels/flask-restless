@@ -908,8 +908,8 @@ class API(ModelView):
                 left, right = str(exception).rsplit(':', 1)
                 left_bracket = left.rindex('[')
                 right_bracket = right.rindex(']')
-            except ValueError as exception:
-                current_app.logger.exception(str(exception))
+            except ValueError as exc:
+                current_app.logger.exception(str(exc))
                 # could not parse the string; we're not trying too hard here...
                 return None
             msg = right[:right_bracket].strip(' "')
