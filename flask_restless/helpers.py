@@ -256,6 +256,10 @@ def is_like_list(instance, relation):
 
 
 def is_mapped_class(cls):
+    """Returns ``True`` if and only if the specified SQLAlchemy model class is
+    a mapped class.
+
+    """
     try:
         sqlalchemy_inspect(cls)
         return True
