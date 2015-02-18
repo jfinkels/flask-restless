@@ -40,11 +40,11 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.ext.associationproxy import AssociationProxy
+from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
-from sqlalchemy.orm.attributes import InstrumentedAttribute
-from sqlalchemy.ext.associationproxy import AssociationProxy
 from werkzeug.exceptions import BadRequest
 from werkzeug.exceptions import HTTPException
 from werkzeug.urls import url_quote_plus
@@ -1147,7 +1147,6 @@ class API(ModelView):
             if 'name' in param and 'val' in param:
                 query_model = self.model
                 query_field = param['name']
-
                 if '__' in param['name']:
                     fieldname, relation = param['name'].split('__')
                     submodel = getattr(self.model, fieldname)
@@ -1155,17 +1154,17 @@ class API(ModelView):
                         query_model = submodel.property.mapper.class_
                         query_field = relation
                     elif isinstance(submodel, AssociationProxy):
-                        query_model = get_related_association_proxy_model(submodel)
+                        # For the sake of brevity, rename this function.
+                        get_assoc = get_related_association_proxy_model
+                        query_model = get_assoc(submodel)
                         query_field = relation
+                to_convert = {query_field: param['val']}
                 try:
-                    result = strings_to_dates(
-                        query_model,
-                        {query_field: param['val']}
-                    )
-                    param['val'] = result.get(query_field)
+                    result = strings_to_dates(query_model, to_convert)
                 except ValueError as exception:
                     current_app.logger.exception(str(exception))
                     return dict(message='Unable to construct query'), 400
+                param['val'] = result.get(query_field)
 
         # perform a filtered search
         try:
