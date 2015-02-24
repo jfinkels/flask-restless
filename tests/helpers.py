@@ -22,6 +22,7 @@ else:
         return isinstance(obj, type)
 
 import datetime
+import functools
 import uuid
 
 from flask import Flask
@@ -67,6 +68,8 @@ def skip_unless(condition, reason=None):
     ``nose``. The argument ``reason`` is a string describing why the test was
     skipped.
 
+    This decorator can be applied to functions, methods, or classes.
+
     """
     def skip(test):
         message = 'Skipped {0}: {1}'.format(test.__name__, reason)
@@ -77,11 +80,11 @@ def skip_unless(condition, reason=None):
                     setattr(test, attr, skip(val))
             return test
 
+        @functools.wraps(test)
         def inner(*args, **kw):
             if not condition:
                 raise SkipTest(message)
             return test(*args, **kw)
-        inner.__name__ = test.__name__
         return inner
 
     return skip
