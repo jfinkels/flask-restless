@@ -20,6 +20,9 @@ Version 0.17.1-dev
 
 Not yet released.
 
+- #331, #415: documents the importance of URL encoding when using the ``like``
+  operator to filter results.
+
 Version 0.17.0
 --------------
 

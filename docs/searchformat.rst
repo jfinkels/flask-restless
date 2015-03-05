@@ -157,12 +157,21 @@ The operator strings recognized by the API incude:
 * ``>=``, ``ge``, ``gte``, ``geq``, ``<=``, ``le``, ``lte``, ``leq``
 * ``in``, ``not_in``
 * ``is_null``, ``is_not_null``
-* ``like``
+* ``like``, ``ilike``
 * ``has``
 * ``any``
 
 These correspond to SQLAlchemy column operators as defined `here
 <http://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.operators.ColumnOperators>`_.
+
+.. warning::
+
+   If you use a percent sign in the argument to the ``like`` operator (for
+   example, ``%somestring%``), make sure it is `URL encoded`_, otherwise the
+   server may interpret the first few characters of that argument as a
+   percent-encoded character when attempting to decode the URL.
+
+   .. _URL encoded: https://en.wikipedia.org/wiki/Percent-encoding#Percent-encoding_the_percent_character
 
 Examples
 --------

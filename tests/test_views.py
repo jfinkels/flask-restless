@@ -15,6 +15,7 @@ from datetime import date
 from datetime import datetime
 from datetime import timedelta
 import math
+from urllib.parse import quote as urlquote
 
 import dateutil
 from flask import json
@@ -1950,6 +1951,18 @@ class TestSearch(TestSupportPrefilled):
         d = dict(filters=[dict(op='==', val='Test')])
         resp = self.app.search('/api/person', dumps(d))
         assert resp.status_code == 400
+
+    def test_like(self):
+        """Tests for the like operator."""
+        person1 = self.Person(name='foo')
+        person2 = self.Person(name='bar')
+        self.session.add_all([person1, person2])
+        self.session.commit()
+        data = dict(filters=[dict(name='name', op='like', val='%bar%')])
+        response = self.app.search('/api/person', urlquote(dumps(data)))
+        data = loads(response.data)
+        people = data['objects']
+        assert ['bar'] == sorted(person['name'] for person in people)
 
 
 class TestAssociationProxy(ManagerTestBase):
