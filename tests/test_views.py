@@ -15,7 +15,12 @@ from datetime import date
 from datetime import datetime
 from datetime import timedelta
 import math
-from urllib.parse import quote as urlquote
+# In Python 2, the function is `urllib.quote()`, in Python 3 it is
+# `urllib.parse.quote()`.
+try:
+    from urllib.parse import quote as urlquote
+except:
+    from urllib import quote as urlquote
 
 import dateutil
 from flask import json
