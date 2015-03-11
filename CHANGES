@@ -20,6 +20,8 @@ Version 0.17.1-dev
 
 Not yet released.
 
+- Increases minimum version requirement for ``python-dateutil`` to be strictly
+  greater than 2.2 to avoid parsing bug.
 - #331, #415: documents the importance of URL encoding when using the ``like``
   operator to filter results.
 

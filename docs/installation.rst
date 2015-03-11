@@ -19,7 +19,7 @@ installed if you use ``pip``):
 * `SQLAlchemy <http://sqlalchemy.org>`_ version 0.8 or greater
 * `mimerender <http://mimerender.readthedocs.org>`_ version 0.5.2 or greater
 * `python-dateutil <http://labix.org/python-dateutil>`_ version strictly
-  greater than 2.0
+  greater than 2.2
 * `Flask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy>`_, *only if*
   you want to define your models using Flask-SQLAlchemy (which we highly
   recommend)
