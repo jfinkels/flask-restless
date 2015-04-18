@@ -43,19 +43,14 @@ def _sub_operator(model, argument, fieldname):
         submodel = model.property.mapper.class_
     elif isinstance(model, AssociationProxy):
         submodel = get_related_association_proxy_model(model)
-    else:  # TODO what to do here?
+    else:
+        # TODO what to do here?
         pass
-    if isinstance(argument, dict):
-        fieldname = argument['name']
-        operator = argument['op']
-        argument = argument.get('val')
-        relation = None
-        if '__' in fieldname:
-            fieldname, relation = fieldname.split('__')
-        return QueryBuilder._create_operation(submodel, fieldname, operator,
-                                              argument, relation)
-    # Support legacy has/any with implicit eq operator
-    return getattr(submodel, fieldname) == argument
+    fieldname = argument['name']
+    operator = argument['op']
+    argument = argument.get('val')
+    return QueryBuilder._create_operation(submodel, fieldname, operator,
+                                          argument)
 
 
 #: The mapping from operator name (as accepted by the search method) to a
@@ -239,7 +234,7 @@ class QueryBuilder(object):
     """
 
     @staticmethod
-    def _create_operation(model, fieldname, operator, argument, relation=None):
+    def _create_operation(model, fieldname, operator, argument):
         """Translates an operation described as a string to a valid SQLAlchemy
         query parameter using a field or relation of the specified model.
 
@@ -286,8 +281,8 @@ class QueryBuilder(object):
         # In Python 3.0 or later, this should be `inspect.getfullargspec`
         # because `inspect.getargspec` is deprecated.
         numargs = len(inspect.getargspec(opfunc).args)
-        # raises AttributeError if `fieldname` or `relation` does not exist
-        field = getattr(model, relation or fieldname)
+        # raises AttributeError if `fieldname` does not exist
+        field = getattr(model, fieldname)
         # each of these will raise a TypeError if the wrong number of argments
         # is supplied to `opfunc`.
         if numargs == 1:
@@ -316,16 +311,12 @@ class QueryBuilder(object):
         if not isinstance(filt, JunctionFilter):
             fname = filt.fieldname
             val = filt.argument
-            # get the relationship from the field name, if it exists
-            relation = None
-            if '__' in fname:
-                relation, fname = fname.split('__')
             # get the other field to which to compare, if it exists
             if filt.otherfield:
                 val = getattr(model, filt.otherfield)
             # for the sake of brevity...
             create_op = QueryBuilder._create_operation
-            return create_op(model, fname, filt.operator, val, relation)
+            return create_op(model, fname, filt.operator, val)
         # Otherwise, if this filter is a conjunction or a disjunction, make
         # sure to apply the appropriate filter operation.
         create_filt = QueryBuilder._create_filter
