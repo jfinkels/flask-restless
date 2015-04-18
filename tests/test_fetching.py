@@ -635,6 +635,62 @@ class TestFetchRelatedResource(ManagerTestBase):
         assert response.status_code == 404
         # TODO Check error message here.
 
+    def test_nonexistent_relation(self):
+        """Tests that a request for a nonexistent relation on a resource yields
+        an error.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        response = self.app.get('/api/person/1/bogus/1')
+        assert response.status_code == 404
+        # TODO Check error message here.
+
+    def test_serialization_exception(self):
+        """Tests that exceptions are caught when a custom serialization method
+        raises an exception.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([person, article])
+        self.session.commit()
+
+        def serializer(*args, **kw):
+            raise SerializationException
+
+        self.manager.create_api(self.Person, serializer=serializer,
+                                url_prefix='/api2')
+        response = self.app.get('/api2/person/1/articles/1')
+        print(response.data)
+        assert response.status_code == 400
+        # TODO check error message
+
+    def test_serialization_exception_on_included(self):
+        """Tests that exceptions are caught when a custom serialization method
+        raises an exception when serializing an included resource.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def serializer(instance, **kw):
+            # Only raise an exception when serializing the included resources.
+            if isinstance(instance, self.Person):
+                raise SerializationException
+            return simple_serialize(instance, **kw)
+
+        self.manager.create_api(self.Person, serializer=serializer,
+                                url_prefix='/api2')
+        response = self.app.get('/api2/person/1/articles/1?include=author')
+        assert response.status_code == 400
+        # TODO check error message
+
 
 class TestFetchRelationship(ManagerTestBase):
     """Tests for fetching from a relationship URL."""
