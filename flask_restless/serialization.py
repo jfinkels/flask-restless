@@ -12,6 +12,7 @@ from sqlalchemy.ext.hybrid import HYBRID_PROPERTY
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm.query import Query
 from werkzeug.routing import BuildError
+from werkzeug.urls import url_quote_plus
 
 from .helpers import collection_name
 from .helpers import is_mapped_class
@@ -234,7 +235,10 @@ class DefaultSerializer(Serializer):
         # In order to comply with the JSON API standard, primary keys must be
         # returned to the client as strings, so we convert it here.
         if 'id' in result:
-            result['id'] = str(result['id'])
+            try:
+                result['id'] = str(result['id'])
+            except UnicodeEncodeError:
+                result['id'] = url_quote_plus(result['id'].encode('utf-8'))
         # If there are relations to convert to dictionary form, put them into a
         # special `links` key as required by JSON API.
         relations = get_relations(model)
