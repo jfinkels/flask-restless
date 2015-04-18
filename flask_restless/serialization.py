@@ -1,3 +1,15 @@
+"""
+    flask.ext.restless.serialization
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    Provides basic serialization for SQLAlchemy models.
+
+    :copyright: 2011 by Lincoln de Sousa <lincoln@comum.org>
+    :copyright: 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+                <jeffrey.finkelstein@gmail.com> and contributors.
+    :license: GNU AGPLv3+ or BSD
+
+"""
 import datetime
 try:
     from urllib.parse import urljoin
@@ -68,22 +80,93 @@ def get_column_name(column):
 
 
 class Serializer(object):
+    """An object that, when called, returns a dictionary representation of a
+    given instance of a SQLAlchemy model.
+
+    **This is a base class with no implementation.**
+
+    """
 
     def __call__(self, instance, only=None):
+        """Returns a dictionary representation of the specified instance of a
+        SQLAlchemy model.
+
+        If `only` is a list, only the fields and relationships whose names
+        appear as strings in `only` should appear in the returned
+        dictionary. The only exception is that the keys ``'id'`` and ``'type'``
+        will always appear, regardless of whether they appear in `only`.
+
+        **This method is not implemented in this base class; subclasses must
+        override this method.**
+
+        """
         raise NotImplemented
 
 
 class Deserializer(object):
+    """An object that, when called, returns an instance of the SQLAlchemy model
+    specified at instantiation time.
+
+    `session` is the SQLAlchemy session in which to look for any related
+    resources.
+
+    `model` is the class of which instances will be created by the
+    :meth:`__call__` method.
+
+    **This is a base class with no implementation.**
+
+    """
 
     def __init__(self, session, model):
         self.session = session
         self.model = model
 
     def __call__(self, data):
+        """Creates and returns a new instance of the SQLAlchemy model specified
+        in the constructor whose attributes are given by the specified
+        dictionary.
+
+        `data` must be a dictionary representation of a resource as specified
+        in the JSON API specification. For more information, see the `Resource
+        Objects`_ section of the JSON API specification.
+
+        **This method is not implemented in this base class; subclasses must
+        override this method.**
+
+        .. _Resource Objects: http://jsonapi.org/format/#document-structure-resource-objects
+
+        """
         raise NotImplemented
 
 
 class DefaultSerializer(Serializer):
+    """A default implementation of a serializer for SQLAlchemy models.
+
+    When called, this object returns a dictionary representation of a given
+    SQLAlchemy instance that meets the requirements of the JSON API
+    specification.
+
+    If `only` is a list, only these fields and relationships will in the
+    returned dictionary. The only exception is that the keys ``'id'`` and
+    ``'type'`` will always appear, regardless of whether they appear in `only`.
+    These settings take higher priority than the `only` list provided to the
+    :meth:`__call__` method: if an attribute or relationship appears in the
+    `only` argument to :meth:`__call__` but not here in the constructor, it
+    will not appear in the returned dictionary.
+
+    If `exclude` is a list, these fields and relationships will **not** appear
+    in the returned dictionary.
+
+    If `additional_attributes` is a list, these attributes of the instance to
+    be serialized will appear in the returned dictionary. This is useful if
+    your model has an attribute that is not a SQLAlchemy column but you want it
+    to be exposed.
+
+    If both `only` and `exclude` are specified, a :exc:`ValueError` is raised.
+    Also, if any attributes specified in `additional_attributes` appears in
+    `exclude`, a :exc:`ValueError` is raised.
+
+    """
 
     def __init__(self, only=None, exclude=None, additional_attributes=None,
                  **kw):
@@ -292,13 +375,22 @@ class DefaultSerializer(Serializer):
         return result
 
 
-simple_serialize = DefaultSerializer()
-
-
 class DefaultDeserializer(Deserializer):
+    """A default implementation of a deserializer for SQLAlchemy models.
+
+    When called, this object returns an instance of a SQLAlchemy model with
+    fields and relations specified by the provided dictionary.
+
+    """
 
     def __call__(self, data):
-        """Returns an instance of the model with the specified attributes."""
+        """Creates and returns an instance of the SQLAlchemy model specified in
+        the constructor.
+
+        For more information, see the documentation for the
+        :meth:`Deserializer.__call__` method.
+
+        """
         # Check for any request parameter naming a column which does not exist
         # on the current model.
         for field in data:
@@ -349,3 +441,11 @@ class DefaultDeserializer(Deserializer):
         for relation_name, related_value in links.items():
             setattr(instance, relation_name, related_value)
         return instance
+
+
+#: Provides basic, uncustomized serialization functionality as provided by
+#: :class:`DefaultSerializer`.
+#:
+#: This function is suitable for calling on its own, no other instantiation or
+#: customization necessary.
+simple_serialize = DefaultSerializer()
