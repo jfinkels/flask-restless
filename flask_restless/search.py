@@ -145,10 +145,12 @@ class Filter(object):
         self.argument = argument
         self.otherfield = otherfield
 
-    def __repr__(self):
-        """Returns a string representation of this object."""
-        return '<Filter {0} {1} {2}>'.format(self.fieldname, self.operator,
-                                             self.argument or self.otherfield)
+    # # This is useful for debugging purposes.
+    # def __repr__(self):
+    #     """Returns a string representation of this object."""
+    #     return '<Filter {0} {1} {2}>'.format(self.fieldname, self.operator,
+    #                                          self.argument
+    #                                          or self.otherfield)
 
     @staticmethod
     def from_dictionary(model, dictionary):
@@ -223,15 +225,17 @@ class JunctionFilter(Filter):
 class ConjunctionFilter(JunctionFilter):
     """A conjunction of other filters."""
 
-    def __repr__(self):
-        return 'and_{0}'.format(tuple(repr(f) for f in self))
+    # # This is useful for debugging purposes.
+    # def __repr__(self):
+    #     return 'and_{0}'.format(tuple(repr(f) for f in self))
 
 
 class DisjunctionFilter(JunctionFilter):
     """A disjunction of other filters."""
 
-    def __repr__(self):
-        return 'or_{0}'.format(tuple(repr(f) for f in self))
+    # # This is useful for debugging purposes.
+    # def __repr__(self):
+    #     return 'or_{0}'.format(tuple(repr(f) for f in self))
 
 
 def create_operation(model, fieldname, operator, argument):
