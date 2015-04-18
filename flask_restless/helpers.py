@@ -46,18 +46,6 @@ COLUMN_TYPES = (InstrumentedAttribute, hybrid_property)
 CURRENT_TIME_MARKERS = ('CURRENT_TIMESTAMP', 'CURRENT_DATE', 'LOCALTIMESTAMP')
 
 
-def partition(l, condition):
-    """Returns a pair of lists, the left one containing all elements of `l` for
-    which `condition` is ``True`` and the right one containing all elements of
-    `l` for which `condition` is ``False``.
-
-    `condition` is a function that takes a single argument (each individual
-    element of the list `l`) and returns either ``True`` or ``False``.
-
-    """
-    return [x for x in l if condition(x)], [x for x in l if not condition(x)]
-
-
 def session_query(session, model):
     """Returns a SQLAlchemy query object for the specified `model`.
 
