@@ -2,11 +2,11 @@
     flask.ext.restless.search
     ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Provides querying, searching, and function evaluation on SQLAlchemy models.
+    Provides search queries for SQLAlchemy models.
 
-    The most important functions in this module are the :func:`create_query`
-    and :func:`search` functions, which create a SQLAlchemy query object and
-    execute that query on a given model, respectively.
+    The most important function in this module is the :func:`search` function,
+    which creates a SQLAlchemy query object for a given set of filters, sorting
+    rules, etc.
 
     :copyright: 2011 by Lincoln de Sousa <lincoln@comum.org>
     :copyright: 2012, 2013, 2014, 2015 Jeffrey Finkelstein
@@ -29,6 +29,11 @@ from .helpers import string_to_datetime
 
 
 class ComparisonToNull(Exception):
+    """Raised when a client attempts to use a filter object that compares a
+    resource's attribute to ``NULL`` using the ``==`` operator instead of using
+    ``is_null``.
+
+    """
     pass
 
 
@@ -108,36 +113,33 @@ OPERATORS = {
 
 
 class Filter(object):
-    """Represents a filter to apply to a SQL query.
+    """Represents a filter to apply to a SQLAlchemy query object.
 
     A filter can be, for example, a comparison operator applied to a field of a
     model and a value or a comparison applied to two fields of the same
     model. For more information on possible filters, see :ref:`search`.
 
+    `fieldname` is the name of the field of a model which will be on the
+    left side of the operator.
+
+    `operator` is the string representation of an operator to apply. The
+    full list of recognized operators can be found at :ref:`search`.
+
+    If `argument` is specified, it is the value to place on the right side
+    of the operator. If `otherfield` is specified, that field on the model
+    will be placed on the right side of the operator.
+
+    .. admonition:: About `argument` and `otherfield`
+
+       Some operators don't need either argument and some need exactly one.
+       However, this constructor will not raise any errors or otherwise
+       inform you of which situation you are in; it is basically just a
+       named tuple. Calling code must handle errors caused by missing
+       required arguments.
+
     """
 
     def __init__(self, fieldname, operator, argument=None, otherfield=None):
-        """Instantiates this object with the specified attributes.
-
-        `fieldname` is the name of the field of a model which will be on the
-        left side of the operator.
-
-        `operator` is the string representation of an operator to apply. The
-        full list of recognized operators can be found at :ref:`search`.
-
-        If `argument` is specified, it is the value to place on the right side
-        of the operator. If `otherfield` is specified, that field on the model
-        will be placed on the right side of the operator.
-
-        .. admonition:: About `argument` and `otherfield`
-
-           Some operators don't need either argument and some need exactly one.
-           However, this constructor will not raise any errors or otherwise
-           inform you of which situation you are in; it is basically just a
-           named tuple. Calling code must handle errors caused by missing
-           required arguments.
-
-        """
         self.fieldname = fieldname
         self.operator = operator
         self.argument = argument
@@ -205,6 +207,11 @@ class Filter(object):
 
 
 class JunctionFilter(Filter):
+    """A conjunction or disjunction of other filters.
+
+    `subfilters` is a tuple of :class:`Filter` objects.
+
+    """
 
     def __init__(self, *subfilters):
         self.subfilters = subfilters
@@ -214,18 +221,22 @@ class JunctionFilter(Filter):
 
 
 class ConjunctionFilter(JunctionFilter):
+    """A conjunction of other filters."""
+
     def __repr__(self):
         return 'and_{0}'.format(tuple(repr(f) for f in self))
 
 
 class DisjunctionFilter(JunctionFilter):
+    """A disjunction of other filters."""
+
     def __repr__(self):
         return 'or_{0}'.format(tuple(repr(f) for f in self))
 
 
 def create_operation(model, fieldname, operator, argument):
     """Translates an operation described as a string to a valid SQLAlchemy
-    query parameter using a field or relation of the specified model.
+    query parameter using a field of the specified model.
 
     More specifically, this translates the string representation of an
     operation, for example ``'gt'``, to an expression corresponding to a
@@ -233,27 +244,17 @@ def create_operation(model, fieldname, operator, argument):
     are given by the keys of :data:`OPERATORS`. For more information on
     recognized search operators, see :ref:`search`.
 
-    If `relation` is not ``None``, the returned search parameter will
-    correspond to a search on the field named `fieldname` on the entity
-    related to `model` whose name, as a string, is `relation`.
-
     `model` is an instance of a SQLAlchemy declarative model being
     searched.
 
     `fieldname` is the name of the field of `model` to which the operation
-    will be applied as part of the search. If `relation` is specified, the
-    operation will be applied to the field with name `fieldname` on the
-    entity related to `model` whose name, as a string, is `relation`.
+    will be applied as part of the search.
 
     `operation` is a string representating the operation which will be
      executed between the field and the argument received. For example,
      ``'gt'``, ``'lt'``, ``'like'``, ``'in'`` etc.
 
     `argument` is the argument to which to apply the `operator`.
-
-    `relation` is the name of the relationship attribute of `model` to
-    which the operation will be applied as part of the search, or ``None``
-    if this function should not use a related entity in the search.
 
     This function raises the following errors:
     * :exc:`KeyError` if the `operator` is unknown (that is, not in
@@ -312,34 +313,38 @@ def create_filter(model, filt):
     return or_(create_filter(model, f) for f in filt)
 
 
-def create_query(session, model, filters=None, sort=None, group_by=None,
-                 _ignore_order_by=False):
-    """Builds an SQLAlchemy query instance based on the search parameters
-    present in ``search_params``, an instance of :class:`SearchParameters`.
+def search(session, model, filters=None, sort=None, group_by=None,
+           _ignore_sort=False):
+    """Returns a SQLAlchemy query instance with the specified parameters.
 
-    This method returns a SQLAlchemy query in which all matched instances
-    meet the requirements specified in ``search_params``.
+    Each instance in the returned query meet the requirements specified by
+    ``filters``, ``sort``, and ``group_by``.
 
-    `model` is SQLAlchemy declarative model on which to create a query.
+    This function returns a single instance of the model matching the search
+    parameters if ``search_params['single']`` is ``True``, or a list of all
+    such instances otherwise. If ``search_params['single']`` is ``True``, then
+    this method will raise :exc:`sqlalchemy.orm.exc.NoResultFound` if no
+    results are found and :exc:`sqlalchemy.orm.exc.MultipleResultsFound` if
+    multiple results are found.
 
-    `search_params` is an instance of :class:`SearchParameters` which
-    specify the filters, order, limit, offset, etc. of the query.
+    `model` is the SQLAlchemy model on which to create a query.
 
-    If `_ignore_order_by` is ``True``, no ``order_by`` method will be
-    called on the query, regardless of whether the search parameters
-    indicate that there should be an ``order_by``. (This is used internally
-    by Flask-Restless to work around a limitation in SQLAlchemy.)
+    `sort` is a list of two-tuples of the form ``(direction, fieldname)``,
+    where ``direction`` is either ``'+'`` or ``'-'`` and ``fieldname`` is a
+    string representing an attribute of the model or a dot-separated
+    relationship path (for example, ``'owner.name'``).
 
-    Building the query proceeds in this order:
-    1. filtering
-    2. ordering
-    3. grouping
-    3. limiting
-    4. offsetting
+    If `_ignore_sort` is ``True``, no ``order_by`` method will be called on the
+    query, regardless of whether the ``sort`` argument indicates that there
+    should be an ``order_by``. (This is used internally by Flask-Restless to
+    circumvent a limitation in SQLAlchemy.)
 
-    Raises one of :exc:`AttributeError`, :exc:`KeyError`, or
-    :exc:`TypeError` if there is a problem creating the query. See the
-    documentation for :func:`create_operation` for more information.
+    When building the query, filters are applied first, then sorting, then
+    grouping.
+
+    Raises one of :exc:`AttributeError`, :exc:`KeyError`, or :exc:`TypeError`
+    if there is a problem creating the query. See the documentation for
+    :func:`create_operation` for more information.
 
     """
     query = session_query(session, model)
@@ -352,7 +357,7 @@ def create_query(session, model, filters=None, sort=None, group_by=None,
 
     # Order the query. If no order field is specified, order by primary
     # key.
-    if not _ignore_order_by:
+    if not _ignore_sort:
         if sort:
             for (symbol, field_name) in sort:
                 direction_name = 'asc' if symbol == '+' else 'desc'
@@ -386,53 +391,4 @@ def create_query(session, model, filters=None, sort=None, group_by=None,
                 field = getattr(model, field_name)
                 query = query.group_by(field)
 
-    return query
-
-
-def search(session, model, filters=None, sort=None, group_by=None,
-           single=False, _ignore_order_by=False):
-    """Performs the search specified by the given parameters on the model
-    specified in the constructor of this class.
-
-    This function essentially calls :func:`create_query` to create a query
-    which matches the set of all instances of ``model`` which meet the search
-    parameters defined in ``search_params``, then returns all results (or just
-    one if ``search_params['single'] == True``).
-
-    This function returns a single instance of the model matching the search
-    parameters if ``search_params['single']`` is ``True``, or a list of all
-    such instances otherwise. If ``search_params['single']`` is ``True``, then
-    this method will raise :exc:`sqlalchemy.orm.exc.NoResultFound` if no
-    results are found and :exc:`sqlalchemy.orm.exc.MultipleResultsFound` if
-    multiple results are found.
-
-    `model` is a SQLAlchemy declarative model class representing the database
-    model to query.
-
-    `sort` is a list of two-tuples of the form ``(direction, fieldname)``,
-    where ``direction`` is either ``'+'`` or ``'-'`` and ``fieldname`` is a
-    string representing an attribute of the model or a dot-separated
-    relationship path (for example, ``'owner.name'``).
-
-    `search_params` is a dictionary containing all available search
-    parameters. For more information on available search parameters, see
-    :ref:`search`. Implementation note: this dictionary will be converted to a
-    :class:`SearchParameters` object when the :func:`create_query` function is
-    called.
-
-    If `_ignore_order_by` is ``True``, no ``order_by`` method will be called on
-    the query, regardless of whether the search parameters indicate that there
-    should be an ``order_by``. (This is used internally by Flask-Restless to
-    work around a limitation in SQLAlchemy.)
-
-    """
-    # # `is_single` is True when 'single' is a key in ``search_params`` and its
-    # # corresponding value is anything except those values which evaluate to
-    # # False (False, 0, the empty string, the empty list, etc.).
-    # is_single = search_params.get('single')
-    query = create_query(session, model, filters, sort, group_by,
-                         _ignore_order_by)
-    if single:
-        # may raise NoResultFound or MultipleResultsFound
-        return query.one()
     return query

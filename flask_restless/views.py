@@ -43,7 +43,6 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm.exc import FlushError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy.orm.query import Query
 from werkzeug.exceptions import BadRequest
 from werkzeug.exceptions import HTTPException
 
@@ -765,7 +764,7 @@ class API(APIBase):
         # Determine whether the client expects a single resource response.
         try:
             single = bool(int(request.args.get('filter[single]', 0)))
-        except ValueError as exception:
+        except ValueError:
             raise SingleKeyError('failed to extract Boolean from parameter')
 
         return filters, sort, group_by, single
@@ -1012,11 +1011,7 @@ class API(APIBase):
         # Compute the result of the search on the model.
         try:
             result = search(self.session, self.model, filters=filters,
-                            sort=sort, group_by=group_by, single=single)
-        except NoResultFound:
-            return error_response(404, detail='No result found')
-        except MultipleResultsFound:
-            return error_response(404, detail='Multiple results found')
+                            sort=sort, group_by=group_by)
         except ComparisonToNull as exception:
             return error_response(400, detail=str(exception))
         except Exception as exception:
@@ -1030,7 +1025,7 @@ class API(APIBase):
         # If the result of the search is a SQLAlchemy query object, we need to
         # return a collection.
         pagination_links = dict()
-        if isinstance(result, Query):
+        if not single:
             # Determine the client's pagination request: page size and number.
             page_size = int(request.args.get('page[size]', self.page_size))
             if page_size < 0:
@@ -1104,8 +1099,14 @@ class API(APIBase):
                 #
                 headers = dict(Link=','.join(link for link in link_strings
                                              if link is not None))
-        # Otherwise, the result of the search was a single resource.
+        # Otherwise, the result of the search should be a single resource.
         else:
+            try:
+                result = result.one()
+            except NoResultFound:
+                return error_response(404, detail='No result found')
+            except MultipleResultsFound:
+                return error_response(404, detail='Multiple results found')
             # (This is not a pretty solution.) Set number of results to
             # ``None`` to indicate that the returned JSON metadata should not
             # include a ``total`` key.
