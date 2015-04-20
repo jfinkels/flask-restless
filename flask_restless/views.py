@@ -567,7 +567,7 @@ class APIBase(ModelView):
 
     `primary_key` is as described in :ref:`primarykey`.
 
-    `validation_exceptions` are as described in :ref:`validation_exceptions`.
+    `validation_exceptions` are as described in :ref:`validation`.
 
     `allow_to_many_replacement` is as described in :ref:`allowreplacement`.
 
@@ -644,26 +644,9 @@ class API(APIBase):
     superclass. In addition to those described below, this constructor also
     accepts all the keyword arguments of the constructor of the superclass.
 
-    `page_size` must be a positive integer that represents the default page
-    size for responses that consist of a collection of resources. Requests made
-    by clients may override this default by specifying ``page_size`` as a query
-    parameter. `max_page_size` must be a positive integer that represents the
-    maximum page size that a client can request. If a client specifies that
-    greater than `max_page_size` should be returned, only `max_page_size`
-    results will be returned. For more information, see
-    :ref:`serverpagination`.
-
-    `serializer` and `deserializer` are custom serialization functions. The
-    former function must take a single argument representing the instance of
-    the model to serialize, and must return a dictionary representation of that
-    instance. The latter function must take a single argument representing the
-    dictionary representation of an instance of the model and must return an
-    instance of `model` that has those attributes. For more information, see
-    :ref:`serialization`.
-
-    `includes` ...
-
-    `allow_client_generated_ids` ...
+    `page_size`, `max_page_size`, `serializer`, `deserializer`, `includes`, and
+    `allow_client_generated_ids` are as described in
+    :meth:`APIManager.create_api`.
 
     """
 
@@ -1289,7 +1272,8 @@ class API(APIBase):
             if temp_result is not None:
                 resource_id = temp_result
         was_deleted = False
-        instance = get_by(self.session, self.model, resource_id, self.primary_key)
+        instance = get_by(self.session, self.model, resource_id,
+                          self.primary_key)
         if instance is None:
             detail = 'No resource found with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
@@ -1504,7 +1488,8 @@ class API(APIBase):
             if temp_result is not None:
                 resource_id = temp_result
         # Get the instance on which to set the new attributes.
-        instance = get_by(self.session, self.model, resource_id, self.primary_key)
+        instance = get_by(self.session, self.model, resource_id,
+                          self.primary_key)
         # If no instance of the model exists with the specified instance ID,
         # return a 404 response.
         if instance is None:
@@ -1561,7 +1546,8 @@ class RelationshipAPI(APIBase):
     superclass. In addition to those described below, this constructor also
     accepts all the keyword arguments of the constructor of the superclass.
 
-    `allow_delete_from_to_many_relationships` ...
+    `allow_delete_from_to_many_relationships` is as described in
+    :meth:`APIManager.create_api`.
 
     """
 
@@ -1595,7 +1581,8 @@ class RelationshipAPI(APIBase):
             if temp_result is not None:
                 resource_id = temp_result
         # get the instance of the "main" model whose ID is instid
-        instance = get_by(self.session, self.model, resource_id, self.primary_key)
+        instance = get_by(self.session, self.model, resource_id,
+                          self.primary_key)
         if instance is None:
             detail = 'No instance with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
@@ -1644,17 +1631,18 @@ class RelationshipAPI(APIBase):
             # See the note under the preprocessor in the get() method.
             if temp_result is not None:
                 resource_id, relation_name = temp_result
-        instance = get_by(self.session, self.model, resource_id, self.primary_key)
+        instance = get_by(self.session, self.model, resource_id,
+                          self.primary_key)
         # If no instance of the model exists with the specified instance ID,
         # return a 404 response.
         if instance is None:
-            detail = 'No instance with ID {0} in model {1}'.format(resource_id,
-                                                                   self.model)
+            detail = 'No instance with ID {0} in model {1}'
+            detail = detail.format(resource_id, self.model)
             return error_response(404, detail=detail)
         # If no such relation exists, return a 404.
         if not hasattr(instance, relation_name):
-            detail = 'Model {0} has no relation named {1}'.format(self.model,
-                                                                  relation_name)
+            detail = 'Model {0} has no relation named {1}'
+            detail = detail.format(self.model, relation_name)
             return error_response(404, detail=detail)
         related_model = get_related_model(self.model, relation_name)
         related_value = getattr(instance, relation_name)
@@ -1722,17 +1710,18 @@ class RelationshipAPI(APIBase):
             # See the note under the preprocessor in the get() method.
             if temp_result is not None:
                 resource_id, relation_name = temp_result
-        instance = get_by(self.session, self.model, resource_id, self.primary_key)
+        instance = get_by(self.session, self.model, resource_id,
+                          self.primary_key)
         # If no instance of the model exists with the specified instance ID,
         # return a 404 response.
         if instance is None:
-            detail = 'No instance with ID {0} in model {1}'.format(resource_id,
-                                                                   self.model)
+            detail = 'No instance with ID {0} in model {1}'
+            detail = detail.format(resource_id, self.model)
             return error_response(404, detail=detail)
         # If no such relation exists, return a 404.
         if not hasattr(instance, relation_name):
-            detail = 'Model {0} has no relation named {1}'.format(self.model,
-                                                                  relation_name)
+            detail = 'Model {0} has no relation named {1}'
+            detail = detail.format(self.model, relation_name)
             return error_response(404, detail=detail)
         related_model = get_related_model(self.model, relation_name)
         # related_value = getattr(instance, relation_name)
@@ -1848,7 +1837,8 @@ class RelationshipAPI(APIBase):
             # See the note under the preprocessor in the get() method.
             if temp_result is not None:
                 resource_id = temp_result
-        instance = get_by(self.session, self.model, resource_id, self.primary_key)
+        instance = get_by(self.session, self.model, resource_id,
+                          self.primary_key)
         # If no such relation exists, return an error to the client.
         if not hasattr(instance, relation_name):
             detail = 'No such link: {0}'.format(relation_name)

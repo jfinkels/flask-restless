@@ -28,8 +28,6 @@ from .helpers import model_for
 from .helpers import url_for
 from .serialization import DefaultSerializer
 from .serialization import DefaultDeserializer
-from .serialization import DeserializationException
-from .serialization import SerializationException
 from .views import API
 from .views import FunctionAPI
 from .views import RelationshipAPI
@@ -145,6 +143,13 @@ class APIManager(object):
         #: the corresponding collection names for those models.
         self.created_apis_for = {}
 
+        #: The Flask-SQLAlchemy database object.
+        self.flask_sqlalchemy_db = kw.pop('flask_sqlalchemy_db', None)
+
+        #: The SQLAlchemy session object on which changes to the model will be
+        #: made.
+        self.session = kw.pop('session', None)
+
         # Stash this instance so that it can be examined later by the global
         # `url_for`, `model_for`, and `collection_name` functions.
         #
@@ -154,8 +159,6 @@ class APIManager(object):
         model_for.register(self)
         collection_name.register(self)
 
-        self.flask_sqlalchemy_db = kw.pop('flask_sqlalchemy_db', None)
-        self.session = kw.pop('session', None)
         if self.app is not None:
             self.init_app(self.app, **kw)
 
@@ -368,9 +371,6 @@ class APIManager(object):
         :meth:`create_api_blueprint` method). For more information on using
         preprocessors and postprocessors, see :ref:`processors`.
 
-        .. versionadded:: 0.13.0
-           Added the `preprocessors` and `postprocessors` keyword arguments.
-
         """
         # If the SQLAlchemy database was provided in the constructor, use that.
         if flask_sqlalchemy_db is None:
@@ -436,7 +436,7 @@ class APIManager(object):
         to register it yourself.
 
         `model` is the SQLAlchemy model class for which a ReSTful interface
-        will be created. Note this must be a class, not an instance of a class.
+        will be created.
 
         `app` is the :class:`Flask` object on which we expect the blueprint
         created in this method to be eventually registered. If not specified,
@@ -446,126 +446,75 @@ class APIManager(object):
         `methods` specify the HTTP methods which will be made available on the
         ReSTful API for the specified model, subject to the following caveats:
 
-        * If :http:method:`get` is in this list, the API will allow getting a
-          single instance of the model, getting all instances of the model, and
-          searching the model using search parameters.
+        * If :http:method:`get` is in this list, the API will allow fetching a
+          all instances of the model, any individual instance of the model, any
+          related instances, and particular instances of to-many relationships.
         * If :http:method:`patch` is in this list, the API will allow updating
-          a single instance of the model, updating all instances of the model,
-          and updating a subset of all instances of the model specified using
-          search parameters.
+          a single instance of the model per request.
         * If :http:method:`delete` is in this list, the API will allow deletion
           of a single instance of the model per request.
-        * If :http:method:`post` is in this list, the API will allow posting a
-          new instance of the model per request.
+        * If :http:method:`post` is in this list, the API will allow creating
+          one new instance of the model per request.
 
         The default set of methods provides a read-only interface (that is,
         only :http:method:`get` requests are allowed).
+
+        `url_prefix` the URL prefix at which this API will be accessible.
 
         `collection_name` is the name of the collection specified by the given
         model class to be used in the URL for the ReSTful API created. If this
         is not specified, the lowercase name of the model will be used.
 
-        `url_prefix` the URL prefix at which this API will be accessible.
-
-        If `allow_patch_many` is ``True``, then requests to
-        :http:patch:`/api/<collection_name>?q=<searchjson>` will attempt to
-        patch the attributes on each of the instances of the model which match
-        the specified search query. This is ``False`` by default. For
-        information on the search query parameter ``q``, see
-        :ref:`searchformat`.
-
-        If `allow_delete_many` is ``True``, then requests to
-        :http:delete:`/api/<collection_name>?q=<searchjson>` will attempt to
-        delete each instance of the model that matches the specified search
-        query. This is ``False`` by default. For information on the search
-        query parameter ``q``, see :ref:`searchformat`.
-
-        `validation_exceptions` is the tuple of possible exceptions raised by
-        validation of your database models. If this is specified, validation
-        errors will be captured and forwarded to the client in JSON format. For
-        more information on how to use validation, see :ref:`validation`.
-
         If `allow_functions` is ``True``, then requests to
         :http:get:`/api/eval/<collection_name>` will return the result of
         evaluating SQL functions specified in the body of the request. For
         information on the request format, see :ref:`functionevaluation`. This
-        if ``False`` by default. Warning: you must not create an API for a
-        model whose name is ``'eval'`` if you set this argument to ``True``.
+        is ``False`` by default.
 
-        If either `include_columns` or `exclude_columns` is not ``None``,
-        exactly one of them must be specified. If both are not ``None``, then
-        this function will raise a :exc:`IllegalArgumentError`.
-        `exclude_columns` must be an iterable of strings specifying the columns
-        of `model` which will *not* be present in the JSON representation of
-        the model provided in response to :http:method:`get` requests.
-        Similarly, `include_columns` specifies the *only* columns which will be
-        present in the returned dictionary. In other words, `exclude_columns`
-        is a blacklist and `include_columns` is a whitelist; you can only use
-        one of them per API endpoint. If either `include_columns` or
-        `exclude_columns` contains a string which does not name a column in
-        `model`, it will be ignored.
+        .. warning::
 
-        If you attempt to either exclude a primary key field or not include a
-        primary key field for :http:method:`post` requests, this method will
-        raise an :exc:`IllegalArgumentError`.
+           If this ``allow_functions`` is ``True``, you must not create an API
+           for a model whose name is ``'eval'``.
 
-        If `include_columns` is an iterable of length zero (like the empty
-        tuple or the empty list), then the returned dictionary will be
-        empty. If `include_columns` is ``None``, then the returned dictionary
-        will include all columns not excluded by `exclude_columns`.
+        If `only` is not ``None``, it must be a list of columns and/or
+        relationships of the specified `model`, given either as strings or as
+        the attributes themselves. If it is a list, only these fields will
+        appear in the resource object representation of an instance of `model`.
+        In other words, `only` is a whitelist of fields. The ``id`` and
+        ``type`` elements of the resource object will always be present
+        regardless of the value of this argument. If `only` contains a string
+        that does not name a column in `model`, it will be ignored.
 
-        If `include_methods` is an iterable of strings, the methods with names
-        corresponding to those in this list will be called and their output
-        included in the response.
+        If `exclude` is not ``None``, it must be a list of columns and/or
+        relationships of the specified `model`, given either as strings or as
+        the attributes themselves. If it is a list, all fields **except** these
+        will appear in the resource object representation of an instance of
+        `model`. In other words, `exclude` is a blacklist of fields. The ``id``
+        and ``type`` elements of the resource object will always be present
+        regardless of the value of this argument. If `exclude` contains a
+        string that does not name a column in `model`, it will be ignored.
 
-        See :ref:`includes` for information on specifying included or excluded
-        columns on fields of related models.
+        If either `only` or `exclude` is not ``None``, exactly one of them must
+        be specified; if both are not ``None``, then this function will raise a
+        :exc:`IllegalArgumentError`.
 
-        `results_per_page` is a positive integer which represents the default
-        number of results which are returned per page. Requests made by clients
-        may override this default by specifying ``results_per_page`` as a query
-        argument. `max_results_per_page` is a positive integer which represents
-        the maximum number of results which are returned per page. This is a
-        "hard" upper bound in the sense that even if a client specifies that
-        greater than `max_results_per_page` should be returned, only
-        `max_results_per_page` results will be returned. For more information,
+        See :ref:`sparse` for more information on specifying which fields will
+        be included in the resource object representation.
+
+        `validation_exceptions` is the tuple of possible exceptions raised by
+        validation of your database models. If this is specified, validation
+        errors will be captured and forwarded to the client in the format
+        described by the JSON API specification. For more information on how to
+        use validation, see :ref:`validation`.
+
+        `page_size` must be a positive integer that represents the default page
+        size for responses that consist of a collection of resources. Requests
+        made by clients may override this default by specifying ``page_size``
+        as a query parameter. `max_page_size` must be a positive integer that
+        represents the maximum page size that a client can request. Even if a
+        client specifies that greater than `max_page_size` should be returned,
+        at most `max_page_size` results will be returned. For more information,
         see :ref:`serverpagination`.
-
-        .. deprecated:: 0.9.2
-           The `post_form_preprocessor` keyword argument is deprecated in
-           version 0.9.2. It will be removed in version 1.0. Replace code that
-           looks like this::
-
-               manager.create_api(Person, post_form_preprocessor=foo)
-
-           with code that looks like this::
-
-               manager.create_api(Person, preprocessors=dict(POST=[foo]))
-
-           See :ref:`processors` for more information and examples.
-
-        `post_form_preprocessor` is a callback function which takes
-        POST input parameters loaded from JSON and enhances them with other
-        key/value pairs. The example use of this is when your ``model``
-        requires to store user identity and for security reasons the identity
-        is not read from the post parameters (where malicious user can tamper
-        with them) but from the session.
-
-        `preprocessors` is a dictionary mapping strings to lists of
-        functions. Each key is the name of an HTTP method (for example,
-        ``'GET'`` or ``'POST'``). Each value is a list of functions, each of
-        which will be called before any other code is executed when this API
-        receives the corresponding HTTP request. The functions will be called
-        in the order given here. The `postprocessors` keyword argument is
-        essentially the same, except the given functions are called after all
-        other code. For more information on preprocessors and postprocessors,
-        see :ref:`processors`.
-
-        `primary_key` is a string specifying the name of the column of `model`
-        to use as the primary key for the purposes of creating URLs. If the
-        `model` has exactly one primary key, there is no need to provide a
-        value for this. If `model` has two or more primary keys, you must
-        specify which one to use.
 
         `serializer` and `deserializer` are custom serialization functions. The
         former function must take a single argument representing the instance
@@ -575,52 +524,53 @@ class APIManager(object):
         and must return an instance of `model` that has those attributes. For
         more information, see :ref:`serialization`.
 
-        .. versionadded:: 0.17.0
-           Added the `serializer` and `deserializer` keyword arguments.
+        `preprocessors` is a dictionary mapping strings to lists of
+        functions. Each key represents a type of endpoint (for example,
+        ``'GET_RESOURCE'`` or ``'GET_COLLECTION'``). Each value is a list of
+        functions, each of which will be called before any other code is
+        executed when this API receives the corresponding HTTP request. The
+        functions will be called in the order given here. The `postprocessors`
+        keyword argument is essentially the same, except the given functions
+        are called after all other code. For more information on preprocessors
+        and postprocessors, see :ref:`processors`.
 
-        .. versionadded:: 0.16.0
-           Added the `app` and `allow_delete_many` keyword arguments.
+        `primary_key` is a string specifying the name of the column of `model`
+        to use as the primary key for the purposes of creating URLs. If the
+        `model` has exactly one primary key, there is no need to provide a
+        value for this. If `model` has two or more primary keys, you must
+        specify which one to use. For more information, see :ref:`primarykey`.
 
-        .. versionadded:: 0.13.0
-           Added the `primary_key` keyword argument.
+        `serializer` and `deserializer` are custom serialization functions. The
+        former function must take a single argument representing the instance
+        of the model to serialize, and must return a dictionary representation
+        of that instance. The latter function must take a single argument
+        representing the dictionary representation of an instance of the model
+        and must return an instance of `model` that has those attributes. For
+        more information, see :ref:`serialization`.
 
-        .. versionadded:: 0.10.2
-           Added the `include_methods` keyword argument.
+        `includes` must be a list of strings specifying which related resources
+        will be included in a compound document by default when fetching a
+        resource object representation of an instance of `model`. Each element
+        of `includes` is the name of a field of `model` (that is, either an
+        attribute or a relationship). For more information, see
+        :ref:`includes`.
 
-        .. versionchanged:: 0.10.0
-           Removed `authentication_required_for` and `authentication_function`
-           keyword arguments.
+        If `allow_to_many_replacement` is ``True`` and this API allows
+        :http:method:`patch` requests, the server will allow the client to
+        replace the entire collection of resources in any to-many relationship
+        of the model. This is ``False`` by default. For more information, see
+        :ref:`allowreplacement`.
 
-           Use the `preprocesors` and `postprocessors` keyword arguments
-           instead. For more information, see :ref:`authentication`.
+        If `allow_delete_from_to_many_relationships` is ``True`` and this API
+        allows :http:method:`patch` requests, the server will allow the client
+        to delete resources from any to-many relationship of the model. This is
+        ``False`` by default. For more information, see :ref:`allowdeletion`.
 
-        .. versionadded:: 0.9.2
-           Added the `preprocessors` and `postprocessors` keyword arguments.
-
-        .. versionadded:: 0.9.0
-           Added the `max_results_per_page` keyword argument.
-
-        .. versionadded:: 0.7
-           Added the `exclude_columns` keyword argument.
-
-        .. versionadded:: 0.6
-           This functionality was formerly in :meth:`create_api`, but the
-           blueprint creation and registration have now been separated.
-
-        .. versionadded:: 0.6
-           Added the `results_per_page` keyword argument.
-
-        .. versionadded:: 0.5
-           Added the `include_columns` and `validation_exceptions` keyword
-           argument.
-
-        .. versionadded:: 0.4
-           Added the `allow_functions`, `allow_patch_many`,
-           `authentication_required_for`, `authentication_function`, and
-           `collection_name` keyword arguments.
-
-        .. versionadded:: 0.4
-           Force the model name in the URL to lowercase.
+        If `allow_client_generated_ids` is ``True`` and this API allows
+        :http:method:`post` requests, the server will allow the client to
+        specify the ID for the resource to create. JSON API recommends that
+        this be a UUID. This is ``False`` by default. For more information, see
+        :ref:`clientids`.
 
         """
         # Perform some sanity checks on the provided keyword arguments.
@@ -753,7 +703,7 @@ class APIManager(object):
         # For example, /api/people/1.
         resource_methods = frozenset(('DELETE', 'PATCH')) & methods
         add_rule(resource_url, view_func=api_view, methods=resource_methods)
-        resource_methods = frozenset(('GET', )) & methods
+        resource_methods = READONLY_METHODS & methods
         resource_defaults = dict(relation_name=None, related_resource_id=None)
         add_rule(resource_url, view_func=api_view, methods=resource_methods,
                  defaults=resource_defaults)
@@ -800,14 +750,10 @@ class APIManager(object):
         The positional and keyword arguments are passed directly to the
         :meth:`create_api_blueprint` method, so see the documentation there.
 
-        This is a convenience method for the following code::
+        This is essentially a convenience method for the following code::
 
             blueprint = apimanager.create_api_blueprint(*args, **kw)
             app.register_blueprint(blueprint)
-
-        .. versionchanged:: 0.6
-           The blueprint creation has been moved to
-           :meth:`create_api_blueprint`; the registration remains here.
 
         """
         # Check if the user is providing a specific Flask application with
