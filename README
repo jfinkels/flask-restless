@@ -148,7 +148,7 @@ Now to build the documentation, run the command
     python setup.py build_sphinx
 
 in the top-level directory. The output can be viewed in a web browser by
-opening `docs/_build/html/index.html`.
+opening `build/sphinx/html/index.html`.
 
 [11]: http://sphinx.pocoo.org/
 [12]: https://packages.python.org/sphinxcontrib-httpdomain/

@@ -117,8 +117,6 @@ Then the API will be exposed at ``/api/people`` instead of ``/api/person``.
 
    According to the `JSON API standard`_,
 
-   .. blockquote::
-
       Note: This spec is agnostic about inflection rules, so the value of type
       can be either plural or singular. However, the same value should be used
       consistently throughout an implementation.
