@@ -2,9 +2,10 @@
     flask.ext.restless
     ~~~~~~~~~~~~~~~~~~
 
-    Flask-Restless is a `Flask`_ extension that creates endpoints that satisfy
-    the requirements of the `JSON API`_ specification. It is compatible with
-    models that have been defined using `SQLAlchemy`_ or `Flask-SQLAlchemy`_.
+    Flask-Restless is a `Flask`_ extension that creates URL endpoints that
+    satisfy the requirements of the `JSON API`_ specification. It is compatible
+    with models that have been defined using `SQLAlchemy`_ or
+    `Flask-SQLAlchemy`_.
 
     .. _Flask: http://flask.pocoo.org
     .. _JSON API: http://jsonapi.org

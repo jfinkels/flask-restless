@@ -2,25 +2,30 @@
 
 ## Introduction ##
 
-This is Flask-Restless, a [Flask][1] extension which facilitates the creation
-of ReSTful JSON APIs. It is compatible with models which have been defined
-using either [SQLAlchemy][sa] or [Flask-SQLAlchemy][fsa].
+This is Flask-Restless, a [Flask][1] extension that creates URL endpoints that
+satisfy the requirements of the [JSON API][2] specification. It is compatible
+with models that have been defined using either [SQLAlchemy][3] or
+[Flask-SQLAlchemy][4].
 
 This document contains some brief instructions concerning installation of
 requirements, installation of this extension, configuration and usage of this
 extension, and building of documentation.
 
-For more information, check the World Wide Web!
+For more information, see the
 
-  * [Documentation](http://readthedocs.org/docs/flask-restless)
-  * [Python Package Index listing](http://pypi.python.org/pypi/Flask-Restless)
-  * [Source code repository](http://github.com/jfinkels/flask-restless)
+  * [documentation][5],
+  * [Python Package Index listing][6],
+  * [source code repository][7].
 
-[![Build status](https://secure.travis-ci.org/jfinkels/flask-restless.png)](http://travis-ci.org/jfinkels/flask-restless)
+[![Build status](https://secure.travis-ci.org/jfinkels/flask-restless.png)](https://travis-ci.org/jfinkels/flask-restless)
 
 [1]: http://flask.pocoo.org
-[sa]: http://sqlalchemy.org
-[fsa]: http://packages.python.org/Flask-SQLAlchemy
+[2]: https://jsonapi.org
+[3]: https://sqlalchemy.org
+[4]: https://packages.python.org/Flask-SQLAlchemy
+[5]: https://readthedocs.org/docs/flask-restless
+[6]: https://pypi.python.org/pypi/Flask-Restless
+[7]: https://github.com/jfinkels/flask-restless
 
 ## Copyright license ##
 
@@ -36,7 +41,7 @@ For more information, see the files `LICENSE.AGPL` and `LICENSE.BSD` in this
 directory.
 
 The documentation is licensed under the Creative Commons Attribution-ShareAlike
-3.0 license.
+4.0 license.
 
 ## Contents ##
 
@@ -59,35 +64,35 @@ files:
 
 * `helpers.py` - utility functions, mainly for performing introspection on
   SQLAlchemy objects
-* `manager.py` - contains the main class which end users will utilize to create
-  ReSTful APIs for their database models
-* `search.py` - functions and classes which facilitate searching the database
-  on requests which require a search
-* `views.py` - the view class which implements the ReSTful API
+* `manager.py` - contains the main class that end users will utilize to create
+  ReSTful JSON APIs for their database models
+* `search.py` - functions and classes that facilitate searching the database
+  on requests that require a search
+* `serialization.py` - basic serialization and deserialization for SQLAlchemy
+  models
+* `views.py` - the view classes that implement the JSON API interface
 
 ## Installing ##
 
-This application requires [Python][4] version 2.6, 2.7 or 3.3. Python 3.2 is
-not supported by Flask and therefore cannot be supported by Flask-Restless.
+This application can be used with any Python version that Flask supports, which
+currently includes versions 2.6, 2.7, 3.3, and 3.4. (Python 3.2 is not
+supported by Flask and therefore cannot be supported by Flask-Restless.)
 
 This application requires the following libraries to be installed:
 
 * [Flask][1] version 0.10 or greater
-* [SQLAlchemy][sa] version 0.8 or greater
-* [python-dateutil][5] version greater than 2.0
-* [Flask-SQLAlchemy][fsa] only if your models are defined using Flask-SQLAlchemy
+* [SQLAlchemy][3] version 0.8 or greater
+* [python-dateutil][8] version strictly greater than 2.2
+* [mimerender][9] version 0.5.2 or greater
 
-These requirements are also listed in the `requirements.txt` file. Using `pip`
-is probably the easiest way to install these:
+These requirements (and some additional optional packages) are also listed in
+the `requirements.txt` file. Using `pip` is probably the easiest way to install
+these:
 
     pip install -r requirements.txt
 
-or
-
-    pip install Flask Flask-SQLAlchemy python-dateutil sqlalchemy
-
-[4]: http://www.python.org/
-[5]: http://labix.org/python-dateutil
+[8]: https://labix.org/python-dateutil
+[9]: https://github.com/martinblech/mimerender
 
 ## Building as a Python egg ##
 
@@ -99,81 +104,37 @@ This package can be built, installed, etc. as a Python egg using the provided
 ## How to use ##
 
 For information on how to use this extension, build the documentation here or
-[view it on the Web](http://readthedocs.org/docs/flask-restless).
+[view it on the Web][5].
 
 ## Testing ##
 
-Running the unit tests requires the [nosetests][n] library. This requirement is
-also listed in the `requirements-test.txt` file.
+Running the unit tests requires the [nosetests][10] library. This requirement
+is also listed in the `requirements-test.txt` file.
 
 Using `pip` is probably the easiest way to install this:
 
     pip install -r requirements-test.txt
 
-or
-
-    pip install nose
-
-The Python unit tests are contained in the `tests/` directory (which is a
-Python package). To run the test suite, run the command
-
-    python setup.py test
-
-You can also run the unit tests in a less verbose way by doing
+To run the tests:
 
     nosetests
 
-[n]: https://nose.readthedocs.org/
-
-### Test coverage ###
-
-You can measure the test coverage by running
-
-    nosetests --with-coverage --cover-package=flask_restless --cover-html \
-        --cover-html-dir=<somedir>
-
-where <somedir> is the name of the directory in which the HTML formatted
-coverage report will be written.
-
-Measuring test coverage requires the [coverage.py][cov] package, which can be
-installed like this:
-
-    pip install coverage
-
-[cov]: http://nedbatchelder.com/code/coverage
-
-### Testing validation ###
-
-Validation is not provided directly by Flask-Restless, but it does provide a
-way for users to indicate exceptions to catch. If you wish to test validation
-of SQLAlchemy models with a real external SQLAlchemy validation library,
-install the development version of [SAValidation][sav]:
-
-    pip install savalidation
-
-This is only possible on Python 2. The test suite will automatically skip these
-tests if `savalidation` is not installed or if you are using Python 3.
-
-[sav]: http://pypi.python.org/pypi/SAValidation
+[10]: https://nose.readthedocs.org/
 
 ## Building documentation ##
 
 Flask-Restless requires the following program and supporting library to build
 the documentation:
 
-* [Sphinx][6]
-* [sphinxcontrib-httpdomain][7], version 1.1.7 or greater
+* [Sphinx][11]
+* [sphinxcontrib-httpdomain][12], version 1.1.7 or greater
 
 These requirements are also listed in the `requirements-doc.txt` file. Using
 `pip` is probably the easiest way to install these:
 
     pip install -r requirements-doc.txt
 
-or
-
-    pip install sphinx "sphinxcontrib-httpdomain>=1.1.7"
-
-The documentation is written for Sphinx in [reStructuredText][8] files in the
+The documentation is written for Sphinx in [reStructuredText][13] files in the
 `docs/` directory. Documentation for each class and function is provided in the
 docstring in the code.
 
@@ -189,49 +150,45 @@ Now to build the documentation, run the command
 in the top-level directory. The output can be viewed in a web browser by
 opening `docs/_build/html/index.html`.
 
-[6]: http://sphinx.pocoo.org/
-[7]: http://packages.python.org/sphinxcontrib-httpdomain/
-[8]: http://docutils.sourceforge.net/rst.html
+[11]: http://sphinx.pocoo.org/
+[12]: https://packages.python.org/sphinxcontrib-httpdomain/
+[13]: https://docutils.sourceforge.net/rst.html
 
 ## Contributing ##
 
-Please report any issues on the [GitHub Issue Tracker][11].
+Please report any issues on the [GitHub Issue Tracker][14].
 
 To suggest a change to the code or documentation, please create a new pull
 request on GitHub. Contributed code must come with an appropriate unit
-test. Please ensure that your code follows [PEP8][12], by running, for example,
-[flake8][13] before submitting a pull request. Also, please squash multiple
-commits into a single commit in your pull request by [rebasing][14] onto the
+test. Please ensure that your code follows [PEP8][15], by running, for example,
+[flake8][16] before submitting a pull request. Also, please squash multiple
+commits into a single commit in your pull request by [rebasing][17] onto the
 master branch.
 
 By contributing to this project, you are agreeing to license your code
 contributions under both the GNU Affero General Public License, either version
-3 or any later version, and the 3-clause BSD License, as described in the
-copyright license section above.
+3 or any later version, and the 3-clause BSD License, and your documentation
+contributions under the Creative Commons Attribution-ShareAlike License version
+4.0, as described in the copyright license section above.
 
-[11]: http://github.com/jfinkels/flask-restless/issues
-[12]: https://www.python.org/dev/peps/pep-0008/
-[13]: http://flake8.readthedocs.org/en/latest/
-[14]: https://help.github.com/articles/about-git-rebase/
-
-## Authors ##
-
-See the `AUTHORS` file for a list of people who have contributed to this code.
+[14]: http://github.com/jfinkels/flask-restless/issues
+[15]: https://www.python.org/dev/peps/pep-0008/
+[16]: http://flake8.readthedocs.org/en/latest/
+[17]: https://help.github.com/articles/about-git-rebase/
 
 ## Artwork ##
 
 The `artwork/flask-restless-small.svg` and
-`docs/_static/flask-restless-small.png` are licensed under the
-[Creative Commons Attribute-ShareAlike 3.0 license][9]. The original image is a
-scan of a (now public domain) illustration by Arthur Hopkins in a serial
-edition of "The Return of the Native" by Thomas Hardy published in October
-1878.
+`docs/_static/flask-restless-small.png` are licensed under the [Creative
+Commons Attribute-ShareAlike 4.0 license][18]. The original image is a scan of
+a (now public domain) illustration by Arthur Hopkins in a serial edition of
+"The Return of the Native" by Thomas Hardy published in October 1878.
 
 The `artwork/flask-restless.svg` and `docs/_static/flask-restless.png` are
-licensed under the [Flask Artwork License][10].
+licensed under the [Flask Artwork License][19].
 
-[9]: http://creativecommons.org/licenses/by-sa/3.0
-[10]: http://flask.pocoo.org/docs/license/#flask-artwork-license
+[18]: https://creativecommons.org/licenses/by-sa/4.0
+[19]: http://flask.pocoo.org/docs/license/#flask-artwork-license
 
 ## Contact ##
 
