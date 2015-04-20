@@ -128,6 +128,8 @@ Then the API will be exposed at ``/api/people`` instead of ``/api/person``.
 
 .. _JSON API standard: http://jsonapi.org/format/#document-structure-resource-types
 
+.. _primarykey:
+
 Specifying one of many primary keys
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -3,18 +3,27 @@
     ~~~~~~~~~~~~~~~~~~~~~~~~
 
     Provides the following view classes, subclasses of
-    :class:`flask.MethodView` which provide generic endpoints for interacting
-    with an entity of the database:
+    :class:`flask.MethodView` which provide generic endpoints for fetching,
+    creating, updating, and deleting instances of a SQLAlchemy model.
 
-    :class:`flask.ext.restless.views.API`
-      Provides the endpoints for each of the basic HTTP methods. This is the
-      main class used by the
-      :meth:`flask.ext.restless.manager.APIManager.create_api` method to create
-      endpoints.
+    The implementations here are designed to meet the requirements of the JSON
+    API specification.
 
-    :class:`flask.ext.restless.views.FunctionAPI`
+    :class:`API`
+
+      Provides the endpoints for accessing resources via each of the basic HTTP
+      methods. This is the main class used by the :meth:`APIManager.create_api`
+      method to create endpoints.
+
+    :class:`RelationshipAPI`
+
+      Provides endpoints for accessing relationship URLs. This allows accessing
+      **link objects**, as described in the JSON API specification.
+
+    :class:`FunctionAPI`
+
       Provides a :http:method:`get` endpoint which returns the result of
-      evaluating some function on the entire collection of a given model.
+      evaluating a given function on the entire collection of a given model.
 
     :copyright: 2011 by Lincoln de Sousa <lincoln@comum.org>
     :copyright: 2012, 2013, 2014, 2015 Jeffrey Finkelstein
@@ -31,7 +40,7 @@ import math
 
 from flask import current_app
 from flask import json
-from flask import jsonify as _jsonify
+from flask import jsonify
 from flask import request
 from flask.views import MethodView
 from mimerender import FlaskMimeRender
@@ -67,7 +76,6 @@ from .serialization import DefaultDeserializer
 from .serialization import DeserializationException
 from .serialization import SerializationException
 
-
 #: Format string for creating the complete URL for a paginated response.
 LINKTEMPLATE = '{0}?page[number]={1}&page[size]={2}'
 
@@ -91,12 +99,24 @@ ROLLBACK_ERRORS = (DataError, IntegrityError, ProgrammingError, FlushError)
 # For the sake of brevity, rename this function.
 chain = chain.from_iterable
 
+# Register the JSON API content type so that mimerender knows to look for it.
+register_mime('jsonapi', (CONTENT_TYPE, ))
+
 
 class SortKeyError(KeyError):
+    """Raised when attempting to parse the sort query parameter reveals that
+    the client did not correctly specify the sort order using ``'+'`` or
+    ``'-'``.
+
+    """
     pass
 
 
 class SingleKeyError(KeyError):
+    """Raised when attempting to parse the "single" query parameter reveals
+    that the client did not correctly provide a Boolean value.
+
+    """
     pass
 
 
@@ -115,6 +135,7 @@ class ProcessingException(HTTPException):
     JSON object in the body of the response to the client.
 
     """
+
     def __init__(self, description='', code=400, *args, **kwargs):
         super(ProcessingException, self).__init__(*args, **kwargs)
         self.code = code
@@ -156,6 +177,19 @@ def catch_processing_exceptions(func):
 
 
 def requires_json_api_accept(func):
+    """Decorator that requires requests have the ``Accept`` header required by
+    the JSON API specification.
+
+    If the request does not have the correct ``Accept`` header, a
+    :http:status:`406` response is returned.
+
+    View methods can be wrapped like this::
+
+        @requires_json_api_accept
+        def get(self, *args, **kw):
+            return '...'
+
+    """
     @wraps(func)
     def new_func(*args, **kw):
         if request.headers.get('Accept') != CONTENT_TYPE:
@@ -167,6 +201,19 @@ def requires_json_api_accept(func):
 
 
 def requires_json_api_mimetype(func):
+    """Decorator that requires requests have the ``Content-Type`` header
+    required by the JSON API specification.
+
+    If the request does not have the correct ``Content-Type`` header, a
+    :http:status:`415` response is returned.
+
+    View methods can be wrapped like this::
+
+        @requires_json_api_mimetype
+        def get(self, *args, **kw):
+            return '...'
+
+    """
     @wraps(func)
     def new_func(*args, **kw):
         content_type = request.headers.get('Content-Type')
@@ -196,11 +243,10 @@ def catch_integrity_errors(session):
         def get(self, *args, **kw):
             return '...'
 
-    Specifically, functions wrapped with the returned decorator catch
-    :exc:`IntegrityError`s, :exc:`DataError`s, and
-    :exc:`ProgrammingError`s. After the exceptions are caught, the session is
-    rolled back, the exception is logged on the current Flask application, and
-    an error response is returned to the client.
+    Specifically, functions wrapped with the returned decorator catch the
+    exceptions specified in :data:`ROLLBACK_ERRORS`. After the exceptions are
+    caught, the session is rolled back, the exception is logged on the current
+    Flask application, and an error response is returned to the client.
 
     """
     def decorator(func):
@@ -228,37 +274,17 @@ def is_conflict(exception):
     return 'conflicts with' in string or 'UNIQUE constraint failed' in string
 
 
-def set_headers(response, headers):
-    """Sets the specified headers on the specified response.
-
-    `response` is a Flask response object, and `headers` is a dictionary of
-    headers to set on the specified response. Any existing headers that
-    conflict with `headers` will be overwritten.
-
-    """
-    for key, value in headers.items():
-        response.headers.set(key, value)
-
-
-def jsonify(*args, **kw):
-    """Same as :func:`flask.jsonify`, but sets response headers.
-
-    If ``headers`` is a keyword argument, this function will construct the JSON
-    response via :func:`flask.jsonify`, then set the specified ``headers`` on
-    the response. ``headers`` must be a dictionary mapping strings to strings.
-
-    """
-    response = _jsonify(*args, **kw)
-    if 'headers' in kw:
-        set_headers(response, kw['headers'])
-    return response
-
-
 def jsonpify(*args, **kw):
-    """Passes the specified arguments directly to :func:`jsonify` with a status
-    code of 200, then wraps the response with the name of a JSON-P callback
-    function specified as a query parameter called ``'callback'`` (or does
-    nothing if no such callback function is specified in the request).
+    """Returns a JSONP response, with the specified arguments passed directly
+    to :func:`flask.jsonify`.
+
+    If the request has a query parameter ``calback=foo``, then the body of the
+    response will be ``foo(<json>)``, where ``<json>`` is the JSON object that
+    would have been returned normally. If no such query parameter exists, this
+    simply returns ``<json>`` as normal.
+
+    The positional and keyword arguments are passed directly to
+    :func:`flask.jsonify`, with the following exceptions.
 
     If the keyword arguments include the string specified by :data:`_HEADERS`,
     its value must be a dictionary specifying headers to set before sending the
@@ -309,14 +335,36 @@ def jsonpify(*args, **kw):
         headers['Content-Type'] = CONTENT_TYPE
     # Set the headers on the HTTP response as well.
     if headers:
-        set_headers(response, headers)
+        for key, value in headers.items():
+            response.headers.set(key, value)
     response.status_code = status_code
     return response
 
 
 def parse_sparse_fields(type_=None):
+    """Get the sparse fields as requested by the client.
+
+    Returns a dictionary mapping resource type names to set of fields to
+    include for that resource.
+
+    For example, if the client requests::
+
+        GET /articles?fields[articles]=title,body&fields[people]=name
+
+    then::
+
+        >>> parse_sparse_fields()
+        {'articles': {'title', 'body'}, 'people': {'name'}}
+
+    If the `type_` argument is given, only the set of fields for that resource
+    type will be returned::
+
+        >>> parse_sparse_fields('articles')
+        {'title', 'body'}
+
+    """
     # TODO use a regular expression to ensure field parameters are of the
-    # correct format? (maybe ``field\[[^\[\]\.]*\]``)
+    # correct format? (maybe ``fields\[[^\[\]\.]*\]``)
     fields = {key[7:-1]: set(value.split(','))
               for key, value in request.args.items()
               if key.startswith('fields[') and key.endswith(']')}
@@ -327,11 +375,11 @@ def parse_sparse_fields(type_=None):
 def extract_error_messages(exception):
     """Tries to extract a dictionary mapping field name to validation error
     messages from `exception`, which is a validation exception as provided in
-    the ``validation_exceptions`` keyword argument in the constructor of this
-    class.
+    the ``validation_exceptions`` keyword argument to the constructor of the
+    :class:`APIBase` class.
 
     Since the type of the exception is provided by the user in the constructor
-    of this class, we don't know for sure where the validation error messages
+    of that class, we cannot know for sure where the validation error messages
     live inside `exception`. Therefore this method simply attempts to access a
     few likely attributes and returns the first one it finds (or ``None`` if no
     error messages dictionary can be extracted).
@@ -362,6 +410,15 @@ def extract_error_messages(exception):
 
 def error(id=None, href=None, status=None, code=None, title=None,
           detail=None, links=None, paths=None):
+    """Returns a dictionary representation of an error as described in the JSON
+    API specification.
+
+    For more information, see the `Errors`_ section of the JSON API
+    specification.
+
+    .. Errors_: http://jsonapi.org/format/#errors
+
+    """
     # HACK We use locals() so we don't have to list every keyword argument.
     if all(kwvalue is None for kwvalue in locals().values()):
         raise ValueError('At least one of the arguments must not be None.')
@@ -410,14 +467,11 @@ def errors_response(status, errors):
     return {'errors': errors, _STATUS: status}, status
 
 
-# Register the JSON API content type so that mimerender knows to look for it.
-register_mime('jsonapi', (CONTENT_TYPE, ))
-
 #: Creates the mimerender object necessary for decorating responses with a
 #: function that automatically formats the dictionary in the appropriate format
 #: based on the ``Accept`` header.
 #:
-#: Technical details: the first pair of parantheses instantiates the
+#: Technical details: the first pair of parentheses instantiates the
 #: :class:`mimerender.FlaskMimeRender` class. The second pair of parentheses
 #: creates the decorator, so that we can simply use the variable ``mimerender``
 #: as a decorator.
@@ -429,15 +483,16 @@ class ModelView(MethodView):
     """Base class for :class:`flask.MethodView` classes which represent a view
     of a SQLAlchemy model.
 
+    `session` is the SQLAlchemy session in which all database transactions will
+    be performed.
+
+    `model` is the SQLALchemy declarative model class of the database model for
+    which this instance of the class is an API.
+
     The model class for this view can be accessed from the :attr:`model`
     attribute, and the session in which all database transactions will be
     performed when dealing with this model can be accessed from the
     :attr:`session` attribute.
-
-    When subclasses wish to make queries to the database model specified in the
-    constructor, they should access the ``self.query`` function, which
-    delegates to the appropriate SQLAlchemy query object or Flask-SQLAlchemy
-    query object, depending on how the model has been defined.
 
     """
 
@@ -454,16 +509,6 @@ class ModelView(MethodView):
                   mimerender]
 
     def __init__(self, session, model, *args, **kw):
-        """Calls the constructor of the superclass and specifies the model for
-        which this class provides a ReSTful API.
-
-        `session` is the SQLAlchemy session in which all database transactions
-        will be performed.
-
-        `model` is the SQLALchemy declarative model class of the database model
-        for which this instance of the class is an API.
-
-        """
         super(ModelView, self).__init__(*args, **kw)
         self.session = session
         self.model = model
@@ -497,7 +542,6 @@ class FunctionAPI(ModelView):
             return error_response(400, detail=detail)
         try:
             result = evaluate_functions(self.session, self.model, data)
-            return dict(data=result)
         except AttributeError as exception:
             current_app.logger.exception(str(exception))
             detail = 'No such field "{0}"'.format(exception.field)
@@ -509,9 +553,25 @@ class FunctionAPI(ModelView):
             current_app.logger.exception(str(exception))
             detail = 'No such function "{0}"'.format(exception.function)
             return error_response(400, detail=detail)
+        return dict(data=result)
 
 
 class APIBase(ModelView):
+    """Base class for view classes that provide fetch, create, update, and
+    delete functionality for resources and relationships on resources.
+
+    `session` and `model` are as described in the constructor of the
+    superclass.
+
+    `preprocessors` and `postprocessors` are as described in :ref:`processors`.
+
+    `primary_key` is as described in :ref:`primarykey`.
+
+    `validation_exceptions` are as described in :ref:`validation_exceptions`.
+
+    `allow_to_many_replacement` is as described in :ref:`allowreplacement`.
+
+    """
 
     #: List of decorators applied to every method of this class.
     decorators = [catch_processing_exceptions] + ModelView.decorators
@@ -520,13 +580,28 @@ class APIBase(ModelView):
                  primary_key=None, validation_exceptions=None,
                  allow_to_many_replacement=None, *args, **kw):
         super(APIBase, self).__init__(session, model, *args, **kw)
+
+        #: Whether to allow complete replacement of a to-many relationship when
+        #: updating a resource.
         self.allow_to_many_replacement = allow_to_many_replacement
+
+        #: The tuple of exceptions that are expected to be raised during
+        #: validation when creating or updating a model.
         self.validation_exceptions = tuple(validation_exceptions or ())
+
+        #: The name of the attribute containing the primary key to use as the
+        #: ID of the resource.
         self.primary_key = primary_key
-        self.postprocessors = defaultdict(list)
-        self.preprocessors = defaultdict(list)
-        self.postprocessors.update(upper_keys(postprocessors or {}))
-        self.preprocessors.update(upper_keys(preprocessors or {}))
+
+        upper = upper_keys
+
+        #: The mapping from method name to a list of functions to apply after
+        #: the main functionality of that method has been executed.
+        self.postprocessors = defaultdict(list, upper(postprocessors or {}))
+
+        #: The mapping from method name to a list of functions to apply before
+        #: the main functionality of that method has been executed.
+        self.preprocessors = defaultdict(list, upper(preprocessors or {}))
 
         # HACK: We would like to use the :attr:`API.decorators` class attribute
         # in order to decorate each view method with a decorator that catches
@@ -542,8 +617,8 @@ class APIBase(ModelView):
 
     def _handle_validation_exception(self, exception):
         """Rolls back the session, extracts validation error messages, and
-        returns a :func:`flask.jsonify` response with :http:statuscode:`400`
-        containing the extracted validation error messages.
+        returns an error response with :http:statuscode:`400` containing the
+        extracted validation error messages.
 
         Again, *this method calls
         :meth:`sqlalchemy.orm.session.Session.rollback`*.
@@ -563,159 +638,74 @@ class APIBase(ModelView):
 class API(APIBase):
     """Provides method-based dispatching for :http:method:`get`,
     :http:method:`post`, :http:method:`patch`, and :http:method:`delete`
-    requests, for both collections of models and individual models.
+    requests, for both collections of resources and individual resources.
+
+    `session` and `model` are as described in the constructor of the
+    superclass. In addition to those described below, this constructor also
+    accepts all the keyword arguments of the constructor of the superclass.
+
+    `page_size` must be a positive integer that represents the default page
+    size for responses that consist of a collection of resources. Requests made
+    by clients may override this default by specifying ``page_size`` as a query
+    parameter. `max_page_size` must be a positive integer that represents the
+    maximum page size that a client can request. If a client specifies that
+    greater than `max_page_size` should be returned, only `max_page_size`
+    results will be returned. For more information, see
+    :ref:`serverpagination`.
+
+    `serializer` and `deserializer` are custom serialization functions. The
+    former function must take a single argument representing the instance of
+    the model to serialize, and must return a dictionary representation of that
+    instance. The latter function must take a single argument representing the
+    dictionary representation of an instance of the model and must return an
+    instance of `model` that has those attributes. For more information, see
+    :ref:`serialization`.
+
+    `includes` ...
+
+    `allow_client_generated_ids` ...
 
     """
 
     def __init__(self, session, model, page_size=10, max_page_size=100,
                  serializer=None, deserializer=None, includes=None,
                  allow_client_generated_ids=False, *args, **kw):
-        """Instantiates this view with the specified attributes.
-
-        `session` is the SQLAlchemy session in which all database transactions
-        will be performed.
-
-        `model` is the SQLAlchemy model class for which this instance of the
-        class is an API. This model should live in `database`.
-
-        `collection_name` is a string by which a collection of instances of
-        `model` are presented to the user.
-
-        `validation_exceptions` is the tuple of exceptions raised by backend
-        validation (if any exist). If exceptions are specified here, any
-        exceptions which are caught when writing to the database. Will be
-        returned to the client as a :http:statuscode:`400` response with a
-        message specifying the validation error which occurred. For more
-        information, see :ref:`validation`.
-
-        If either `include_columns` or `exclude_columns` is not ``None``,
-        exactly one of them must be specified. If both are not ``None``, then
-        the behavior of this function is undefined. `exclude_columns` must be
-        an iterable of strings specifying the columns of `model` which will
-        *not* be present in the JSON representation of the model provided in
-        response to :http:method:`get` requests.  Similarly, `include_columns`
-        specifies the *only* columns which will be present in the returned
-        dictionary. In other words, `exclude_columns` is a blacklist and
-        `include_columns` is a whitelist; you can only use one of them per API
-        endpoint. If either `include_columns` or `exclude_columns` contains a
-        string which does not name a column in `model`, it will be ignored.
-
-        If `include_columns` is an iterable of length zero (like the empty
-        tuple or the empty list), then the returned dictionary will be
-        empty. If `include_columns` is ``None``, then the returned dictionary
-        will include all columns not excluded by `exclude_columns`.
-
-        If `include_methods` is an iterable of strings, the methods with names
-        corresponding to those in this list will be called and their output
-        included in the response.
-
-        See :ref:`includes` for information on specifying included or excluded
-        columns on fields of related models.
-
-        `results_per_page` is a positive integer which represents the default
-        number of results which are returned per page. Requests made by clients
-        may override this default by specifying ``results_per_page`` as a query
-        argument. `max_results_per_page` is a positive integer which represents
-        the maximum number of results which are returned per page. This is a
-        "hard" upper bound in the sense that even if a client specifies that
-        greater than `max_results_per_page` should be returned, only
-        `max_results_per_page` results will be returned. For more information,
-        see :ref:`serverpagination`.
-
-        .. deprecated:: 0.9.2
-           The `post_form_preprocessor` keyword argument is deprecated in
-           version 0.9.2. It will be removed in version 1.0. Replace code that
-           looks like this::
-
-               manager.create_api(Person, post_form_preprocessor=foo)
-
-           with code that looks like this::
-
-               manager.create_api(Person, preprocessors=dict(POST=[foo]))
-
-           See :ref:`processors` for more information and examples.
-
-        `post_form_preprocessor` is a callback function which takes
-        POST input parameters loaded from JSON and enhances them with other
-        key/value pairs. The example use of this is when your ``model``
-        requires to store user identity and for security reasons the identity
-        is not read from the post parameters (where malicious user can tamper
-        with them) but from the session.
-
-        `preprocessors` is a dictionary mapping strings to lists of
-        functions. Each key is the name of an HTTP method (for example,
-        ``'GET'`` or ``'POST'``). Each value is a list of functions, each of
-        which will be called before any other code is executed when this API
-        receives the corresponding HTTP request. The functions will be called
-        in the order given here. The `postprocessors` keyword argument is
-        essentially the same, except the given functions are called after all
-        other code. For more information on preprocessors and postprocessors,
-        see :ref:`processors`.
-
-        `primary_key` is a string specifying the name of the column of `model`
-        to use as the primary key for the purposes of creating URLs. If the
-        `model` has exactly one primary key, there is no need to provide a
-        value for this. If `model` has two or more primary keys, you must
-        specify which one to use.
-
-        `serializer` and `deserializer` are custom serialization functions. The
-        former function must take a single argument representing the instance
-        of the model to serialize, and must return a dictionary representation
-        of that instance. The latter function must take a single argument
-        representing the dictionary representation of an instance of the model
-        and must return an instance of `model` that has those attributes. For
-        more information, see :ref:`serialization`.
-
-        .. versionadded:: 0.17.0
-           Added the `serializer` and `deserializer` keyword arguments.
-
-        .. versionadded:: 0.13.0
-           Added the `primary_key` keyword argument.
-
-        .. versionadded:: 0.10.2
-           Added the `include_methods` keyword argument.
-
-        .. versionchanged:: 0.10.0
-           Removed `authentication_required_for` and `authentication_function`
-           keyword arguments.
-
-           Use the `preprocesors` and `postprocessors` keyword arguments
-           instead. For more information, see :ref:`authentication`.
-
-        .. versionadded:: 0.9.2
-           Added the `preprocessors` and `postprocessors` keyword arguments.
-
-        .. versionadded:: 0.9.0
-           Added the `max_results_per_page` keyword argument.
-
-        .. versionadded:: 0.7
-           Added the `exclude_columns` keyword argument.
-
-        .. versionadded:: 0.6
-           Added the `results_per_page` keyword argument.
-
-        .. versionadded:: 0.5
-           Added the `include_columns`, and `validation_exceptions` keyword
-           arguments.
-
-        .. versionadded:: 0.4
-           Added the `authentication_required_for` and
-           `authentication_function` keyword arguments.
-
-        """
         super(API, self).__init__(session, model, *args, **kw)
+
+        #: ...
         self.default_includes = includes
         if self.default_includes is not None:
             self.default_includes = frozenset(self.default_includes)
+
+        #: ...
         self.collection_name = collection_name(self.model)
+
+        #: ...
         self.page_size = page_size
+
+        #: ...
         self.max_page_size = max_page_size
+
+        #: ...
         self.allow_client_generated_ids = allow_client_generated_ids
-        # Use our default serializer and deserializer if none are specified.
+
+        #: ...
+        #:
+        #: Use our default serializer if none is specified.
         self.serialize = serializer or DefaultSerializer()
+
+        #: ...
+        #:
+        #: Use our default deserializer if none is specified.
         self.deserialize = deserializer or DefaultDeserializer()
 
     def _collection_parameters(self):
+        """Gets filtering, sorting, grouping, and other settings from the
+        request that affect the collection of resources in a response.
+
+        TODO fill me in
+
+        """
         # Determine filtering options.
         filters = json.loads(request.args.get('filter[objects]', '[]'))
         # # TODO fix this using the below
@@ -771,6 +761,20 @@ class API(APIBase):
 
     def _get_related_resource(self, resource_id, relation_name,
                               related_resource_id):
+        """Returns a response containing a resource related to a given
+        resource.
+
+        For example, a request like this::
+
+            GET /people/1/articles/2
+
+        will fetch the article with ID 2 that is related to the person with ID
+        1 via the ``articles`` relationship. In general, this method is called
+        on requests of the form::
+
+            GET /<collection_name>/<resource_id>/<relation_name>/<related_resource_id>
+
+        """
         for preprocessor in self.preprocessors['GET_RESOURCE']:
             temp_result = preprocessor(resource_id=resource_id,
                                        relation_name=relation_name,
@@ -857,6 +861,25 @@ class API(APIBase):
     # TODO need to apply filtering, sorting, etc. to fetching a to-many
     # relation...
     def _get_relation(self, resource_id, relation_name):
+        """Returns a response containing a resource or a collection of
+        resources related to a given resource.
+
+        For example, a request for a to-many relationship like this::
+
+            GET /people/1/articles
+
+        will fetch the articles related to the person with ID 1 via the
+        ``articles`` relationship. On a request to a to-one relationship::
+
+            GET /articles/2/author
+
+        a single resource will be returned.
+
+        In general, this method is called on requests of the form::
+
+            GET /<collection_name>/<resource_id>/<relation_name>
+
+        """
         for preprocessor in self.preprocessors['GET_RESOURCE']:
             temp_result = preprocessor(resource_id=resource_id,
                                        relation_name=relation_name)
@@ -935,6 +958,20 @@ class API(APIBase):
         return result, 200
 
     def _get_resource(self, resource_id):
+        """Returns a response containing a single resource with the specified
+        ID.
+
+        For example, a request like::
+
+            GET /people/1
+
+        will fetch the person resource with ID 1.
+
+        In general, this method is called on requests of the form::
+
+            GET /<collection_name>/<resource_id>
+
+        """
         for preprocessor in self.preprocessors['GET_RESOURCE']:
             temp_result = preprocessor(resource_id=resource_id)
             # Let the return value of the preprocessor be the new value of
@@ -988,7 +1025,23 @@ class API(APIBase):
         return result, 200
 
     def _get_collection(self):
+        """Returns a response containing a collection of resources of the type
+        specified by the ``model`` argument to the constructor of this class.
 
+        For example, a request like::
+
+            GET /people
+
+        will fetch a collection of people resources.
+
+        In general, this method is called on requests of the form::
+
+            GET /<collection_name>
+
+        Filtering, sorting, grouping, and pagination are applied to the
+        response in this method.
+
+        """
         try:
             filters, sort, group_by, single = self._collection_parameters()
         except (TypeError, ValueError, OverflowError) as exception:
@@ -1141,6 +1194,18 @@ class API(APIBase):
         return result, 200, headers
 
     def resources_to_include(self, instance):
+        """Returns a set of resources to include in a compound document
+        response based on the ``include`` query parameter and the default
+        includes specified in the constructor of this class.
+
+        The ``include`` query parameter is as described in the `Inclusion of
+        Related Resources`_ section of the JSON API specification. It specifies
+        which resources, other than the primary resource or resources, will be
+        included in a compound document response.
+
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+
+        """
         # Add any links requested to be included by URL parameters.
         #
         # We expect `toinclude` to be a comma-separated list of relationship
@@ -1153,9 +1218,12 @@ class API(APIBase):
         else:
             toinclude = set(toinclude.split(','))
 
-        # TODO we should reverse the nested-ness of these for loops:
-        # toinclude is likely to be a small list, and `original` could be a
-        # very large list, so the latter should be the outer loop.
+        # TODO create a resources_to_include_from_path() function, then
+        # implement this as
+        #
+        #     return set(chain(resources_to_include_from_path(link)
+        #                for link in toinclude))
+        #
         result = set()
         for link in toinclude:
             if '.' in link:
@@ -1174,17 +1242,29 @@ class API(APIBase):
         return result
 
     def get(self, resource_id, relation_name, related_resource_id):
-        """Returns a JSON representation of an instance of model with the
-        specified name.
+        """Returns the JSON document representing a resource or a collection of
+        resources.
 
-        If ``instid`` is ``None``, this method returns the result of a search
-        with parameters specified in the query string of the request. If no
-        search parameters are specified, this method returns all instances of
-        the specified model.
+        If ``resource_id`` is ``None`` (that is, if the request is of the form
+        :http:get:`/people/`), this method returns a collection of resources.
 
-        If ``instid`` is an integer, this method returns the instance of the
-        model with that identifying integer. If no such instance exists, this
-        method responds with :http:status:`404`.
+        Otherwise, if ``relation_name`` is ``None`` (that is, if the request is
+        of the form :http:get:`/people/1`), this method returns a resource with
+        the specified ID.
+
+        Otherwise, if ``related_resource_id`` is ``None`` (that is, if the
+        request is of the form :http:get:`/people/1/articles` or
+        :http:get:`/articles/1/author`), this method returns either a resource
+        in the case of a to-one relationship or a collection of resources in
+        the case of a to-many relationship.
+
+        Otherwise, if none of the arguments are ``None`` (that is, if the
+        request is of the form :http:get:`/people/1/articles/2`), this method
+        returns the particular resource in the to-many relationship with the
+        specified ID.
+
+        The request documents, response documents, and status codes are in the
+        format specified by the JSON API specification.
 
         """
         if resource_id is None:
@@ -1197,22 +1277,10 @@ class API(APIBase):
                                           related_resource_id)
 
     def delete(self, resource_id):
-        """Removes the specified instance of the model with the specified name
-        from the database.
+        """Deletes the resource with the specified ID.
 
-        Although :http:method:`delete` is an idempotent method according to
-        :rfc:`2616`, idempotency only means that subsequent identical requests
-        cannot have additional side-effects. Since the response code is not a
-        side effect, this method responds with :http:status:`204` only if an
-        object is deleted, and with :http:status:`404` when nothing is deleted.
-
-        If `relationname
-
-        .. versionadded:: 0.12.0
-           Added the `relationinstid` keyword argument.
-
-        .. versionadded:: 0.10.0
-           Added the `relationname` keyword argument.
+        The request documents, response documents, and status codes are in the
+        format specified by the JSON API specification.
 
         """
         for preprocessor in self.preprocessors['DELETE_RESOURCE']:
@@ -1236,23 +1304,10 @@ class API(APIBase):
         return {}, 204
 
     def post(self):
-        """Creates a new instance of a given model based on request data.
+        """Creates a new resource based on request data.
 
-        This function parses the string contained in
-        :attr:`flask.request.data`` as a JSON object and then validates it with
-        a validator specified in the constructor of this class.
-
-        The :attr:`flask.request.data` attribute will be parsed as a JSON
-        object containing the mapping from field name to value to which to
-        initialize the created instance of the model.
-
-        After that, it separates all columns that defines relationships with
-        other entities, creates a model with the simple columns and then
-        creates instances of these submodels and associates them with the
-        related fields. This happens only at the first level of nesting.
-
-        Currently, this method can only handle instantiating a model with a
-        single level of relationship data.
+        The request documents, response documents, and status codes are in the
+        format specified by the JSON API specification.
 
         """
         # try to read the parameters for the model from the body of the request
@@ -1320,7 +1375,20 @@ class API(APIBase):
             postprocessor(result=result)
         return result, status, headers
 
-    def _update_single(self, instance, data):
+    def _update_instance(self, instance, data):
+        """Updates the attributes and relationships of the specified instance
+        according to the elements in the `data` dictionary.
+
+        `instance` must be an instance of the SQLAlchemy model class specified
+        in the constructor of this class.
+
+        `data` must be a dictionary representation of a resource object as
+        described in the `Updating Resources`_ section of the JSON API
+        specification.
+
+        .. _Updating Resources: http://jsonapi.org/format/#crud-updating
+
+        """
         # Update any relationships.
         links = data.pop('links', {})
         for linkname, link in links.items():
@@ -1416,28 +1484,11 @@ class API(APIBase):
             return self._handle_validation_exception(exception)
 
     def patch(self, resource_id):
-        """Updates the instance specified by ``instid`` of the named model, or
-        updates multiple instances if ``instid`` is ``None``.
+        """Updates the resource with the specified ID according to the request
+        data.
 
-        The :attr:`flask.request.data` attribute will be parsed as a JSON
-        object containing the mapping from field name to value to which to
-        update the specified instance or instances.
-
-        If ``instid`` is ``None``, the query string will be used to search for
-        instances (using the :func:`_search` method), and all matching
-        instances will be updated according to the content of the request data.
-        See the :func:`_search` documentation on more information about search
-        parameters for restricting the set of instances on which updates will
-        be made in this case.
-
-        This function ignores the `relationname` and `relationinstid` keyword
-        arguments.
-
-        .. versionadded:: 0.12.0
-           Added the `relationinstid` keyword argument.
-
-        .. versionadded:: 0.10.0
-           Added the `relationname` keyword argument.
+        The request documents, response documents, and status codes are in the
+        format specified by the JSON API specification.
 
         """
         # try to load the fields/values to update from the body of the request
@@ -1477,7 +1528,7 @@ class API(APIBase):
         if id_ != resource_id:
             message = 'ID must be {0}, not {1}'.format(resource_id, id_)
             return error_response(409, detail=message)
-        result = self._update_single(instance, data)
+        result = self._update_instance(instance, data)
         # If result is not None, that means there was an error updating the
         # resource.
         if result is not None:
@@ -1500,8 +1551,19 @@ class API(APIBase):
 
 
 class RelationshipAPI(APIBase):
-    # Responds to requests of the form `/people/1/links/articles` and
-    # `/articles/1/links/author` with link objects (*not* resource objects).
+    """Provides fetching, updating, and deleting from relationship URLs.
+
+    The endpoints provided by this class are of the form
+    ``/people/1/links/articles``, and the requests and responses include **link
+    objects**, as opposed to **resource objects**.
+
+    `session` and `model` are as described in the constructor of the
+    superclass. In addition to those described below, this constructor also
+    accepts all the keyword arguments of the constructor of the superclass.
+
+    `allow_delete_from_to_many_relationships` ...
+
+    """
 
     def __init__(self, session, model,
                  allow_delete_from_to_many_relationships=False, *args, **kw):
@@ -1510,6 +1572,16 @@ class RelationshipAPI(APIBase):
             allow_delete_from_to_many_relationships
 
     def get(self, resource_id, relation_name):
+        """Fetches a to-one or to-many relationship from a resource.
+
+        If the specified relationship is a to-one relationship, this method
+        returns a link object. If it is a to-many relationship, it returns a
+        collection of link objects.
+
+        The request documents, response documents, and status codes are in the
+        format specified by the JSON API specification.
+
+        """
         for preprocessor in self.preprocessors['GET_RELATIONSHIP']:
             temp_result = preprocessor(instance_id=resource_id,
                                        relationship=relation_name)
@@ -1553,6 +1625,12 @@ class RelationshipAPI(APIBase):
         return result, 200
 
     def post(self, resource_id, relation_name):
+        """Adds resources to a to-many relationship.
+
+        The request documents, response documents, and status codes are in the
+        format specified by the JSON API specification.
+
+        """
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.get_data()) or {}
@@ -1620,6 +1698,17 @@ class RelationshipAPI(APIBase):
         return {}, 204
 
     def patch(self, resource_id, relation_name):
+        """Updates to a to-one or to-many relationship.
+
+        If the relationship is a to-many relationship and this class was
+        instantiated with the ``allow_to_many_replacement`` keyword argument
+        set to ``False``, then this method returns a :http:status:`403`
+        response.
+
+        The request documents, response documents, and status codes are in the
+        format specified by the JSON API specification.
+
+        """
         # try to load the fields/values to update from the body of the request
         try:
             data = json.loads(request.get_data()) or {}
@@ -1732,6 +1821,16 @@ class RelationshipAPI(APIBase):
         return {}, 204
 
     def delete(self, resource_id, relation_name):
+        """Deletes resources from a to-many relationship.
+
+        If this class was instantiated with the
+        ``allow_delete_from_to_many_relationships`` keyword argument set to
+        ``False``, then this method returns a :http:status:`403` response.
+
+        The request documents, response documents, and status codes are in the
+        format specified by the JSON API specification.
+
+        """
         if not self.allow_delete_from_to_many_relationships:
             detail = 'Not allowed to delete from a to-many relationship'
             return error_response(403, detail=detail)
