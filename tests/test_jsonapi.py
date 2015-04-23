@@ -172,7 +172,8 @@ class TestDocumentStructure(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
         response = self.app.get('/api/person/1')
-        person = loads(response.data)['data']
+        document = loads(response.data)
+        person = document['data']
         assert person['id'] == '1'
         assert person['type'] == 'person'
 
