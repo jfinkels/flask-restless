@@ -160,6 +160,78 @@ def _is_msie8or9():
             and (8, 0) <= version(request.user_agent) < (10, 0))
 
 
+# # This code is (lightly) adapted from the ``requests`` library, in the
+# # ``requests.utils`` module. See <http://python-requests.org> for more
+# # information.
+# def _link_to_json(value):
+#     """Returns a dictionary representation of the specified HTTP Link header.
+
+#     `value` is a string containing the link header information. If the link
+#     header information (the part after ``Link:``) looked like this::
+
+#         <https://example.com>; rel="next", bar="baz"
+
+#     then this function returns a dictionary that looks like this::
+
+#         {'url': 'https://example.com', 'rel': 'next', 'bar': 'baz'}
+
+#     This example is adapted from the documentation of GitHub's API.
+
+#     """
+#     replace_chars = " '\""
+#     try:
+#         url, params = value.split(";", 1)
+#     except ValueError:
+#         url, params = value, ''
+#     link = {}
+#     link["url"] = url.strip("<> '\"")
+#     for param in params.split(";"):
+#         try:
+#             key, val = param.split("=")
+#         except ValueError:
+#             break
+#         link[key.strip(replace_chars)] = val.strip(replace_chars)
+#     return link
+
+
+# def _links_to_json(value):
+#     """Returns a list representation of the specified HTTP Link header
+#     information.
+
+#     `value` is a string containing the link header information. If the link
+#     header information (the part after ``Link:``) looked like this::
+
+#         <url1>; rel="next", <url2>; rel="foo"; bar="baz"
+
+#     then this function returns a list that looks like this::
+
+#         [{"url": "url1", "rel": "next"},
+#          {"url": "url2", "rel": "foo", "bar": "baz"}]
+
+#     This is a convenience function for::
+
+#         [_link_to_json(link) for link in value.split(',')]
+
+#     """
+#     return [_link_to_json(link) for link in value.split(',')]
+
+
+# def _headers_to_json(headers):
+#     """Returns a dictionary representation of the specified dictionary of HTTP
+#     headers ready for use as a JSON object.
+
+#     Pre-condition: headers is not ``None``.
+
+#     """
+#     link = headers.pop('Link', None)
+#     # Shallow copy is fine here because the `headers` dictionary maps strings
+#     # to strings to strings.
+#     result = headers.copy()
+#     if link:
+#         result['Link'] = _links_to_json(link)
+#     return result
+
+
 def catch_processing_exceptions(func):
     """Decorator that catches :exc:`ProcessingException`s and subsequently
     returns a JSON-ified error response.
@@ -301,8 +373,8 @@ def jsonpify(*args, **kw):
     # this jsonpify function via its keyword arguments. This is a limitation of
     # the mimerender library: it has no way of making the headers and status
     # code known to the rendering functions.
-    headers = kw.pop(_HEADERS, {})
-    status_code = kw.pop(_STATUS, 200)
+    headers = kw['meta'].pop(_HEADERS, {}) if 'meta' in kw else {}
+    status_code = kw['meta'].pop(_STATUS, 200) if 'meta' in kw else 200
     response = jsonify(*args, **kw)
     callback = request.args.get('callback', False)
     if callback:
@@ -1169,12 +1241,14 @@ class API(APIBase):
             postprocessor(result=result, filters=filters, sort=sort,
                           single=single)
 
+        status = 200
         # HACK Provide the headers directly in the result dictionary, so that
         # the :func:`jsonpify` function has access to them. See the note there
-        # for more information.
-        result['meta'] = {_HEADERS: headers}
+        # for more information. They don't really need to be under the ``meta``
+        # key, that's just for semantic consistency.
+        result['meta'] = {_HEADERS: headers, _STATUS: status}
         result['meta']['total'] = 1 if num_results is None else num_results
-        return result, 200, headers
+        return result, status, headers
 
     def resources_to_include(self, instance):
         """Returns a set of resources to include in a compound document
