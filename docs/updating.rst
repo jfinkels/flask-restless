@@ -1,0 +1,51 @@
+.. _updating:
+
+Updating resources
+==================
+
+For the purposes of concreteness in this section, suppose we have executed the
+following code on the server::
+
+    from flask import Flask
+    from flask.ext.sqlalchemy import SQLAlchemy
+    from flask.ext.restless import APIManager
+
+    app = Flask(__name__)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
+    db = SQLAlchemy(app)
+
+    class Person(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.Unicode)
+
+    class Article(db.Model):
+        id = db.Column(db.Integer, primary_key=True)
+        author_id = db.Column(db.Integer, db.ForeignKey('person.id'))
+        author = db.relationship(Person, backref=db.backref('articles'))
+
+    db.create_all()
+    manager = APIManager(app, flask_sqlalchemy_db=db)
+    manager.create_api(Person, methods=['PATCH'])
+    manager.create_api(Article)
+
+To update an existing resource, the request
+
+.. sourcecode:: http
+
+   PATCH /api/person/1 HTTP/1.1
+   Host: example.com
+   Content-Type: application/vnd.api+json
+   Accept: application/vnd.api+json
+
+   {
+     "data": {
+       "type": "person",
+       "id": 1,
+       "name": "foo"
+     }
+   }
+
+yields a :http:statuscode:`204` response.
+
+The server will respond with :http:statuscode:`400` if the request specifies a
+field that does not exist on the model.
