@@ -98,7 +98,7 @@ will produce a response like this:
    HTTP/1.1 200 OK
    Content-Type: application/javascript
 
-   foo({"meta": ..., "data": ...})
+   foo({"meta": {/*...*/}, "data": {/*...*/}})
 
 Then in your Javascript client code, write the function ``foo`` like this:
 

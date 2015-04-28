@@ -354,7 +354,7 @@ Specifying which fields appear in responses
 -------------------------------------------
 
 *For more information on client-side sparse fieldsets, see `Sparse Fieldsets`_
- in the JSON API specification.*
+in the JSON API specification.*
 
 .. warning::
 
@@ -426,7 +426,7 @@ yields the response
        "id": "1",
        "links": {
          "self": "http://example.com/api/person/1"
-       }
+       },
        "name": "foo",
        "type": "person"
      }
@@ -454,7 +454,7 @@ Now the same request yields the response
             "self": "http://example.com/api/person/1/links/articles"
          },
          "self": "http://example.com/api/person/1"
-       }
+       },
        "type": "person"
      }
    }
@@ -604,12 +604,12 @@ response
        {
          "id": "3",
          "type": "person",
-         ...
+         // ...
        }
        {
          "id": "4",
          "type": "person",
-         ...
+         // ...
        }
      ],
      "links": {
@@ -632,7 +632,9 @@ Filtering
 Requests that would normally return a collection of resources can be filtered
 so that only a subset of the resources are returned in a response. If the
 client specifies the ``filter[objects]`` query parameter, it must be a
-`percent-encoded`_ JSON list of :dfn:`filter objects`, as described below.
+`URL encoded`_ JSON list of :dfn:`filter objects`, as described below.
+
+.. _URL encoded: https://en.wikipedia.org/wiki/Percent-encoding
 
 Quick client examples
 .....................
@@ -812,8 +814,6 @@ returned, clients can make requests like this:
    Host: example.com
    Accept: application/vnd.api+json
 
-.. _percent-encoded: https://en.wikipedia.org/wiki/Percent-encoding
-
 .. _operators:
 
 Operators
@@ -876,7 +876,7 @@ yields the response
        {
          "id": "1",
          "type": "person",
-         ...
+         // ...
        }
      ],
      "links": {
