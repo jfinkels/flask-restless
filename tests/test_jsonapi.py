@@ -547,6 +547,45 @@ class TestPagination(ManagerTestBase):
         assert 'page[number]=3' in pagination['next']
         assert len(document['data']) == 10
 
+    def test_sorted_pagination(self):
+        """Tests that pagination is consistent with sorting.
+
+        For more information, see the `Pagination`_ section of the JSON API
+        specification.
+
+        .. _Pagination: http://jsonapi.org/format/#fetching-pagination
+
+        """
+        people = [self.Person() for i in range(40)]
+        self.session.add_all(people)
+        self.session.commit()
+        response = self.app.get('/api/person?sort=-id&page[number]=2')
+        document = loads(response.data)
+        # In reverse order, the first page should have Person instances with
+        # IDs 40 through 31, so the second page should have Person instances
+        # with IDs 30 through 21.
+        people = document['data']
+        assert list(range(30, 20, -1)) == [int(p['id']) for p in people]
+        # The pagination links should include not only the pagination query
+        # parameters, but also the same sorting query parameters from the
+        # client's original quest.
+        pagination = document['links']
+        assert '/api/person?' in pagination['first']
+        assert 'page[number]=1' in pagination['first']
+        assert 'sort=-id' in pagination['first']
+
+        assert '/api/person?' in pagination['last']
+        assert 'page[number]=4' in pagination['last']
+        assert 'sort=-id' in pagination['last']
+
+        assert '/api/person?' in pagination['prev']
+        assert 'page[number]=1' in pagination['prev']
+        assert 'sort=-id' in pagination['prev']
+
+        assert '/api/person?' in pagination['next']
+        assert 'page[number]=3' in pagination['next']
+        assert 'sort=-id' in pagination['next']
+
     def test_client_size_only(self):
         """Tests that a request that specifies only the page size returns the
         first page with the requested page size.
@@ -724,14 +763,18 @@ class TestPagination(ManagerTestBase):
         self.session.add_all(people)
         self.session.commit()
         response = self.app.get('/api/person?page[number]=4&page[size]=3')
-        links = response.headers.getlist('Link')
-        assert any('/api/person?page[number]=1&page[size]=3>; rel="first"' in l
+        links = response.headers['Link'].split(',')
+        assert any(all(('/api/person?' in l, 'page[number]=1' in l,
+                        'page[size]=3' in l, 'rel="first"' in l))
                    for l in links)
-        assert any('/api/person?page[number]=9&page[size]=3>; rel="last"' in l
+        assert any(all(('/api/person?' in l, 'page[number]=9' in l,
+                        'page[size]=3' in l, 'rel="last"' in l))
                    for l in links)
-        assert any('/api/person?page[number]=3&page[size]=3>; rel="prev"' in l
+        assert any(all(('/api/person?' in l, 'page[number]=3' in l,
+                        'page[size]=3' in l, 'rel="prev"' in l))
                    for l in links)
-        assert any('/api/person?page[number]=5&page[size]=3>; rel="next"' in l
+        assert any(all(('/api/person?' in l, 'page[number]=5' in l,
+                        'page[size]=3' in l, 'rel="next"' in l))
                    for l in links)
 
 

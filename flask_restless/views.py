@@ -37,6 +37,14 @@ from collections import defaultdict
 from functools import wraps
 from itertools import chain
 import math
+# In Python 3...
+try:
+    from urllib.parse import urlparse
+    from urllib.parse import urlunparse
+# In Python 2...
+except ImportError:
+    from urlparse import urlparse
+    from urlparse import urlunparse
 
 from flask import current_app
 from flask import json
@@ -76,9 +84,6 @@ from .serialization import DefaultDeserializer
 from .serialization import DeserializationException
 from .serialization import SerializationException
 
-#: Format string for creating the complete URL for a paginated response.
-LINKTEMPLATE = '{0}?page[number]={1}&page[size]={2}'
-
 #: String used internally as a dictionary key for passing header information
 #: from view functions to the :func:`jsonpify` function.
 _HEADERS = '__restless_headers'
@@ -95,6 +100,26 @@ CONTENT_TYPE = 'application/vnd.api+json'
 
 #: SQLAlchemy errors that, when caught, trigger a rollback of the session.
 ROLLBACK_ERRORS = (DataError, IntegrityError, ProgrammingError, FlushError)
+
+#: The query parameter key that identifies filter objects in a
+#: :http:method:`get` request.
+FILTER_PARAM = 'filter[objects]'
+
+#: The query parameter key that identifies sort fields in a :http:method:`get`
+#: request.
+SORT_PARAM = 'sort'
+
+#: The query parameter key that identifies grouping fields in a
+#: :http:method:`get` request.
+GROUP_PARAM = 'group'
+
+#: The query parameter key that identifies the page number in a
+#: :http:method:`get` request.
+PAGE_NUMBER_PARAM = 'page[number]'
+
+#: The query parameter key that identifies the page size in a
+#: :http:method:`get` request.
+PAGE_SIZE_PARAM = 'page[size]'
 
 # For the sake of brevity, rename this function.
 chain = chain.from_iterable
@@ -539,6 +564,59 @@ def errors_response(status, errors):
     return {'errors': errors, _STATUS: status}, status
 
 
+def _filters_to_string(filters):
+    """Returns a string representation of the specified dictionary of filter
+    objects.
+
+    This is essentially the inverse operation of the parsing that is done when
+    reading the filter objects from the query parameters of the request string
+    in a :http:method:`get` request.
+
+    """
+    return json.dumps(filters)
+
+
+def _sort_to_string(sort):
+    """Returns a string representation of the specified sort fields.
+
+    This is essentially the inverse operation of the parsing that is done when
+    reading the sort fields from the query parameters of the request string in
+    a :http:method:`get` request.
+
+    """
+    return ','.join(''.join((direction, field)) for direction, field in sort)
+
+
+def _group_to_string(group_by):
+    """Returns a string representation of the specified grouping fields.
+
+    This is essentially the inverse operation of the parsing that is done when
+    reading the grouping fields from the query parameters of the request string
+    in a :http:method:`get` request.
+
+    """
+    return ','.join(group_by)
+
+
+def _to_url(base_url, query_params):
+    """Returns the specified base URL augmented with the given query
+    parameters.
+
+    `base_url` is a string representing a URL.
+
+    `query_params` is a dictionary whose keys and values are strings,
+    representing the query parameters to append to the given URL.
+
+    If the base URL already has query parameters, the ones given in
+    `query_params` are appended.
+
+    """
+    query_string = '&'.join('='.join((k, v)) for k, v in query_params.items())
+    scheme, netloc, path, params, query, fragment = urlparse(base_url)
+    if query:
+        query_string = '&'.join((query, query_string))
+    return urlunparse((scheme, netloc, path, params, query_string, fragment))
+
 #: Creates the mimerender object necessary for decorating responses with a
 #: function that automatically formats the dictionary in the appropriate format
 #: based on the ``Accept`` header.
@@ -762,7 +840,7 @@ class API(APIBase):
 
         """
         # Determine filtering options.
-        filters = json.loads(request.args.get('filter[objects]', '[]'))
+        filters = json.loads(request.args.get(FILTER_PARAM, '[]'))
         # # TODO fix this using the below
         # filters = [strings_to_dates(self.model, f) for f in filters]
 
@@ -791,7 +869,7 @@ class API(APIBase):
         #         param['val'] = result.get(query_field)
 
         # Determine sorting options.
-        sort = request.args.get('sort')
+        sort = request.args.get(SORT_PARAM)
         if sort:
             sort = [(value[0], value[1:]) for value in sort.split(',')]
         else:
@@ -800,7 +878,7 @@ class API(APIBase):
             raise SortKeyError('sort parameter must begin with "+" or "-"')
 
         # Determine grouping options.
-        group_by = request.args.get('group')
+        group_by = request.args.get(GROUP_PARAM)
         if group_by:
             group_by = group_by.split(',')
         else:
@@ -1135,7 +1213,7 @@ class API(APIBase):
         pagination_links = dict()
         if not single:
             # Determine the client's pagination request: page size and number.
-            page_size = int(request.args.get('page[size]', self.page_size))
+            page_size = int(request.args.get(PAGE_SIZE_PARAM, self.page_size))
             if page_size < 0:
                 detail = 'Page size must be a positive integer'
                 return error_response(400, detail=detail)
@@ -1152,7 +1230,7 @@ class API(APIBase):
             # Otherwise, the page size is greater than zero, so paginate the
             # response.
             else:
-                page_number = int(request.args.get('page[number]', 1))
+                page_number = int(request.args.get(PAGE_NUMBER_PARAM, 1))
                 if page_number < 0:
                     detail = 'Page number must be a positive integer'
                     return error_response(400, detail=detail)
@@ -1183,30 +1261,42 @@ class API(APIBase):
                               for instance in result]
                 # Create the pagination link URLs
                 #
-                # TODO pagination needs to respect sorting, fields, etc., so
-                # these link template strings are not quite right.
+                # Need to account for filters, sort, and group_by, in addition
+                # to pagination links, so we collect those query parameters
+                # here, if they exist.
+                query_parameters = {}
+                if filters:
+                    query_parameters[FILTER_PARAM] = \
+                        _filters_to_string(filters)
+                if sort:
+                    query_parameters[SORT_PARAM] = _sort_to_string(sort)
+                if group_by:
+                    query_parameters[GROUP_PARAM] = _group_to_string(group_by)
+                # The page size is independent of the link type (first, last,
+                # next, or prev).
+                query_parameters[PAGE_SIZE_PARAM] = str(page_size)
                 base_url = request.base_url
-                link_urls = (LINKTEMPLATE.format(base_url, num, page_size)
-                             if num is not None else None
-                             for rel, num in (('first', first), ('last', last),
-                                              ('prev', prev), ('next', next_)))
-                first_url, last_url, prev_url, next_url = link_urls
-                # Make them available for the result dictionary later.
-                pagination_links = dict(first=first_url, last=last_url,
-                                        prev=prev_url, next=next_url)
-                link_strings = ('<{0}>; rel="{1}"'.format(url, rel)
-                                if url is not None else None
-                                for rel, url in (('first', first_url),
-                                                 ('last', last_url),
-                                                 ('prev', prev_url),
-                                                 ('next', next_url)))
-                # TODO Should this be multiple header fields, like this::
-                #
-                #     headers = [('Link', link) for link in link_strings
-                #                if link is not None]
-                #
-                headers = dict(Link=','.join(link for link in link_strings
-                                             if link is not None))
+                # Maintain a list of URLs that should appear in a Link
+                # header. If a link does not exist (for example, if there is no
+                # previous page), then that link URL will not appear in this
+                # list.
+                header_links = []
+                for rel, num in (('first', first), ('last', last),
+                                 ('prev', prev), ('next', next_)):
+                    # If the link doesn't exist (for example, if there is no
+                    # previous page), then add ``None`` to the pagination links
+                    # but don't add a link URL to the headers.
+                    if num is None:
+                        pagination_links[rel] = None
+                    else:
+                        query_parameters[PAGE_NUMBER_PARAM] = str(num)
+                        url = _to_url(base_url, query_parameters)
+                        link_string = '<{0}>; rel="{1}"'.format(url, rel)
+                        header_links.append(link_string)
+                        pagination_links[rel] = url
+                headers = (dict(Link=','.join(link for link in header_links))
+                           if header_links else {})
+                # headers = [('Link', link) for link in header_links]
         # Otherwise, the result of the search should be a single resource.
         else:
             try:
