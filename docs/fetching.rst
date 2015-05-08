@@ -565,11 +565,12 @@ Pagination
 ----------
 
 Pagination works as described in the JSON API specification, via the
-``page[number]`` and ``page[size]`` query parameters. The first page is page
-one. If no page number is specified by the client, the first page will be
-returned. By default, pagination is enabled and the page size is ten. If the
-page size specified by the client is greater than the maximum page size as
-configured on the server, then the query parameter will be ignored.
+``page[number]`` and ``page[size]`` query parameters. Pagination respects
+sorting, grouping, and filtering. The first page is page one. If no page number
+is specified by the client, the first page will be returned. By default,
+pagination is enabled and the page size is ten. If the page size specified by
+the client is greater than the maximum page size as configured on the server,
+then the query parameter will be ignored.
 
 To set the default page size for collections of resources, use the
 ``page_size`` keyword argument to the :meth:`APIManager.create_api` method.  To
