@@ -548,7 +548,7 @@ class APIManager(object):
             app = self.app
         restlessinfo = app.extensions['restless']
         if collection_name is None:
-            collection_name = model.__tablename__
+            collection_name = model.__table__.name
         # convert all method names to upper case
         methods = frozenset((m.upper() for m in methods))
         # sets of methods used for different types of endpoints
