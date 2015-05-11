@@ -131,7 +131,12 @@ class TestUpdating(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
         bedtime = datetime.now().time()
-        data = dict(data=dict(type='person', id='1', bedtime=bedtime))
+        data = {'data':
+                    {'type': 'person',
+                     'id': '1',
+                     'attributes': {'bedtime': bedtime}
+                     }
+                }
         # Python's built-in JSON encoder doesn't serialize date/time objects by
         # default.
         data = dumps(data, cls=JSONEncoder)
@@ -145,7 +150,12 @@ class TestUpdating(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
         today = datetime.now().date()
-        data = dict(data=dict(type='person', id='1', date_created=today))
+        data = {'data':
+                    {'type': 'person',
+                     'id': '1',
+                     'attributes': {'date_created': today}
+                     }
+                }
         # Python's built-in JSON encoder doesn't serialize date/time objects by
         # default.
         data = dumps(data, cls=JSONEncoder)
@@ -159,7 +169,12 @@ class TestUpdating(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
         now = datetime.now()
-        data = dict(data=dict(type='person', id='1', birth_datetime=now))
+        data = {'data':
+                    {'type': 'person',
+                     'id': '1',
+                     'attributes': {'birth_datetime': now}
+                     }
+                }
         # Python's built-in JSON encoder doesn't serialize date/time objects by
         # default.
         data = dumps(data, cls=JSONEncoder)
@@ -259,12 +274,22 @@ class TestUpdating(ManagerTestBase):
         person2 = self.Person(id=2, name='bar')
         self.session.add_all([person1, person2])
         self.session.commit()
-        data = dict(data=dict(type='person', id='2', name='foo'))
+        data = {'data':
+                    {'type': 'person',
+                     'id': '2',
+                     'attributes': {'name': 'foo'}
+                     }
+                }
         response = self.app.patch('/api/person/2', data=dumps(data))
         assert response.status_code == 409  # Conflict
         assert self.session.is_active, 'Session is in `partial rollback` state'
-        person = dict(data=dict(type='person', id='2', name='baz'))
-        response = self.app.patch('/api/person/2', data=dumps(person))
+        data = {'data':
+                    {'type': 'person',
+                     'id': '2',
+                     'attributes': {'name': 'baz'}
+                     }
+                }
+        response = self.app.patch('/api/person/2', data=dumps(data))
         assert response.status_code == 204
         assert person2.name == 'baz'
 
@@ -307,7 +332,12 @@ class TestUpdating(ManagerTestBase):
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='person', id='1', bogus=0))
+        data = {'data':
+                    {'type': 'person',
+                     'id': '1',
+                     'attributes': {'bogus': 0}
+                     }
+                }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert 400 == response.status_code
 
@@ -321,7 +351,12 @@ class TestUpdating(ManagerTestBase):
         interval = self.Interval(id=1, start=5, end=10)
         self.session.add(interval)
         self.session.commit()
-        data = dict(data=dict(type='interval', id='1', radius=1))
+        data = {'data':
+                    {'type': 'interval',
+                     'id': '1',
+                     'attributes': {'radius': 1}
+                     }
+                }
         response = self.app.patch('/api/interval/1', data=dumps(data))
         assert response.status_code == 400
         # TODO check error message here
@@ -331,7 +366,12 @@ class TestUpdating(ManagerTestBase):
         interval = self.Interval(id=1, start=5, end=10)
         self.session.add(interval)
         self.session.commit()
-        data = dict(data=dict(type='interval', id='1', length=4))
+        data = {'data':
+                    {'type': 'interval',
+                     'id': '1',
+                     'attributes': {'length': 4}
+                     }
+                }
         response = self.app.patch('/api/interval/1', data=dumps(data))
         assert response.status_code == 204
         assert interval.start == 5
@@ -345,7 +385,12 @@ class TestUpdating(ManagerTestBase):
         self.session.commit()
         self.manager.create_api(self.Person, methods=['PATCH'],
                                 collection_name='people')
-        data = dict(data=dict(type='people', id='1', name='foo'))
+        data = {'data':
+                    {'type': 'people',
+                     'id': '1',
+                     'attributes': {'name': 'foo'}
+                     }
+                }
         response = self.app.patch('/api/people/1', data=dumps(data))
         assert response.status_code == 204
         assert person.name == 'foo'
@@ -357,11 +402,21 @@ class TestUpdating(ManagerTestBase):
         self.session.commit()
         self.manager.create_api(self.Person, methods=['PATCH'],
                                 url_prefix='/api2')
-        data = dict(data=dict(type='person', id='1', name='foo'))
+        data = {'data':
+                    {'type': 'person',
+                     'id': '1',
+                     'attributes': {'name': 'foo'}
+                     }
+                }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 204
         assert person.name == 'foo'
-        data = dict(data=dict(type='person', id='1', name='bar'))
+        data = {'data':
+                    {'type': 'person',
+                     'id': '1',
+                     'attributes': {'name': 'bar'}
+                     }
+                }
         response = self.app.patch('/api2/person/1', data=dumps(data))
         assert response.status_code == 204
         assert person.name == 'bar'
@@ -537,7 +592,11 @@ class TestUpdating(ManagerTestBase):
         person = self.Person(id=1, name='foo')
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(id=1, name='bar'))
+        data = {'data':
+                    {'id': '1',
+                     'attributes': {'name': 'bar'}
+                     }
+                }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 400
         # TODO check error message here
@@ -551,7 +610,11 @@ class TestUpdating(ManagerTestBase):
         person = self.Person(id=1, name='foo')
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='person', name='bar'))
+        data = {'data':
+                    {'type': 'person',
+                     'attributes': {'name': 'bar'}
+                     }
+                }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 400
         # TODO check error message here
@@ -659,7 +722,12 @@ class TestProcessors(ManagerTestBase):
         preprocessors = dict(PATCH_RESOURCE=[increment_id])
         self.manager.create_api(self.Person, methods=['PATCH'],
                                 preprocessors=preprocessors)
-        data = dict(data=dict(type='person', id='1', name='foo'))
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'name': 'foo'}
+                     }
+                }
         response = self.app.patch('/api/person/0', data=dumps(data))
         assert response.status_code == 204
         assert person.name == 'foo'
@@ -679,7 +747,12 @@ class TestProcessors(ManagerTestBase):
         preprocessors = dict(PATCH_RESOURCE=[forbidden])
         self.manager.create_api(self.Person, methods=['PATCH'],
                                 preprocessors=preprocessors)
-        data = dict(data=dict(type='person', id='1', name='bar'))
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'name': 'bar'}
+                     }
+                }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 403
         document = loads(response.data)
@@ -704,12 +777,17 @@ class TestProcessors(ManagerTestBase):
 
             """
             if data is not None:
-                data['data']['name'] = 'bar'
+                data['data']['attributes']['name'] = 'bar'
 
         preprocessors = dict(PATCH_RESOURCE=[set_name])
         self.manager.create_api(self.Person, methods=['PATCH'],
                                 preprocessors=preprocessors)
-        data = dict(data=dict(type='person', id='1', name='baz'))
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'name': 'baz'}
+                     }
+                }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 204
         assert person.name == 'bar'
@@ -730,7 +808,12 @@ class TestProcessors(ManagerTestBase):
         postprocessors = dict(PATCH_RESOURCE=[modify_result])
         self.manager.create_api(self.Person, methods=['PATCH'],
                                 postprocessors=postprocessors)
-        data = dict(data=dict(type='person', id='1', name='bar'))
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'name': 'bar'}
+                     }
+                }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 204
         assert person.name == 'bar'
@@ -889,7 +972,12 @@ class TestAssociationProxy(ManagerTestBase):
         tag = self.Tag(id=1)
         self.session.add_all([article, tag])
         self.session.commit()
-        data = dict(data=[dict(type='tag', id='1', extrainfo='foo')])
+        data = {'data':
+                    {'id': '1',
+                     'type': 'tag',
+                     'attributes': {'extrainfo': 'foo'}
+                     }
+                }
         data = dumps(data)
         response = self.app.patch('/api/article/1/links/tags', data=data)
         assert response.status_code == 204
@@ -908,7 +996,12 @@ class TestAssociationProxy(ManagerTestBase):
         tag = self.Tag(id=1)
         self.session.add_all([article, tag])
         self.session.commit()
-        data = dict(data=[dict(type='tag', id='1', extrainfo='foo')])
+        data = {'data':
+                    [{'id': '1',
+                     'type': 'tag',
+                     'attributes': {'extrainfo': 'foo'}
+                      }]
+                }
         data = dumps(data)
         response = self.app.post('/api/article/1/links/tags', data=data)
         assert response.status_code == 204
@@ -955,7 +1048,12 @@ class TestFlaskSqlalchemy(FlaskTestBase):
         person = self.Person(id=1, name='foo')
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='person', id='1', name='bar'))
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'name': 'bar'}
+                     }
+                }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 204
         assert person.name == 'bar'

@@ -1610,6 +1610,8 @@ class API(APIBase):
                 current_app.logger.exception(str(exception))
                 return self._handle_validation_exception(exception)
 
+        # Now consider only the attributes to update.
+        data = data.pop('attributes', {})
         # Check for any request parameter naming a column which does not exist
         # on the current model.
         for field in data:

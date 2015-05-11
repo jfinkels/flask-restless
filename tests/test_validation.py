@@ -81,7 +81,7 @@ class TestSimpleValidation(ManagerTestBase):
         assert response.status_code == 201
         document = loads(response.data)
         person = document['data']
-        assert person['age'] == 1
+        assert person['attributes']['age'] == 1
 
     def test_create_invalid(self):
         """Tests that an attempt to create an invalid resource yields an error
@@ -107,9 +107,13 @@ class TestSimpleValidation(ManagerTestBase):
         person = self.Person(id=1, age=1)
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='person', id='1', age=2))
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'age': 2}
+                     }
+                }
         response = self.app.patch('/api/person/1', data=dumps(data))
-        print(response.data)
         assert response.status_code == 204
         assert person.age == 2
 
@@ -121,7 +125,12 @@ class TestSimpleValidation(ManagerTestBase):
         person = self.Person(id=1, age=1)
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='person', id='1', age=-1))
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'age': -1}
+                     }
+                }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 400
         document = loads(response.data)
@@ -170,7 +179,7 @@ class TestSAValidation(ManagerTestBase):
         assert response.status_code == 201
         document = loads(response.data)
         person = document['data']
-        assert person['email'] == u'example@example.com'
+        assert person['attributes']['email'] == u'example@example.com'
 
     def test_create_absent(self):
         """Tests that an attempt to create a resource with a missing required
@@ -193,7 +202,11 @@ class TestSAValidation(ManagerTestBase):
         response.
 
         """
-        data = dict(data=dict(type='person', email='bogus'))
+        data = {'data':
+                    {'type': 'person',
+                     'attributes': {'email': 'bogus'}
+                     }
+                }
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 400
         document = loads(response.data)
@@ -212,7 +225,12 @@ class TestSAValidation(ManagerTestBase):
         person = self.Person(id=1, email='example@example.com')
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='person', id='1', email='foo@example.com'))
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'email': 'foo@example.com'}
+                     }
+                }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 204
         assert person.email == u'foo@example.com'
@@ -225,7 +243,12 @@ class TestSAValidation(ManagerTestBase):
         person = self.Person(id=1, email='example@example.com')
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='person', id='1', email='bogus'))
+        data = {'data':
+                    {'id': '1',
+                     'type': 'person',
+                     'attributes': {'email': 'bogus'}
+                     }
+                }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 400
         document = loads(response.data)

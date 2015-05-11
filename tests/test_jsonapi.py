@@ -193,6 +193,7 @@ class TestDocumentStructure(ManagerTestBase):
         response = self.app.get('/api/article/1')
         document = loads(response.data)
         article = document['data']
+        assert 'attributes' not in article
         assert 'author_id' not in article
 
     def test_self_link(self):
@@ -233,7 +234,8 @@ class TestDocumentStructure(ManagerTestBase):
         self.session.add_all([person, article])
         self.session.commit()
         response = self.app.get('/api/article/1')
-        article = loads(response.data)['data']
+        document = loads(response.data)
+        article = document['data']
         relationship_url = article['links']['author']['self']
         assert relationship_url.endswith('/api/article/1/links/author')
 
@@ -254,7 +256,8 @@ class TestDocumentStructure(ManagerTestBase):
         self.session.commit()
         # Get a resource that has links.
         response = self.app.get('/api/article/1')
-        article = loads(response.data)['data']
+        document = loads(response.data)
+        article = document['data']
         # Get the related resource URL.
         resource_url = article['links']['author']['related']
         # The Flask test client doesn't need the `netloc` part of the URL.
@@ -941,7 +944,7 @@ class TestFetchingData(ManagerTestBase):
         articles = document['data']
         assert ['1', '2'] == sorted(article['id'] for article in articles)
         assert all(article['type'] == 'article' for article in articles)
-        assert all('title' in article for article in articles)
+        assert all('title' in article['attributes'] for article in articles)
         assert all('author' in article['links'] for article in articles)
 
     def test_to_one_related_resource_url(self):
@@ -968,7 +971,8 @@ class TestFetchingData(ManagerTestBase):
         author = document['data']
         assert author['id'] == '1'
         assert author['type'] == 'person'
-        assert all(field in author for field in ('name', 'age', 'other'))
+        assert all(field in author['attributes']
+                   for field in ('name', 'age', 'other'))
 
     def test_empty_to_many_related_resource_url(self):
         """Tests for fetching an empty to-many related resource from a related
@@ -1277,7 +1281,8 @@ class TestFetchingData(ManagerTestBase):
         document = loads(response.data)
         person = document['data']
         # ID and type must always be included.
-        assert ['id', 'name', 'type'] == sorted(person)
+        assert ['attributes', 'id', 'type'] == sorted(person)
+        assert ['name'] == sorted(person['attributes'])
 
     def test_sparse_fieldsets_id_and_type(self):
         """Tests that the ID and type of the resource are always included in a
@@ -1316,7 +1321,8 @@ class TestFetchingData(ManagerTestBase):
         response = self.app.get('/api/person?fields[person]=id,name')
         document = loads(response.data)
         people = document['data']
-        assert all(['id', 'name', 'type'] == sorted(p) for p in people)
+        assert all(['attributes', 'id', 'type'] == sorted(p) for p in people)
+        assert all(['name'] == sorted(p['attributes']) for p in people)
 
     def test_sparse_fieldsets_multiple_types(self):
         """Tests that the client can specify which fields to return in the
@@ -1341,9 +1347,11 @@ class TestFetchingData(ManagerTestBase):
         person = document['data']
         linked = document['included']
         # We requested 'id', 'name', and 'articles'; 'id' and 'type' must
-        # always be present, and 'articles' comes under a 'links' key.
-        assert ['id', 'links', 'name', 'type'] == sorted(person)
+        # always be present; 'name' comes under an 'attributes' key; and
+        # 'articles' comes under a 'links' key.
+        assert ['attributes', 'id', 'links', 'type'] == sorted(person)
         assert ['articles'] == sorted(person['links'])
+        assert ['name'] == sorted(person['attributes'])
         # We requested only 'id', but 'type' must always appear as well.
         assert all(['id', 'type'] == sorted(article) for article in linked)
 
@@ -1366,7 +1374,7 @@ class TestFetchingData(ManagerTestBase):
         response = self.app.get('/api/person?sort=%2Bage')
         document = loads(response.data)
         people = document['data']
-        age1, age2, age3 = (p['age'] for p in people)
+        age1, age2, age3 = (p['attributes']['age'] for p in people)
         assert age1 <= age2 <= age3
 
     def test_sort_decreasing(self):
@@ -1387,7 +1395,7 @@ class TestFetchingData(ManagerTestBase):
         response = self.app.get('/api/person?sort=-age')
         document = loads(response.data)
         people = document['data']
-        age1, age2, age3 = (p['age'] for p in people)
+        age1, age2, age3 = (p['attributes']['age'] for p in people)
         assert age1 >= age2 >= age3
 
     def test_sort_multiple_fields(self):
@@ -1411,7 +1419,7 @@ class TestFetchingData(ManagerTestBase):
         response = self.app.get('/api/person?sort=-age,%2Bname')
         document = loads(response.data)
         people = document['data']
-        p1, p2, p3, p4 = people
+        p1, p2, p3, p4 = (p['attributes'] for p in people)
         assert p1['age'] == p2['age'] >= p3['age'] == p4['age']
         assert p1['name'] <= p2['name']
         assert p3['name'] <= p4['name']
@@ -1510,7 +1518,7 @@ class TestCreatingResources(ManagerTestBase):
         person = document['data']
         assert person['type'] == 'person'
         assert person['id'] == '1'
-        assert person['name'] == 'foo'
+        assert person['attributes']['name'] == 'foo'
         # # No self link will exist because no GET endpoint was created.
         # assert person['links']['self'] == location
 
@@ -1665,7 +1673,8 @@ class TestUpdatingResources(ManagerTestBase):
         person = self.Person(id=1, name='foo', age=10)
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='person', id='1', name='bar'))
+        data = dict(data=dict(type='person', id='1',
+                              attributes=dict(name='bar')))
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 204
         assert person.id == 1
@@ -1903,7 +1912,8 @@ class TestUpdatingResources(ManagerTestBase):
         person2 = self.Person(id=2)
         self.session.add_all([person1, person2])
         self.session.commit()
-        data = dict(data=dict(type='person', id='2', name='foo'))
+        data = dict(data=dict(type='person', id='2',
+                              attributes=dict(name='foo')))
         response = self.app.patch('/api/person/2', data=dumps(data))
         assert response.status_code == 409
         # TODO test for error details

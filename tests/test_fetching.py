@@ -199,7 +199,8 @@ class TestFetchCollection(ManagerTestBase):
         response = self.app.get('/api/person?group=name')
         document = loads(response.data)
         people = document['data']
-        assert ['bar', 'foo'] == sorted(person['name'] for person in people)
+        assert ['bar', 'foo'] == sorted(person['attributes']['name']
+                                        for person in people)
 
     def test_group_by_related(self):
         """Tests for grouping results by a field on a related model."""
@@ -272,7 +273,7 @@ class TestFetchResource(ManagerTestBase):
         assert response.status_code == 200
         document = loads(response.data)
         person = document['data']
-        assert person['bedtime'] == now.isoformat()
+        assert person['attributes']['bedtime'] == now.isoformat()
 
     def test_serialize_datetime(self):
         """Test for getting the JSON representation of a datetime field."""
@@ -284,7 +285,7 @@ class TestFetchResource(ManagerTestBase):
         assert response.status_code == 200
         document = loads(response.data)
         person = document['data']
-        assert person['birth_datetime'] == now.isoformat()
+        assert person['attributes']['birth_datetime'] == now.isoformat()
 
     def test_serialize_date(self):
         """Test for getting the JSON representation of a date field."""
@@ -296,7 +297,7 @@ class TestFetchResource(ManagerTestBase):
         assert response.status_code == 200
         document = loads(response.data)
         person = document['data']
-        assert person['birthday'] == now.isoformat()
+        assert person['attributes']['birthday'] == now.isoformat()
 
     def test_jsonp(self):
         """Test for a JSON-P callback on a single resource request."""
@@ -337,7 +338,7 @@ class TestFetchResource(ManagerTestBase):
         response = self.app.get('/api/tag/1')
         document = loads(response.data)
         tag = document['data']
-        assert tag['name'] == '1'
+        assert tag['attributes']['name'] == '1'
         assert tag['id'] == '1'
 
     @skip('Currently not supported')
@@ -370,11 +371,11 @@ class TestFetchResource(ManagerTestBase):
         response = self.app.get('/api/person/1')
         document = loads(response.data)
         person = document['data']
-        assert person['has_early_bedtime']
+        assert person['attributes']['has_early_bedtime']
         response = self.app.get('/api/person/2')
         document = loads(response.data)
         person = document['data']
-        assert not person['has_early_bedtime']
+        assert not person['attributes']['has_early_bedtime']
 
     def test_collection_name(self):
         """Tests for fetching a single resource with an alternate collection
@@ -400,7 +401,7 @@ class TestFetchResource(ManagerTestBase):
 
         def serializer(instance, **kw):
             result = simple_serialize(instance, **kw)
-            result['foo'] = 'bar'
+            result['attributes']['foo'] = 'bar'
             return result
 
         self.manager.create_api(self.Person, serializer=serializer,
@@ -408,7 +409,7 @@ class TestFetchResource(ManagerTestBase):
         response = self.app.get('/api2/person/1')
         document = loads(response.data)
         person = document['data']
-        assert person['foo'] == 'bar'
+        assert person['attributes']['foo'] == 'bar'
 
     def test_serialization_exception(self):
         """Tests that exceptions are caught when a custom serialization method
@@ -795,7 +796,8 @@ class TestServerSparseFieldsets(ManagerTestBase):
         response = self.app.get('/api/person/1')
         document = loads(response.data)
         person = document['data']
-        assert ['id', 'name', 'type'] == sorted(person)
+        assert ['attributes', 'id', 'type'] == sorted(person)
+        assert ['name'] == sorted(person['attributes'])
 
     def test_only_relationship(self):
         """Tests for specifying that response should only include certain
@@ -852,7 +854,8 @@ class TestServerSparseFieldsets(ManagerTestBase):
         response = self.app.get('/api/person/1')
         document = loads(response.data)
         person = document['data']
-        assert ['id', 'name', 'type'] == sorted(person)
+        assert ['attributes', 'id', 'type'] == sorted(person)
+        assert ['name'] == sorted(person['attributes'])
 
     def test_only_none(self):
         """Tests that providing an empty list as the list of fields to include
@@ -882,7 +885,7 @@ class TestServerSparseFieldsets(ManagerTestBase):
         response = self.app.get('/api/person/1')
         document = loads(response.data)
         person = document['data']
-        assert person['foo'] == 'bar'
+        assert person['attributes']['foo'] == 'bar'
 
     def test_additional_attributes_callable(self):
         """Tests that callable attributes can be included using the
@@ -896,7 +899,7 @@ class TestServerSparseFieldsets(ManagerTestBase):
         response = self.app.get('/api/photo/1')
         document = loads(response.data)
         photo = document['data']
-        assert photo['website'] == 'example.com'
+        assert photo['attributes']['website'] == 'example.com'
 
     def test_additional_attributes_property(self):
         """Tests that class properties can be included using the
@@ -910,7 +913,7 @@ class TestServerSparseFieldsets(ManagerTestBase):
         response = self.app.get('/api/photo/1')
         document = loads(response.data)
         photo = document['data']
-        assert photo['year'] == 2015
+        assert photo['attributes']['year'] == 2015
 
     def test_additional_attributes_object(self):
         """Tests that an additional attribute is serialized if it is an
@@ -937,7 +940,7 @@ class TestServerSparseFieldsets(ManagerTestBase):
         response = self.app.get('/api/article/1')
         document = loads(response.data)
         article = document['data']
-        first_comment = article['first_comment']
+        first_comment = article['attributes']['first_comment']
         assert first_comment['id'] == '1'
         assert first_comment['type'] == 'comment'
 
@@ -950,7 +953,7 @@ class TestServerSparseFieldsets(ManagerTestBase):
         response = self.app.get('/api/person/1')
         document = loads(response.data)
         person = document['data']
-        assert 'name' not in person
+        assert 'name' not in person['attributes']
 
     # # TODO This doesn't exactly make sense anymore; each type of included
     # # resource should really determine its own sparse fieldsets.
@@ -987,7 +990,7 @@ class TestServerSparseFieldsets(ManagerTestBase):
         response = self.app.get('/api/person/1')
         document = loads(response.data)
         person = document['data']
-        assert 'name' not in person
+        assert 'name' not in person['attributes']
 
 
 class TestProcessors(ManagerTestBase):
@@ -1072,7 +1075,7 @@ class TestProcessors(ManagerTestBase):
         document = loads(response.data)
         person = document['data']
         assert person['id'] == '1'
-        assert person['name'] == 'foo'
+        assert person['attributes']['name'] == 'foo'
 
     def test_last_preprocessor_changes_id(self):
         """Tests that a return value from the last preprocessor in the list
@@ -1095,7 +1098,7 @@ class TestProcessors(ManagerTestBase):
         document = loads(response.data)
         person = document['data']
         assert person['id'] == '2'
-        assert person['name'] == 'foo'
+        assert person['attributes']['name'] == 'foo'
 
     def test_no_client_filters(self):
         """Tests that a preprocessor can modify the filter objects in a
@@ -1378,7 +1381,7 @@ class TestAssociationProxy(ManagerTestBase):
         response = self.app.get('/api/article/1')
         document = loads(response.data)
         article = document['data']
-        assert ['bar', 'foo'] == sorted(article['tag_names'])
+        assert ['bar', 'foo'] == sorted(article['attributes']['tag_names'])
 
 
 @skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')

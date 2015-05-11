@@ -125,35 +125,39 @@ class TestCreating(ManagerTestBase):
     def test_deserializing_time(self):
         """Test for deserializing a JSON representation of a time field."""
         bedtime = datetime.now().time()
-        data = dict(data=dict(type='person', bedtime=bedtime))
+        data = dict(data=dict(type='person', attributes=dict(bedtime=bedtime)))
         data = dumps(data, cls=JSONEncoder)
         response = self.app.post('/api/person', data=data)
         assert response.status_code == 201
         document = loads(response.data)
         person = document['data']
-        assert person['bedtime'] == bedtime.isoformat()
+        assert person['attributes']['bedtime'] == bedtime.isoformat()
 
     def test_deserializing_date(self):
         """Test for deserializing a JSON representation of a date field."""
         date_created = datetime.now().date()
-        data = dict(data=dict(type='article', date_created=date_created))
+        data = dict(data=dict(type='article',
+                              attributes=dict(date_created=date_created)))
         data = dumps(data, cls=JSONEncoder)
         response = self.app.post('/api/article', data=data)
         assert response.status_code == 201
         document = loads(response.data)
         article = document['data']
-        assert article['date_created'] == date_created.isoformat()
+        received_date = article['attributes']['date_created']
+        assert received_date == date_created.isoformat()
 
     def test_deserializing_datetime(self):
         """Test for deserializing a JSON representation of a date field."""
         birth_datetime = datetime.now()
-        data = dict(data=dict(type='person', birth_datetime=birth_datetime))
+        data = dict(data=dict(type='person',
+                              attributes=dict(birth_datetime=birth_datetime)))
         data = dumps(data, cls=JSONEncoder)
         response = self.app.post('/api/person', data=data)
         assert response.status_code == 201
         document = loads(response.data)
         person = document['data']
-        assert person['birth_datetime'] == birth_datetime.isoformat()
+        received_time = person['attributes']['birth_datetime']
+        assert received_time == birth_datetime.isoformat()
 
     def test_correct_content_type(self):
         """Tests that the server responds with :http:status:`201` if the
@@ -246,7 +250,7 @@ class TestCreating(ManagerTestBase):
         person = self.Person(name='foo')
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='person', name='foo'))
+        data = dict(data=dict(type='person', attributes=dict(name='foo')))
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 409  # Conflict
         # TODO check error message here
@@ -260,11 +264,11 @@ class TestCreating(ManagerTestBase):
         person = self.Person(name='foo')
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='person', name='foo'))
+        data = dict(data=dict(type='person', attributes=dict(name='foo')))
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 409  # Conflict
         assert self.session.is_active, 'Session is in `partial rollback` state'
-        person = dict(data=dict(type='person', name='bar'))
+        person = dict(data=dict(type='person', attributes=dict(name='bar')))
         response = self.app.post('/api/person', data=dumps(person))
         assert response.status_code == 201
 
@@ -273,7 +277,7 @@ class TestCreating(ManagerTestBase):
         an attribute that does not exist in the resource.
 
         """
-        data = dict(data=dict(type='person', bogus=0))
+        data = dict(data=dict(type='person', attributes=dict(bogus=0)))
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 400
         # TODO check error message here
@@ -285,7 +289,7 @@ class TestCreating(ManagerTestBase):
         See issue #171.
 
         """
-        data = dict(data=dict(type='person', is_minor=True))
+        data = dict(data=dict(type='person', attributes=dict(is_minor=True)))
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 400
         # TODO check error message here
@@ -296,12 +300,13 @@ class TestCreating(ManagerTestBase):
         For more information, see issue #91.
 
         """
-        data = dict(data=dict(type='person', birth_datetime=None))
+        data = dict(data=dict(type='person',
+                              attributes=dict(birth_datetime=None)))
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 201
         document = loads(response.data)
         person = document['data']
-        assert person['birth_datetime'] is None
+        assert person['attributes']['birth_datetime'] is None
 
     def test_empty_date(self):
         """Tests that attempting to assign an empty date string to a date field
@@ -310,26 +315,29 @@ class TestCreating(ManagerTestBase):
         For more information, see issue #91.
 
         """
-        data = dict(data=dict(type='person', birth_datetime=''))
+        data = dict(data=dict(type='person',
+                              attributes=dict(birth_datetime='')))
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 201
         document = loads(response.data)
         person = document['data']
-        assert person['birth_datetime'] is None
+        assert person['attributes']['birth_datetime'] is None
 
     def test_current_timestamp(self):
         """Tests that the string ``'CURRENT_TIMESTAMP'`` gets converted into a
         datetime object when making a request to set a date or time field.
 
         """
+        CURRENT = 'CURRENT_TIMESTAMP'
         data = dict(data=dict(type='person',
-                              birth_datetime='CURRENT_TIMESTAMP'))
+                              attributes=dict(birth_datetime=CURRENT)))
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 201
         document = loads(response.data)
         person = document['data']
-        assert person['birth_datetime'] is not None
-        birth_datetime = dateutil.parser.parse(person['birth_datetime'])
+        birth_datetime = person['attributes']['birth_datetime']
+        assert birth_datetime is not None
+        birth_datetime = dateutil.parser.parse(birth_datetime)
         diff = datetime.utcnow() - birth_datetime
         # Check that the total number of seconds from the server creating the
         # Person object to (about) now is not more than about a minute.
@@ -338,12 +346,12 @@ class TestCreating(ManagerTestBase):
 
     def test_timedelta(self):
         """Tests for creating an object with a timedelta attribute."""
-        data = dict(data=dict(type='person', hangtime=300))
+        data = dict(data=dict(type='person', attributes=dict(hangtime=300)))
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 201
         document = loads(response.data)
         person = document['data']
-        assert person['hangtime'] == 300
+        assert person['attributes']['hangtime'] == 300
 
     def test_to_many(self):
         """Tests the creation of a model with a to-many relation."""
@@ -393,19 +401,19 @@ class TestCreating(ManagerTestBase):
 
     def test_unicode_primary_key(self):
         """Test for creating a resource with a unicode primary key."""
-        data = dict(data=dict(type='tag', name=u'Юникод'))
+        data = dict(data=dict(type='tag', attributes=dict(name=u'Юникод')))
         response = self.app.post('/api/tag', data=dumps(data))
         assert response.status_code == 201
         document = loads(response.data)
         tag = document['data']
-        assert tag['name'] == u'Юникод'
+        assert tag['attributes']['name'] == u'Юникод'
 
     def test_primary_key_as_id(self):
         """Tests the even if a primary key is not named ``id``, it still
         appears in an ``id`` key in the response.
 
         """
-        data = dict(data=dict(type='tag', name=u'foo'))
+        data = dict(data=dict(type='tag', attributes=dict(name=u'foo')))
         response = self.app.post('/api/tag', data=dumps(data))
         assert response.status_code == 201
         document = loads(response.data)
@@ -459,10 +467,12 @@ class TestCreating(ManagerTestBase):
 
         def serializer(instance):
             result = simple_serialize(instance)
-            result['foo'] = temp.pop()
+            result['attributes']['foo'] = temp.pop()
             return result
 
         def deserializer(data):
+            # Move the attributes up to the top-level object.
+            data.update(data.pop('attributes', {}))
             temp.append(data.pop('foo'))
             instance = self.Person(**data)
             return instance
@@ -472,12 +482,12 @@ class TestCreating(ManagerTestBase):
                                 url_prefix='/api2',
                                 serializer=serializer,
                                 deserializer=deserializer)
-        data = dict(data=dict(type='person', foo='bar'))
+        data = dict(data=dict(type='person', attributes=dict(foo='bar')))
         response = self.app.post('/api2/person', data=dumps(data))
         assert response.status_code == 201
         document = loads(response.data)
         person = document['data']
-        assert person['foo'] == 'bar'
+        assert person['attributes']['foo'] == 'bar'
 
     def test_deserialization_exception(self):
         """Tests that exceptions are caught when a custom deserialization
@@ -574,17 +584,17 @@ class TestProcessors(ManagerTestBase):
 
             """
             if data is not None:
-                data['data']['name'] = 'bar'
+                data['data']['attributes']['name'] = 'bar'
 
         preprocessors = dict(POST=[set_name])
         self.manager.create_api(self.Person, methods=['POST'],
                                 preprocessors=preprocessors)
-        data = dict(data=dict(type='person', name='foo'))
+        data = dict(data=dict(type='person', attributes=dict(name='foo')))
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 201
         document = loads(response.data)
         person = document['data']
-        assert person['name'] == 'bar'
+        assert person['attributes']['name'] == 'bar'
 
     def test_postprocessor(self):
         """Tests that a postprocessor is invoked when creating a resource."""

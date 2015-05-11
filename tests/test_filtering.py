@@ -141,7 +141,8 @@ class TestFiltering(SearchTestBase):
         document = loads(response.data)
         people = document['data']
         assert len(people) == 2
-        assert ['Jesus', 'Joseph'] == sorted(p['name'] for p in people)
+        assert ['Jesus', 'Joseph'] == sorted(person['attributes']['name']
+                                             for person in people)
 
     def test_single(self):
         """Tests for requiring a single resource response to a filtered
@@ -230,7 +231,6 @@ class TestFiltering(SearchTestBase):
         response = self.search('/api/person', filters)
         document = loads(response.data)
         people = document['data']
-        assert len(people) == 2
         assert ['1', '3'] == sorted(person['id'] for person in people)
 
     def test_has_in_to_one(self):
@@ -253,7 +253,6 @@ class TestFiltering(SearchTestBase):
         response = self.search('/api/comment', filters)
         document = loads(response.data)
         comments = document['data']
-        assert len(comments) == 2
         assert ['2', '3'] == sorted(comment['id'] for comment in comments)
 
     def test_has_with_has(self):
@@ -356,7 +355,6 @@ class TestFiltering(SearchTestBase):
         response = self.search('/api/person', filters)
         document = loads(response.data)
         people = document['data']
-        assert len(people) == 2
         assert ['1', '3'] == sorted(person['id'] for person in people)
 
     def test_date_yyyy_mm_dd(self):
@@ -368,12 +366,11 @@ class TestFiltering(SearchTestBase):
         person2 = self.Person(id=2, birthday=date(1900, 1, 2))
         self.session.add_all([person1, person2])
         self.session.commit()
-        filters = [dict(name='birthday', op='eq', val='1900-01-02')]
+        filters = [dict(name='birthday', op='eq', val='1969-07-20')]
         response = self.search('/api/person', filters)
         document = loads(response.data)
         people = document['data']
-        assert len(people) == 1
-        assert people[0]['id'] == '2'
+        assert ['1'] == sorted(person['id'] for person in people)
 
     def test_date_english(self):
         """Tests for date parsing in filter object with dates of the form ``2nd
@@ -388,8 +385,7 @@ class TestFiltering(SearchTestBase):
         response = self.search('/api/person', filters)
         document = loads(response.data)
         people = document['data']
-        assert len(people) == 1
-        assert people[0]['id'] == '2'
+        assert ['2'] == sorted(person['id'] for person in people)
 
     def test_times(self):
         """Test for time parsing in filter objects."""
@@ -429,8 +425,7 @@ class TestFiltering(SearchTestBase):
         response = self.search('/api/person', filters)
         document = loads(response.data)
         people = document['data']
-        assert len(people) == 1
-        assert people[0]['id'] == '2'
+        assert ['2'] == sorted(person['id'] for person in people)
 
     def test_datetime_to_time(self):
         """Test that a datetime gets truncated to a time if the model has a
@@ -681,7 +676,8 @@ class TestOperators(SearchTestBase):
         response = self.search('/api/person', filters)
         document = loads(response.data)
         people = document['data']
-        assert ['bar', 'baz'] == sorted(person['name'] for person in people)
+        assert ['bar', 'baz'] == sorted(person['attributes']['name']
+                                        for person in people)
 
     def test_ilike(self):
         """Tests for the ``ilike`` operator."""
@@ -694,7 +690,8 @@ class TestOperators(SearchTestBase):
         response = self.search('/api/person', filters)
         document = loads(response.data)
         people = document['data']
-        assert ['bar', 'baz'] == sorted(person['name'] for person in people)
+        assert ['bar', 'baz'] == sorted(person['attributes']['name']
+                                        for person in people)
 
     def test_in(self):
         """Tests for the ``in`` operator."""

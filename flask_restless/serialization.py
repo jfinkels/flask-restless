@@ -256,11 +256,27 @@ class DefaultSerializer(Serializer):
 
         # Create a dictionary mapping attribute name to attribute value for
         # this particular instance.
-        result = {column: getattr(instance, column) for column in columns}
+        attributes = {column: getattr(instance, column) for column in columns}
         # Call any functions that appear in the result.
-        result = {k: (v() if callable(v) else v) for k, v in result.items()}
-        # Add the resource type to the result dictionary.
-        result['type'] = collection_name(model)
+        attributes = {k: (v() if callable(v) else v)
+                      for k, v in attributes.items()}
+        # Recursively serialize any object that appears in the
+        # attributes. This may happen if, for example, the return value
+        # of one of the callable functions is an instance of another
+        # SQLAlchemy model class.
+        for k, v in attributes.items():
+            # This is a bit of a fragile test for whether the object
+            # needs to be serialized: we simply check if the class of
+            # the object is a mapped class.
+            if is_mapped_class(type(v)):
+                attributes[k] = simple_serialize(v)
+        # Get the ID and type of the resource.
+        id_ = attributes.pop('id')
+        type_ = collection_name(model)
+        # Create the result dictionary and add the attributes.
+        result = dict(id=id_, type=type_)
+        if attributes:
+            result['attributes'] = attributes
         # Add the self link unless it has been explicitly excluded.
         if ((self.default_fields is None or 'self' in self.default_fields)
             and (only is None or 'self' in only)):
@@ -308,11 +324,11 @@ class DefaultSerializer(Serializer):
             # defined for that class when the user called APIManager.create_api
             elif key not in column_attrs and is_mapped_class(type(value)):
                 result[key] = simple_serialize(value)
-        # If the primary key is not named "id", we'll duplicate the primary key
-        # under the "id" key.
+        # If the primary key is not named "id", we'll duplicate the
+        # primary key under the "id" key.
         pk_name = primary_key_name(model)
         if pk_name != 'id':
-            result['id'] = result[pk_name]
+            result['id'] = result['attributes'][pk_name]
         # TODO Same problem as above.
         #
         # In order to comply with the JSON API standard, primary keys must be
@@ -400,9 +416,11 @@ class DefaultDeserializer(Deserializer):
                         msg = ('Model does not have relationship'
                                ' "{0}"').format(relation)
                         raise DeserializationException(msg)
-            elif not has_field(self.model, field):
-                msg = "Model does not have field '{0}'".format(field)
-                raise DeserializationException(msg)
+            elif field == 'attributes':
+                for attribute in data['attributes']:
+                    if not has_field(self.model, attribute):
+                        msg = "Model does not have field '{0}'".format(field)
+                        raise DeserializationException(msg)
         # Determine which related instances need to be added.
         links = {}
         if 'links' in data:
@@ -429,6 +447,8 @@ class DefaultDeserializer(Deserializer):
         # in the put() method. We could possibly refactor the code above and
         # the code there into a helper function...
         pass
+        # Move the attributes up to the top level.
+        data.update(data.pop('attributes', {}))
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
         #
