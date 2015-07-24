@@ -192,6 +192,54 @@ class DefaultSerializer(Serializer):
         self.exclude = exclude
         self.additional_attributes = additional_attributes
 
+
+    def _create_relationship(self, model, instance, relation):
+        """Creates a relationship from the given relation name.
+
+        Returns a dictionary representing a relationship as described in
+        the `Relationships`_ section of the JSON API specification.
+
+        .. _Relationships: http://jsonapi.org/format/#document-resource-object-relationships
+
+        """
+        result = {}
+        # Create the self and related links.
+        self_link = url_for(model, primary_key_value(instance), relation,
+                            relationship=True)
+        related_link = url_for(model, primary_key_value(instance), relation)
+        result['links'] = {'self': self_link, 'related': related_link}
+        # Get the related value so we can see if it is a to-many
+        # relationship or a to-one relationship.
+        related_value = getattr(instance, relation)
+        # If the related value is list-like, it represents a to-many
+        # relationship.
+        if is_like_list(instance, relation):
+            # For the sake of brevity, rename these functions.
+            cn = collection_name
+            gm = get_model
+            pkv = primary_key_value
+            # Create the resource linkage objects.
+            result['data'] = [dict(type=cn(gm(i)), id=str(pkv(i)))
+                              for i in related_value]
+            return result
+        # At this point, we know we have a to-one relationship.
+        related_model = get_related_model(model, relation)
+        # If the related value is None, that means we have an empty
+        # to-one relationship.
+        if related_value is None:
+            result['data'] = None
+            return result
+        # If the related value is dynamically loaded, resolve the query
+        # to get the single instance in the to-one relationship.
+        if isinstance(related_value, Query):
+            related_value = related_value.one()
+        # Create the resource linkage object for the to-one
+        # relationship.
+        related_type = collection_name(related_model)
+        related_id = str(primary_key_value(related_value))
+        result['data'] = {'type': related_type, 'id': related_id}
+        return result
+
     # TODO only=... is the client's request for which fields to include.
     def __call__(self, instance, only=None):
         """Returns a dictionary representing the fields of the specified
@@ -348,46 +396,10 @@ class DefaultSerializer(Serializer):
             relations = [r for r in relations if r in only]
         if not relations:
             return result
-        # The links mapping may already exist if a self link was added
-        # above.
-        if 'links' not in result:
-            result['links'] = {}
-        for relation in relations:
-            # Create the common elements in the link object: the `self` and
-            # `resource` links.
-            result['links'][relation] = {}
-            link = result['links'][relation]
-            link['self'] = url_for(model, primary_key_value(instance),
-                                   relation, relationship=True)
-            link['related'] = url_for(model, primary_key_value(instance),
-                                      relation)
-            # Get the related value so we can see if it is a to-many
-            # relationship or a to-one relationship.
-            related_value = getattr(instance, relation)
-            # If the related value is list-like, it represents a to-many
-            # relationship.
-            if is_like_list(instance, relation):
-                # For the sake of brevity, rename these functions.
-                cn = collection_name
-                gm = get_model
-                pkv = primary_key_value
-                # Create the link objects.
-                link['linkage'] = [dict(type=cn(gm(i)), id=str(pkv(i)))
-                                   for i in related_value]
-                continue
-            # At this point, we know we have a to-one relationship.
-            related_model = get_related_model(model, relation)
-            link['linkage'] = dict(type=collection_name(related_model))
-            # If the related value is None, that means we have an empty
-            # to-one relationship.
-            if related_value is None:
-                link['linkage']['id'] = None
-                continue
-            # If the related value is dynamically loaded, resolve the query
-            # to get the single instance in the to-one relationship.
-            if isinstance(related_value, Query):
-                related_value = related_value.one()
-            link['linkage']['id'] = str(primary_key_value(related_value))
+        # For the sake of brevity, rename this function.
+        cr = self._create_relationship
+        result['relationships'] = {relation: cr(model, instance, relation)
+                                   for relation in relations}
         return result
 
 
@@ -410,8 +422,8 @@ class DefaultDeserializer(Deserializer):
         # Check for any request parameter naming a column which does not exist
         # on the current model.
         for field in data:
-            if field == 'links':
-                for relation in data['links']:
+            if field == 'relationships':
+                for relation in data['relationships']:
                     if not has_field(self.model, relation):
                         msg = ('Model does not have relationship'
                                ' "{0}"').format(relation)
@@ -423,8 +435,8 @@ class DefaultDeserializer(Deserializer):
                         raise DeserializationException(msg)
         # Determine which related instances need to be added.
         links = {}
-        if 'links' in data:
-            links = data.pop('links', {})
+        if 'relationships' in data:
+            links = data.pop('relationships', {})
             for link_name, link_object in links.items():
                 # TODO raise an exception on missing 'linkage' key
                 linkage = link_object['linkage']

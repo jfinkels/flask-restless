@@ -98,6 +98,10 @@ _STATUS = '__restless_status_code'
 #: ``application/vnd.api+json``.
 CONTENT_TYPE = 'application/vnd.api+json'
 
+#: The highest version of the JSON API specification supported by
+#: Flask-Restless.
+JSONAPI_VERSION = '1.0'
+
 #: SQLAlchemy errors that, when caught, trigger a rollback of the session.
 ROLLBACK_ERRORS = (DataError, IntegrityError, ProgrammingError, FlushError)
 
@@ -1326,6 +1330,8 @@ class API(APIBase):
             result['links'] = dict()
         result['links']['self'] = url_for(self.model)
         result['links'].update(pagination_links)
+        # Add the supported JSON API version.
+        result['jsonapi'] = dict(version=JSONAPI_VERSION)
 
         for postprocessor in self.postprocessors['GET_COLLECTION']:
             postprocessor(result=result, filters=filters, sort=sort,
@@ -1538,7 +1544,7 @@ class API(APIBase):
 
         """
         # Update any relationships.
-        links = data.pop('links', {})
+        links = data.pop('relationships', {})
         for linkname, link in links.items():
             # TODO: The client is obligated by JSON API to provide linkage if
             # the `links` attribute exists, but we should probably error out
