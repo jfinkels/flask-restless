@@ -79,7 +79,9 @@ from .helpers import upper_keys
 from .helpers import url_for
 from .search import ComparisonToNull
 from .search import search
-from .serialization import DefaultSerializer
+from .search import search_relationship
+from .serialization import simple_serialize
+from .serialization import simple_relationship_serialize
 from .serialization import DefaultDeserializer
 from .serialization import DeserializationException
 from .serialization import SerializationException
@@ -731,13 +733,40 @@ class APIBase(ModelView):
     decorators = [catch_processing_exceptions] + ModelView.decorators
 
     def __init__(self, session, model, preprocessors=None, postprocessors=None,
-                 primary_key=None, validation_exceptions=None,
-                 allow_to_many_replacement=None, *args, **kw):
+                 primary_key=None, serializer=None, deserializer=None,
+                 validation_exceptions=None, includes=None, page_size=10,
+                 max_page_size=100, allow_to_many_replacement=None, *args,
+                 **kw):
         super(APIBase, self).__init__(session, model, *args, **kw)
+
+        #: The default set of related resources to include in compound
+        #: documents, given as a set of relationship paths.
+        self.default_includes = includes
+        if self.default_includes is not None:
+            self.default_includes = frozenset(self.default_includes)
 
         #: Whether to allow complete replacement of a to-many relationship when
         #: updating a resource.
         self.allow_to_many_replacement = allow_to_many_replacement
+
+        #: ...
+        self.page_size = page_size
+
+        #: ...
+        self.max_page_size = max_page_size
+
+        #: ...
+        #:
+        #: Use our default serializer if none is specified.
+        self.serialize = serializer or simple_serialize
+
+        #: ...
+        self.serialize_relationship = simple_relationship_serialize
+
+        #: ...
+        #:
+        #: Use our default deserializer if none is specified.
+        self.deserialize = deserializer or DefaultDeserializer(session, model)
 
         #: The tuple of exceptions that are expected to be raised during
         #: validation when creating or updating a model.
@@ -788,54 +817,6 @@ class APIBase(ModelView):
                       for field, detail in errors.items()]
         return errors_response(400, errors)
 
-
-class API(APIBase):
-    """Provides method-based dispatching for :http:method:`get`,
-    :http:method:`post`, :http:method:`patch`, and :http:method:`delete`
-    requests, for both collections of resources and individual resources.
-
-    `session` and `model` are as described in the constructor of the
-    superclass. In addition to those described below, this constructor also
-    accepts all the keyword arguments of the constructor of the superclass.
-
-    `page_size`, `max_page_size`, `serializer`, `deserializer`, `includes`, and
-    `allow_client_generated_ids` are as described in
-    :meth:`APIManager.create_api`.
-
-    """
-
-    def __init__(self, session, model, page_size=10, max_page_size=100,
-                 serializer=None, deserializer=None, includes=None,
-                 allow_client_generated_ids=False, *args, **kw):
-        super(API, self).__init__(session, model, *args, **kw)
-
-        #: ...
-        self.default_includes = includes
-        if self.default_includes is not None:
-            self.default_includes = frozenset(self.default_includes)
-
-        #: ...
-        self.collection_name = collection_name(self.model)
-
-        #: ...
-        self.page_size = page_size
-
-        #: ...
-        self.max_page_size = max_page_size
-
-        #: ...
-        self.allow_client_generated_ids = allow_client_generated_ids
-
-        #: ...
-        #:
-        #: Use our default serializer if none is specified.
-        self.serialize = serializer or DefaultSerializer()
-
-        #: ...
-        #:
-        #: Use our default deserializer if none is specified.
-        self.deserialize = deserializer or DefaultDeserializer()
-
     def _collection_parameters(self):
         """Gets filtering, sorting, grouping, and other settings from the
         request that affect the collection of resources in a response.
@@ -875,7 +856,8 @@ class API(APIBase):
         # Determine sorting options.
         sort = request.args.get(SORT_PARAM)
         if sort:
-            sort = [(value[0], value[1:]) for value in sort.split(',')]
+            sort = [('-', value[1:]) if value.startswith('-') else ('+', value)
+                    for value in sort.split(',')]
         else:
             sort = []
         if any(order not in ('+', '-') for order, field in sort):
@@ -895,6 +877,109 @@ class API(APIBase):
             raise SingleKeyError('failed to extract Boolean from parameter')
 
         return filters, sort, group_by, single
+
+    def resources_from_path(self, instance, path):
+        """Returns an iterable of all resources along the given
+        relationship path for the specified instance of the model.
+
+        TODO fill me in
+
+        """
+        # First, split the path to determine the sequence of
+        # relationships to follow.
+        if '.' in path:
+            path = path.split('.')
+        else:
+            path = [path]
+        # Next, do a breadth-first traversal of the resources related to
+        # `instance` via the given path.
+        seen = set()
+        nextlevel = {instance}
+        first_time = True
+        while nextlevel:
+            thislevel = nextlevel
+            nextlevel = set()
+            # Follow the relation given in the path to get the
+            # "neighbor" resources of any resource in the curret level
+            # of the breadth-first traversal.
+            if path:
+                relation = path.pop(0)
+            else:
+                relation = None
+            for resource in thislevel:
+                if resource in seen:
+                    continue
+                # Since this method is going to be used to populate the
+                # `included` section of a compound document, we don't
+                # want to yield the instance from which related
+                # resources are being included.
+                if first_time:
+                    first_time = False
+                else:
+                    yield resource
+                seen.add(resource)
+                # If there are still parts of the relationship path to
+                # traverse, queue up the related resources at the next
+                # level.
+                if relation is not None:
+                    if is_like_list(resource, relation):
+                        update = nextlevel.update
+                    else:
+                        update = nextlevel.add
+                    update(getattr(resource, relation))
+
+    def resources_to_include(self, instance):
+        """Returns a set of resources to include in a compound document
+        response based on the ``include`` query parameter and the default
+        includes specified in the constructor of this class.
+
+        The ``include`` query parameter is as described in the `Inclusion of
+        Related Resources`_ section of the JSON API specification. It specifies
+        which resources, other than the primary resource or resources, will be
+        included in a compound document response.
+
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+
+        """
+        # Add any links requested to be included by URL parameters.
+        #
+        # We expect `toinclude` to be a comma-separated list of relationship
+        # paths.
+        toinclude = request.args.get('include')
+        if toinclude is None and self.default_includes is None:
+            return {}
+        elif toinclude is None and self.default_includes is not None:
+            toinclude = self.default_includes
+        else:
+            toinclude = set(toinclude.split(','))
+        return set(chain(self.resources_from_path(instance, path)
+                         for path in toinclude))
+
+
+class API(APIBase):
+    """Provides method-based dispatching for :http:method:`get`,
+    :http:method:`post`, :http:method:`patch`, and :http:method:`delete`
+    requests, for both collections of resources and individual resources.
+
+    `session` and `model` are as described in the constructor of the
+    superclass. In addition to those described below, this constructor also
+    accepts all the keyword arguments of the constructor of the superclass.
+
+    `page_size`, `max_page_size`, `serializer`, `deserializer`, `includes`, and
+    `allow_client_generated_ids` are as described in
+    :meth:`APIManager.create_api`.
+
+    """
+
+    def __init__(self, session, model, allow_client_generated_ids=False, *args,
+                 **kw):
+        super(API, self).__init__(session, model, *args, **kw)
+
+        #: ...
+        self.collection_name = collection_name(self.model)
+
+        #: ...
+        self.allow_client_generated_ids = allow_client_generated_ids
 
     def _get_related_resource(self, resource_id, relation_name,
                               related_resource_id):
@@ -1346,54 +1431,6 @@ class API(APIBase):
         result['meta']['total'] = 1 if num_results is None else num_results
         return result, status, headers
 
-    def resources_to_include(self, instance):
-        """Returns a set of resources to include in a compound document
-        response based on the ``include`` query parameter and the default
-        includes specified in the constructor of this class.
-
-        The ``include`` query parameter is as described in the `Inclusion of
-        Related Resources`_ section of the JSON API specification. It specifies
-        which resources, other than the primary resource or resources, will be
-        included in a compound document response.
-
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
-
-        """
-        # Add any links requested to be included by URL parameters.
-        #
-        # We expect `toinclude` to be a comma-separated list of relationship
-        # paths.
-        toinclude = request.args.get('include')
-        if toinclude is None and self.default_includes is None:
-            return {}
-        elif toinclude is None and self.default_includes is not None:
-            toinclude = self.default_includes
-        else:
-            toinclude = set(toinclude.split(','))
-
-        # TODO create a resources_to_include_from_path() function, then
-        # implement this as
-        #
-        #     return set(chain(resources_to_include_from_path(link)
-        #                for link in toinclude))
-        #
-        result = set()
-        for link in toinclude:
-            if '.' in link:
-                path = link.split('.')
-            else:
-                path = [link]
-            instances = {instance}
-            for relation in path:
-                if is_like_list(instance, relation):
-                    instances = set(chain(getattr(instance, relation)
-                                          for instance in instances))
-                else:
-                    instances = set(getattr(instance, relation)
-                                    for instance in instances)
-            result |= set(instances)
-        return result
-
     def get(self, resource_id, relation_name, related_resource_id):
         """Returns the JSON document representing a resource or a collection of
         resources.
@@ -1711,12 +1748,13 @@ class RelationshipAPI(APIBase):
     """Provides fetching, updating, and deleting from relationship URLs.
 
     The endpoints provided by this class are of the form
-    ``/people/1/links/articles``, and the requests and responses include **link
-    objects**, as opposed to **resource objects**.
+    ``/people/1/relationships/articles``, and the requests and responses
+    include **link objects**, as opposed to **resource objects**.
 
     `session` and `model` are as described in the constructor of the
-    superclass. In addition to those described below, this constructor also
-    accepts all the keyword arguments of the constructor of the superclass.
+    superclass. In addition to those described below, this constructor
+    also accepts all the keyword arguments of the constructor of the
+    superclass.
 
     `allow_delete_from_to_many_relationships` is as described in
     :meth:`APIManager.create_api`.
@@ -1728,6 +1766,228 @@ class RelationshipAPI(APIBase):
         super(RelationshipAPI, self).__init__(session, model, *args, **kw)
         self.allow_delete_from_to_many_relationships = \
             allow_delete_from_to_many_relationships
+
+    def _get_collection(self, resource, relation):
+        try:
+            filters, sort, group_by, single = self._collection_parameters()
+        except (TypeError, ValueError, OverflowError) as exception:
+            current_app.logger.exception(str(exception))
+            detail = 'Unable to decode filter objects as JSON list'
+            return error_response(400, detail=detail)
+        except SortKeyError as exception:
+            current_app.logger.exception(str(exception))
+            detail = 'Each sort parameter must begin with "+" or "-"'
+            return error_response(400, detail=detail)
+        except SingleKeyError as exception:
+            current_app.logger.exception(str(exception))
+            detail = 'Invalid format for filter[single] query parameter'
+            return error_response(400, detail=detail)
+
+        # Compute the result of the search on the model.
+        try:
+            result = search_relationship(self.session, resource, relation,
+                                         filters=filters, sort=sort,
+                                         group_by=group_by)
+        except ComparisonToNull as exception:
+            return error_response(400, detail=str(exception))
+        except Exception as exception:
+            current_app.logger.exception(str(exception))
+            return error_response(400, detail='Unable to construct query')
+
+        # If the result of the search is a SQLAlchemy query object, we need to
+        # return a collection.
+        pagination_links = dict()
+        to_string = self.serialize_relationship
+        related_model = get_related_model(self.model, relation)
+        related_type = collection_name(related_model)
+        if not single:
+            # Determine the client's pagination request: page size and number.
+            page_size = int(request.args.get(PAGE_SIZE_PARAM, self.page_size))
+            if page_size < 0:
+                detail = 'Page size must be a positive integer'
+                return error_response(400, detail=detail)
+            if page_size > self.max_page_size:
+                detail = "Page size must not exceed the server's maximum: {0}"
+                detail = detail.format(self.max_page_size)
+                return error_response(400, detail=detail)
+            # If the page size is 0, just return everything.
+            if page_size == 0:
+                num_results = count(self.session, result)
+                headers = dict()
+                result = [to_string(instance, _type=related_type)
+                          for instance in result]
+            # Otherwise, the page size is greater than zero, so paginate the
+            # response.
+            else:
+                page_number = int(request.args.get(PAGE_NUMBER_PARAM, 1))
+                if page_number < 0:
+                    detail = 'Page number must be a positive integer'
+                    return error_response(400, detail=detail)
+                # If the query is really a Flask-SQLAlchemy query, we can use
+                # its built-in pagination.
+                if hasattr(result, 'paginate'):
+                    pagination = result.paginate(page_number, page_size,
+                                                 error_out=False)
+                    num_results = pagination.total
+                    first = 1
+                    last = pagination.pages
+                    prev = pagination.prev_num
+                    next_ = pagination.next_num
+                    result = [to_string(instance, _type=related_type)
+                              for instance in pagination.items]
+                else:
+                    num_results = count(self.session, result)
+                    first = 1
+                    # There will be no division-by-zero error here because we
+                    # have already checked that page size is not equal to zero
+                    # above.
+                    last = int(math.ceil(num_results / page_size))
+                    prev = page_number - 1 if page_number > 1 else None
+                    next_ = page_number + 1 if page_number < last else None
+                    offset = (page_number - 1) * page_size
+                    result = result.limit(page_size).offset(offset)
+                    result = [to_string(instance, _type=related_type)
+                              for instance in result]
+                # Create the pagination link URLs
+                #
+                # Need to account for filters, sort, and group_by, in addition
+                # to pagination links, so we collect those query parameters
+                # here, if they exist.
+                query_parameters = {}
+                if filters:
+                    query_parameters[FILTER_PARAM] = \
+                        _filters_to_string(filters)
+                if sort:
+                    query_parameters[SORT_PARAM] = _sort_to_string(sort)
+                if group_by:
+                    query_parameters[GROUP_PARAM] = _group_to_string(group_by)
+                # The page size is independent of the link type (first, last,
+                # next, or prev).
+                query_parameters[PAGE_SIZE_PARAM] = str(page_size)
+                base_url = request.base_url
+                # Maintain a list of URLs that should appear in a Link
+                # header. If a link does not exist (for example, if there is no
+                # previous page), then that link URL will not appear in this
+                # list.
+                header_links = []
+                for rel, num in (('first', first), ('last', last),
+                                 ('prev', prev), ('next', next_)):
+                    # If the link doesn't exist (for example, if there is no
+                    # previous page), then add ``None`` to the pagination links
+                    # but don't add a link URL to the headers.
+                    if num is None:
+                        pagination_links[rel] = None
+                    else:
+                        query_parameters[PAGE_NUMBER_PARAM] = str(num)
+                        url = _to_url(base_url, query_parameters)
+                        link_string = '<{0}>; rel="{1}"'.format(url, rel)
+                        header_links.append(link_string)
+                        pagination_links[rel] = url
+                headers = (dict(Link=','.join(link for link in header_links))
+                           if header_links else {})
+                # headers = [('Link', link) for link in header_links]
+        # Otherwise, the result of the search should be a single resource.
+        else:
+            try:
+                result = result.one()
+            except NoResultFound:
+                return error_response(404, detail='No result found')
+            except MultipleResultsFound:
+                return error_response(404, detail='Multiple results found')
+            # (This is not a pretty solution.) Set number of results to
+            # ``None`` to indicate that the returned JSON metadata should not
+            # include a ``total`` key.
+            num_results = None
+            primary_key = self.primary_key or primary_key_name(result)
+            result = to_string(result, _type=related_type)
+            # The URL at which a client can access the instance matching this
+            # search query.
+            url = '{0}/{1}'.format(request.base_url, result[primary_key])
+            headers = dict(Location=url)
+
+        # Wrap the resulting object or list of objects under a `data` key.
+        result = dict(data=result)
+        # Provide top-level links.
+        #
+        # TODO use a defaultdict for result, then cast it to a dict at the end.
+        if 'links' not in result:
+            result['links'] = dict()
+        result['links']['self'] = url_for(self.model)
+        result['links'].update(pagination_links)
+        # Add the supported JSON API version.
+        result['jsonapi'] = dict(version=JSONAPI_VERSION)
+
+        # Determine the fields to include for each type of object.
+        fields = parse_sparse_fields()
+        # Determine the resources to include (in a compound document).
+        to_include = self.resources_to_include(resource)
+        included = []
+        for included_resource in to_include:
+            type_ = collection_name(get_model(included_resource))
+            fields_for_this = fields.get(type_)
+            try:
+                serialized = self.serialize(included_resource,
+                                            only=fields_for_this)
+            except SerializationException as exception:
+                current_app.logger.exception(str(exception))
+                detail = 'Failed to serialize resource of type {0}'
+                detail = detail.format(type_)
+                return error_response(400, detail=detail)
+            included.append(serialized)
+
+        if included:
+            result['included'] = included
+
+        for postprocessor in self.postprocessors['GET_RELATIONSHIP']:
+            postprocessor(result=result, filters=filters, sort=sort,
+                          single=single)
+        status = 200
+        # HACK Provide the headers directly in the result dictionary, so that
+        # the :func:`jsonpify` function has access to them. See the note there
+        # for more information. They don't really need to be under the ``meta``
+        # key, that's just for semantic consistency.
+        result['meta'] = {_HEADERS: headers, _STATUS: status}
+        result['meta']['total'] = 1 if num_results is None else num_results
+        return result, status, headers
+
+    def _get_single(self, resource, relation_name):
+        resource_id = primary_key_value(resource)
+        result = getattr(resource, relation_name)
+        if result is not None:
+            # Convert ID to string, as required by JSON API.
+            related_model = get_related_model(self.model, relation_name)
+            related_type = collection_name(related_model)
+            result = self.serialize_relationship(result, _type=related_type)
+        # Wrap the result
+        result = dict(data=result)
+        # Add a links object for this relationship.
+        result['links'] = {}
+        result['links']['self'] = url_for(self.model, resource_id,
+                                          relation_name, relationship=True)
+        result['links']['related'] = url_for(self.model, resource_id,
+                                          relation_name)
+        # Determine the fields to include for each type of object.
+        fields = parse_sparse_fields()
+        # Determine the resources to include (in a compound document).
+        to_include = self.resources_to_include(resource)
+        included = []
+        for included_resource in to_include:
+            type_ = collection_name(get_model(included_resource))
+            fields_for_this = fields.get(type_)
+            try:
+                serialized = self.serialize(included_resource,
+                                            only=fields_for_this)
+            except SerializationException as exception:
+                current_app.logger.exception(str(exception))
+                detail = 'Failed to serialize resource of type {0}'
+                detail = detail.format(type_)
+                return error_response(400, detail=detail)
+            included.append(serialized)
+        if included:
+            result['included'] = included
+        for postprocessor in self.postprocessors['GET_RELATIONSHIP']:
+            postprocessor(result=result)
+        return result, 200
 
     def get(self, resource_id, relation_name):
         """Fetches a to-one or to-many relationship from a resource.
@@ -1742,7 +2002,9 @@ class RelationshipAPI(APIBase):
         """
         for preprocessor in self.preprocessors['GET_RELATIONSHIP']:
             temp_result = preprocessor(instance_id=resource_id,
-                                       relationship=relation_name)
+                                       relationship=relation_name,
+                                       filters=filters, sort=sort,
+                                       group_by=group_by, single=single)
             # Let the return value of the preprocessor be the new value of
             # instid, thereby allowing the preprocessor to effectively specify
             # which instance of the model to process on.
@@ -1752,36 +2014,15 @@ class RelationshipAPI(APIBase):
             # instid.
             if temp_result is not None:
                 resource_id = temp_result
-        # get the instance of the "main" model whose ID is instid
-        instance = get_by(self.session, self.model, resource_id,
+        # get the instance of the "main" model whose ID is `resource_id`
+        resource = get_by(self.session, self.model, resource_id,
                           self.primary_key)
-        if instance is None:
-            detail = 'No instance with ID {0}'.format(resource_id)
+        if resource is None:
+            detail = 'No resource with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
-        related_value = getattr(instance, relation_name)
-        related_model = get_related_model(self.model, relation_name)
-        related_type = collection_name(related_model)
-        # For the sake of brevity, rename this function.
-        pk = primary_key_value
-        # If this is a to-many relationship...
-        if is_like_list(instance, relation_name):
-            # Convert IDs to strings, as required by JSON API.
-            #
-            # TODO This could be paginated.
-            result = [dict(id=str(pk(inst)), type=related_type)
-                      for inst in related_value]
-        # If this is a to-one relationship...
-        else:
-            if related_value is None:
-                result = None
-            else:
-                # Convert ID to string, as required by JSON API.
-                result = dict(id=str(pk(related_value)), type=related_type)
-        # Wrap the result
-        result = dict(data=result)
-        for postprocessor in self.postprocessors['GET_RELATIONSHIP']:
-            postprocessor(result=result)
-        return result, 200
+        if is_like_list(resource, relation_name):
+            return self._get_collection(resource, relation_name)
+        return self._get_single(resource, relation_name)
 
     def post(self, resource_id, relation_name):
         """Adds resources to a to-many relationship.

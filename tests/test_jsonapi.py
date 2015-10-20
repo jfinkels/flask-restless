@@ -619,6 +619,928 @@ class TestDocumentStructure(ManagerTestBase):
         assert '1.0' == jsonapi['version']
 
 
+class TestFetchingData(ManagerTestBase):
+    """Tests corresponding to the `Fetching Data`_ section of the JSON API
+    specification.
+
+    .. _Fetching Data: http://jsonapi.org/format/#fetching
+
+    """
+
+    def setUp(self):
+        """Creates the database, the :class:`~flask.Flask` object, the
+        :class:`~flask_restless.manager.APIManager` for that application, and
+        creates the ReSTful API endpoints for the :class:`TestSupport.Person`
+        and :class:`TestSupport.Article` models.
+
+        """
+        super(TestFetchingData, self).setUp()
+
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            title = Column(Unicode)
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship('Person')
+
+        class Comment(self.Base):
+            __tablename__ = 'comment'
+            id = Column(Integer, primary_key=True)
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship('Person')
+            article_id = Column(Integer, ForeignKey('article.id'))
+            article = relationship(Article, backref=backref('comments'))
+
+        class Person(self.Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+            age = Column(Integer)
+            other = Column(Float)
+            comments = relationship('Comment')
+            articles = relationship('Article')
+
+        self.Article = Article
+        self.Comment = Comment
+        self.Person = Person
+        self.Base.metadata.create_all()
+        self.manager.create_api(Article)
+        self.manager.create_api(Person)
+        # HACK Need to create APIs for these other models because otherwise
+        # we're not able to create the link URLs to them.
+        #
+        # TODO Fix this by simply not creating links to related models for
+        # which no API has been made.
+        self.manager.create_api(Comment)
+
+    # def test_correct_accept_header(self):
+    #     """Tests that the server responds with a resource if the ``Accept``
+    #     header specifies the JSON API media type.
+
+    #     For more information, see the `Fetching Data`_ section of the JSON API
+    #     specification.
+
+    #     .. _Fetching Data: http://jsonapi.org/format/#fetching
+
+    #     """
+    #     # The fixtures for this test class set up the correct `Accept` header
+    #     # for all requests from the test client.
+    #     response = self.app.get('/api/person')
+    #     assert response.status_code == 200
+    #     assert response.mimetype == CONTENT_TYPE
+
+    # def test_incorrect_accept_header(self):
+    #     """Tests that the server responds with an :http:status:`415` if the
+    #     ``Accept`` header is incorrect.
+
+    #     For more information, see the `Fetching Data`_ section of the JSON API
+    #     specification.
+
+    #     .. _Fetching Data: http://jsonapi.org/format/#fetching
+
+    #     """
+    #     headers = dict(Accept='application/json')
+    #     response = self.app.get('/api/person', headers=headers)
+    #     assert response.status_code == 406
+    #     assert response.mimetype == CONTENT_TYPE
+
+    def test_single_resource(self):
+        """Tests for fetching a single resource.
+
+        For more information, see the `Fetching Resources`_ section of
+        JSON API specification.
+
+        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
+
+        """
+        article = self.Article(id=1)
+        self.session.add(article)
+        self.session.commit()
+        response = self.app.get('/api/article/1')
+        assert response.status_code == 200
+        document = loads(response.data)
+        article = document['data']
+        assert article['id'] == '1'
+        assert article['type'] == 'article'
+
+    def test_collection(self):
+        """Tests for fetching a collection of resources.
+
+        For more information, see the `Fetching Resources`_ section of
+        JSON API specification.
+
+        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
+
+        """
+        article = self.Article(id=1)
+        self.session.add(article)
+        self.session.commit()
+        response = self.app.get('/api/article')
+        assert response.status_code == 200
+        document = loads(response.data)
+        articles = document['data']
+        assert ['1'] == sorted(article['id'] for article in articles)
+
+    def test_related_resource(self):
+        """Tests for fetching a to-one related resource.
+
+        For more information, see the `Fetching Resources`_ section of
+        JSON API specification.
+
+        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
+
+        """
+        article = self.Article(id=1)
+        person = self.Person(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+        response = self.app.get('/api/article/1/author')
+        assert response.status_code == 200
+        document = loads(response.data)
+        author = document['data']
+        assert author['type'] == 'person'
+        assert author['id'] == '1'
+
+    def test_empty_collection(self):
+        """Tests for fetching an empty collection of resources.
+
+        For more information, see the `Fetching Resources`_ section of
+        JSON API specification.
+
+        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
+
+        """
+        response = self.app.get('/api/person')
+        assert response.status_code == 200
+        document = loads(response.data)
+        people = document['data']
+        assert people == []
+
+    def test_to_many_related_resource_url(self):
+        """Tests for fetching to-many related resources from a related
+        resource URL.
+
+        The response to a request to a to-many related resource URL should
+        include an array of resource objects, *not* linkage objects.
+
+        For more information, see the `Fetching Resources`_ section of JSON API
+        specification.
+
+        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
+
+        """
+        person = self.Person(id=1)
+        article1 = self.Article(id=1)
+        article2 = self.Article(id=2)
+        person.articles = [article1, article2]
+        self.session.add_all([person, article1, article2])
+        self.session.commit()
+        response = self.app.get('/api/person/1/articles')
+        assert response.status_code == 200
+        document = loads(response.data)
+        articles = document['data']
+        assert ['1', '2'] == sorted(article['id'] for article in articles)
+        assert all(article['type'] == 'article' for article in articles)
+        assert all('title' in article['attributes'] for article in articles)
+        assert all('author' in article['relationships']
+                   for article in articles)
+
+    def test_to_one_related_resource_url(self):
+        """Tests for fetching a to-one related resource from a related resource
+        URL.
+
+        The response to a request to a to-one related resource URL should
+        include a resource object, *not* a linkage object.
+
+        For more information, see the `Fetching Resources`_ section of JSON API
+        specification.
+
+        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([person, article])
+        self.session.commit()
+        response = self.app.get('/api/article/1/author')
+        assert response.status_code == 200
+        document = loads(response.data)
+        author = document['data']
+        assert author['id'] == '1'
+        assert author['type'] == 'person'
+        assert all(field in author['attributes']
+                   for field in ('name', 'age', 'other'))
+
+    def test_empty_to_many_related_resource_url(self):
+        """Tests for fetching an empty to-many related resource from a related
+        resource URL.
+
+        For more information, see the `Fetching Resources`_ section of JSON API
+        specification.
+
+        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        response = self.app.get('/api/person/1/articles')
+        assert response.status_code == 200
+        document = loads(response.data)
+        articles = document['data']
+        assert articles == []
+
+    def test_empty_to_one_related_resource(self):
+        """Tests for fetching an empty to-one related resource from a related
+        resource URL.
+
+        For more information, see the `Fetching Resources`_ section of JSON API
+        specification.
+
+        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
+
+        """
+        article = self.Article(id=1)
+        self.session.add(article)
+        self.session.commit()
+        response = self.app.get('/api/article/1/author')
+        assert response.status_code == 200
+        document = loads(response.data)
+        author = document['data']
+        assert author is None
+
+    def test_nonexistent_resource(self):
+        """Tests for fetching a nonexistent resource.
+
+        For more information, see the `Fetching Resources`_ section of
+        JSON API specification.
+
+        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
+
+        """
+        response = self.app.get('/api/article/1')
+        assert response.status_code == 404
+
+    def test_nonexistent_collection(self):
+        """Tests for fetching a nonexistent collection of resources.
+
+        For more information, see the `Fetching Resources`_ section of
+        JSON API specification.
+
+        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
+
+        """
+        response = self.app.get('/api/bogus')
+        assert response.status_code == 404
+
+    def test_to_many_relationship_url(self):
+        """Test for fetching linkage objects from a to-many relationship
+        URL.
+
+        The response to a request to a to-many relationship URL should
+        be a linkage object, *not* a resource object.
+
+        For more information, see the `Fetching Relationships`_ section
+        of JSON API specification.
+
+        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
+
+        """
+        article = self.Article(id=1)
+        comment1 = self.Comment(id=1)
+        comment2 = self.Comment(id=2)
+        article.comments = [comment1, comment2]
+        self.session.add_all([article, comment1, comment2])
+        self.session.commit()
+        response = self.app.get('/api/article/1/relationships/comments')
+        assert response.status_code == 200
+        document = loads(response.data)
+        comments = document['data']
+        assert all(['id', 'type'] == sorted(comment) for comment in comments)
+        assert ['1', '2'] == sorted(comment['id'] for comment in comments)
+        assert all(comment['type'] == 'comment' for comment in comments)
+
+    def test_empty_to_many_relationship_url(self):
+        """Test for fetching from an empty to-many relationship URL.
+
+        For more information, see the `Fetching Relationships`_ section of JSON
+        API specification.
+
+        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
+
+        """
+        article = self.Article(id=1)
+        self.session.add(article)
+        self.session.commit()
+        response = self.app.get('/api/article/1/relationships/comments')
+        assert response.status_code == 200
+        document = loads(response.data)
+        comments = document['data']
+        assert comments == []
+
+    def test_to_one_relationship_url(self):
+        """Test for fetching a resource from a to-one relationship URL.
+
+        The response to a request to a to-many relationship URL should
+        be a linkage object, *not* a resource object.
+
+        For more information, see the `Fetching Relationships`_ section
+        of JSON API specification.
+
+        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([person, article])
+        self.session.commit()
+        response = self.app.get('/api/article/1/relationships/author')
+        assert response.status_code == 200
+        document = loads(response.data)
+        person = document['data']
+        assert ['id', 'type'] == sorted(person)
+        assert person['id'] == '1'
+        assert person['type'] == 'person'
+
+    def test_empty_to_one_relationship_url(self):
+        """Test for fetching from an empty to-one relationship URL.
+
+        For more information, see the `Fetching Relationships`_ section of JSON
+        API specification.
+
+        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
+
+        """
+        article = self.Article(id=1)
+        self.session.add(article)
+        self.session.commit()
+        response = self.app.get('/api/article/1/relationships/author')
+        assert response.status_code == 200
+        document = loads(response.data)
+        person = document['data']
+        assert person is None
+
+    def test_relationship_links(self):
+        """Tests for links included in relationship objects.
+
+        For more information, see the `Fetching Relationships`_ section
+        of JSON API specification.
+
+        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
+
+        """
+        article = self.Article(id=1)
+        self.session.add(article)
+        self.session.commit()
+        response = self.app.get('/api/article/1/relationships/author')
+        document = loads(response.data)
+        links = document['links']
+        assert links['self'].endswith('/article/1/relationships/author')
+        assert links['related'].endswith('/article/1/author')
+
+    def test_default_inclusion(self):
+        """Tests that by default, Flask-Restless includes no information
+        in compound documents.
+
+        For more information, see the `Inclusion of Related Resources`_
+        section of the JSON API specification.
+
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        person.articles = [article]
+        self.session.add_all([person, article])
+        self.session.commit()
+        # By default, no links will be included at the top level of the
+        # document.
+        response = self.app.get('/api/person/1')
+        document = loads(response.data)
+        person = document['data']
+        articles = person['relationships']['articles']['data']
+        assert ['1'] == sorted(article['id'] for article in articles)
+        assert 'included' not in document
+
+    def test_set_default_inclusion(self):
+        """Tests that the user can specify default compound document
+        inclusions when creating an API.
+
+        For more information, see the `Inclusion of Related Resources`_
+        section of the JSON API specification.
+
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        person.articles = [article]
+        self.session.add_all([person, article])
+        self.session.commit()
+        self.manager.create_api(self.Person, includes=['articles'],
+                                url_prefix='/api2')
+        # In the alternate API, articles are included by default in compound
+        # documents.
+        response = self.app.get('/api2/person/1')
+        document = loads(response.data)
+        person = document['data']
+        linked = document['included']
+        articles = person['relationships']['articles']['data']
+        assert ['1'] == sorted(article['id'] for article in articles)
+        assert linked[0]['type'] == 'article'
+        assert linked[0]['id'] == '1'
+
+    # # TODO The next few methods seem to be duplicates.
+    # def test_compound_document_to_many(self):
+    #     """Tests for getting linked resources from a to-many
+    #     relationship in a compound document.
+
+    #     For more information, see the `Compound Documents`_ section of
+    #     the JSON API specification.
+
+    #     .. _Compound Documents: http://jsonapi.org/format/#document-compound-documents
+
+    #     """
+    #     person = self.Person(id=1)
+    #     article1 = self.Article(id=1)
+    #     article2 = self.Article(id=2)
+    #     person.articles = [article1, article2]
+    #     self.session.add_all([person, article1, article2])
+    #     self.session.commit()
+    #     # For a to-many relationship, we should have an array of
+    #     # objects, each of which has a 'type' key and an 'id' key.
+    #     response = self.app.get('/api/person/1?include=articles')
+    #     document = loads(response.data)
+    #     person = document['data']
+    #     articles = person['links']['articles']['linkage']
+    #     assert all(article['type'] == 'article' for article in articles)
+    #     assert ['1', '2'] == sorted(article['id'] for article in articles)
+    #     linked = document['included']
+    #     # Sort the links on their IDs, then get the two linked articles.
+    #     linked_article1, linked_article2 = sorted(linked,
+    #                                               key=lambda c: c['id'])
+    #     assert linked_article1['type'] == 'article'
+    #     assert linked_article1['id'] == '1'
+    #     assert linked_article2['type'] == 'article'
+    #     assert linked_article2['id'] == '2'
+
+    # def test_compound_document_to_one(self):
+    #     """Tests for getting linked resources from a to-one relationship
+    #     in a compound document.
+
+    #     For more information, see the `Compound Documents`_ section of
+    #     the JSON API specification.
+
+    #     .. _Compound Documents: http://jsonapi.org/format/#document-compound-documents
+
+    #     """
+    #     person = self.Person(id=1)
+    #     article = self.Article(id=1)
+    #     article.author = person
+    #     self.session.add_all([person, article])
+    #     self.session.commit()
+    #     # For a to-one relationship, we should have a 'type' and an 'id' key.
+    #     response = self.app.get('/api/article/1?include=author')
+    #     document = loads(response.data)
+    #     article = document['data']
+    #     author = article['links']['author']['linkage']
+    #     assert author['type'] == 'person'
+    #     assert author['id'] == '1'
+    #     linked = document['included']
+    #     linked_person = linked[0]
+    #     assert linked_person['type'] == 'person'
+    #     assert linked_person['id'] == '1'
+
+    # def test_compound_document_many_types(self):
+    #     """Tests for getting linked resources of multiple types in a
+    #     compound document.
+
+    #     For more information, see the `Compound Documents`_ section of
+    #     the JSON API specification.
+
+    #     .. _Compound Documents: http://jsonapi.org/format/#document-compound-documents
+
+    #     """
+    #     article = self.Article(id=3)
+    #     comment = self.Comment(id=2)
+    #     person = self.Person(id=1)
+    #     comment.author = person
+    #     article.author = person
+    #     self.session.add_all([article, person, comment])
+    #     self.session.commit()
+    #     query_string = dict(include='comments,articles')
+    #     response = self.app.get('/api/person/1', query_string=query_string)
+    #     document = loads(response.data)
+    #     person = document['data']
+    #     included = sorted(document['included'], key=lambda x: x['type'])
+    #     assert ['article', 'comment'] == [x['type'] for x in included]
+    #     assert ['3', '2'] == [x['id'] for x in included]
+
+    def test_include(self):
+        """Tests that the client can specify which linked relations to
+        include in a compound document.
+
+        For more information, see the `Inclusion of Related Resources`_
+        section of the JSON API specification.
+
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+
+        """
+        person = self.Person(id=1, name='foo')
+        article1 = self.Article(id=1)
+        article2 = self.Article(id=2)
+        comment = self.Comment()
+        person.articles = [article1, article2]
+        person.comments = [comment]
+        self.session.add_all([person, comment, article1, article2])
+        self.session.commit()
+        query_string = dict(include='articles')
+        response = self.app.get('/api/person/1', query_string=query_string)
+        assert response.status_code == 200
+        document = loads(response.data)
+        linked = document['included']
+        # If a client supplied an include request parameter, no other types of
+        # objects should be included.
+        assert all(c['type'] == 'article' for c in linked)
+        assert ['1', '2'] == sorted(c['id'] for c in linked)
+
+    def test_include_multiple(self):
+        """Tests that the client can specify multiple linked relations
+        to include in a compound document.
+
+        For more information, see the `Inclusion of Related Resources`_
+        section of the JSON API specification.
+
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+
+        """
+        person = self.Person(id=1, name='foo')
+        article = self.Article(id=2)
+        comment = self.Comment(id=3)
+        person.articles = [article]
+        person.comments = [comment]
+        self.session.add_all([person, comment, article])
+        self.session.commit()
+        query_string = dict(include='articles,comments')
+        response = self.app.get('/api/person/1', query_string=query_string)
+        assert response.status_code == 200
+        document = loads(response.data)
+        # Sort the linked objects by type; 'article' comes before 'comment'
+        # lexicographically.
+        linked = sorted(document['included'], key=lambda x: x['type'])
+        linked_article, linked_comment = linked
+        assert linked_article['type'] == 'article'
+        assert linked_article['id'] == '2'
+        assert linked_comment['type'] == 'comment'
+        assert linked_comment['id'] == '3'
+
+    def test_include_dot_separated(self):
+        """Tests that the client can specify resources linked to other
+        resources to include in a compound document.
+
+        For more information, see the `Inclusion of Related Resources`_
+        section of the JSON API specification.
+
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+
+        """
+        article = self.Article(id=1)
+        comment1 = self.Comment(id=1)
+        comment2 = self.Comment(id=2)
+        person1 = self.Person(id=1)
+        person2 = self.Person(id=2)
+        comment1.article = article
+        comment2.article = article
+        comment1.author = person1
+        comment2.author = person2
+        self.session.add_all([article, comment1, comment2, person1, person2])
+        self.session.commit()
+        query_string = dict(include='comments.author')
+        response = self.app.get('/api/article/1', query_string=query_string)
+        document = loads(response.data)
+        authors = [resource for resource in document['included']
+                   if resource['type'] == 'person']
+        assert ['1', '2'] == sorted(author['id'] for author in authors)
+
+    def test_include_intermediate_resources(self):
+        """Tests that intermediate resources from a multi-part
+        relationship path are included in a compound document.
+
+        For more information, see the `Inclusion of Related Resources`_
+        section of the JSON API specification.
+
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+
+        """
+        person1 = self.Person(id=1)
+        person2 = self.Person(id=2)
+        article = self.Article(id=1)
+        comment1 = self.Comment(id=1)
+        comment2 = self.Comment(id=2)
+        article.comments = [comment1, comment2]
+        comment1.author = person1
+        comment2.author = person2
+        self.session.add_all([article, comment1, comment2, person1, person2])
+        self.session.commit()
+        query_string = dict(include='comments.author')
+        response = self.app.get('/api/article/1', query_string=query_string)
+        document = loads(response.data)
+        linked = document['included']
+        # The included resources should be the two comments and the two
+        # authors of those comments.
+        assert len(linked) == 4
+        authors = [r for r in linked if r['type'] == 'person']
+        comments = [r for r in linked if r['type'] == 'comment']
+        assert ['1', '2'] == sorted(author['id'] for author in authors)
+        assert ['1', '2'] == sorted(comment['id'] for comment in comments)
+
+    def test_include_relationship(self):
+        """Tests for including related resources from a relationship endpoint.
+
+        For more information, see the `Inclusion of Related Resources`_
+        section of the JSON API specification.
+
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+
+        """
+        person1 = self.Person(id=1)
+        person2 = self.Person(id=2)
+        article = self.Article(id=1)
+        comment1 = self.Comment(id=1)
+        comment2 = self.Comment(id=2)
+        article.comments = [comment1, comment2]
+        comment1.author = person1
+        comment2.author = person2
+        self.session.add_all([article, comment1, comment2, person1, person2])
+        self.session.commit()
+        query_string = dict(include='comments.author')
+        response = self.app.get('/api/article/1/relationships/comments',
+                                query_string=query_string)
+        # In this case, the primary data is a collection of resource
+        # identifier objects that represent linkage to comments for an
+        # article, while the full comments and comment authors would be
+        # returned as included data.
+        #
+        # This differs from the previous test because the primary data
+        # is a collection of relationship objects instead of a
+        # collection of resource objects.
+        document = loads(response.data)
+        links = document['data']
+        assert all(sorted(link) == ['id', 'type'] for link in links)
+        print(document)
+        included = document['included']
+        # The included resources should be the two comments and the two
+        # authors of those comments.
+        assert len(included) == 4
+        authors = [r for r in included if r['type'] == 'person']
+        comments = [r for r in included if r['type'] == 'comment']
+        assert ['1', '2'] == sorted(author['id'] for author in authors)
+        assert ['1', '2'] == sorted(comment['id'] for comment in comments)
+
+    def test_client_overrides_server_includes(self):
+        """Tests that if a client supplies an include query parameter, the
+        server does not include any other resource objects in the included
+        section of the compound document.
+
+        For more information, see the `Inclusion of Related Resources`_ section
+        of the JSON API specification.
+
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=2)
+        comment = self.Comment(id=3)
+        article.author = person
+        comment.author = person
+        self.session.add_all([person, article, comment])
+        self.session.commit()
+        # The server will, by default, include articles. The client will
+        # override this and request only comments.
+        self.manager.create_api(self.Person, url_prefix='/api2',
+                                includes=['articles'])
+        query_string = dict(include='comments')
+        response = self.app.get('/api2/person/1', query_string=query_string)
+        document = loads(response.data)
+        included = document['included']
+        assert ['3'] == sorted(obj['id'] for obj in included)
+        assert ['comment'] == sorted(obj['type'] for obj in included)
+
+    def test_sparse_fieldsets(self):
+        """Tests that the client can specify which fields to return in the
+        response of a fetch request for a single object.
+
+        For more information, see the `Sparse Fieldsets`_ section
+        of the JSON API specification.
+
+        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
+
+        """
+        person = self.Person(id=1, name='foo', age=99)
+        self.session.add(person)
+        self.session.commit()
+        query_string = {'fields[person]': 'id,name'}
+        response = self.app.get('/api/person/1', query_string=query_string)
+        document = loads(response.data)
+        person = document['data']
+        # ID and type must always be included.
+        assert ['attributes', 'id', 'type'] == sorted(person)
+        assert ['name'] == sorted(person['attributes'])
+
+    def test_sparse_fieldsets_id_and_type(self):
+        """Tests that the ID and type of the resource are always included in a
+        response from a request for sparse fieldsets, regardless of what the
+        client requests.
+
+        For more information, see the `Sparse Fieldsets`_ section
+        of the JSON API specification.
+
+        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
+
+        """
+        person = self.Person(id=1, name='foo', age=99)
+        self.session.add(person)
+        self.session.commit()
+        query_string = {'fields[person]': 'id'}
+        response = self.app.get('/api/person/1', query_string=query_string)
+        document = loads(response.data)
+        person = document['data']
+        # ID and type must always be included.
+        assert ['id', 'type'] == sorted(person)
+
+    def test_sparse_fieldsets_collection(self):
+        """Tests that the client can specify which fields to return in the
+        response of a fetch request for a collection of objects.
+
+        For more information, see the `Sparse Fieldsets`_ section
+        of the JSON API specification.
+
+        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
+
+        """
+        person1 = self.Person(id=1, name='foo', age=99)
+        person2 = self.Person(id=2, name='bar', age=80)
+        self.session.add_all([person1, person2])
+        self.session.commit()
+        query_string = {'fields[person]': 'id,name'}
+        response = self.app.get('/api/person', query_string=query_string)
+        document = loads(response.data)
+        people = document['data']
+        assert all(['attributes', 'id', 'type'] == sorted(p) for p in people)
+        assert all(['name'] == sorted(p['attributes']) for p in people)
+
+    def test_sparse_fieldsets_multiple_types(self):
+        """Tests that the client can specify which fields to return in the
+        response with multiple types specified.
+
+        For more information, see the `Sparse Fieldsets`_ section
+        of the JSON API specification.
+
+        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
+
+        """
+        article = self.Article(id=1, title='bar')
+        person = self.Person(id=1, name='foo', age=99, articles=[article])
+        self.session.add_all([person, article])
+        self.session.commit()
+        # Person objects should only have ID and name, while article objects
+        # should only have ID.
+        query_string = {'include': 'articles',
+                        'fields[person]': 'id,name,articles',
+                        'fields[article]': 'id'}
+        response = self.app.get('/api/person/1', query_string=query_string)
+        document = loads(response.data)
+        person = document['data']
+        linked = document['included']
+        # We requested 'id', 'name', and 'articles'; 'id' and 'type' must
+        # always be present; 'name' comes under an 'attributes' key; and
+        # 'articles' comes under a 'links' key.
+        assert ['attributes', 'id', 'relationships', 'type'] == sorted(person)
+        assert ['articles'] == sorted(person['relationships'])
+        assert ['name'] == sorted(person['attributes'])
+        # We requested only 'id', but 'type' must always appear as well.
+        assert all(['id', 'type'] == sorted(article) for article in linked)
+
+    def test_sort_increasing(self):
+        """Tests that the client can specify the fields on which to sort
+        the response in increasing order.
+
+        For more information, see the `Sorting`_ section of the JSON API
+        specification.
+
+        .. _Sorting: http://jsonapi.org/format/#fetching-sorting
+
+        """
+        person1 = self.Person(name='foo', age=20)
+        person2 = self.Person(name='bar', age=10)
+        person3 = self.Person(name='baz', age=30)
+        self.session.add_all([person1, person2, person3])
+        self.session.commit()
+        query_string = {'sort': 'age'}
+        response = self.app.get('/api/person', query_string=query_string)
+        document = loads(response.data)
+        people = document['data']
+        age1, age2, age3 = (p['attributes']['age'] for p in people)
+        assert age1 <= age2 <= age3
+
+    def test_sort_decreasing(self):
+        """Tests that the client can specify the fields on which to sort
+        the response in decreasing order.
+
+        For more information, see the `Sorting`_ section of the JSON API
+        specification.
+
+        .. _Sorting: http://jsonapi.org/format/#fetching-sorting
+
+        """
+        person1 = self.Person(name='foo', age=20)
+        person2 = self.Person(name='bar', age=10)
+        person3 = self.Person(name='baz', age=30)
+        self.session.add_all([person1, person2, person3])
+        self.session.commit()
+        query_string = {'sort': '-age'}
+        response = self.app.get('/api/person', query_string=query_string)
+        document = loads(response.data)
+        people = document['data']
+        age1, age2, age3 = (p['attributes']['age'] for p in people)
+        assert age1 >= age2 >= age3
+
+    def test_sort_multiple_fields(self):
+        """Tests that the client can sort by multiple fields.
+
+        For more information, see the `Sorting`_ section of the JSON API
+        specification.
+
+        .. _Sorting: http://jsonapi.org/format/#fetching-sorting
+
+        """
+        person1 = self.Person(name='foo', age=99)
+        person2 = self.Person(name='bar', age=99)
+        person3 = self.Person(name='baz', age=80)
+        person4 = self.Person(name='xyzzy', age=80)
+        self.session.add_all([person1, person2, person3, person4])
+        self.session.commit()
+        # Sort by age, decreasing, then by name, increasing.
+        query_string = {'sort': '-age,name'}
+        response = self.app.get('/api/person', query_string=query_string)
+        document = loads(response.data)
+        people = document['data']
+        p1, p2, p3, p4 = (p['attributes'] for p in people)
+        assert p1['age'] == p2['age'] >= p3['age'] == p4['age']
+        assert p1['name'] <= p2['name']
+        assert p3['name'] <= p4['name']
+
+    def test_sort_relationship_attributes(self):
+        """Tests that the client can sort by relationship attributes.
+
+        For more information, see the `Sorting`_ section of the JSON API
+        specification.
+
+        .. _Sorting: http://jsonapi.org/format/#fetching-sorting
+
+        """
+        person1 = self.Person(age=20)
+        person2 = self.Person(age=10)
+        person3 = self.Person(age=30)
+        article1 = self.Article(id=1, author=person1)
+        article2 = self.Article(id=2, author=person2)
+        article3 = self.Article(id=3, author=person3)
+        self.session.add_all([person1, person2, person3, article1, article2,
+                              article3])
+        self.session.commit()
+        query_string = {'sort': 'author.age'}
+        response = self.app.get('/api/article', query_string=query_string)
+        document = loads(response.data)
+        articles = document['data']
+        assert ['2', '1', '3'] == [c['id'] for c in articles]
+
+    def test_sorting_relationship(self):
+        """Tests for sorting relationship objects when requesting
+        information from a to-many relationship endpoint.
+
+        For more information, see the `Sorting`_ section of the JSON API
+        specification.
+
+        .. _Sorting: http://jsonapi.org/format/#fetching-sorting
+
+        """
+        person = self.Person(id=1)
+        articles = [self.Article(id=i, title=str(i)) for i in range(5)]
+        self.session.add(person)
+        self.session.add_all(articles)
+        self.session.commit()
+        query_string = dict(sort='-title')
+        response = self.app.get('/api/person/1/relationships/articles',
+                                query_string=query_string)
+        document = loads(response.data)
+        articles = document['data']
+        articleids = [article['id'] for article in articles]
+        assert ['4', '3', '2', '1', '0'] == articleids
+
+
 class TestPagination(ManagerTestBase):
     """Tests for pagination links in fetched documents.
 
@@ -643,10 +1565,10 @@ class TestPagination(ManagerTestBase):
     def test_top_level_pagination_link(self):
         """Tests that there are top-level pagination links by default.
 
-        For more information, see the `Top-level Link`_ section of the JSON API
-        specification.
+        For more information, see the `Top Level`_ section of the JSON
+        API specification.
 
-        .. _Top-level links: http://jsonapi.org/format/#document-structure-top-level-links
+        .. _Top Level: http://jsonapi.org/format/#document-top-level
 
         """
         response = self.app.get('/api/person')
@@ -695,7 +1617,8 @@ class TestPagination(ManagerTestBase):
         people = [self.Person() for i in range(25)]
         self.session.add_all(people)
         self.session.commit()
-        response = self.app.get('/api/person?page[number]=2&page[size]=3')
+        query_string = {'page[number]': 2, 'page[size]': 3}
+        response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
         pagination = document['links']
         assert '/api/person?' in pagination['first']
@@ -965,805 +1888,6 @@ class TestPagination(ManagerTestBase):
                    for l in links)
 
 
-class TestFetchingData(ManagerTestBase):
-    """Tests corresponding to the `Fetching Data`_ section of the JSON API
-    specification.
-
-    .. _Fetching Data: http://jsonapi.org/format/#fetching
-
-    """
-
-    def setUp(self):
-        """Creates the database, the :class:`~flask.Flask` object, the
-        :class:`~flask_restless.manager.APIManager` for that application, and
-        creates the ReSTful API endpoints for the :class:`TestSupport.Person`
-        and :class:`TestSupport.Article` models.
-
-        """
-        super(TestFetchingData, self).setUp()
-
-        class Article(self.Base):
-            __tablename__ = 'article'
-            id = Column(Integer, primary_key=True)
-            title = Column(Unicode)
-            author_id = Column(Integer, ForeignKey('person.id'))
-            author = relationship('Person')
-
-        class Comment(self.Base):
-            __tablename__ = 'comment'
-            id = Column(Integer, primary_key=True)
-            author_id = Column(Integer, ForeignKey('person.id'))
-            author = relationship('Person')
-            article_id = Column(Integer, ForeignKey('article.id'))
-            article = relationship(Article, backref=backref('comments'))
-
-        class Person(self.Base):
-            __tablename__ = 'person'
-            id = Column(Integer, primary_key=True)
-            name = Column(Unicode)
-            age = Column(Integer)
-            other = Column(Float)
-            comments = relationship('Comment')
-            articles = relationship('Article')
-
-        self.Article = Article
-        self.Comment = Comment
-        self.Person = Person
-        self.Base.metadata.create_all()
-        self.manager.create_api(Article)
-        self.manager.create_api(Person)
-        # HACK Need to create APIs for these other models because otherwise
-        # we're not able to create the link URLs to them.
-        #
-        # TODO Fix this by simply not creating links to related models for
-        # which no API has been made.
-        self.manager.create_api(Comment)
-
-    def test_correct_accept_header(self):
-        """Tests that the server responds with a resource if the ``Accept``
-        header specifies the JSON API media type.
-
-        For more information, see the `Fetching Data`_ section of the JSON API
-        specification.
-
-        .. _Fetching Data: http://jsonapi.org/format/#fetching
-
-        """
-        # The fixtures for this test class set up the correct `Accept` header
-        # for all requests from the test client.
-        response = self.app.get('/api/person')
-        assert response.status_code == 200
-        assert response.mimetype == CONTENT_TYPE
-
-    def test_incorrect_accept_header(self):
-        """Tests that the server responds with an :http:status:`415` if the
-        ``Accept`` header is incorrect.
-
-        For more information, see the `Fetching Data`_ section of the JSON API
-        specification.
-
-        .. _Fetching Data: http://jsonapi.org/format/#fetching
-
-        """
-        headers = dict(Accept='application/json')
-        response = self.app.get('/api/person', headers=headers)
-        assert response.status_code == 406
-        assert response.mimetype == CONTENT_TYPE
-
-    def test_empty_collection(self):
-        """Tests for fetching an empty collection of resources.
-
-        For more information, see the `Fetching Resources`_ section of JSON API
-        specification.
-
-        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
-
-        """
-        response = self.app.get('/api/person')
-        assert response.status_code == 200
-        document = loads(response.data)
-        people = document['data']
-        assert people == []
-
-    def test_collection(self):
-        """Tests for fetching a collection of resources.
-
-        For more information, see the `Fetching Resources`_ section of JSON API
-        specification.
-
-        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
-
-        """
-        person1 = self.Person(id=1)
-        person2 = self.Person(id=2)
-        self.session.add_all([person1, person2])
-        self.session.commit()
-        response = self.app.get('/api/person')
-        assert response.status_code == 200
-        document = loads(response.data)
-        people = document['data']
-        assert ['1', '2'] == sorted(person['id'] for person in people)
-
-    def test_resource(self):
-        """Tests for fetching a single resource.
-
-        For more information, see the `Fetching Resources`_ section of JSON API
-        specification.
-
-        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        response = self.app.get('/api/person/1')
-        assert response.status_code == 200
-        document = loads(response.data)
-        person = document['data']
-        assert person['id'] == '1'
-        assert person['type'] == 'person'
-
-    def test_to_many_related_resource_url(self):
-        """Tests for fetching to-many related resources from a related resource
-        URL.
-
-        The response to a request to a to-many related resource URL should
-        include an array of resource objects, *not* linkage objects.
-
-        For more information, see the `Fetching Resources`_ section of JSON API
-        specification.
-
-        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
-
-        """
-        person = self.Person(id=1)
-        article1 = self.Article(id=1)
-        article2 = self.Article(id=2)
-        person.articles = [article1, article2]
-        self.session.add_all([person, article1, article2])
-        self.session.commit()
-        response = self.app.get('/api/person/1/articles')
-        assert response.status_code == 200
-        document = loads(response.data)
-        articles = document['data']
-        assert ['1', '2'] == sorted(article['id'] for article in articles)
-        assert all(article['type'] == 'article' for article in articles)
-        assert all('title' in article['attributes'] for article in articles)
-        assert all('author' in article['links'] for article in articles)
-
-    def test_to_one_related_resource_url(self):
-        """Tests for fetching a to-one related resource from a related resource
-        URL.
-
-        The response to a request to a to-one related resource URL should
-        include a resource object, *not* a linkage object.
-
-        For more information, see the `Fetching Resources`_ section of JSON API
-        specification.
-
-        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        article.author = person
-        self.session.add_all([person, article])
-        self.session.commit()
-        response = self.app.get('/api/article/1/author')
-        assert response.status_code == 200
-        document = loads(response.data)
-        author = document['data']
-        assert author['id'] == '1'
-        assert author['type'] == 'person'
-        assert all(field in author['attributes']
-                   for field in ('name', 'age', 'other'))
-
-    def test_empty_to_many_related_resource_url(self):
-        """Tests for fetching an empty to-many related resource from a related
-        resource URL.
-
-        For more information, see the `Fetching Resources`_ section of JSON API
-        specification.
-
-        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        response = self.app.get('/api/person/1/articles')
-        assert response.status_code == 200
-        document = loads(response.data)
-        articles = document['data']
-        assert articles == []
-
-    def test_empty_to_one_related_resource(self):
-        """Tests for fetching an empty to-one related resource from a related
-        resource URL.
-
-        For more information, see the `Fetching Resources`_ section of JSON API
-        specification.
-
-        .. _Fetching Resources: http://jsonapi.org/format/#fetching-resources
-
-        """
-        article = self.Article(id=1)
-        self.session.add(article)
-        self.session.commit()
-        response = self.app.get('/api/article/1/author')
-        assert response.status_code == 200
-        document = loads(response.data)
-        author = document['data']
-        assert author is None
-
-    def test_to_many_relationship_url(self):
-        """Test for fetching linkage objects from a to-many relationship URL.
-
-        The response to a request to a to-many relationship URL should be a
-        linkage object, *not* a resource object.
-
-        For more information, see the `Fetching Relationships`_ section of JSON
-        API specification.
-
-        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
-
-        """
-        person = self.Person(id=1)
-        article1 = self.Article(id=1)
-        article2 = self.Article(id=2)
-        person.articles = [article1, article2]
-        self.session.add_all([person, article1, article2])
-        self.session.commit()
-        response = self.app.get('/api/person/1/links/articles')
-        assert response.status_code == 200
-        document = loads(response.data)
-        articles = document['data']
-        assert all(['id', 'type'] == sorted(article) for article in articles)
-        assert ['1', '2'] == sorted(article['id'] for article in articles)
-        assert all(article['type'] == 'article' for article in articles)
-
-    def test_empty_to_many_relationship_url(self):
-        """Test for fetching from an empty to-many relationship URL.
-
-        For more information, see the `Fetching Relationships`_ section of JSON
-        API specification.
-
-        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        response = self.app.get('/api/person/1/links/articles')
-        assert response.status_code == 200
-        document = loads(response.data)
-        articles = document['data']
-        assert articles == []
-
-    def test_to_one_relationship_url(self):
-        """Test for fetching a resource from a to-one relationship URL.
-
-        The response to a request to a to-many relationship URL should be a
-        linkage object, *not* a resource object.
-
-        For more information, see the `Fetching Relationships`_ section of JSON
-        API specification.
-
-        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        article.author = person
-        self.session.add_all([person, article])
-        self.session.commit()
-        response = self.app.get('/api/article/1/links/author')
-        assert response.status_code == 200
-        document = loads(response.data)
-        person = document['data']
-        assert ['id', 'type'] == sorted(person)
-        assert person['id'] == '1'
-        assert person['type'] == 'person'
-
-    def test_empty_to_one_relationship_url(self):
-        """Test for fetching from an empty to-one relationship URL.
-
-        For more information, see the `Fetching Relationships`_ section of JSON
-        API specification.
-
-        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
-
-        """
-        article = self.Article(id=1)
-        self.session.add(article)
-        self.session.commit()
-        response = self.app.get('/api/article/1/links/author')
-        assert response.status_code == 200
-        document = loads(response.data)
-        person = document['data']
-        assert person is None
-
-    def test_default_inclusion(self):
-        """Tests that by default, Flask-Restless includes no information in
-        compound documents.
-
-        For more information, see the `Inclusion of Related Resources`_ section
-        of the JSON API specification.
-
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        person.articles = [article]
-        self.session.add_all([person, article])
-        self.session.commit()
-        # By default, no links will be included at the top level of the
-        # document.
-        response = self.app.get('/api/person/1')
-        document = loads(response.data)
-        person = document['data']
-        articles = person['links']['articles']['linkage']
-        assert ['1'] == sorted(article['id'] for article in articles)
-        assert 'included' not in document
-
-    def test_set_default_inclusion(self):
-        """Tests that the user can specify default compound document
-        inclusions when creating an API.
-
-        For more information, see the `Inclusion of Related Resources`_ section
-        of the JSON API specification.
-
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        person.articles = [article]
-        self.session.add_all([person, article])
-        self.session.commit()
-        self.manager.create_api(self.Person, includes=['articles'],
-                                url_prefix='/api2')
-        # In the alternate API, articles are included by default in compound
-        # documents.
-        response = self.app.get('/api2/person/1')
-        document = loads(response.data)
-        person = document['data']
-        linked = document['included']
-        articles = person['links']['articles']['linkage']
-        assert ['1'] == sorted(article['id'] for article in articles)
-        assert linked[0]['type'] == 'article'
-        assert linked[0]['id'] == '1'
-
-    # TODO The next few methods seem to be duplicates.
-    def test_compound_document_to_many(self):
-        """Tests for getting linked resources from a to-many
-        relationship in a compound document.
-
-        For more information, see the `Compound Documents`_ section of
-        the JSON API specification.
-
-        .. _Compound Documents: http://jsonapi.org/format/#document-compound-documents
-
-        """
-        person = self.Person(id=1)
-        article1 = self.Article(id=1)
-        article2 = self.Article(id=2)
-        person.articles = [article1, article2]
-        self.session.add_all([person, article1, article2])
-        self.session.commit()
-        # For a to-many relationship, we should have an array of
-        # objects, each of which has a 'type' key and an 'id' key.
-        response = self.app.get('/api/person/1?include=articles')
-        document = loads(response.data)
-        person = document['data']
-        articles = person['links']['articles']['linkage']
-        assert all(article['type'] == 'article' for article in articles)
-        assert ['1', '2'] == sorted(article['id'] for article in articles)
-        linked = document['included']
-        # Sort the links on their IDs, then get the two linked articles.
-        linked_article1, linked_article2 = sorted(linked,
-                                                  key=lambda c: c['id'])
-        assert linked_article1['type'] == 'article'
-        assert linked_article1['id'] == '1'
-        assert linked_article2['type'] == 'article'
-        assert linked_article2['id'] == '2'
-
-    def test_compound_document_to_one(self):
-        """Tests for getting linked resources from a to-one relationship
-        in a compound document.
-
-        For more information, see the `Compound Documents`_ section of
-        the JSON API specification.
-
-        .. _Compound Documents: http://jsonapi.org/format/#document-compound-documents
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        article.author = person
-        self.session.add_all([person, article])
-        self.session.commit()
-        # For a to-one relationship, we should have a 'type' and an 'id' key.
-        response = self.app.get('/api/article/1?include=author')
-        document = loads(response.data)
-        article = document['data']
-        author = article['links']['author']['linkage']
-        assert author['type'] == 'person'
-        assert author['id'] == '1'
-        linked = document['included']
-        linked_person = linked[0]
-        assert linked_person['type'] == 'person'
-        assert linked_person['id'] == '1'
-
-    def test_compound_document_many_types(self):
-        """Tests for getting linked resources of multiple types in a
-        compound document.
-
-        For more information, see the `Compound Documents`_ section of
-        the JSON API specification.
-
-        .. _Compound Documents: http://jsonapi.org/format/#document-compound-documents
-
-        """
-        article = self.Article(id=3)
-        comment = self.Comment(id=2)
-        person = self.Person(id=1)
-        comment.author = person
-        article.author = person
-        self.session.add_all([article, person, comment])
-        self.session.commit()
-        query_string = dict(include='comments,articles')
-        response = self.app.get('/api/person/1', query_string=query_string)
-        document = loads(response.data)
-        person = document['data']
-        included = sorted(document['included'], key=lambda x: x['type'])
-        assert ['article', 'comment'] == [x['type'] for x in included]
-        assert ['3', '2'] == [x['id'] for x in included]
-
-    def test_compound_document_intermediate_resources(self):
-        """Tests that intermediate resources from a multi-part
-        relationship path are included in a compound document.
-
-        For more information, see the `Compound Documents`_ section of
-        the JSON API specification.
-
-        .. _Compound Documents: http://jsonapi.org/format/#document-compound-documents
-
-        """
-        person1 = self.Person(id=1)
-        person2 = self.Person(id=1)
-        article = self.Article(id=1)
-        comment1 = self.Comment(id=1)
-        comment2 = self.Comment(id=2)
-        article.author = person1
-        comment1.author = person1
-        comment2.author = person2
-        self.session.add_all([article, comment1, comment2, person1, person2])
-        self.session.commit()
-        response = self.app.get('/api/article/1?include=comments.author')
-        document = loads(response.data)
-        linked = document['included']
-        # The included resources should be the two comments and the two
-        # authors of those comments.
-        assert len(linked) == 4
-        authors = [r for r in linked if r['type'] == 'person']
-        comments = [r for r in linked if r['type'] == 'comment']
-        assert ['1', '2'] == sorted(author['id'] for author in authors)
-        assert ['1', '2'] == sorted(comment['id'] for comment in comments)
-
-    def test_include(self):
-        """Tests that the client can specify which linked relations to include
-        in a compound document.
-
-        For more information, see the `Inclusion of Related Resources`_ section
-        of the JSON API specification.
-
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
-
-        """
-        person = self.Person(id=1, name='foo')
-        article1 = self.Article(id=1)
-        article2 = self.Article(id=2)
-        comment = self.Comment()
-        person.articles = [article1, article2]
-        person.comments = [comment]
-        self.session.add_all([person, comment, article1, article2])
-        self.session.commit()
-        response = self.app.get('/api/person/1?include=articles')
-        assert response.status_code == 200
-        document = loads(response.data)
-        linked = document['included']
-        # If a client supplied an include request parameter, no other types of
-        # objects should be included.
-        assert all(c['type'] == 'article' for c in linked)
-        assert ['1', '2'] == sorted(c['id'] for c in linked)
-
-    def test_include_multiple(self):
-        """Tests that the client can specify multiple linked relations to
-        include in a compound document.
-
-        For more information, see the `Inclusion of Related Resources`_ section
-        of the JSON API specification.
-
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
-
-        """
-        person = self.Person(id=1, name='foo')
-        article = self.Article(id=2)
-        comment = self.Comment(id=3)
-        person.articles = [article]
-        person.comments = [comment]
-        self.session.add_all([person, comment, article])
-        self.session.commit()
-        response = self.app.get('/api/person/1?include=articles,comments')
-        assert response.status_code == 200
-        document = loads(response.data)
-        # Sort the linked objects by type; 'article' comes before 'comment'
-        # lexicographically.
-        linked = sorted(document['included'], key=lambda x: x['type'])
-        linked_article, linked_comment = linked
-        assert linked_article['type'] == 'article'
-        assert linked_article['id'] == '2'
-        assert linked_comment['type'] == 'comment'
-        assert linked_comment['id'] == '3'
-
-    def test_include_dot_separated(self):
-        """Tests that the client can specify resources linked to other
-        resources to include in a compound document.
-
-        For more information, see the `Inclusion of Related Resources`_ section
-        of the JSON API specification.
-
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
-
-        """
-        article = self.Article(id=1)
-        comment1 = self.Comment(id=1)
-        comment2 = self.Comment(id=2)
-        person1 = self.Person(id=1)
-        person2 = self.Person(id=2)
-        comment1.article = article
-        comment2.article = article
-        comment1.author = person1
-        comment2.author = person2
-        self.session.add_all([article, comment1, comment2, person1, person2])
-        self.session.commit()
-        query_string = dict(include='comments.author')
-        response = self.app.get('/api/article/1', query_string=query_string)
-        document = loads(response.data)
-        authors = document['included']
-        assert all(author['type'] == 'person' for author in authors)
-        assert ['1', '2'] == sorted(author['id'] for author in authors)
-
-    def test_client_overrides_server_includes(self):
-        """Tests that if a client supplies an include query parameter, the
-        server does not include any other resource objects in the included
-        section of the compound document.
-
-        For more information, see the `Inclusion of Related Resources`_ section
-        of the JSON API specification.
-
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=2)
-        comment = self.Comment(id=3)
-        article.author = person
-        comment.author = person
-        self.session.add_all([person, article, comment])
-        self.session.commit()
-        # The server will, by default, include articles. The client will
-        # override this and request only comments.
-        self.manager.create_api(self.Person, url_prefix='/api2',
-                                includes=['articles'])
-        query_string = dict(include='comments')
-        response = self.app.get('/api2/person/1', query_string=query_string)
-        document = loads(response.data)
-        included = document['included']
-        assert ['3'] == sorted(obj['id'] for obj in included)
-        assert ['comment'] == sorted(obj['type'] for obj in included)
-
-    def test_sparse_fieldsets(self):
-        """Tests that the client can specify which fields to return in the
-        response of a fetch request for a single object.
-
-        For more information, see the `Sparse Fieldsets`_ section
-        of the JSON API specification.
-
-        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
-
-        """
-        person = self.Person(id=1, name='foo', age=99)
-        self.session.add(person)
-        self.session.commit()
-        response = self.app.get('/api/person/1?fields[person]=id,name')
-        document = loads(response.data)
-        person = document['data']
-        # ID and type must always be included.
-        assert ['attributes', 'id', 'type'] == sorted(person)
-        assert ['name'] == sorted(person['attributes'])
-
-    def test_sparse_fieldsets_id_and_type(self):
-        """Tests that the ID and type of the resource are always included in a
-        response from a request for sparse fieldsets, regardless of what the
-        client requests.
-
-        For more information, see the `Sparse Fieldsets`_ section
-        of the JSON API specification.
-
-        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
-
-        """
-        person = self.Person(id=1, name='foo', age=99)
-        self.session.add(person)
-        self.session.commit()
-        response = self.app.get('/api/person/1?fields[person]=id')
-        document = loads(response.data)
-        person = document['data']
-        # ID and type must always be included.
-        assert ['id', 'type'] == sorted(person)
-
-    def test_sparse_fieldsets_collection(self):
-        """Tests that the client can specify which fields to return in the
-        response of a fetch request for a collection of objects.
-
-        For more information, see the `Sparse Fieldsets`_ section
-        of the JSON API specification.
-
-        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
-
-        """
-        person1 = self.Person(id=1, name='foo', age=99)
-        person2 = self.Person(id=2, name='bar', age=80)
-        self.session.add_all([person1, person2])
-        self.session.commit()
-        response = self.app.get('/api/person?fields[person]=id,name')
-        document = loads(response.data)
-        people = document['data']
-        assert all(['attributes', 'id', 'type'] == sorted(p) for p in people)
-        assert all(['name'] == sorted(p['attributes']) for p in people)
-
-    def test_sparse_fieldsets_multiple_types(self):
-        """Tests that the client can specify which fields to return in the
-        response with multiple types specified.
-
-        For more information, see the `Sparse Fieldsets`_ section
-        of the JSON API specification.
-
-        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
-
-        """
-        article = self.Article(id=1, title='bar')
-        person = self.Person(id=1, name='foo', age=99, articles=[article])
-        self.session.add_all([person, article])
-        self.session.commit()
-        # Person objects should only have ID and name, while article objects
-        # should only have ID.
-        url = ('/api/person/1?include=articles'
-               '&fields[person]=id,name,articles&fields[article]=id')
-        response = self.app.get(url)
-        document = loads(response.data)
-        person = document['data']
-        linked = document['included']
-        # We requested 'id', 'name', and 'articles'; 'id' and 'type' must
-        # always be present; 'name' comes under an 'attributes' key; and
-        # 'articles' comes under a 'links' key.
-        assert ['attributes', 'id', 'links', 'type'] == sorted(person)
-        assert ['articles'] == sorted(person['links'])
-        assert ['name'] == sorted(person['attributes'])
-        # We requested only 'id', but 'type' must always appear as well.
-        assert all(['id', 'type'] == sorted(article) for article in linked)
-
-    def test_sort_increasing(self):
-        """Tests that the client can specify the fields on which to sort the
-        response in increasing order.
-
-        For more information, see the `Sorting`_ section of the JSON API
-        specification.
-
-        .. _Sorting: http://jsonapi.org/format/#fetching-sorting
-
-        """
-        person1 = self.Person(name='foo', age=20)
-        person2 = self.Person(name='bar', age=10)
-        person3 = self.Person(name='baz', age=30)
-        self.session.add_all([person1, person2, person3])
-        self.session.commit()
-        # The plus sign must be URL-encoded as ``%2B``.
-        response = self.app.get('/api/person?sort=%2Bage')
-        document = loads(response.data)
-        people = document['data']
-        age1, age2, age3 = (p['attributes']['age'] for p in people)
-        assert age1 <= age2 <= age3
-
-    def test_sort_decreasing(self):
-        """Tests that the client can specify the fields on which to sort the
-        response in decreasing order.
-
-        For more information, see the `Sorting`_ section of the JSON API
-        specification.
-
-        .. _Sorting: http://jsonapi.org/format/#fetching-sorting
-
-        """
-        person1 = self.Person(name='foo', age=20)
-        person2 = self.Person(name='bar', age=10)
-        person3 = self.Person(name='baz', age=30)
-        self.session.add_all([person1, person2, person3])
-        self.session.commit()
-        response = self.app.get('/api/person?sort=-age')
-        document = loads(response.data)
-        people = document['data']
-        age1, age2, age3 = (p['attributes']['age'] for p in people)
-        assert age1 >= age2 >= age3
-
-    def test_sort_multiple_fields(self):
-        """Tests that the client can sort by multiple fields.
-
-        For more information, see the `Sorting`_ section of the JSON API
-        specification.
-
-        .. _Sorting: http://jsonapi.org/format/#fetching-sorting
-
-        """
-        person1 = self.Person(name='foo', age=99)
-        person2 = self.Person(name='bar', age=99)
-        person3 = self.Person(name='baz', age=80)
-        person4 = self.Person(name='xyzzy', age=80)
-        self.session.add_all([person1, person2, person3, person4])
-        self.session.commit()
-        # Sort by age, decreasing, then by name, increasing.
-        #
-        # The plus sign must be URL-encoded as ``%2B``.
-        response = self.app.get('/api/person?sort=-age,%2Bname')
-        document = loads(response.data)
-        people = document['data']
-        p1, p2, p3, p4 = (p['attributes'] for p in people)
-        assert p1['age'] == p2['age'] >= p3['age'] == p4['age']
-        assert p1['name'] <= p2['name']
-        assert p3['name'] <= p4['name']
-
-    def test_sort_relationship_attributes(self):
-        """Tests that the client can sort by relationship attributes.
-
-        For more information, see the `Sorting`_ section of the JSON API
-        specification.
-
-        .. _Sorting: http://jsonapi.org/format/#fetching-sorting
-
-        """
-        person1 = self.Person(age=20)
-        person2 = self.Person(age=10)
-        person3 = self.Person(age=30)
-        article1 = self.Article(id=1, author=person1)
-        article2 = self.Article(id=2, author=person2)
-        article3 = self.Article(id=3, author=person3)
-        self.session.add_all([person1, person2, person3, article1, article2,
-                              article3])
-        self.session.commit()
-        # The plus sign must be URL-encoded as ``%2B``.
-        response = self.app.get('/api/article?sort=%2Bauthor.age')
-        document = loads(response.data)
-        articles = document['data']
-        assert ['2', '1', '3'] == [c['id'] for c in articles]
-
-    def test_sort_missing_sign(self):
-        """Tests that the client must specify the sort order for sort fields.
-
-        For more information, see the `Sorting`_ section of the JSON API
-        specification.
-
-        .. _Sorting: http://jsonapi.org/format/#fetching-sorting
-
-        """
-        # The sign + or - is missing from the `sort` query parameter.
-        response = self.app.get('/api/person?sort=age')
-        assert response.status_code == 400
-        # TODO Check the error message here.
-
-
 class TestCreatingResources(ManagerTestBase):
     """Tests corresponding to the `Creating Resources`_ section of the JSON API
     specification.
@@ -1796,6 +1920,46 @@ class TestCreatingResources(ManagerTestBase):
         self.manager.create_api(Person, methods=['POST'])
         self.manager.create_api(Article, methods=['POST'],
                                 allow_client_generated_ids=True)
+
+    def test_sparse_fieldsets_post(self):
+        """Tests for restricting which fields are returned in a
+        :http:method:`post` request.
+
+        This unit test lives in this class instead of the
+        :class:`TestFetchingData` class because in that class, APIs do
+        not allow :http:method:`post` requests.
+
+        For more information, see the `Sparse Fieldsets`_ section
+        of the JSON API specification.
+
+        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
+        """
+        data = dict(name='foo', age=99)
+        query_string = {'fields[person]': 'name'}
+        response = self.app.post('/api/person', data=data,
+                                 query_string=query_string)
+        document = loads(response.data)
+        person = document['data']
+        # ID and type must always be included.
+        assert ['attributes', 'id', 'type'] == sorted(person)
+        assert ['name'] == sorted(person['attributes'])
+
+    def test_include_post(self):
+        """Tests for including related resources on a
+        :http:method:`post` request.
+
+        This unit test lives in this class instead of the
+        :class:`TestFetchingData` class because in that class, APIs do
+        not allow :http:method:`post` requests.
+
+        For more information, see the `Inclusion of Related Resources`_
+        section of the JSON API specification.
+
+        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+
+        """
+        #  response = self.app.post('/api/person?include=comments')
+        assert False, 'Not implemented'
 
     def test_create(self):
         """Tests that the client can create a single resource.

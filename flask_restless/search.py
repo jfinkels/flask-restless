@@ -21,9 +21,11 @@ from sqlalchemy import or_
 from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
+from .helpers import get_model
 from .helpers import get_related_model
 from .helpers import get_related_association_proxy_model
 from .helpers import primary_key_names
+from .helpers import primary_key_value
 from .helpers import session_query
 from .helpers import string_to_datetime
 
@@ -317,8 +319,23 @@ def create_filter(model, filt):
     return or_(create_filter(model, f) for f in filt)
 
 
+def search_relationship(session, instance, relation, filters=None, sort=None,
+                        group_by=None):
+    model = get_model(instance)
+    related_model = get_related_model(model, relation)
+    query = session_query(session, related_model)
+
+    # Filter by only those related values that are related to `instance`.
+    relationship = getattr(instance, relation)
+    primary_keys = {primary_key_value(inst) for inst in relationship}
+    query.filter(primary_key_value(related_model) in primary_keys)
+
+    return search(session, related_model, filters=filters, sort=sort,
+                  group_by=group_by, _initial_query=query)
+
+
 def search(session, model, filters=None, sort=None, group_by=None,
-           _ignore_sort=False):
+           _ignore_sort=False, _initial_query=None):
     """Returns a SQLAlchemy query instance with the specified parameters.
 
     Each instance in the returned query meet the requirements specified by
@@ -343,6 +360,10 @@ def search(session, model, filters=None, sort=None, group_by=None,
     should be an ``order_by``. (This is used internally by Flask-Restless to
     circumvent a limitation in SQLAlchemy.)
 
+    If `_initial_query` is provided, the filters, sorting, and grouping
+    will be appended to this query. Otherwise, an empty query will be
+    created for the specified model.
+
     When building the query, filters are applied first, then sorting, then
     grouping.
 
@@ -351,7 +372,10 @@ def search(session, model, filters=None, sort=None, group_by=None,
     :func:`create_operation` for more information.
 
     """
-    query = session_query(session, model)
+    if _initial_query is not None:
+        query = _initial_query
+    else:
+        query = session_query(session, model)
 
     # Filter the query.
     filters = [Filter.from_dictionary(model, f) for f in filters]

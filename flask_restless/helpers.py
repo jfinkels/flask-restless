@@ -515,20 +515,25 @@ class UrlFinder(KnowsAPIManagers, Singleton):
     """The singleton class that backs the :func:`url_for` function."""
 
     def __call__(self, model, resource_id=None, relation_name=None,
-                 related_resource_id=None, _apimanager=None, **kw):
+                 related_resource_id=None, _apimanager=None,
+                 relationship=False, **kw):
         if _apimanager is not None:
             if model not in _apimanager.created_apis_for:
                 message = ('APIManager {0} has not created an API for model '
-                           ' {1}').format(_apimanager, model)
+                           ' {1}; maybe another APIManager instance'
+                           ' did?').format(_apimanager, model)
                 raise ValueError(message)
             return _apimanager.url_for(model, resource_id=resource_id,
                                        relation_name=relation_name,
-                                       related_resource_id=related_resource_id, **kw)
+                                       related_resource_id=related_resource_id,
+                                       relationship=relationship, **kw)
         for manager in self.created_managers:
             try:
-                return self(model, resource_id=resource_id, relation_name=relation_name,
+                return self(model, resource_id=resource_id,
+                            relation_name=relation_name,
                             related_resource_id=related_resource_id,
-                            _apimanager=manager, **kw)
+                            relationship=relationship, _apimanager=manager,
+                            **kw)
             except ValueError:
                 pass
         message = ('Model {0} is not known to any APIManager'
@@ -562,6 +567,13 @@ class UrlFinder(KnowsAPIManagers, Singleton):
 #:     'http://example.com/api/people/3/computers'
 #:     >>> url_for(Person, resource_id=3, relation_name=computers, related_resource_id=9)
 #:     'http://example.com/api/people/3/computers/9'
+#:
+#: If a `resource_id` and a `relation_name` are provided, and you wish
+#: to determine the relationship endpoint URL instead of the related
+#: resource URL, set the `relationship` keyword argument to ``True``::
+#:
+#:     >>> url_for(Person, resource_id=3, relation_name=computers, relationshi=True)
+#:     'http://example.com/api/people/3/relatonships/computers'
 #:
 #: The remaining keyword arguments, `kw`, are passed directly on to
 #: :func:`flask.url_for`.

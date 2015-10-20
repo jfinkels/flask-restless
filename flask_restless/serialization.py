@@ -403,6 +403,14 @@ class DefaultSerializer(Serializer):
         return result
 
 
+class DefaultRelationshipSerializer(Serializer):
+    # TODO documentation
+    def __call__(self, instance, only=None, _type=None):
+        if _type is None:
+            _type = collection_name(get_model(instance))
+        return dict(id=str(primary_key_value(instance)), type=_type)
+
+
 class DefaultDeserializer(Deserializer):
     """A default implementation of a deserializer for SQLAlchemy models.
 
@@ -481,3 +489,10 @@ class DefaultDeserializer(Deserializer):
 #: This function is suitable for calling on its own, no other instantiation or
 #: customization necessary.
 simple_serialize = DefaultSerializer()
+
+
+#: Basic serializer for relationship objects.
+#:
+#: This function is suitable for calling on its own, no other instantiation or
+#: customization necessary.
+simple_relationship_serialize = DefaultRelationshipSerializer()

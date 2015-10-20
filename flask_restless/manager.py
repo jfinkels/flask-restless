@@ -282,9 +282,9 @@ class APIManager(object):
         api_name = APIManager.api_name(collection_name)
         parts = [blueprint_name, api_name]
         # If we are looking for a relationship URL, the view name ends with
-        # '.links'.
+        # '.relationships'.
         if 'relationship' in kw and kw.pop('relationship'):
-            parts.append('links')
+            parts.append('relationships')
         url = flask.url_for('.'.join(parts), **kw)
         if _absolute_url:
             url = urljoin(request.url_root, url)
@@ -653,16 +653,18 @@ class APIManager(object):
         related_resource_url = '{0}/<relation_name>'.format(resource_url)
         to_many_resource_url = \
             '{0}/<related_resource_id>'.format(related_resource_url)
-        relationship_url = '{0}/links/<relation_name>'.format(resource_url)
+        relationship_url = \
+            '{0}/relationships/<relation_name>'.format(resource_url)
 
         # Create relationship URL endpoints.
         #
-        # Due to a limitation in Flask's routing (which is actually Werkzeug's
-        # routing), this needs to be declared *before* the rest of the API
-        # views. Otherwise, requests like :http:get:`/articles/1/links/author`
-        # interpret the word `links` as the name of a relation of an article
+        # Due to a limitation in Flask's routing (which is actually
+        # Werkzeug's routing), this needs to be declared *before* the
+        # rest of the API views. Otherwise, requests like
+        # :http:get:`/api/articles/1/relationships/author` interpret the
+        # word `relationships` as the name of a relation of an article
         # object.
-        relationship_api_name = '{0}.links'.format(apiname)
+        relationship_api_name = '{0}.relationships'.format(apiname)
         rapi_view = RelationshipAPI.as_view
         adftmr = allow_delete_from_to_many_relationships
         relationship_api_view = \
