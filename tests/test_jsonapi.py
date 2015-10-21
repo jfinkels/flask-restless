@@ -2507,7 +2507,7 @@ class TestUpdatingRelationships(ManagerTestBase):
         self.session.add_all([person1, person2, article])
         self.session.commit()
         data = dict(data=dict(type='person', id='2'))
-        response = self.app.patch('/api/article/1/links/author',
+        response = self.app.patch('/api/article/1/relationships/author',
                                   data=dumps(data))
         assert response.status_code == 204
         assert article.author is person2
@@ -2529,7 +2529,7 @@ class TestUpdatingRelationships(ManagerTestBase):
         self.session.add_all([person1, person2, article])
         self.session.commit()
         data = dict(data=None)
-        response = self.app.patch('/api/article/1/links/author',
+        response = self.app.patch('/api/article/1/relationships/author',
                                   data=dumps(data))
         assert response.status_code == 204
         assert article.author is None
@@ -2554,7 +2554,7 @@ class TestUpdatingRelationships(ManagerTestBase):
                                 allow_to_many_replacement=True)
         data = {'data': [{'type': 'article', 'id': '1'},
                          {'type': 'article', 'id': '2'}]}
-        response = self.app.patch('/api2/person/1/links/articles',
+        response = self.app.patch('/api2/person/1/relationships/articles',
                                   data=dumps(data))
         assert response.status_code == 204
         assert set(person.articles) == {article1, article2}
@@ -2578,7 +2578,7 @@ class TestUpdatingRelationships(ManagerTestBase):
                                 allow_to_many_replacement=True)
         data = {'data': [{'type': 'article', 'id': '1'},
                          {'type': 'article', 'id': '2'}]}
-        response = self.app.patch('/api2/person/1/links/articles',
+        response = self.app.patch('/api2/person/1/relationships/articles',
                                   data=dumps(data))
         assert response.status_code == 404
         # TODO test error messages
@@ -2597,7 +2597,7 @@ class TestUpdatingRelationships(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
         data = {'data': []}
-        response = self.app.patch('/api/person/1/links/articles',
+        response = self.app.patch('/api/person/1/relationships/articles',
                                   data=dumps(data))
         assert response.status_code == 403
         # TODO test error messages
@@ -2619,7 +2619,7 @@ class TestUpdatingRelationships(ManagerTestBase):
         self.session.commit()
         data = {'data': [{'type': 'article', 'id': '1'},
                          {'type': 'article', 'id': '2'}]}
-        response = self.app.post('/api/person/1/links/articles',
+        response = self.app.post('/api/person/1/relationships/articles',
                                  data=dumps(data))
         assert response.status_code == 204
         assert set(person.articles) == {article1, article2}
@@ -2641,7 +2641,7 @@ class TestUpdatingRelationships(ManagerTestBase):
         self.session.add_all([person, article])
         self.session.commit()
         data = {'data': [{'type': 'article', 'id': '1'}]}
-        response = self.app.post('/api/person/1/links/articles',
+        response = self.app.post('/api/person/1/relationships/articles',
                                  data=dumps(data))
         assert response.status_code == 204
         assert person.articles == [article]
@@ -2666,7 +2666,7 @@ class TestUpdatingRelationships(ManagerTestBase):
                                 url_prefix='/api2',
                                 allow_delete_from_to_many_relationships=True)
         data = {'data': [{'type': 'article', 'id': '1'}]}
-        response = self.app.delete('/api2/person/1/links/articles',
+        response = self.app.delete('/api2/person/1/relationships/articles',
                                    data=dumps(data))
         assert response.status_code == 204
         assert person.articles == [article2]
@@ -2691,7 +2691,7 @@ class TestUpdatingRelationships(ManagerTestBase):
                                 url_prefix='/api2',
                                 allow_delete_from_to_many_relationships=True)
         data = {'data': [{'type': 'article', 'id': '2'}]}
-        response = self.app.delete('/api2/person/1/links/articles',
+        response = self.app.delete('/api2/person/1/relationships/articles',
                                    data=dumps(data))
         assert response.status_code == 204
         assert person.articles == [article1]
@@ -2713,7 +2713,7 @@ class TestUpdatingRelationships(ManagerTestBase):
         self.session.add_all([person, article])
         self.session.commit()
         data = {'data': [{'type': 'article', 'id': '1'}]}
-        response = self.app.delete('/api/person/1/links/articles',
+        response = self.app.delete('/api/person/1/relationships/articles',
                                    data=dumps(data))
         assert response.status_code == 403
         assert person.articles == [article]
