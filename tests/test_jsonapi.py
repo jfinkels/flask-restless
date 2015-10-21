@@ -1290,7 +1290,6 @@ class TestFetchingData(ManagerTestBase):
         document = loads(response.data)
         links = document['data']
         assert all(sorted(link) == ['id', 'type'] for link in links)
-        print(document)
         included = document['included']
         # The included resources should be the two comments and the two
         # authors of those comments.
@@ -1909,17 +1908,27 @@ class TestCreatingResources(ManagerTestBase):
             __tablename__ = 'article'
             id = Column(GUID, primary_key=True)
 
+        class Comment(self.Base):
+            __tablename__ = 'comment'
+            id = Column(Integer, primary_key=True)
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship('Person')
+
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
             name = Column(Unicode)
+            age = Column(Integer)
+            comments = relationship('Comment')
 
         self.Article = Article
+        self.Comment = Comment
         self.Person = Person
         self.Base.metadata.create_all()
         self.manager.create_api(Person, methods=['POST'])
         self.manager.create_api(Article, methods=['POST'],
                                 allow_client_generated_ids=True)
+        self.manager.create_api(Comment)
 
     def test_sparse_fieldsets_post(self):
         """Tests for restricting which fields are returned in a
@@ -1934,9 +1943,15 @@ class TestCreatingResources(ManagerTestBase):
 
         .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
         """
-        data = dict(name='foo', age=99)
+        data = {'data':
+                    {'type': 'person',
+                     'attributes':
+                         {'name': 'foo',
+                          'age': 99}
+                     }
+                }
         query_string = {'fields[person]': 'name'}
-        response = self.app.post('/api/person', data=data,
+        response = self.app.post('/api/person', data=dumps(data),
                                  query_string=query_string)
         document = loads(response.data)
         person = document['data']
@@ -1958,8 +1973,29 @@ class TestCreatingResources(ManagerTestBase):
         .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
         """
-        #  response = self.app.post('/api/person?include=comments')
-        assert False, 'Not implemented'
+        comment = self.Comment(id=1)
+        self.session.add(comment)
+        self.session.commit()
+        data = {'data':
+                    {'type': 'person',
+                     'relationships':
+                         {'comments':
+                              {'data':
+                                   [{'type': 'comment', 'id': 1}]
+                               }
+                          }
+                     }
+                }
+        query_string = dict(include='comments')
+        response = self.app.post('/api/person', data=dumps(data),
+                                 query_string=query_string)
+        assert response.status_code == 201
+        document = loads(response.data)
+        included = document['included']
+        assert len(included) == 1
+        comment = included[0]
+        assert comment['type'] == 'comment'
+        assert comment['id'] == '1'
 
     def test_create(self):
         """Tests that the client can create a single resource.

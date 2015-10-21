@@ -1537,10 +1537,12 @@ class API(APIBase):
             return error_response(400, detail=detail)
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
+        fields = parse_sparse_fields()
+        fields_for_this = fields.get(self.collection_name)
         # Get the dictionary representation of the new instance as it
         # appears in the database.
         try:
-            result = self.serialize(instance)
+            result = self.serialize(instance, only=fields_for_this)
         except SerializationException as exception:
             current_app.logger.exception(str(exception))
             detail = 'Failed to serialize object'
@@ -1561,6 +1563,23 @@ class API(APIBase):
         headers = dict(Location=url)
         # Wrap the resulting object or list of objects under a 'data' key.
         result = dict(data=result)
+        # Include any requested resources in a compound document.
+        to_include = self.resources_to_include(instance)
+        included = []
+        for included_resource in to_include:
+            type_ = collection_name(get_model(included_resource))
+            fields_for_this = fields.get(type_)
+            try:
+                serialized = self.serialize(included_resource,
+                                            only=fields_for_this)
+            except SerializationException as exception:
+                current_app.logger.exception(str(exception))
+                detail = 'Failed to serialize resource of type {0}'
+                detail = detail.format(type_)
+                return error_response(400, detail=detail)
+            included.append(serialized)
+        if included:
+            result['included'] = included
         status = 201
         for postprocessor in self.postprocessors['POST']:
             postprocessor(result=result)

@@ -446,8 +446,8 @@ class DefaultDeserializer(Deserializer):
         if 'relationships' in data:
             links = data.pop('relationships', {})
             for link_name, link_object in links.items():
-                # TODO raise an exception on missing 'linkage' key
-                linkage = link_object['linkage']
+                # TODO raise an exception on missing 'data' key
+                linkage = link_object['data']
                 related_model = get_related_model(self.model, link_name)
                 # TODO check for type conflicts
                 #
