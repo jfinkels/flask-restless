@@ -2202,9 +2202,9 @@ class TestUpdatingResources(ManagerTestBase):
             'data': {
                 'type': 'article',
                 'id': '1',
-                'links': {
+                'relationships': {
                     'author': {
-                        'linkage': {'type': 'person', 'id': '2'}
+                        'data': {'type': 'person', 'id': '2'}
                     }
                 }
             }
@@ -2232,7 +2232,7 @@ class TestUpdatingResources(ManagerTestBase):
             'data': {
                 'type': 'article',
                 'id': '1',
-                'links': {'author': {'linkage': None}}
+                'relationships': {'author': {'data': None}}
             }
         }
         response = self.app.patch('/api/article/1', data=dumps(data))
@@ -2260,9 +2260,9 @@ class TestUpdatingResources(ManagerTestBase):
             'data': {
                 'type': 'person',
                 'id': '1',
-                'links': {
+                'relationships': {
                     'articles': {
-                        'linkage': [
+                        'data': [
                             {'type': 'article', 'id': '1'},
                             {'type': 'article', 'id': '2'}
                         ]
@@ -2296,9 +2296,9 @@ class TestUpdatingResources(ManagerTestBase):
             'data': {
                 'type': 'person',
                 'id': '1',
-                'links': {
+                'relationships': {
                     'articles': {
-                        'linkage': []
+                        'data': []
                     }
                 }
             }
@@ -2325,7 +2325,7 @@ class TestUpdatingResources(ManagerTestBase):
             'data': {
                 'type': 'person',
                 'id': '1',
-                'links': {'articles': {'linkage': []}}
+                'relationships': {'articles': {'data': []}}
             }
         }
         response = self.app.patch('/api/person/1', data=dumps(data))
@@ -2345,7 +2345,7 @@ class TestUpdatingResources(ManagerTestBase):
         tag = self.Tag(id=1)
         self.session.add(tag)
         self.session.commit()
-        data = dict(data=dict(type='tag', id='1', name='foo'))
+        data = dict(data=dict(type='tag', id='1', attributes=dict(name='foo')))
         response = self.app.patch('/api/tag/1', data=dumps(data))
         assert response.status_code == 200
         document = loads(response.data)
@@ -2389,8 +2389,8 @@ class TestUpdatingResources(ManagerTestBase):
             'data': {
                 'type': 'person',
                 'id': '1',
-                'links': {
-                    'articles': {'linkage': [{'type': 'article', 'id': '1'}]}
+                'relationships': {
+                    'articles': {'data': [{'type': 'article', 'id': '1'}]}
                 }
             }
         }

@@ -1605,7 +1605,7 @@ class API(APIBase):
             # TODO: The client is obligated by JSON API to provide linkage if
             # the `links` attribute exists, but we should probably error out
             # in a more constructive way if it's missing.
-            linkage = link['linkage']
+            linkage = link['data']
             related_model = get_related_model(self.model, linkname)
             # If the client provided "null" for this relation, remove it by
             # setting the attribute to ``None``.
