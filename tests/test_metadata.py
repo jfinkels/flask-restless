@@ -16,6 +16,7 @@ from flask.ext.restless import CONTENT_TYPE
 
 from .helpers import loads
 from .helpers import ManagerTestBase
+from .helpers import skip
 
 
 class TestMetadata(ManagerTestBase):
@@ -49,6 +50,7 @@ class TestMetadata(ManagerTestBase):
         document = loads(response.data)
         assert document['meta']['total'] == 15
 
+    @skip('Not sure whether this should be implemented')
     def test_http_headers(self):
         """Tests that HTTP headers appear as elements in the JSON metadata."""
         response = self.app.get('/api/person')

@@ -631,9 +631,9 @@ class TestUpdating(ManagerTestBase):
         data = {'data':
                     {'type': 'person',
                      'id': '1',
-                     'links':
+                     'relationships':
                          {'articles':
-                              {'linkage': {'type': 'article', 'id': '1'}}
+                              {'data': {'type': 'article', 'id': '1'}}
                           }
                      }
                 }
@@ -654,9 +654,9 @@ class TestUpdating(ManagerTestBase):
         data = {'data':
                     {'type': 'article',
                      'id': '1',
-                     'links':
+                     'relationships':
                          {'author':
-                              {'linkage': {'type': 'bogus', 'id': '1'}}
+                              {'data': {'type': 'bogus', 'id': '1'}}
                           }
                      }
                 }
@@ -680,9 +680,9 @@ class TestUpdating(ManagerTestBase):
         data = {'data':
                     {'type': 'person',
                      'id': '1',
-                     'links':
+                     'relationships':
                          {'articles':
-                              {'linkage': [{'type': 'bogus', 'id': '1'}]}
+                              {'data': [{'type': 'bogus', 'id': '1'}]}
                           }
                      }
                 }
@@ -893,9 +893,9 @@ class TestAssociationProxy(ManagerTestBase):
             'data': {
                 'type': 'article',
                 'id': '1',
-                'links': {
+                'relationships': {
                     'tags': {
-                        'linkage': [
+                        'data': [
                             {'type': 'tag', 'id': '1'},
                             {'type': 'tag', 'id': '2'}
                         ]
@@ -947,10 +947,10 @@ class TestAssociationProxy(ManagerTestBase):
             'data': {
                 'type': 'article',
                 'id': '1',
-                'links': {
+                'relationships': {
                     'tags': {
-                        'linkage': [{'type': 'tag', 'id': '1',
-                                     'extrainfo': 'foo'}]
+                        'data': [{'type': 'tag', 'id': '1',
+                                  'extrainfo': 'foo'}]
                     }
                 }
             }
@@ -979,7 +979,8 @@ class TestAssociationProxy(ManagerTestBase):
                      }
                 }
         data = dumps(data)
-        response = self.app.patch('/api/article/1/links/tags', data=data)
+        response = self.app.patch('/api/article/1/relationships/tags',
+                                  data=data)
         assert response.status_code == 204
         assert article.tags == [tag]
         assert self.session.query(self.ArticleTag).first().extrainfo == 'foo'
@@ -998,12 +999,13 @@ class TestAssociationProxy(ManagerTestBase):
         self.session.commit()
         data = {'data':
                     [{'id': '1',
-                     'type': 'tag',
-                     'attributes': {'extrainfo': 'foo'}
+                      'type': 'tag',
+                      'attributes': {'extrainfo': 'foo'}
                       }]
                 }
         data = dumps(data)
-        response = self.app.post('/api/article/1/links/tags', data=data)
+        response = self.app.post('/api/article/1/relationships/tags',
+                                 data=data)
         assert response.status_code == 204
         assert article.tags == [tag]
         assert self.session.query(self.ArticleTag).first().extrainfo == 'foo'

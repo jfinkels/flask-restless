@@ -217,7 +217,7 @@ class TestFetchCollection(ManagerTestBase):
         response = self.app.get('/api/article?group=author.name')
         document = loads(response.data)
         articles = document['data']
-        author_ids = sorted(article['links']['author']['linkage']['id']
+        author_ids = sorted(article['relationships']['author']['data']['id']
                             for article in articles)
         assert ['1', '2'] == author_ids
 
@@ -620,7 +620,7 @@ class TestFetchRelatedResource(ManagerTestBase):
         article = document['data']
         assert article['id'] == '1'
         assert article['type'] == 'article'
-        author = article['links']['author']['linkage']
+        author = article['relationships']['author']['data']
         assert author['id'] == '1'
         assert author['type'] == 'person'
 
@@ -720,7 +720,7 @@ class TestFetchRelationship(ManagerTestBase):
         resource that doesn't exist yields an error.
 
         """
-        response = self.app.get('/api/person/bogus/links/articles')
+        response = self.app.get('/api/person/bogus/relationships/articles')
         assert response.status_code == 404
         # TODO check error message here
 
@@ -732,7 +732,7 @@ class TestFetchRelationship(ManagerTestBase):
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
-        response = self.app.get('/api/person/1/links')
+        response = self.app.get('/api/person/1/relationships')
         assert response.status_code == 404
         # TODO check error message here
 
@@ -811,8 +811,8 @@ class TestServerSparseFieldsets(ManagerTestBase):
         response = self.app.get('/api/person/1')
         document = loads(response.data)
         person = document['data']
-        assert ['id', 'links', 'type'] == sorted(person)
-        assert ['articles'] == sorted(person['links'])
+        assert ['id', 'relationships', 'type'] == sorted(person)
+        assert ['articles'] == sorted(person['relationships'])
 
     # # TODO This doesn't exactly make sense anymore; each type of included
     # # resource should really determine its own sparse fieldsets.
@@ -834,13 +834,13 @@ class TestServerSparseFieldsets(ManagerTestBase):
     #     assert person['id'] == '1'
     #     assert person['type'] == 'person'
     #     assert 'name' not in person
-    #     articles = person['links']['articles']['linkage']
+    #     articles = person['relationships']['articles']['data']
     #     included = document['included']
     #     expected_ids = sorted(article['id'] for article in articles)
     #     actual_ids = sorted(article['id'] for article in included)
     #     assert expected_ids == actual_ids
     #     assert all('title' not in article for article in included)
-    #     assert all('comments' in article['links'] for article in included)
+    #     assert all('comments' in article['relationships'] for article in included)
 
     def test_only_as_objects(self):
         """Test for specifying included columns as SQLAlchemy column objects
@@ -971,7 +971,7 @@ class TestServerSparseFieldsets(ManagerTestBase):
     #     response = self.app.get('/api/person/1?include=articles')
     #     document = loads(response.data)
     #     person = document['data']
-    #     articles = person['links']['articles']['linkage']
+    #     articles = person['relationships']['articles']['data']
     #     included = document['included']
     #     expected_ids = sorted(article['id'] for article in articles)
     #     actual_ids = sorted(article['id'] for article in included)
@@ -1239,7 +1239,7 @@ class TestDynamicRelationships(ManagerTestBase):
         response = self.app.get('/api/article/1')
         document = loads(response.data)
         article = document['data']
-        author = article['links']['author']['linkage']
+        author = article['relationships']['author']['data']
         assert author['id'] == '1'
         assert author['type'] == 'person'
 
@@ -1258,8 +1258,7 @@ class TestDynamicRelationships(ManagerTestBase):
         response = self.app.get('/api/person/1')
         document = loads(response.data)
         person = document['data']
-        links = person['links']
-        articles = links['articles']['linkage']
+        articles = person['relationships']['articles']['data']
         assert ['1', '2'] == sorted(article['id'] for article in articles)
 
     def test_related_resource_url(self):
@@ -1291,7 +1290,7 @@ class TestDynamicRelationships(ManagerTestBase):
         person.articles = [article1, article2]
         self.session.add_all([person, article1, article2])
         self.session.commit()
-        response = self.app.get('/api/person/1/links/articles')
+        response = self.app.get('/api/person/1/relationships/articles')
         assert response.status_code == 200
         document = loads(response.data)
         articles = document['data']
@@ -1363,8 +1362,7 @@ class TestAssociationProxy(ManagerTestBase):
         response = self.app.get('/api/article/1')
         document = loads(response.data)
         article = document['data']
-        links = article['links']
-        tags = links['tags']['linkage']
+        tags = article['relationships']['tags']['data']
         assert ['1'] == sorted(tag['id'] for tag in tags)
 
     def test_scalar(self):

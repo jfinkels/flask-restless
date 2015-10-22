@@ -58,7 +58,8 @@ class TestAdding(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(id=1, type='article')])
         data = dumps(data)
-        response = self.app.post('/api/person/bogus/links/articles', data=data)
+        response = self.app.post('/api/person/bogus/relationships/articles',
+                                 data=data)
         assert response.status_code == 404
         # TODO check error message here
 
@@ -71,7 +72,8 @@ class TestAdding(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
         data = dict(data=dict(id=1, type='bogus'))
-        response = self.app.post('/api/person/1/links/bogus', data=dumps(data))
+        response = self.app.post('/api/person/1/relationships/bogus',
+                                 data=dumps(data))
         assert response.status_code == 404
         # TODO check error message here
 
@@ -85,7 +87,8 @@ class TestAdding(ManagerTestBase):
         self.session.add_all([article, person])
         self.session.commit()
         data = dict(data=[dict(id=1, type='article')])
-        response = self.app.post('/api/person/1/links', data=dumps(data))
+        response = self.app.post('/api/person/1/relationships',
+                                 data=dumps(data))
         assert response.status_code == 405
         # TODO check error message here
 
@@ -99,7 +102,8 @@ class TestAdding(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(type='article')])
         data = dumps(data)
-        response = self.app.post('/api/person/1/links/articles', data=data)
+        response = self.app.post('/api/person/1/relationships/articles',
+                                 data=data)
         assert response.status_code == 400
         # TODO check error message here
 
@@ -114,7 +118,8 @@ class TestAdding(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(id=1)])
         data = dumps(data)
-        response = self.app.post('/api/person/1/links/articles', data=data)
+        response = self.app.post('/api/person/1/relationships/articles',
+                                 data=data)
         assert response.status_code == 400
         # TODO check error message here
 
@@ -129,7 +134,8 @@ class TestAdding(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(id=1, type='bogus')])
         data = dumps(data)
-        response = self.app.post('/api/person/1/links/articles', data=data)
+        response = self.app.post('/api/person/1/relationships/articles',
+                                 data=data)
         assert response.status_code == 409
         # TODO check error message here
 
@@ -144,7 +150,8 @@ class TestAdding(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(id='bogus', type='article')])
         data = dumps(data)
-        response = self.app.post('/api/person/1/links/articles', data=data)
+        response = self.app.post('/api/person/1/relationships/articles',
+                                 data=data)
         assert response.status_code == 404
         # TODO check error message here
 
@@ -156,7 +163,7 @@ class TestAdding(ManagerTestBase):
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
-        response = self.app.post('/api/person/1/links/articles')
+        response = self.app.post('/api/person/1/relationships/articles')
         assert response.status_code == 400
         # TODO check the error message here
 
@@ -168,7 +175,8 @@ class TestAdding(ManagerTestBase):
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
-        response = self.app.post('/api/person/1/links/articles', data='')
+        response = self.app.post('/api/person/1/relationships/articles',
+                                 data='')
         assert response.status_code == 400
         # TODO check the error message here
 
@@ -181,7 +189,8 @@ class TestAdding(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
         data = 'Invalid JSON string'
-        response = self.app.post('/api/person/1/links/articles', data=data)
+        response = self.app.post('/api/person/1/relationships/articles',
+                                 data=data)
         assert response.status_code == 400
         # TODO check error message here
 
@@ -221,7 +230,7 @@ class TestDeleting(ManagerTestBase):
         self.session.add(article)
         self.session.commit()
         data = dict(data=[dict(id=1, type='article')])
-        response = self.app.delete('/api/person/bogus/links/articles',
+        response = self.app.delete('/api/person/bogus/relationships/articles',
                                    data=dumps(data))
         assert response.status_code == 404
         # TODO check error message here
@@ -236,7 +245,8 @@ class TestDeleting(ManagerTestBase):
         self.session.commit()
         data = dict(data=dict(id=1, type='bogus'))
         data = dumps(data)
-        response = self.app.delete('/api/person/1/links/bogus', data=data)
+        response = self.app.delete('/api/person/1/relationships/bogus',
+                                   data=data)
         assert response.status_code == 404
         # TODO check error message here
 
@@ -251,7 +261,8 @@ class TestDeleting(ManagerTestBase):
         self.session.add_all([article, person])
         self.session.commit()
         data = dict(data=[dict(id=1, type='article')])
-        response = self.app.delete('/api/person/1/links', data=dumps(data))
+        response = self.app.delete('/api/person/1/relationships',
+                                   data=dumps(data))
         assert response.status_code == 405
         # TODO check error message here
 
@@ -266,7 +277,8 @@ class TestDeleting(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(type='article')])
         data = dumps(data)
-        response = self.app.delete('/api/person/1/links/articles', data=data)
+        response = self.app.delete('/api/person/1/relationships/articles',
+                                   data=data)
         assert response.status_code == 400
         # TODO check error message here
 
@@ -282,7 +294,8 @@ class TestDeleting(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(id=1)])
         data = dumps(data)
-        response = self.app.delete('/api/person/1/links/articles', data=data)
+        response = self.app.delete('/api/person/1/relationships/articles',
+                                   data=data)
         assert response.status_code == 400
         # TODO check error message here
 
@@ -298,7 +311,8 @@ class TestDeleting(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(id=1, type='bogus')])
         data = dumps(data)
-        response = self.app.delete('/api/person/1/links/articles', data=data)
+        response = self.app.delete('/api/person/1/relationships/articles',
+                                   data=data)
         assert response.status_code == 409
         # TODO check error message here
 
@@ -314,7 +328,8 @@ class TestDeleting(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(id='bogus', type='article')])
         data = dumps(data)
-        response = self.app.delete('/api/person/1/links/articles', data=data)
+        response = self.app.delete('/api/person/1/relationships/articles',
+                                   data=data)
         assert response.status_code == 404
         # TODO check error message here
 
@@ -326,7 +341,7 @@ class TestDeleting(ManagerTestBase):
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
-        response = self.app.delete('/api/person/1/links/articles')
+        response = self.app.delete('/api/person/1/relationships/articles')
         assert response.status_code == 400
         # TODO check the error message here
 
@@ -338,7 +353,8 @@ class TestDeleting(ManagerTestBase):
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
-        response = self.app.delete('/api/person/1/links/articles', data='')
+        response = self.app.delete('/api/person/1/relationships/articles',
+                                   data='')
         assert response.status_code == 400
         # TODO check the error message here
 
@@ -351,7 +367,8 @@ class TestDeleting(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
         data = 'Invalid JSON string'
-        response = self.app.delete('/api/person/1/links/articles', data=data)
+        response = self.app.delete('/api/person/1/relationships/articles',
+                                   data=data)
         assert response.status_code == 400
         # TODO check error message here
 
@@ -391,7 +408,7 @@ class TestUpdatingToMany(ManagerTestBase):
         self.session.add(article)
         self.session.commit()
         data = dict(data=[dict(id=1, type='article')])
-        response = self.app.patch('/api/person/bogus/links/articles',
+        response = self.app.patch('/api/person/bogus/relationships/articles',
                                   data=dumps(data))
         assert response.status_code == 404
         # TODO check error message here
@@ -406,7 +423,8 @@ class TestUpdatingToMany(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(id=1, type='bogus')])
         data = dumps(data)
-        response = self.app.patch('/api/person/1/links/bogus', data=data)
+        response = self.app.patch('/api/person/1/relationships/bogus',
+                                  data=data)
         assert response.status_code == 404
         # TODO check error message here
 
@@ -421,7 +439,8 @@ class TestUpdatingToMany(ManagerTestBase):
         self.session.add_all([article, person])
         self.session.commit()
         data = dict(data=[dict(id=1, type='article')])
-        response = self.app.patch('/api/person/1/links', data=dumps(data))
+        response = self.app.patch('/api/person/1/relationships',
+                                  data=dumps(data))
         assert response.status_code == 405
         # TODO check error message here
 
@@ -436,7 +455,8 @@ class TestUpdatingToMany(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(type='article')])
         data = dumps(data)
-        response = self.app.patch('/api/person/1/links/articles', data=data)
+        response = self.app.patch('/api/person/1/relationships/articles',
+                                  data=data)
         assert response.status_code == 400
         # TODO check error message here
 
@@ -452,7 +472,8 @@ class TestUpdatingToMany(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(id=1)])
         data = dumps(data)
-        response = self.app.patch('/api/person/1/links/articles', data=data)
+        response = self.app.patch('/api/person/1/relationships/articles',
+                                  data=data)
         assert response.status_code == 400
         # TODO check error message here
 
@@ -468,7 +489,8 @@ class TestUpdatingToMany(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(id=1, type='bogus')])
         data = dumps(data)
-        response = self.app.patch('/api/person/1/links/articles', data=data)
+        response = self.app.patch('/api/person/1/relationships/articles',
+                                  data=data)
         assert response.status_code == 409
         # TODO check error message here
 
@@ -484,7 +506,8 @@ class TestUpdatingToMany(ManagerTestBase):
         self.session.commit()
         data = dict(data=[dict(id='bogus', type='article')])
         data = dumps(data)
-        response = self.app.patch('/api/person/1/links/articles', data=data)
+        response = self.app.patch('/api/person/1/relationships/articles',
+                                  data=data)
         assert response.status_code == 404
         # TODO check error message here
 
@@ -496,7 +519,7 @@ class TestUpdatingToMany(ManagerTestBase):
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
-        response = self.app.patch('/api/person/1/links/articles')
+        response = self.app.patch('/api/person/1/relationships/articles')
         assert response.status_code == 400
         # TODO check the error message here
 
@@ -508,7 +531,8 @@ class TestUpdatingToMany(ManagerTestBase):
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
-        response = self.app.patch('/api/person/1/links/articles', data='')
+        response = self.app.patch('/api/person/1/relationships/articles',
+                                  data='')
         assert response.status_code == 400
         # TODO check the error message here
 
@@ -521,7 +545,8 @@ class TestUpdatingToMany(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
         data = 'Invalid JSON string'
-        response = self.app.patch('/api/person/1/links/articles', data=data)
+        response = self.app.patch('/api/person/1/relationships/articles',
+                                  data=data)
         assert response.status_code == 400
         # TODO check error message here
 
@@ -560,7 +585,7 @@ class TestUpdatingToOne(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
         data = dict(data=dict(id=1, type='person'))
-        response = self.app.patch('/api/article/bogus/links/author',
+        response = self.app.patch('/api/article/bogus/relationships/author',
                                   data=dumps(data))
         assert response.status_code == 404
         # TODO check error message here
@@ -575,7 +600,8 @@ class TestUpdatingToOne(ManagerTestBase):
         self.session.commit()
         data = dict(data=dict(id=1, type='bogus'))
         data = dumps(data)
-        response = self.app.patch('/api/article/1/links/bogus', data=data)
+        response = self.app.patch('/api/article/1/relationships/bogus',
+                                  data=data)
         assert response.status_code == 404
         # TODO check error message here
 
@@ -590,7 +616,8 @@ class TestUpdatingToOne(ManagerTestBase):
         self.session.add_all([article, person])
         self.session.commit()
         data = dict(data=dict(id=1, type='person'))
-        response = self.app.patch('/api/article/1/links', data=dumps(data))
+        response = self.app.patch('/api/article/1/relationships',
+                                  data=dumps(data))
         assert response.status_code == 405
         # TODO check error message here
 
@@ -605,7 +632,8 @@ class TestUpdatingToOne(ManagerTestBase):
         self.session.commit()
         data = dict(data=dict(type='person'))
         data = dumps(data)
-        response = self.app.patch('/api/article/1/links/author', data=data)
+        response = self.app.patch('/api/article/1/relationships/author',
+                                  data=data)
         assert response.status_code == 400
         # TODO check error message here
 
@@ -621,7 +649,8 @@ class TestUpdatingToOne(ManagerTestBase):
         self.session.commit()
         data = dict(data=dict(id=1))
         data = dumps(data)
-        response = self.app.patch('/api/article/1/links/author', data=data)
+        response = self.app.patch('/api/article/1/relationships/author',
+                                  data=data)
         assert response.status_code == 400
         # TODO check error message here
 
@@ -637,7 +666,8 @@ class TestUpdatingToOne(ManagerTestBase):
         self.session.commit()
         data = dict(data=dict(id=1, type='bogus'))
         data = dumps(data)
-        response = self.app.patch('/api/article/1/links/author', data=data)
+        response = self.app.patch('/api/article/1/relationships/author',
+                                  data=data)
         assert response.status_code == 409
         # TODO check error message here
 
@@ -653,7 +683,8 @@ class TestUpdatingToOne(ManagerTestBase):
         self.session.commit()
         data = dict(data=dict(id='bogus', type='person'))
         data = dumps(data)
-        response = self.app.patch('/api/article/1/links/author', data=data)
+        response = self.app.patch('/api/article/1/relationships/author',
+                                  data=data)
         print(response.data)
         assert response.status_code == 404
         # TODO check error message here
@@ -666,7 +697,7 @@ class TestUpdatingToOne(ManagerTestBase):
         article = self.Article(id=1)
         self.session.add(article)
         self.session.commit()
-        response = self.app.patch('/api/article/1/links/author')
+        response = self.app.patch('/api/article/1/relationships/author')
         assert response.status_code == 400
         # TODO check the error message here
 
@@ -678,7 +709,8 @@ class TestUpdatingToOne(ManagerTestBase):
         article = self.Article(id=1)
         self.session.add(article)
         self.session.commit()
-        response = self.app.patch('/api/article/1/links/author', data='')
+        response = self.app.patch('/api/article/1/relationships/author',
+                                  data='')
         assert response.status_code == 400
         # TODO check the error message here
 
@@ -691,6 +723,7 @@ class TestUpdatingToOne(ManagerTestBase):
         self.session.add(article)
         self.session.commit()
         data = 'Invalid JSON string'
-        response = self.app.patch('/api/article/1/links/author', data=data)
+        response = self.app.patch('/api/article/1/relationships/author',
+                                  data=data)
         assert response.status_code == 400
         # TODO check error message here
