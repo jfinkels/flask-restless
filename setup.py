@@ -14,7 +14,6 @@
       * `Source code repository <http://github.com/jfinkels/flask-restless>`_
 
 """
-import sys
 from setuptools import setup
 
 # TODO We require Flask version 1.0 or greater if we want Flask to recognize
