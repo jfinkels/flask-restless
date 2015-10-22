@@ -37,8 +37,6 @@ class TestFetchingData(ManagerTestBase):
         class Comment(self.Base):
             __tablename__ = 'comment'
             id = Column(Integer, primary_key=True)
-            author_id = Column(Integer, ForeignKey('person.id'))
-            author = relationship('Person')
             article_id = Column(Integer, ForeignKey('article.id'))
             article = relationship(Article, backref=backref('comments'))
 
@@ -48,7 +46,6 @@ class TestFetchingData(ManagerTestBase):
             name = Column(Unicode)
             age = Column(Integer)
             other = Column(Float)
-            comments = relationship('Comment')
             articles = relationship('Article')
 
         self.Article = Article
@@ -63,37 +60,6 @@ class TestFetchingData(ManagerTestBase):
         # TODO Fix this by simply not creating links to related models for
         # which no API has been made.
         self.manager.create_api(Comment)
-
-    # def test_correct_accept_header(self):
-    #     """Tests that the server responds with a resource if the ``Accept``
-    #     header specifies the JSON API media type.
-
-    #     For more information, see the `Fetching Data`_ section of the JSON API
-    #     specification.
-
-    #     .. _Fetching Data: http://jsonapi.org/format/#fetching
-
-    #     """
-    #     # The fixtures for this test class set up the correct `Accept` header
-    #     # for all requests from the test client.
-    #     response = self.app.get('/api/person')
-    #     assert response.status_code == 200
-    #     assert response.mimetype == CONTENT_TYPE
-
-    # def test_incorrect_accept_header(self):
-    #     """Tests that the server responds with an :http:status:`415` if the
-    #     ``Accept`` header is incorrect.
-
-    #     For more information, see the `Fetching Data`_ section of the JSON API
-    #     specification.
-
-    #     .. _Fetching Data: http://jsonapi.org/format/#fetching
-
-    #     """
-    #     headers = dict(Accept='application/json')
-    #     response = self.app.get('/api/person', headers=headers)
-    #     assert response.status_code == 406
-    #     assert response.mimetype == CONTENT_TYPE
 
     def test_single_resource(self):
         """Tests for fetching a single resource.
@@ -392,6 +358,45 @@ class TestFetchingData(ManagerTestBase):
         assert links['self'].endswith('/article/1/relationships/author')
         assert links['related'].endswith('/article/1/author')
 
+class TestInclusion(ManagerTestBase):
+    """Tests corresponding to the `Inclusion of Related Resources`_
+    section of the JSON API specification.
+
+    .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+
+    """
+
+    def setUp(self):
+        super(TestInclusion, self).setUp()
+
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship('Person')
+
+        class Comment(self.Base):
+            __tablename__ = 'comment'
+            id = Column(Integer, primary_key=True)
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship('Person', backref=backref('comments'))
+            article_id = Column(Integer, ForeignKey('article.id'))
+            article = relationship(Article, backref=backref('comments'))
+
+        class Person(self.Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+            articles = relationship('Article')
+
+        self.Article = Article
+        self.Comment = Comment
+        self.Person = Person
+        self.Base.metadata.create_all()
+        self.manager.create_api(Article)
+        self.manager.create_api(Comment)
+        self.manager.create_api(Person)
+
     def test_default_inclusion(self):
         """Tests that by default, Flask-Restless includes no information
         in compound documents.
@@ -443,92 +448,6 @@ class TestFetchingData(ManagerTestBase):
         assert ['1'] == sorted(article['id'] for article in articles)
         assert linked[0]['type'] == 'article'
         assert linked[0]['id'] == '1'
-
-    # # TODO The next few methods seem to be duplicates.
-    # def test_compound_document_to_many(self):
-    #     """Tests for getting linked resources from a to-many
-    #     relationship in a compound document.
-
-    #     For more information, see the `Compound Documents`_ section of
-    #     the JSON API specification.
-
-    #     .. _Compound Documents: http://jsonapi.org/format/#document-compound-documents
-
-    #     """
-    #     person = self.Person(id=1)
-    #     article1 = self.Article(id=1)
-    #     article2 = self.Article(id=2)
-    #     person.articles = [article1, article2]
-    #     self.session.add_all([person, article1, article2])
-    #     self.session.commit()
-    #     # For a to-many relationship, we should have an array of
-    #     # objects, each of which has a 'type' key and an 'id' key.
-    #     response = self.app.get('/api/person/1?include=articles')
-    #     document = loads(response.data)
-    #     person = document['data']
-    #     articles = person['links']['articles']['linkage']
-    #     assert all(article['type'] == 'article' for article in articles)
-    #     assert ['1', '2'] == sorted(article['id'] for article in articles)
-    #     linked = document['included']
-    #     # Sort the links on their IDs, then get the two linked articles.
-    #     linked_article1, linked_article2 = sorted(linked,
-    #                                               key=lambda c: c['id'])
-    #     assert linked_article1['type'] == 'article'
-    #     assert linked_article1['id'] == '1'
-    #     assert linked_article2['type'] == 'article'
-    #     assert linked_article2['id'] == '2'
-
-    # def test_compound_document_to_one(self):
-    #     """Tests for getting linked resources from a to-one relationship
-    #     in a compound document.
-
-    #     For more information, see the `Compound Documents`_ section of
-    #     the JSON API specification.
-
-    #     .. _Compound Documents: http://jsonapi.org/format/#document-compound-documents
-
-    #     """
-    #     person = self.Person(id=1)
-    #     article = self.Article(id=1)
-    #     article.author = person
-    #     self.session.add_all([person, article])
-    #     self.session.commit()
-    #     # For a to-one relationship, we should have a 'type' and an 'id' key.
-    #     response = self.app.get('/api/article/1?include=author')
-    #     document = loads(response.data)
-    #     article = document['data']
-    #     author = article['links']['author']['linkage']
-    #     assert author['type'] == 'person'
-    #     assert author['id'] == '1'
-    #     linked = document['included']
-    #     linked_person = linked[0]
-    #     assert linked_person['type'] == 'person'
-    #     assert linked_person['id'] == '1'
-
-    # def test_compound_document_many_types(self):
-    #     """Tests for getting linked resources of multiple types in a
-    #     compound document.
-
-    #     For more information, see the `Compound Documents`_ section of
-    #     the JSON API specification.
-
-    #     .. _Compound Documents: http://jsonapi.org/format/#document-compound-documents
-
-    #     """
-    #     article = self.Article(id=3)
-    #     comment = self.Comment(id=2)
-    #     person = self.Person(id=1)
-    #     comment.author = person
-    #     article.author = person
-    #     self.session.add_all([article, person, comment])
-    #     self.session.commit()
-    #     query_string = dict(include='comments,articles')
-    #     response = self.app.get('/api/person/1', query_string=query_string)
-    #     document = loads(response.data)
-    #     person = document['data']
-    #     included = sorted(document['included'], key=lambda x: x['type'])
-    #     assert ['article', 'comment'] == [x['type'] for x in included]
-    #     assert ['3', '2'] == [x['id'] for x in included]
 
     def test_include(self):
         """Tests that the client can specify which linked relations to
@@ -719,6 +638,37 @@ class TestFetchingData(ManagerTestBase):
         assert ['3'] == sorted(obj['id'] for obj in included)
         assert ['comment'] == sorted(obj['type'] for obj in included)
 
+class TestSparseFieldsets(ManagerTestBase):
+    """Tests corresponding to the `Sparse Fieldsets`_ section of the
+    JSON API specification.
+
+    .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
+
+    """
+
+    def setUp(self):
+        super(TestSparseFieldsets, self).setUp()
+
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            title = Column(Unicode)
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship('Person')
+
+        class Person(self.Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+            age = Column(Integer)
+            articles = relationship('Article')
+
+        self.Article = Article
+        self.Person = Person
+        self.Base.metadata.create_all()
+        self.manager.create_api(Article)
+        self.manager.create_api(Person)
+
     def test_sparse_fieldsets(self):
         """Tests that the client can specify which fields to return in the
         response of a fetch request for a single object.
@@ -813,6 +763,38 @@ class TestFetchingData(ManagerTestBase):
         assert ['name'] == sorted(person['attributes'])
         # We requested only 'id', but 'type' must always appear as well.
         assert all(['id', 'type'] == sorted(article) for article in linked)
+
+
+class TestSorting(ManagerTestBase):
+    """Tests corresponding to the `Sorting`_ section of the JSON API
+    specification.
+
+    .. _Sorting: http://jsonapi.org/format/#fetching-sorting
+
+    """
+
+    def setUp(self):
+        super(TestSorting, self).setUp()
+
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            title = Column(Unicode)
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship('Person')
+
+        class Person(self.Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+            age = Column(Integer)
+            articles = relationship('Article')
+
+        self.Article = Article
+        self.Person = Person
+        self.Base.metadata.create_all()
+        self.manager.create_api(Article)
+        self.manager.create_api(Person)
 
     def test_sort_increasing(self):
         """Tests that the client can specify the fields on which to sort
