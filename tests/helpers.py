@@ -127,26 +127,31 @@ def unregister_fsa_session_signals():
 
 
 def force_json_contenttype(test_client):
-    """Ensures that all requests made by the specified Flask test client have
-    the correct ``Content-Type`` header.
+    """Ensures that all requests made by the specified Flask test client
+    have the correct ``Content-Type`` header.
 
     For :http:method:`patch` requests, this means
-    ``application/json-patch+json``. For all other requests, the content type
-    is set to ``application/vnd.api+json``, unless another content type is
-    explicitly specified at the time the method is invoked.
+    ``application/json-patch+json``. For all other requests, the content
+    type is set to ``application/vnd.api+json``, unless another content
+    type is explicitly specified at the time the method is invoked.
 
     """
-    # Create a decorator for the test client request methods that adds
-    # a JSON Content-Type by default if none is specified.
-    def set_content_type(func, headers=None, content_type=CONTENT_TYPE):
+    # Create a decorator for the test client request methods that adds a
+    # JSON Content-Type by default if none is specified.
+    def set_content_type(func):
         @functools.wraps(func)
         def new_func(*args, **kw):
-            if 'content_type' not in kw:
-                kw['content_type'] = content_type
+            #if 'content_type' not in kw:
+            #    kw['content_type'] = CONTENT_TYPE
             if 'headers' not in kw:
                 kw['headers'] = dict()
-            if 'Accept' not in kw['headers']:
-                kw['headers']['Accept'] = CONTENT_TYPE
+            headers = kw['headers']
+            if (isinstance(headers, dict) and 'Accept' not in headers
+                or isinstance(headers, list) and all(x[0] != 'Accept'
+                                                     for x in headers)):
+                headers['Accept'] = CONTENT_TYPE
+            if 'content_type' not in kw and 'Content-Type' not in headers:
+                kw['content_type'] = CONTENT_TYPE
             return func(*args, **kw)
         return new_func
 

@@ -215,7 +215,7 @@ class TestDocumentStructure(ManagerTestBase):
         assert any(key in links for key in ('self', 'related'))
 
     def test_self_relationship_url(self):
-        """Tests that a link object correctly identifies its own
+        """Tests that a relationship object correctly identifies its own
         relationship URL.
 
         For more information, see the `Resource Object Relationships`_
@@ -234,7 +234,7 @@ class TestDocumentStructure(ManagerTestBase):
         article = document['data']
         relationship = article['relationships']['author']
         relationship_url = relationship['links']['self']
-        assert relationship_url.endswith('/api/article/1/links/author')
+        assert relationship_url.endswith('/api/article/1/relationships/author')
 
     def test_related_resource_url_to_one(self):
         """Tests that the related resource URL in a to-one relationship

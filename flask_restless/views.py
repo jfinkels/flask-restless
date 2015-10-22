@@ -37,6 +37,7 @@ from collections import defaultdict
 from functools import wraps
 from itertools import chain
 import math
+import re
 # In Python 3...
 try:
     from urllib.parse import urlparse
@@ -60,6 +61,7 @@ from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm.exc import FlushError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
+from werkzeug import parse_options_header
 from werkzeug.exceptions import BadRequest
 from werkzeug.exceptions import HTTPException
 
@@ -126,6 +128,24 @@ PAGE_NUMBER_PARAM = 'page[number]'
 #: The query parameter key that identifies the page size in a
 #: :http:method:`get` request.
 PAGE_SIZE_PARAM = 'page[size]'
+
+# for explanation of "media-range", etc. see Sections 5.3.{1,2} of RFC 7231
+_accept_re = re.compile(
+        r'''(                       # media-range capturing-parenthesis
+              [^\s;,]+              # type/subtype
+              (?:[ \t]*;[ \t]*      # ";"
+                (?:                 # parameter non-capturing-parenthesis
+                  [^\s;,q][^\s;,]*  # token that doesn't start with "q"
+                |                   # or
+                  q[^\s;,=][^\s;,]* # token that is more than just "q"
+                )
+              )*                    # zero or more parameters
+            )                       # end of media-range
+            (?:[ \t]*;[ \t]*q=      # weight is a "q" parameter
+              (\d*(?:\.\d+)?)       # qvalue capturing-parentheses
+              [^,]*                 # "extension" accept params: who cares?
+            )?                      # accept params are optional
+        ''', re.VERBOSE)
 
 # For the sake of brevity, rename this function.
 chain = chain.from_iterable
@@ -279,12 +299,47 @@ def catch_processing_exceptions(func):
     return new_func
 
 
-def requires_json_api_accept(func):
-    """Decorator that requires requests have the ``Accept`` header required by
-    the JSON API specification.
+# This code is (lightly) adapted from the ``werkzeug`` library, in the
+# ``werkzeug.http`` module. See <http://werkzeug.pocoo.org> for more
+# information.
+def parse_accept_header(value):
+    """Parses an HTTP Accept-* header.
 
-    If the request does not have the correct ``Accept`` header, a
-    :http:status:`406` response is returned.
+    This does not implement a complete valid algorithm but one that
+    supports at least value and quality extraction.
+
+    `value` is the :http:header:`Accept` header string (everything after
+    the ``Accept:``) to be parsed.
+
+    Returns an iterable of ``(value, extra)`` tuples. If there were no
+    media type parameters, then ``extra`` is simply ``None``.
+
+    """
+    def match_to_pair(match):
+        name = match.group(1)
+        extra = match.group(2)
+        # This is the main difference between our implementation and
+        # Werkzeug's implementation: all we want to know is whether
+        # there is any media type parameters or not, so we mark the
+        # quality is ``None`` instead of ``1`` here.
+        quality = max(min(float(extra), 1), 0) if extra else None
+        return name, quality
+    return (match_to_pair(match) for match in _accept_re.finditer(value))
+
+
+def requires_json_api_accept(func):
+    """Decorator that requires requests have the ``Accept`` header
+    required by the JSON API specification.
+
+    If a request does not have the correct ``Accept`` header, a
+    :http:status:`406` response is returned. An incorrect header is
+    described in the `Server Responsibilities`_ section of the JSON API
+    specification:
+
+        Servers MUST respond with a 406 Not Acceptable status code if a
+        request's Accept header contains the JSON API media type and all
+        instances of that media type are modified with media type
+        parameters.
 
     View methods can be wrapped like this::
 
@@ -292,12 +347,21 @@ def requires_json_api_accept(func):
         def get(self, *args, **kw):
             return '...'
 
+    .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+
     """
     @wraps(func)
     def new_func(*args, **kw):
-        if request.headers.get('Accept') != CONTENT_TYPE:
-            detail = ('Request must have "Accept: {0}"'
-                      ' header'.format(CONTENT_TYPE))
+        header = request.headers.get('Accept')
+        header_pairs = parse_accept_header(header)
+        jsonapi_pairs = [(name, extra) for name, extra in header_pairs
+                         if name.startswith(CONTENT_TYPE)]
+        if (len(jsonapi_pairs) > 0
+            and all(extra is not None for name, extra in jsonapi_pairs)):
+            detail = ('Accept header contained JSON API content type, but each'
+                      ' instance occurred with media type parameters; at least'
+                      ' one instance must appear without parameters (the part'
+                      ' after the semicolon)')
             return error_response(406, detail=detail)
         return func(*args, **kw)
     return new_func
@@ -319,7 +383,8 @@ def requires_json_api_mimetype(func):
     """
     @wraps(func)
     def new_func(*args, **kw):
-        content_type = request.headers.get('Content-Type')
+        header = request.headers.get('Content-Type')
+        content_type, extra = parse_options_header(header)
         content_is_json = content_type.startswith(CONTENT_TYPE)
         is_msie = _is_msie8or9()
         # Request must have the Content-Type: application/vnd.api+json header,
@@ -329,6 +394,12 @@ def requires_json_api_mimetype(func):
         if not is_msie and not content_is_json:
             detail = ('Request must have "Content-Type: {0}"'
                       ' header').format(CONTENT_TYPE)
+            return error_response(415, detail=detail)
+        # JSON API requires that the content type header does not have
+        # any media type parameters.
+        if extra:
+            detail = ('Content-Type header must not have any media type'
+                      ' parameters but found {}'.format(extra))
             return error_response(415, detail=detail)
         return func(*args, **kw)
     return new_func
@@ -1984,7 +2055,7 @@ class RelationshipAPI(APIBase):
         result['links']['self'] = url_for(self.model, resource_id,
                                           relation_name, relationship=True)
         result['links']['related'] = url_for(self.model, resource_id,
-                                          relation_name)
+                                             relation_name)
         # Determine the fields to include for each type of object.
         fields = parse_sparse_fields()
         # Determine the resources to include (in a compound document).
@@ -2021,9 +2092,7 @@ class RelationshipAPI(APIBase):
         """
         for preprocessor in self.preprocessors['GET_RELATIONSHIP']:
             temp_result = preprocessor(instance_id=resource_id,
-                                       relationship=relation_name,
-                                       filters=filters, sort=sort,
-                                       group_by=group_by, single=single)
+                                       relationship=relation_name)
             # Let the return value of the preprocessor be the new value of
             # instid, thereby allowing the preprocessor to effectively specify
             # which instance of the model to process on.

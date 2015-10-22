@@ -3,6 +3,7 @@ from sqlalchemy import Integer
 
 from flask.ext.restless import CONTENT_TYPE
 
+from ..helpers import loads
 from ..helpers import ManagerTestBase
 
 
@@ -50,6 +51,10 @@ class TestServerResponsibilities(ManagerTestBase):
         headers = {'Content-Type': '{}; version=1'.format(CONTENT_TYPE)}
         response = self.app.get('/api/person', headers=headers)
         assert response.status_code == 415
+        document = loads(response.data)
+        message = document['errors'][0]['detail']
+        assert 'Content-Type' in message
+        assert 'media type parameter' in message
 
     def test_no_accept_media_type_params(self):
         """"Tests that a server responds with :http:status:`406` if each
@@ -62,7 +67,10 @@ class TestServerResponsibilities(ManagerTestBase):
         .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
 
         """
-        headers = [('Accept', '{}; version=1'.format(CONTENT_TYPE)),
-                   ('Accept', '{}; foo=bar'.format(CONTENT_TYPE))]
+        headers = {'Accept': '{0}; q=.8, {0}; q=.9'.format(CONTENT_TYPE)}
         response = self.app.get('/api/person', headers=headers)
         assert response.status_code == 406
+        document = loads(response.data)
+        message = document['errors'][0]['detail']
+        assert 'Accept' in message
+        assert 'media type parameter' in message
