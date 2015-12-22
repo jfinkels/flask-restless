@@ -109,6 +109,10 @@ JSONAPI_VERSION = '1.0'
 #: SQLAlchemy errors that, when caught, trigger a rollback of the session.
 ROLLBACK_ERRORS = (DataError, IntegrityError, ProgrammingError, FlushError)
 
+#: Strings that indicate a database conflict when appearing in an error
+#: message of an exception raised by SQLAlchemy.
+CONFLICT_INDICATORS = ('conflicts with', 'UNIQUE constraint failed')
+
 #: The query parameter key that identifies filter objects in a
 #: :http:method:`get` request.
 FILTER_PARAM = 'filter[objects]'
@@ -445,7 +449,7 @@ def is_conflict(exception):
 
     """
     string = str(exception)
-    return 'conflicts with' in string or 'UNIQUE constraint failed' in string
+    return any(s in str(exception) for s in CONFLICT_INDICATORS)
 
 
 def jsonpify(*args, **kw):
