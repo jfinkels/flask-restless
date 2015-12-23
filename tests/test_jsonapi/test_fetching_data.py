@@ -358,6 +358,7 @@ class TestFetchingData(ManagerTestBase):
         assert links['self'].endswith('/article/1/relationships/author')
         assert links['related'].endswith('/article/1/author')
 
+
 class TestInclusion(ManagerTestBase):
     """Tests corresponding to the `Inclusion of Related Resources`_
     section of the JSON API specification.
@@ -637,6 +638,7 @@ class TestInclusion(ManagerTestBase):
         included = document['included']
         assert ['3'] == sorted(obj['id'] for obj in included)
         assert ['comment'] == sorted(obj['type'] for obj in included)
+
 
 class TestSparseFieldsets(ManagerTestBase):
     """Tests corresponding to the `Sparse Fieldsets`_ section of the

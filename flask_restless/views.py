@@ -77,7 +77,7 @@ from .helpers import is_like_list
 from .helpers import primary_key_name
 from .helpers import primary_key_value
 from .helpers import strings_to_datetimes
-from .helpers import upper_keys
+from .helpers import upper_keys as upper
 from .helpers import url_for
 from .search import ComparisonToNull
 from .search import search
@@ -824,21 +824,31 @@ class APIBase(ModelView):
         #: updating a resource.
         self.allow_to_many_replacement = allow_to_many_replacement
 
-        #: ...
+        #: The default page size for responses that consist of a
+        #: collection of resources.
+        #:
+        #: Requests made by clients may override this default by
+        #: specifying ``page_size`` as a query parameter.
         self.page_size = page_size
 
-        #: ...
+        #: The maximum page size that a client can request.
+        #:
+        #: Even if a client specifies that greater than `max_page_size`
+        #: should be returned, at most `max_page_size` results will be
+        #: returned.
         self.max_page_size = max_page_size
 
-        #: ...
+        #: A custom serialization function for primary resources; see
+        #: :ref:`serialization` for more information.
         #:
         #: Use our default serializer if none is specified.
         self.serialize = serializer or simple_serialize
 
-        #: ...
+        #: A custom serialization function for linkage objects.
         self.serialize_relationship = simple_relationship_serialize
 
-        #: ...
+        #: A custom deserialization function for primary resources; see
+        #: :ref:`serialization` for more information.
         #:
         #: Use our default deserializer if none is specified.
         self.deserialize = deserializer or DefaultDeserializer(session, model)
@@ -850,8 +860,6 @@ class APIBase(ModelView):
         #: The name of the attribute containing the primary key to use as the
         #: ID of the resource.
         self.primary_key = primary_key
-
-        upper = upper_keys
 
         #: The mapping from method name to a list of functions to apply after
         #: the main functionality of that method has been executed.
@@ -896,7 +904,10 @@ class APIBase(ModelView):
         """Gets filtering, sorting, grouping, and other settings from the
         request that affect the collection of resources in a response.
 
-        TODO fill me in
+        Returns a four-tuple of the form ``(filters, sort, group_by,
+        single)``. These can be provided to the
+        :func:`~flask_restless.search.search` function; for more
+        information, see the documentation for that function.
 
         """
         # Determine filtering options.
@@ -953,11 +964,32 @@ class APIBase(ModelView):
 
         return filters, sort, group_by, single
 
+    # TODO This doesn't need to be an instance method.
     def resources_from_path(self, instance, path):
         """Returns an iterable of all resources along the given
         relationship path for the specified instance of the model.
 
-        TODO fill me in
+        For example, if our model includes three classes, ``Article``,
+        ``Person``, and ``Comment``::
+
+            >>> article = Article(id=1)
+            >>> comment1 = Comment(id=1)
+            >>> comment2 = Comment(id=2)
+            >>> person1 = Person(id=1)
+            >>> person2 = Person(id=2)
+            >>> article.comments = [comment1, comment2]
+            >>> comment1.author = person1
+            >>> comment2.author = person2
+            >>> instances = [article, comment1, comment2, person1, person2]
+            >>> session.add_all(instances)
+            >>>
+            >>> l = list(api.resources_from_path(article, 'comments.author'))
+            >>> len(l)
+            4
+            >>> [r.id for r in l if isinstance(r, Person)]
+            [1, 2]
+            >>> [r.id for r in l if isinstance(r, Comment)]
+            [1, 2]
 
         """
         # First, split the path to determine the sequence of
@@ -1050,10 +1082,13 @@ class API(APIBase):
                  **kw):
         super(API, self).__init__(session, model, *args, **kw)
 
-        #: ...
+        #: The name of the collection specified by the given model class
+        #: to be used in the URL for the ReSTful API created.
         self.collection_name = collection_name(self.model)
 
-        #: ...
+        #: Whether this API allows the client to specify the ID for the
+        #: resource to create; for more information, see
+        #: :ref:`clientids`.
         self.allow_client_generated_ids = allow_client_generated_ids
 
     def _get_related_resource(self, resource_id, relation_name,
@@ -1458,8 +1493,14 @@ class API(APIBase):
                         link_string = '<{0}>; rel="{1}"'.format(url, rel)
                         header_links.append(link_string)
                         pagination_links[rel] = url
-                headers = (dict(Link=','.join(link for link in header_links))
-                           if header_links else {})
+                # If there are any required link headers, join them with
+                # commas and add them to the dictionary of headers to
+                # apply to the response.
+                if header_links:
+                    joined = ','.join(link for link in header_links)
+                    headers = {'Link': joined}
+                else:
+                    headers = {}
                 # headers = [('Link', link) for link in header_links]
         # Otherwise, the result of the search should be a single resource.
         else:
