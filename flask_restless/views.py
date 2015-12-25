@@ -1530,6 +1530,10 @@ class API(APIBase):
             postprocessor(result=result)
         return result, 200
 
+    # TODO This method is essentially exactly the same as the
+    # corresponding method in the RelationshipAPI class. The only
+    # difference is that one uses serialize_relationship() instead of
+    # serialize(). The methods should be refactored.
     def _get_collection(self):
         """Returns a response containing a collection of resources of the type
         specified by the ``model`` argument to the constructor of this class.
