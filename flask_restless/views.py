@@ -227,78 +227,6 @@ def _is_msie8or9():
             and (8, 0) <= version(request.user_agent) < (10, 0))
 
 
-# # This code is (lightly) adapted from the ``requests`` library, in the
-# # ``requests.utils`` module. See <http://python-requests.org> for more
-# # information.
-# def _link_to_json(value):
-#     """Returns a dictionary representation of the specified HTTP Link header.
-
-#     `value` is a string containing the link header information. If the link
-#     header information (the part after ``Link:``) looked like this::
-
-#         <https://example.com>; rel="next", bar="baz"
-
-#     then this function returns a dictionary that looks like this::
-
-#         {'url': 'https://example.com', 'rel': 'next', 'bar': 'baz'}
-
-#     This example is adapted from the documentation of GitHub's API.
-
-#     """
-#     replace_chars = " '\""
-#     try:
-#         url, params = value.split(";", 1)
-#     except ValueError:
-#         url, params = value, ''
-#     link = {}
-#     link["url"] = url.strip("<> '\"")
-#     for param in params.split(";"):
-#         try:
-#             key, val = param.split("=")
-#         except ValueError:
-#             break
-#         link[key.strip(replace_chars)] = val.strip(replace_chars)
-#     return link
-
-
-# def _links_to_json(value):
-#     """Returns a list representation of the specified HTTP Link header
-#     information.
-
-#     `value` is a string containing the link header information. If the link
-#     header information (the part after ``Link:``) looked like this::
-
-#         <url1>; rel="next", <url2>; rel="foo"; bar="baz"
-
-#     then this function returns a list that looks like this::
-
-#         [{"url": "url1", "rel": "next"},
-#          {"url": "url2", "rel": "foo", "bar": "baz"}]
-
-#     This is a convenience function for::
-
-#         [_link_to_json(link) for link in value.split(',')]
-
-#     """
-#     return [_link_to_json(link) for link in value.split(',')]
-
-
-# def _headers_to_json(headers):
-#     """Returns a dictionary representation of the specified dictionary of HTTP
-#     headers ready for use as a JSON object.
-
-#     Pre-condition: headers is not ``None``.
-
-#     """
-#     link = headers.pop('Link', None)
-#     # Shallow copy is fine here because the `headers` dictionary maps strings
-#     # to strings to strings.
-#     result = headers.copy()
-#     if link:
-#         result['Link'] = _links_to_json(link)
-#     return result
-
-
 def catch_processing_exceptions(func):
     """Decorator that catches :exc:`ProcessingException`s and subsequently
     returns a JSON-ified error response.
@@ -656,60 +584,6 @@ def errors_response(status, errors):
     """
     return {'errors': errors, _STATUS: status}, status
 
-
-def _filters_to_string(filters):
-    """Returns a string representation of the specified dictionary of filter
-    objects.
-
-    This is essentially the inverse operation of the parsing that is done when
-    reading the filter objects from the query parameters of the request string
-    in a :http:method:`get` request.
-
-    """
-    return json.dumps(filters)
-
-
-def _sort_to_string(sort):
-    """Returns a string representation of the specified sort fields.
-
-    This is essentially the inverse operation of the parsing that is done when
-    reading the sort fields from the query parameters of the request string in
-    a :http:method:`get` request.
-
-    """
-    return ','.join(''.join((direction, field)) for direction, field in sort)
-
-
-def _group_to_string(group_by):
-    """Returns a string representation of the specified grouping fields.
-
-    This is essentially the inverse operation of the parsing that is done when
-    reading the grouping fields from the query parameters of the request string
-    in a :http:method:`get` request.
-
-    """
-    return ','.join(group_by)
-
-
-def _to_url(base_url, query_params):
-    """Returns the specified base URL augmented with the given query
-    parameters.
-
-    `base_url` is a string representing a URL.
-
-    `query_params` is a dictionary whose keys and values are strings,
-    representing the query parameters to append to the given URL.
-
-    If the base URL already has query parameters, the ones given in
-    `query_params` are appended.
-
-    """
-    query_string = '&'.join('='.join((k, v)) for k, v in query_params.items())
-    scheme, netloc, path, params, query, fragment = urlparse(base_url)
-    if query:
-        query_string = '&'.join((query, query_string))
-    return urlunparse((scheme, netloc, path, params, query_string, fragment))
-
 #: Creates the mimerender object necessary for decorating responses with a
 #: function that automatically formats the dictionary in the appropriate format
 #: based on the ``Accept`` header.
@@ -722,15 +596,213 @@ def _to_url(base_url, query_params):
 mimerender = FlaskMimeRender()(default='jsonapi', jsonapi=jsonpify)
 
 
-class PaginatedResults(object):
+class Paginated(object):
+    """Represents a paginated list of resources.
 
-    def __init__(self, results, num_results=None, headers=None,
-                 pagination_links=None):
-        self.results = results
-        self.num_results = num_results
-        self.headers = headers or {}
-        self.pagination_links = pagination_links or {}
-        # TODO do all the computation here...
+    This class is intended to be instantiated *after* the correct page
+    of a collection has been computed. It is mainly used to handle link
+    URLs for JSON API documents and HTTP headers.
+
+    `items` is a list of dictionaries, each of which is a JSON API
+    resource, either a resource object or a link object.
+
+    `page_size` and `page_number` are the size and number of the current
+    page (that is, the page containing `items`). If `page_size` is zero,
+    then `items` must be *all* the items in the collection requested by
+    the client. In this particular case, this object does not really
+    represent a paginated response. Thus, there will be no pagination or
+    header links; see :attr:`header_links` and
+    :attr:`pagination_links`. Otherwise, `page_size` must be at least as
+    large as the length of `items`.
+
+    `num_results` is the total number of resources or link objects on
+    all pages, not just the page represented by `items`.
+
+    `first`, `last`, `prev`, and `next_` are integers representing the
+    number of the first, last, previous, and next pages,
+    respectively. These can also be ``None``, in the case that there is
+    no such page.
+
+    `filters`, `sort`, and `group_by` are the filtering, sorting, and
+    grouping query parameters from the request that yielded the given
+    items.
+
+    After instantiating this object, one can access a list of link
+    header strings and a dictionary of pagination link strings as
+    suggested by the JSON API specification, as well as the number of
+    results and the items provided in the constructor. For example::
+
+        >>> people = ['person1', 'person2', 'person3']
+        >>> paginated = Paginated(people, num_results=10, page_number=2,
+        ...                       page_size=3, first=1, last=4, prev=1, next=3)
+        >>> paginated.items
+        ['person1', 'person2', 'person3']
+        >>> paginated.num_results
+        10
+        >>> for rel, url in paginated.pagination_links.items():
+        ...     print(rel, url)
+        ...
+        first http://example.com/api/person?page[size]=3&page[number]=1
+        last http://example.com/api/person?page[size]=3&page[number]=4
+        prev http://example.com/api/person?page[size]=3&page[number]=1
+        next http://example.com/api/person?page[size]=3&page[number]=3
+        >>> for link in paginated.header_links:
+        ...     print(link)
+        ...
+        <http://example.com/api/person?page[size]=3&page[number]=1>; rel="first"
+        <http://example.com/api/person?page[size]=3&page[number]=4>; rel="last"
+        <http://example.com/api/person?page[size]=3&page[number]=1>; rel="prev"
+        <http://example.com/api/person?page[size]=3&page[number]=3>; rel="next"
+
+    """
+
+    @staticmethod
+    def _filters_to_string(filters):
+        """Returns a string representation of the specified dictionary
+        of filter objects.
+
+        This is essentially the inverse operation of the parsing that is
+        done when reading the filter objects from the query parameters
+        of the request string in a :http:method:`get` request.
+
+        """
+        return json.dumps(filters)
+
+    @staticmethod
+    def _sort_to_string(sort):
+        """Returns a string representation of the specified sort fields.
+
+        This is essentially the inverse operation of the parsing that is
+        done when reading the sort fields from the query parameters of
+        the request string in a :http:method:`get` request.
+
+        """
+        return ','.join(''.join((dir_, field)) for dir_, field in sort)
+
+    @staticmethod
+    def _group_to_string(group_by):
+        """Returns a string representation of the specified grouping
+        fields.
+
+        This is essentially the inverse operation of the parsing that is
+        done when reading the grouping fields from the query parameters
+        of the request string in a :http:method:`get` request.
+
+        """
+        return ','.join(group_by)
+
+    @staticmethod
+    def _to_url(base_url, query_params):
+        """Returns the specified base URL augmented with the given query
+        parameters.
+
+        `base_url` is a string representing a URL.
+
+        `query_params` is a dictionary whose keys and values are strings,
+        representing the query parameters to append to the given URL.
+
+        If the base URL already has query parameters, the ones given in
+        `query_params` are appended.
+
+        """
+        query_string = '&'.join('='.join((k, v))
+                                for k, v in query_params.items())
+        scheme, netloc, path, params, query, fragment = urlparse(base_url)
+        if query:
+            query_string = '&'.join((query, query_string))
+        parsed = (scheme, netloc, path, params, query_string, fragment)
+        return urlunparse(parsed)
+
+    def __init__(self, items, first=None, last=None, prev=None, next_=None,
+                 page_size=None, page_number=None, num_results=None,
+                 filters=None, sort=None, group_by=None):
+        self._items = items
+        self._num_results = num_results
+        # Pagination links and the link header are computed by the code below.
+        self._pagination_links = {}
+        self._header_links = []
+        # If page size is zero, there is really no pagination, so we
+        # don't need to compute pagination links or header links.
+        if page_size == 0:
+            return
+        # Create the pagination link URLs.
+        #
+        # Need to account for filters, sort, and group_by, in addition
+        # to pagination links, so we collect those query parameters
+        # here, if they exist.
+        query_params = {}
+        if filters:
+            query_params[FILTER_PARAM] = Paginated._filters_to_string(filters)
+        if sort:
+            query_params[SORT_PARAM] = Paginated._sort_to_string(sort)
+        if group_by:
+            query_params[GROUP_PARAM] = Paginated._group_to_string(group_by)
+        # The page size is independent of the link type (first, last,
+        # next, or prev).
+        query_params[PAGE_SIZE_PARAM] = str(page_size)
+        # Maintain a list of URLs that should appear in a Link
+        # header. If a link does not exist (for example, if there is no
+        # previous page), then that link URL will not appear in this
+        # list.
+        link_numbers = [first, last, prev, next_]
+        for rel, num in zip(LINK_NAMES, link_numbers):
+            # If the link doesn't exist (for example, if there is no
+            # previous page), then add ``None`` to the pagination links
+            # but don't add a link URL to the headers.
+            if num is None:
+                self._pagination_links[rel] = None
+            else:
+                # Each time through this `for` loop we update the page
+                # number in the `query_param` dictionary, so the the
+                # `_to_url` method will give us the correct URL for that
+                # page.
+                query_params[PAGE_NUMBER_PARAM] = str(num)
+                url = Paginated._to_url(request.base_url, query_params)
+                link_string = '<{0}>; rel="{1}"'.format(url, rel)
+                self._header_links.append(link_string)
+                self._pagination_links[rel] = url
+        # TODO Here we should really make the attributes immutable:
+        #
+        #     self._header_links = ImmutableList(self._header_links)
+        #     ...
+        #
+
+    @property
+    def header_links(self):
+        """List of link header strings for the paginated response.
+
+        The headers can be provided to the HTTP response by using a
+        dictionary like this::
+
+            >>> paginated = Paginated(...)
+            >>> headers = {'Link': ','.join(paginated.header_links)}
+
+        There may be a way of creating multiple link headers like
+        this, in certain situations::
+
+            >>> headers = [('Link', link) for link in header_links]
+
+        """
+        return self._header_links
+
+    @property
+    def pagination_links(self):
+        """Dictionary of pagination links for JSON API documents.
+
+        This dictionary has the relationship of the page to this page as
+        the key (``'first'``, ``'last'``, ``'prev'``, and ``'next'``)
+        and the URL as the value.
+
+        """
+        return self._pagination_links
+
+    @property
+    def items(self):
+        return self._items
+
+    @property
+    def num_results(self):
+        return self._num_results
 
 
 class ModelView(MethodView):
@@ -987,6 +1059,85 @@ class APIBase(ModelView):
 
         return filters, sort, group_by, single
 
+    def _paginated(self, items, filters=None, sort=None, group_by=None,
+                   only=None, relationship=False):
+        """Returns a :class:`Paginated` object representing the
+        correctly paginated list of resources to return to the client,
+        based on the current request.
+
+        `items` is a SQLAlchemy query, or a Flask-SQLAlchemy query,
+        containing all requested elements of a collection regardless of
+        the page number or size in the client's request.
+
+        `filters`, `sort`, and `group_by` must have already been
+        extracted from the client's request (as by
+        :meth:`_collection_parameters`) and applied to the query.
+
+        `only` must have already been parsed from the request (as by
+        :func:`parse_sparse_fields`).
+
+        If `relationship` is ``True``, the resources in the query object
+        will be serialized as linkage objects instead of resources
+        objects.
+
+        """
+        if relationship:
+            serialize = self.serialize_relationship
+        else:
+            serialize = self.serialize
+        # Determine the client's page size request. Raise an exception
+        # if the page size is out of bounds, either too small or too
+        # large.
+        page_size = int(request.args.get(PAGE_SIZE_PARAM, self.page_size))
+        if page_size < 0:
+            raise PaginationError('Page size must be a positive integer')
+        if page_size > self.max_page_size:
+            msg = "Page size must not exceed the server's maximum: {0}"
+            msg = msg.format(self.max_page_size)
+            raise PaginationError(msg)
+        # If the page size is 0, just return everything.
+        if page_size == 0:
+            num_results = count(self.session, items)
+            items = [serialize(instance, only=only) for instance in items]
+            return Paginated(items, page_size=page_size,
+                             num_results=num_results)
+        # Determine the client's page number request. Raise an exception
+        # if the page number is out of bounds.
+        page_number = int(request.args.get(PAGE_NUMBER_PARAM, 1))
+        if page_number < 0:
+            raise PaginationError('Page number must be a positive integer')
+        # At this point, we know the page size is positive, so we
+        # paginate the response.
+        #
+        # If the query is really a Flask-SQLAlchemy query, we can use
+        # its built-in pagination. Otherwise, we need to manually
+        # compute the page numbers, the number of results, etc.
+        if hasattr(items, 'paginate'):
+            pagination = items.paginate(page_number, page_size,
+                                        error_out=False)
+            num_results = pagination.total
+            first = 1
+            last = pagination.pages
+            prev = pagination.prev_num
+            next_ = pagination.next_num
+            items = pagination.items
+        else:
+            num_results = count(self.session, items)
+            first = 1
+            # There will be no division-by-zero error here because we
+            # have already checked that page size is not equal to zero
+            # above.
+            last = int(math.ceil(num_results / page_size))
+            prev = page_number - 1 if page_number > 1 else None
+            next_ = page_number + 1 if page_number < last else None
+            offset = (page_number - 1) * page_size
+            items = items.limit(page_size).offset(offset)
+        items = [serialize(instance, only=only) for instance in items]
+        return Paginated(items, num_results=num_results, first=first,
+                         last=last, next_=next_, prev=prev,
+                         page_size=page_size, page_number=page_number,
+                         filters=filters, sort=sort, group_by=group_by)
+
     # TODO This doesn't need to be an instance method.
     def resources_from_path(self, instance, path):
         """Returns an iterable of all resources along the given
@@ -1113,106 +1264,6 @@ class API(APIBase):
         #: resource to create; for more information, see
         #: :ref:`clientids`.
         self.allow_client_generated_ids = allow_client_generated_ids
-
-    def _paginated(self, items, filters=None, sort=None, group_by=None,
-                   only=None):
-        # Determine the client's page size request. Raise an exception
-        # if the page size is out of bounds, either too small or too
-        # large.
-        page_size = int(request.args.get(PAGE_SIZE_PARAM, self.page_size))
-        if page_size < 0:
-            raise PaginationError('Page size must be a positive integer')
-        if page_size > self.max_page_size:
-            msg = "Page size must not exceed the server's maximum: {0}"
-            msg = msg.format(self.max_page_size)
-            raise PaginationError(msg)
-        # If the page size is 0, just return everything.
-        if page_size == 0:
-            num_results = count(self.session, items)
-            result = [self.serialize(instance, only=only)
-                      for instance in items]
-            return PaginatedResults(result, num_results=num_results)
-        # Determine the client's page number request. Raise an exception
-        # if the page number is out of bounds.
-        page_number = int(request.args.get(PAGE_NUMBER_PARAM, 1))
-        if page_number < 0:
-            raise PaginationError('Page number must be a positive integer')
-        # At this point, we know the page size is positive, so we
-        # paginate the response.
-        #
-        # If the query is really a Flask-SQLAlchemy query, we can use
-        # its built-in pagination. Otherwise, we need to manually
-        # compute the page numbers, the number of results, etc.
-        if hasattr(items, 'paginate'):
-            pagination = items.paginate(page_number, page_size,
-                                        error_out=False)
-            num_results = pagination.total
-            first = 1
-            last = pagination.pages
-            prev = pagination.prev_num
-            next_ = pagination.next_num
-            items = pagination.items
-        else:
-            num_results = count(self.session, items)
-            first = 1
-            # There will be no division-by-zero error here because we
-            # have already checked that page size is not equal to zero
-            # above.
-            last = int(math.ceil(num_results / page_size))
-            prev = page_number - 1 if page_number > 1 else None
-            next_ = page_number + 1 if page_number < last else None
-            offset = (page_number - 1) * page_size
-            items = items.limit(page_size).offset(offset)
-        result = [self.serialize(instance, only=only) for instance in items]
-        # Create the pagination link URLs.
-        #
-        # Need to account for filters, sort, and group_by, in addition
-        # to pagination links, so we collect those query parameters
-        # here, if they exist.
-        query_parameters = {}
-        if filters:
-            query_parameters[FILTER_PARAM] = _filters_to_string(filters)
-        if sort:
-            query_parameters[SORT_PARAM] = _sort_to_string(sort)
-        if group_by:
-            query_parameters[GROUP_PARAM] = _group_to_string(group_by)
-        # The page size is independent of the link type (first, last,
-        # next, or prev).
-        query_parameters[PAGE_SIZE_PARAM] = str(page_size)
-        base_url = request.base_url
-        # Maintain a list of URLs that should appear in a Link
-        # header. If a link does not exist (for example, if there is no
-        # previous page), then that link URL will not appear in this
-        # list.
-        header_links = []
-        pagination_links = {}
-        link_numbers = [first, last, prev, next_]
-        for rel, num in zip(LINK_NAMES, link_numbers):
-            # If the link doesn't exist (for example, if there is no
-            # previous page), then add ``None`` to the pagination links
-            # but don't add a link URL to the headers.
-            if num is None:
-                pagination_links[rel] = None
-            else:
-                query_parameters[PAGE_NUMBER_PARAM] = str(num)
-                url = _to_url(base_url, query_parameters)
-                link_string = '<{0}>; rel="{1}"'.format(url, rel)
-                header_links.append(link_string)
-                pagination_links[rel] = url
-        # If there are any required link headers, join them with
-        # commas and add them to the dictionary of headers to
-        # apply to the response.
-        if header_links:
-            joined = ','.join(link for link in header_links)
-            headers = {'Link': joined}
-            # headers = [('Link', link) for link in header_links]
-        else:
-            headers = {}
-        # TODO Move the creation of header links and pagination links to
-        # the PaginatedResults class.
-        return PaginatedResults(result, num_results=num_results,
-                                headers=headers,
-                                pagination_links=pagination_links)
 
     def _get_related_resource(self, resource_id, relation_name,
                               related_resource_id):
@@ -1521,6 +1572,7 @@ class API(APIBase):
             search_items = search(self.session, self.model, filters=filters,
                                   sort=sort, group_by=group_by)
         except ComparisonToNull as exception:
+            current_app.logger.exception(str(exception))
             return error_response(400, detail=str(exception))
         except Exception as exception:
             current_app.logger.exception(str(exception))
@@ -1546,13 +1598,15 @@ class API(APIBase):
                                             sort=sort, group_by=group_by,
                                             only=fields)
             except PaginationError as exception:
+                current_app.logger.exception(str(exception))
                 detail = exception.args[0]
                 return error_response(400, detail=detail)
             # Wrap the resulting object or list of objects under a `data` key.
-            result['data'] = paginated.results
+            result['data'] = paginated.items
             # Provide top-level links.
             result['links'].update(paginated.pagination_links)
-            headers = paginated.headers
+            link_header = ','.join(paginated.header_links)
+            headers = dict(Link=link_header)
             num_results = paginated.num_results
         # Otherwise, the result of the search should be a single resource.
         else:
@@ -1959,137 +2013,68 @@ class RelationshipAPI(APIBase):
 
         # Compute the result of the search on the model.
         try:
-            result = search_relationship(self.session, resource, relation,
-                                         filters=filters, sort=sort,
-                                         group_by=group_by)
+            search_items = search_relationship(self.session, resource,
+                                               relation, filters=filters,
+                                               sort=sort, group_by=group_by)
         except ComparisonToNull as exception:
+            current_app.logger.exception(str(exception))
             return error_response(400, detail=str(exception))
         except Exception as exception:
             current_app.logger.exception(str(exception))
             return error_response(400, detail='Unable to construct query')
 
+        # Prepare the dictionary that will contain the JSON API response.
+        result = {'links': {'self': url_for(self.model)},
+                  'jsonapi': {'version': JSONAPI_VERSION},
+                  'meta': {}}
+
+        # Add the primary data (and any necessary links) to the JSON API
+        # response object.
+        #
         # If the result of the search is a SQLAlchemy query object, we need to
         # return a collection.
-        pagination_links = dict()
-        to_string = self.serialize_relationship
-        related_model = get_related_model(self.model, relation)
-        related_type = collection_name(related_model)
         if not single:
-            # Determine the client's pagination request: page size and number.
-            page_size = int(request.args.get(PAGE_SIZE_PARAM, self.page_size))
-            if page_size < 0:
-                detail = 'Page size must be a positive integer'
+            try:
+                paginated = self._paginated(search_items, filters=filters,
+                                            sort=sort, group_by=group_by,
+                                            relationship=True)
+            except PaginationError as exception:
+                current_app.logger.exception(str(exception))
+                detail = exception.args[0]
                 return error_response(400, detail=detail)
-            if page_size > self.max_page_size:
-                detail = "Page size must not exceed the server's maximum: {0}"
-                detail = detail.format(self.max_page_size)
-                return error_response(400, detail=detail)
-            # If the page size is 0, just return everything.
-            if page_size == 0:
-                num_results = count(self.session, result)
-                headers = dict()
-                result = [to_string(instance, _type=related_type)
-                          for instance in result]
-            # Otherwise, the page size is greater than zero, so paginate the
-            # response.
-            else:
-                page_number = int(request.args.get(PAGE_NUMBER_PARAM, 1))
-                if page_number < 0:
-                    detail = 'Page number must be a positive integer'
-                    return error_response(400, detail=detail)
-                # If the query is really a Flask-SQLAlchemy query, we can use
-                # its built-in pagination.
-                if hasattr(result, 'paginate'):
-                    pagination = result.paginate(page_number, page_size,
-                                                 error_out=False)
-                    num_results = pagination.total
-                    first = 1
-                    last = pagination.pages
-                    prev = pagination.prev_num
-                    next_ = pagination.next_num
-                    result = [to_string(instance, _type=related_type)
-                              for instance in pagination.items]
-                else:
-                    num_results = count(self.session, result)
-                    first = 1
-                    # There will be no division-by-zero error here because we
-                    # have already checked that page size is not equal to zero
-                    # above.
-                    last = int(math.ceil(num_results / page_size))
-                    prev = page_number - 1 if page_number > 1 else None
-                    next_ = page_number + 1 if page_number < last else None
-                    offset = (page_number - 1) * page_size
-                    result = result.limit(page_size).offset(offset)
-                    result = [to_string(instance, _type=related_type)
-                              for instance in result]
-                # Create the pagination link URLs
-                #
-                # Need to account for filters, sort, and group_by, in addition
-                # to pagination links, so we collect those query parameters
-                # here, if they exist.
-                query_parameters = {}
-                if filters:
-                    query_parameters[FILTER_PARAM] = \
-                        _filters_to_string(filters)
-                if sort:
-                    query_parameters[SORT_PARAM] = _sort_to_string(sort)
-                if group_by:
-                    query_parameters[GROUP_PARAM] = _group_to_string(group_by)
-                # The page size is independent of the link type (first, last,
-                # next, or prev).
-                query_parameters[PAGE_SIZE_PARAM] = str(page_size)
-                base_url = request.base_url
-                # Maintain a list of URLs that should appear in a Link
-                # header. If a link does not exist (for example, if there is no
-                # previous page), then that link URL will not appear in this
-                # list.
-                header_links = []
-                for rel, num in (('first', first), ('last', last),
-                                 ('prev', prev), ('next', next_)):
-                    # If the link doesn't exist (for example, if there is no
-                    # previous page), then add ``None`` to the pagination links
-                    # but don't add a link URL to the headers.
-                    if num is None:
-                        pagination_links[rel] = None
-                    else:
-                        query_parameters[PAGE_NUMBER_PARAM] = str(num)
-                        url = _to_url(base_url, query_parameters)
-                        link_string = '<{0}>; rel="{1}"'.format(url, rel)
-                        header_links.append(link_string)
-                        pagination_links[rel] = url
-                headers = (dict(Link=','.join(link for link in header_links))
-                           if header_links else {})
-                # headers = [('Link', link) for link in header_links]
+            # Wrap the resulting object or list of objects under a `data` key.
+            result['data'] = paginated.items
+            # Provide top-level links.
+            result['links'].update(paginated.pagination_links)
+            link_header = ','.join(paginated.header_links)
+            headers = dict(Link=link_header)
+            num_results = paginated.num_results
         # Otherwise, the result of the search should be a single resource.
         else:
             try:
-                result = result.one()
+                data = search_items.one()
             except NoResultFound:
                 return error_response(404, detail='No result found')
             except MultipleResultsFound:
                 return error_response(404, detail='Multiple results found')
-            # (This is not a pretty solution.) Set number of results to
-            # ``None`` to indicate that the returned JSON metadata should not
-            # include a ``total`` key.
-            num_results = None
-            primary_key = self.primary_key or primary_key_name(result)
-            result = to_string(result, _type=related_type)
+            # Wrap the resulting resource under a `data` key.
+            related_model = get_related_model(self.model, relation)
+            related_type = collection_name(related_model)
+            result['data'] = \
+                self.serialize_relationship(data, _type=related_type)
+            primary_key = self.primary_key or primary_key_name(data)
+            pk_value = result['data'][primary_key]
             # The URL at which a client can access the instance matching this
             # search query.
-            url = '{0}/{1}'.format(request.base_url, result[primary_key])
+            url = '{0}/{1}'.format(request.base_url, pk_value)
             headers = dict(Location=url)
-
-        # Wrap the resulting object or list of objects under a `data` key.
-        result = dict(data=result)
+            num_results = 1
         # Provide top-level links.
-        #
-        # TODO use a defaultdict for result, then cast it to a dict at the end.
-        if 'links' not in result:
-            result['links'] = dict()
-        result['links']['self'] = url_for(self.model)
-        result['links'].update(pagination_links)
-        # Add the supported JSON API version.
-        result['jsonapi'] = dict(version=JSONAPI_VERSION)
+        resource_id = primary_key_value(resource)
+        result['links']['self'] = url_for(self.model, resource_id,
+                                          relation, relationship=True)
+        result['links']['related'] = url_for(self.model, resource_id,
+                                             relation)
 
         # Determine the fields to include for each type of object.
         fields = parse_sparse_fields()
@@ -2115,13 +2100,16 @@ class RelationshipAPI(APIBase):
         for postprocessor in self.postprocessors['GET_RELATIONSHIP']:
             postprocessor(result=result, filters=filters, sort=sort,
                           single=single)
-        status = 200
+        # Add the metadata to the JSON API response object.
+        #
         # HACK Provide the headers directly in the result dictionary, so that
         # the :func:`jsonpify` function has access to them. See the note there
         # for more information. They don't really need to be under the ``meta``
         # key, that's just for semantic consistency.
-        result['meta'] = {_HEADERS: headers, _STATUS: status}
-        result['meta']['total'] = 1 if num_results is None else num_results
+        status = 200
+        result['meta'][_HEADERS] = headers
+        result['meta'][_STATUS] = status
+        result['meta']['total'] = num_results
         return result, status, headers
 
     def _get_single(self, resource, relation_name):
