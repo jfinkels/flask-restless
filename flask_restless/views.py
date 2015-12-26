@@ -238,9 +238,9 @@ def catch_processing_exceptions(func):
         try:
             return func(*args, **kw)
         except ProcessingException as exception:
-            current_app.logger.exception(str(exception))
             detail = exception.description or str(exception)
-            return error_response(exception.code, detail=detail)
+            status = exception.code
+            return error_response(status, cause=exception, detail=detail)
     return new_func
 
 
@@ -376,10 +376,10 @@ def catch_integrity_errors(session):
             # TODO should `sqlalchemy.exc.InvalidRequestError`s also be caught?
             except ROLLBACK_ERRORS as exception:
                 session.rollback()
-                current_app.logger.exception(str(exception))
                 # Special status code for conflicting instances: 409 Conflict
                 status = 409 if is_conflict(exception) else 400
-                return dict(message=type(exception).__name__), status
+                detail = str(exception)
+                return error_response(status, cause=exception, detail=detail)
         return wrapped
     return decorator
 
@@ -545,9 +545,7 @@ def error(id=None, href=None, status=None, code=None, title=None,
                 detail=detail, links=links, paths=paths)
 
 
-# TODO Allow an exception keyword argument and use
-# `current_app.logger.exception(str(exc))`
-def error_response(status, **kw):
+def error_response(status, cause=None, **kw):
     """Returns a correctly formatted error response with the specified
     parameters.
 
@@ -558,6 +556,8 @@ def error_response(status, **kw):
     For more information, see :func:`errors_response`.
 
     """
+    if cause is not None:
+        current_app.logger.exception(str(cause))
     return errors_response(status, [error(**kw)])
 
 
@@ -866,22 +866,19 @@ class FunctionAPI(ModelView):
         try:
             data = json.loads(str(functions)) or []
         except (TypeError, ValueError, OverflowError) as exception:
-            current_app.logger.exception(str(exception))
             detail = 'Unable to decode JSON in `functions` query parameter'
-            return error_response(400, detail=detail)
+            return error_response(400, cause=exception, detail=detail)
         try:
             result = evaluate_functions(self.session, self.model, data)
         except AttributeError as exception:
-            current_app.logger.exception(str(exception))
             detail = 'No such field "{0}"'.format(exception.field)
-            return error_response(400, detail=detail)
+            return error_response(400, cause=exception, detail=detail)
         except KeyError as exception:
-            current_app.logger.exception(str(exception))
-            return error_response(400, detail=str(exception))
+            detail = str(exception)
+            return error_response(400, cause=exception, detail=detail)
         except OperationalError as exception:
-            current_app.logger.exception(str(exception))
             detail = 'No such function "{0}"'.format(exception.function)
-            return error_response(400, detail=detail)
+            return error_response(400, cause=exception, detail=detail)
         return dict(data=result)
 
 
@@ -995,11 +992,13 @@ class APIBase(ModelView):
         self.session.rollback()
         errors = extract_error_messages(exception)
         if not errors:
-            return error_response(400, title='Validation error')
+            title = 'Validation error'
+            return error_response(400, cause=exception, title=title)
         if isinstance(errors, dict):
             errors = [error(title='Validation error',
                             detail='{0}: {1}'.format(field, detail))
                       for field, detail in errors.items()]
+        current_app.logger.exception(str(exception))
         return errors_response(400, errors)
 
     def _collection_parameters(self):
@@ -1182,9 +1181,8 @@ class APIBase(ModelView):
             try:
                 data = serialize(resource, only=fields_for_resource)
             except SerializationException as exception:
-                current_app.logger.exception(str(exception))
                 detail = 'Failed to serialize resource of type {0}'.format(type_)
-                return error_response(400, detail=detail)
+                return error_response(400, cause=exception, detail=detail)
         # Prepare the dictionary that will contain the JSON API response.
         result = {'jsonapi': {'version': JSONAPI_VERSION}, 'meta': {},
                   'links': {}, 'data': data}
@@ -1223,10 +1221,9 @@ class APIBase(ModelView):
                 serialized = self.serialize(included_resource,
                                             only=fields_for_this)
             except SerializationException as exception:
-                current_app.logger.exception(str(exception))
                 detail = 'Failed to serialize resource of type {0}'
                 detail = detail.format(type_)
-                return error_response(400, detail=detail)
+                return error_response(400, cause=exception, detail=detail)
             included.append(serialized)
         if included:
             result['included'] = included
@@ -1255,11 +1252,11 @@ class APIBase(ModelView):
             search_items = search_(filters=filters, sort=sort,
                                    group_by=group_by)
         except ComparisonToNull as exception:
-            current_app.logger.exception(str(exception))
-            return error_response(400, detail=str(exception))
+            detail = str(exception)
+            return error_response(400, cause=exception, detail=detail)
         except Exception as exception:
-            current_app.logger.exception(str(exception))
-            return error_response(400, detail='Unable to construct query')
+            detail = 'Unable to construct query'
+            return error_response(400, cause=exception, detail=detail)
 
         # Determine the client's request for which fields to include for this
         # type of object.
@@ -1282,13 +1279,11 @@ class APIBase(ModelView):
                                             sort=sort, group_by=group_by,
                                             only=fields_for_this)
             except SerializationException as exception:
-                current_app.logger.exception(str(exception))
                 detail = 'Failed to deserialize object'
-                return error_response(400, detail=detail)
+                return error_response(400, cause=exception, detail=detail)
             except PaginationError as exception:
-                current_app.logger.exception(str(exception))
                 detail = exception.args[0]
-                return error_response(400, detail=detail)
+                return error_response(400, cause=exception, detail=detail)
             # Wrap the resulting object or list of objects under a `data` key.
             result['data'] = paginated.items
             # Provide top-level links.
@@ -1301,18 +1296,17 @@ class APIBase(ModelView):
             try:
                 data = search_items.one()
             except NoResultFound as exception:
-                current_app.logger.exception(str(exception))
-                return error_response(404, detail='No result found')
+                detail = 'No result found'
+                return error_response(404, cause=exception, detail=detail)
             except MultipleResultsFound as exception:
-                current_app.logger.exception(str(exception))
-                return error_response(404, detail='Multiple results found')
+                detail = 'Multiple results found'
+                return error_response(404, cause=exception, detail=detail)
             # Wrap the resulting resource under a `data` key.
             try:
                 result['data'] = self.serialize(data, only=fields_for_this)
             except SerializationException as exception:
-                current_app.logger.exception(str(exception))
                 detail = 'Failed to serialize resource'
-                return error_response(400, detail=detail)
+                return error_response(400, cause=exception, detail=detail)
             primary_key = self.primary_key or primary_key_name(data)
             pk_value = result['data'][primary_key]
             # The URL at which a client can access the instance matching this
@@ -1336,10 +1330,9 @@ class APIBase(ModelView):
                 serialized = self.serialize(included_resource,
                                             only=fields_for_this)
             except SerializationException as exception:
-                current_app.logger.exception(str(exception))
                 detail = 'Failed to serialize resource of type {0}'
                 detail = detail.format(type_)
-                return error_response(400, detail=detail)
+                return error_response(400, cause=exception, detail=detail)
             included.append(serialized)
         if included:
             result['included'] = included
@@ -1584,17 +1577,14 @@ class API(APIBase):
         try:
             filters, sort, group_by, single = self._collection_parameters()
         except (TypeError, ValueError, OverflowError) as exception:
-            current_app.logger.exception(str(exception))
             detail = 'Unable to decode filter objects as JSON list'
-            return error_response(400, detail=detail)
+            return error_response(400, cause=exception, detail=detail)
         except SortKeyError as exception:
-            current_app.logger.exception(str(exception))
             detail = 'Each sort parameter must begin with "+" or "-"'
-            return error_response(400, detail=detail)
+            return error_response(400, cause=exception, detail=detail)
         except SingleKeyError as exception:
-            current_app.logger.exception(str(exception))
             detail = 'Invalid format for filter[single] query parameter'
-            return error_response(400, detail=detail)
+            return error_response(400, cause=exception, detail=detail)
 
         for preprocessor in self.preprocessors['GET_RELATION']:
             temp_result = preprocessor(resource_id=resource_id,
@@ -1691,17 +1681,14 @@ class API(APIBase):
         try:
             filters, sort, group_by, single = self._collection_parameters()
         except (TypeError, ValueError, OverflowError) as exception:
-            current_app.logger.exception(str(exception))
             detail = 'Unable to decode filter objects as JSON list'
-            return error_response(400, detail=detail)
+            return error_response(400, cause=exception, detail=detail)
         except SortKeyError as exception:
-            current_app.logger.exception(str(exception))
             detail = 'Each sort parameter must begin with "+" or "-"'
-            return error_response(400, detail=detail)
+            return error_response(400, cause=exception, detail=detail)
         except SingleKeyError as exception:
-            current_app.logger.exception(str(exception))
             detail = 'Invalid format for filter[single] query parameter'
-            return error_response(400, detail=detail)
+            return error_response(400, cause=exception, detail=detail)
 
         for preprocessor in self.preprocessors['GET_COLLECTION']:
             preprocessor(filters=filters, sort=sort, group_by=group_by,
@@ -1784,8 +1771,8 @@ class API(APIBase):
         try:
             data = json.loads(request.get_data()) or {}
         except (BadRequest, TypeError, ValueError, OverflowError) as exception:
-            current_app.logger.exception(str(exception))
-            return error_response(400, detail='Unable to decode data')
+            detail = 'Unable to decode data'
+            return error_response(400, cause=exception, detail=detail)
         # apply any preprocessors to the POST arguments
         for preprocessor in self.preprocessors['POST']:
             preprocessor(data=data)
@@ -1811,9 +1798,8 @@ class API(APIBase):
             self.session.add(instance)
             self.session.commit()
         except DeserializationException as exception:
-            current_app.logger.exception(str(exception))
             detail = 'Failed to deserialize object'
-            return error_response(400, detail=detail)
+            return error_response(400, cause=exception, detail=detail)
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
         fields = parse_sparse_fields()
@@ -1823,9 +1809,8 @@ class API(APIBase):
         try:
             result = self.serialize(instance, only=fields_for_this)
         except SerializationException as exception:
-            current_app.logger.exception(str(exception))
             detail = 'Failed to serialize object'
-            return error_response(400, detail=detail)
+            return error_response(400, cause=exception, detail=detail)
         # Determine the value of the primary key for this instance and
         # encode URL-encode it (in case it is a Unicode string).
         primary_key = primary_key_value(instance, as_string=True)
@@ -1852,10 +1837,9 @@ class API(APIBase):
                 serialized = self.serialize(included_resource,
                                             only=fields_for_this)
             except SerializationException as exception:
-                current_app.logger.exception(str(exception))
                 detail = 'Failed to serialize resource of type {0}'
                 detail = detail.format(type_)
-                return error_response(400, detail=detail)
+                return error_response(400, cause=exception, detail=detail)
             included.append(serialized)
         if included:
             result['included'] = included
@@ -1948,7 +1932,6 @@ class API(APIBase):
                 # object.
                 setattr(instance, linkname, newvalue)
             except self.validation_exceptions as exception:
-                current_app.logger.exception(str(exception))
                 return self._handle_validation_exception(exception)
 
         # Now consider only the attributes to update.
@@ -1971,7 +1954,6 @@ class API(APIBase):
                 num_modified += 1
             self.session.commit()
         except self.validation_exceptions as exception:
-            current_app.logger.exception(str(exception))
             return self._handle_validation_exception(exception)
 
     def patch(self, resource_id):
@@ -1987,8 +1969,8 @@ class API(APIBase):
             data = json.loads(request.get_data()) or {}
         except (BadRequest, TypeError, ValueError, OverflowError) as exception:
             # this also happens when request.data is empty
-            current_app.logger.exception(str(exception))
-            return error_response(400, detail='Unable to decode data')
+            detail = 'Unable to decode data'
+            return error_response(400, cause=exception, detail=detail)
         for preprocessor in self.preprocessors['PATCH_RESOURCE']:
             temp_result = preprocessor(instance_id=resource_id, data=data)
             # See the note under the preprocessor in the get() method.
@@ -2107,21 +2089,19 @@ class RelationshipAPI(APIBase):
             try:
                 filters, sort, group_by, single = self._collection_parameters()
             except (TypeError, ValueError, OverflowError) as exception:
-                current_app.logger.exception(str(exception))
                 detail = 'Unable to decode filter objects as JSON list'
-                return error_response(400, detail=detail)
+                return error_response(400, cause=exception, detail=detail)
             except SortKeyError as exception:
-                current_app.logger.exception(str(exception))
                 detail = 'Each sort parameter must begin with "+" or "-"'
-                return error_response(400, detail=detail)
+                return error_response(400, cause=exception, detail=detail)
             except SingleKeyError as exception:
-                current_app.logger.exception(str(exception))
                 detail = 'Invalid format for filter[single] query parameter'
-                return error_response(400, detail=detail)
+                return error_response(400, cause=exception, detail=detail)
             return self._get_collection_helper(resource=primary_resource,
                                                relation_name=relation_name,
                                                filters=filters, sort=sort,
-                                               group_by=group_by, single=single)
+                                               group_by=group_by,
+                                               single=single)
         resource = getattr(primary_resource, relation_name)
         return self._get_resource_helper(resource,
                                          primary_resource=primary_resource,
@@ -2139,8 +2119,8 @@ class RelationshipAPI(APIBase):
             data = json.loads(request.get_data()) or {}
         except (BadRequest, TypeError, ValueError, OverflowError) as exception:
             # this also happens when request.data is empty
-            current_app.logger.exception(str(exception))
-            return error_response(400, detail='Unable to decode data')
+            detail = 'Unable to decode data'
+            return error_response(400, cause=exception, detail=detail)
         for preprocessor in self.preprocessors['POST_RELATIONSHIP']:
             temp_result = preprocessor(instance_id=resource_id,
                                        relation_name=relation_name, data=data)
@@ -2190,7 +2170,6 @@ class RelationshipAPI(APIBase):
                 try:
                     related_value.append(new_value)
                 except self.validation_exceptions as exception:
-                    current_app.logger.exception(str(exception))
                     return self._handle_validation_exception(exception)
         # TODO do we need to commit the session here?
         #
@@ -2218,8 +2197,8 @@ class RelationshipAPI(APIBase):
             data = json.loads(request.get_data()) or {}
         except (BadRequest, TypeError, ValueError, OverflowError) as exception:
             # this also happens when request.data is empty
-            current_app.logger.exception(str(exception))
-            return error_response(400, detail='Unable to decode data')
+            detail = 'Unable to decode data'
+            return error_response(400, cause=exception, detail=detail)
         for preprocessor in self.preprocessors['PATCH_RELATIONSHIP']:
             temp_result = preprocessor(instance_id=resource_id,
                                        relation_name=relation_name, data=data)
@@ -2314,7 +2293,6 @@ class RelationshipAPI(APIBase):
             try:
                 setattr(instance, relation_name, replacement)
             except self.validation_exceptions as exception:
-                current_app.logger.exception(str(exception))
                 return self._handle_validation_exception(exception)
         # TODO do we need to commit the session here?
         #
@@ -2344,8 +2322,8 @@ class RelationshipAPI(APIBase):
             data = json.loads(request.get_data()) or {}
         except (BadRequest, TypeError, ValueError, OverflowError) as exception:
             # this also happens when request.data is empty
-            current_app.logger.exception(str(exception))
-            return error_response(400, detail='Unable to decode data')
+            detail = 'Unable to decode data'
+            return error_response(400, cause=exception, detail=detail)
         was_deleted = False
         for preprocessor in self.preprocessors['DELETE_RELATIONSHIP']:
             temp_result = preprocessor(instance_id=resource_id,
