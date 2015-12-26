@@ -196,7 +196,8 @@ class TestFetchCollection(ManagerTestBase):
         person3 = self.Person(id=3, name='bar')
         self.session.add_all([person1, person2, person3])
         self.session.commit()
-        response = self.app.get('/api/person?group=name')
+        query_string = {'group': 'name'}
+        response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
         people = document['data']
         assert ['bar', 'foo'] == sorted(person['attributes']['name']
@@ -461,6 +462,7 @@ class TestFetchRelation(ManagerTestBase):
         class Article(self.Base):
             __tablename__ = 'article'
             id = Column(Integer, primary_key=True)
+            title = Column(Unicode)
             author_id = Column(Integer, ForeignKey('person.id'))
             author = relationship('Person', backref=backref('articles'))
 
@@ -514,7 +516,7 @@ class TestFetchRelation(ManagerTestBase):
 
     def test_serialization_exception_to_one(self):
         """Tests that exceptions are caught when a custom serialization method
-        raises an exception on a to-many relation.
+        raises an exception on a to-one relation.
 
         """
         person = self.Person(id=1)
@@ -554,6 +556,76 @@ class TestFetchRelation(ManagerTestBase):
         response = self.app.get('/api2/person/1/articles?include=author')
         assert response.status_code == 400
         # TODO check error message
+
+    def test_to_many_pagination(self):
+        """Tests that fetching a to-many relation obeys pagination.
+
+        For more information, see the `Pagination`_ section of the JSON
+        API specification.
+
+        .. _Pagination: http://jsonapi.org/format/#fetching-pagination
+
+        """
+        person = self.Person(id=1)
+        articles = [self.Article(id=i) for i in range(10)]
+        person.articles = articles
+        self.session.add(person)
+        self.session.add_all(articles)
+        self.session.commit()
+        params = {'page[number]': 3, 'page[size]': 2}
+        base_url = '/api/person/1/articles'
+        response = self.app.get(base_url, query_string=params)
+        document = loads(response.data)
+        articles = document['data']
+        assert all(article['type'] == 'article' for article in articles)
+        assert ['4', '5'] == sorted(article['id'] for article in articles)
+        pagination = document['links']
+        base_url = '{}?'.format(base_url)
+        assert base_url in pagination['first']
+        assert 'page[number]=1' in pagination['first']
+        assert base_url in pagination['last']
+        assert 'page[number]=5' in pagination['last']
+        assert base_url in pagination['prev']
+        assert 'page[number]=2' in pagination['prev']
+        assert base_url in pagination['next']
+        assert 'page[number]=4' in pagination['next']
+
+    def test_to_many_sorting(self):
+        """Tests for sorting a to-many relation."""
+        person = self.Person(id=1)
+        article1 = self.Article(id=1, title='b')
+        article2 = self.Article(id=2, title='c')
+        article3 = self.Article(id=3, title='a')
+        articles = [article1, article2, article3]
+        person.articles = articles
+        self.session.add(person)
+        self.session.add_all(articles)
+        self.session.commit()
+        params = {'sort': '-title'}
+        response = self.app.get('/api/person/1/articles', query_string=params)
+        document = loads(response.data)
+        articles = document['data']
+        assert ['c', 'b', 'a'] == [article['attributes']['title']
+                                   for article in articles]
+        assert ['2', '1', '3'] == [article['id'] for article in articles]
+
+    def test_to_many_grouping(self):
+        """Tests for grouping a to-many relation."""
+        person = self.Person(id=1)
+        article1 = self.Article(id=1, title='b')
+        article2 = self.Article(id=2, title='a')
+        article3 = self.Article(id=3, title='b')
+        articles = [article1, article2, article3]
+        person.articles = articles
+        self.session.add(person)
+        self.session.add_all(articles)
+        self.session.commit()
+        params = {'group': 'title'}
+        response = self.app.get('/api/person/1/articles', query_string=params)
+        document = loads(response.data)
+        articles = document['data']
+        assert ['a', 'b'] == sorted(article['attributes']['title']
+                                    for article in articles)
 
 
 class TestFetchRelatedResource(ManagerTestBase):
@@ -665,7 +737,6 @@ class TestFetchRelatedResource(ManagerTestBase):
         self.manager.create_api(self.Person, serializer=serializer,
                                 url_prefix='/api2')
         response = self.app.get('/api2/person/1/articles/1')
-        print(response.data)
         assert response.status_code == 400
         # TODO check error message
 

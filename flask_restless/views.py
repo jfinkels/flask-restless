@@ -34,6 +34,7 @@
 from __future__ import division
 
 from collections import defaultdict
+from functools import partial
 from functools import wraps
 from itertools import chain
 import math
@@ -343,7 +344,7 @@ def requires_json_api_mimetype(func):
         # any media type parameters.
         if extra:
             detail = ('Content-Type header must not have any media type'
-                      ' parameters but found {}'.format(extra))
+                      ' parameters but found {0}'.format(extra))
             return error_response(415, detail=detail)
         return func(*args, **kw)
     return new_func
@@ -544,6 +545,8 @@ def error(id=None, href=None, status=None, code=None, title=None,
                 detail=detail, links=links, paths=paths)
 
 
+# TODO Allow an exception keyword argument and use
+# `current_app.logger.exception(str(exc))`
 def error_response(status, **kw):
     """Returns a correctly formatted error response with the specified
     parameters.
@@ -1080,6 +1083,10 @@ class APIBase(ModelView):
         will be serialized as linkage objects instead of resources
         objects.
 
+        This method serializes the (correct page of) resources. As such,
+        it may raise :exc:`SerializationException` if there is a problem
+        serializing any of the resources.
+
         """
         if relationship:
             serialize = self.serialize_relationship
@@ -1265,6 +1272,185 @@ class API(APIBase):
         #: :ref:`clientids`.
         self.allow_client_generated_ids = allow_client_generated_ids
 
+    def _get_resource_helper(self, resource, primary_resource=None,
+                             relation_name=None, related_resource=False):
+        # Determine the fields to include for each type of object.
+        fields = parse_sparse_fields()
+        type_ = self.collection_name
+        fields_for_resource = fields.get(type_)
+        # Serialize the resource.
+        try:
+            data = self.serialize(resource, only=fields_for_resource)
+        except SerializationException as exception:
+            current_app.logger.exception(str(exception))
+            detail = 'Failed to serialize resource of type {0}'.format(type_)
+            return error_response(400, detail=detail)
+        # Prepare the dictionary that will contain the JSON API response.
+        is_relation = primary_resource is not None
+        is_related_resource = is_relation and related_resource
+        if is_related_resource:
+            resource_id = primary_key_value(primary_resource)
+            related_resource_id = primary_key_value(resource)
+            # `self.model` should match `get_model(primary_resource)`
+            self_link = url_for(self.model, resource_id, relation_name,
+                                related_resource_id)
+        elif is_relation:
+            resource_id = primary_key_value(primary_resource)
+            # `self.model` should match `get_model(primary_resource)`
+            self_link = url_for(self.model, resource_id, relation_name)
+        else:
+            self_link = url_for(self.model)
+        result = {'links': {'self': self_link},
+                  'jsonapi': {'version': JSONAPI_VERSION},
+                  'meta': {},
+                  'data': data}
+        # Determine resources to include.
+        to_include = self.resources_to_include(resource)
+        # Include any requested resources in a compound document.
+        included = []
+        for included_resource in to_include:
+            type_ = collection_name(get_model(included_resource))
+            fields_for_this = fields.get(type_)
+            try:
+                serialized = self.serialize(included_resource,
+                                            only=fields_for_this)
+            except SerializationException as exception:
+                current_app.logger.exception(str(exception))
+                detail = 'Failed to serialize resource of type {0}'
+                detail = detail.format(type_)
+                return error_response(400, detail=detail)
+            included.append(serialized)
+        if included:
+            result['included'] = included
+        # This method could have been called on either a request to
+        # fetch a single resource or a to-one relation.
+        if is_relation:
+            processor_type = 'GET_TO_ONE_RELATION'
+        else:
+            processor_type = 'GET_RESOURCE'
+        for postprocessor in self.postprocessors[processor_type]:
+            postprocessor(result=result)
+        return result, 200
+
+    def _get_collection_helper(self, resource=None, relation_name=None,
+                               filters=None, sort=None, group_by=None,
+                               single=False):
+        if (resource is None) ^ (relation_name is None):
+            raise ValueError('resource and relation must be both None or both'
+                             ' not None')
+        # Compute the result of the search on the model.
+        is_relation = resource is not None
+        if is_relation:
+            search_ = partial(search_relationship, self.session, resource,
+                              relation_name)
+        else:
+            search_ = partial(search, self.session, self.model)
+        try:
+            search_items = search_(filters=filters, sort=sort,
+                                   group_by=group_by)
+        except ComparisonToNull as exception:
+            current_app.logger.exception(str(exception))
+            return error_response(400, detail=str(exception))
+        except Exception as exception:
+            current_app.logger.exception(str(exception))
+            return error_response(400, detail='Unable to construct query')
+
+        # Determine the client's request for which fields to include for this
+        # type of object.
+        fields = parse_sparse_fields()
+        fields_for_this = fields.get(self.collection_name)
+
+        # Prepare the dictionary that will contain the JSON API response.
+        result = {'links': {'self': url_for(self.model)},
+                  'jsonapi': {'version': JSONAPI_VERSION},
+                  'meta': {}}
+
+        # Add the primary data (and any necessary links) to the JSON API
+        # response object.
+        #
+        # If the result of the search is a SQLAlchemy query object, we need to
+        # return a collection.
+        if not single:
+            try:
+                paginated = self._paginated(search_items, filters=filters,
+                                            sort=sort, group_by=group_by,
+                                            only=fields_for_this)
+            except SerializationException as exception:
+                current_app.logger.exception(str(exception))
+                detail = 'Failed to deserialize object'
+                return error_response(400, detail=detail)
+            except PaginationError as exception:
+                current_app.logger.exception(str(exception))
+                detail = exception.args[0]
+                return error_response(400, detail=detail)
+            # Wrap the resulting object or list of objects under a `data` key.
+            result['data'] = paginated.items
+            # Provide top-level links.
+            result['links'].update(paginated.pagination_links)
+            link_header = ','.join(paginated.header_links)
+            headers = dict(Link=link_header)
+            num_results = paginated.num_results
+        # Otherwise, the result of the search should be a single resource.
+        else:
+            try:
+                data = search_items.one()
+            except NoResultFound:
+                return error_response(404, detail='No result found')
+            except MultipleResultsFound:
+                return error_response(404, detail='Multiple results found')
+            # Wrap the resulting resource under a `data` key.
+            #
+            # TODO Add a try/except for SerializationException.
+            result['data'] = self.serialize(data, only=fields_for_this)
+            primary_key = self.primary_key or primary_key_name(data)
+            pk_value = result['data'][primary_key]
+            # The URL at which a client can access the instance matching this
+            # search query.
+            url = '{0}/{1}'.format(request.base_url, pk_value)
+            headers = dict(Location=url)
+            num_results = 1
+
+        # Determine the resources to include (in a compound document).
+        to_include = set(chain(self.resources_to_include(resource)
+                               for resource in search_items))
+        # Include any requested resources in a compound document.
+        included = []
+        for included_resource in to_include:
+            type_ = collection_name(get_model(included_resource))
+            fields_for_this = fields.get(type_)
+            try:
+                serialized = self.serialize(included_resource,
+                                            only=fields_for_this)
+            except SerializationException as exception:
+                current_app.logger.exception(str(exception))
+                detail = 'Failed to serialize resource of type {0}'
+                detail = detail.format(type_)
+                return error_response(400, detail=detail)
+            included.append(serialized)
+        if included:
+            result['included'] = included
+
+        # This method could have been called on either a request to
+        # fetch a single resource or a to-one relation.
+        if is_relation:
+            processor_type = 'GET_TO_MANY_RELATION'
+        else:
+            processor_type = 'GET_COLLECTION'
+        for postprocessor in self.postprocessors[processor_type]:
+            postprocessor(result=result, filters=filters, sort=sort,
+                          single=single)
+        # Add the metadata to the JSON API response object.
+        #
+        # HACK Provide the headers directly in the result dictionary, so that
+        # the :func:`jsonpify` function has access to them. See the note there
+        # for more information. They don't really need to be under the ``meta``
+        # key, that's just for semantic consistency.
+        status = 200
+        result['meta'][_HEADERS] = headers
+        result['meta'][_STATUS] = status
+        result['meta']['total'] = num_results
+        return result, status, headers
+
     def _get_related_resource(self, resource_id, relation_name,
                               related_resource_id):
         """Returns a response containing a resource related to a given
@@ -1281,7 +1467,7 @@ class API(APIBase):
             GET /<collection_name>/<resource_id>/<relation_name>/<related_resource_id>
 
         """
-        for preprocessor in self.preprocessors['GET_RESOURCE']:
+        for preprocessor in self.preprocessors['GET_RELATED_RESOURCE']:
             temp_result = preprocessor(resource_id=resource_id,
                                        relation_name=relation_name,
                                        related_resource_id=related_resource_id)
@@ -1301,14 +1487,14 @@ class API(APIBase):
                     resource_id, relation_name, related_resource_id = \
                         temp_result
         # Get the resource with the specified ID.
-        resource = get_by(self.session, self.model, resource_id,
-                          self.primary_key)
+        primary_resource = get_by(self.session, self.model, resource_id,
+                                  self.primary_key)
         # Return an error if there is no resource with the specified ID.
-        if resource is None:
+        if primary_resource is None:
             detail = 'No instance with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
         # Return an error if the relation is a to-one relation.
-        if not is_like_list(resource, relation_name):
+        if not is_like_list(primary_resource, relation_name):
             detail = ('Cannot access a related resource by ID from a to-one'
                       ' relation')
             return error_response(404, detail=detail)
@@ -1319,7 +1505,7 @@ class API(APIBase):
             detail = 'No such relation: {0}'.format(related_model)
             return error_response(404, detail=detail)
         # Get the related resources.
-        resources = getattr(resource, relation_name)
+        resources = getattr(primary_resource, relation_name)
         # Check if one of the related resources has the specified ID. (JSON API
         # expects all IDs to be strings.)
         primary_keys = (primary_key_value(i) for i in resources)
@@ -1329,43 +1515,11 @@ class API(APIBase):
             return error_response(404, detail=detail)
         # Get the related resource by its ID.
         resource = get_by(self.session, related_model, related_resource_id)
-        # Determine the fields to include for each type of resource.
-        fields = parse_sparse_fields()
-        type_ = collection_name(related_model)
-        fields_for_primary = fields.get(type_)
-        # Serialize the related resource.
-        try:
-            result = self.serialize(resource, only=fields_for_primary)
-        except SerializationException as exception:
-            # TODO refactor code for serialization error as its own function.
-            current_app.logger.exception(str(exception))
-            detail = 'Failed to serialize object of type {0}'.format(type_)
-            return error_response(400, detail=detail)
-        # Wrap the related resource in the `data` key.
-        result = dict(data=result)
-        # Determine the resources to include (in a compound document).
-        to_include = self.resources_to_include(resource)
-        # Include any requested resources in a compound document.
-        included = []
-        for included_resource in to_include:
-            type_ = collection_name(get_model(included_resource))
-            fields_for_this = fields.get(type_)
-            try:
-                serialized = self.serialize(included_resource,
-                                            only=fields_for_this)
-            except SerializationException as exception:
-                current_app.logger.exception(str(exception))
-                detail = 'Failed to serialize object of type {0}'.format(type_)
-                return error_response(400, detail=detail)
-            included.append(serialized)
-        if included:
-            result['included'] = included
-        for postprocessor in self.postprocessors['GET_RESOURCE']:
-            postprocessor(result=result)
-        return result, 200
+        return self._get_resource_helper(resource,
+                                         primary_resource=primary_resource,
+                                         relation_name=relation_name,
+                                         related_resource=True)
 
-    # TODO need to apply filtering, sorting, etc. to fetching a to-many
-    # relation...
     def _get_relation(self, resource_id, relation_name):
         """Returns a response containing a resource or a collection of
         resources related to a given resource.
@@ -1386,9 +1540,26 @@ class API(APIBase):
             GET /<collection_name>/<resource_id>/<relation_name>
 
         """
-        for preprocessor in self.preprocessors['GET_RESOURCE']:
+        try:
+            filters, sort, group_by, single = self._collection_parameters()
+        except (TypeError, ValueError, OverflowError) as exception:
+            current_app.logger.exception(str(exception))
+            detail = 'Unable to decode filter objects as JSON list'
+            return error_response(400, detail=detail)
+        except SortKeyError as exception:
+            current_app.logger.exception(str(exception))
+            detail = 'Each sort parameter must begin with "+" or "-"'
+            return error_response(400, detail=detail)
+        except SingleKeyError as exception:
+            current_app.logger.exception(str(exception))
+            detail = 'Invalid format for filter[single] query parameter'
+            return error_response(400, detail=detail)
+
+        for preprocessor in self.preprocessors['GET_RELATION']:
             temp_result = preprocessor(resource_id=resource_id,
-                                       relation_name=relation_name)
+                                       relation_name=relation_name,
+                                       filters=filters, sort=sort,
+                                       group_by=group_by, single=single)
             # Let the return value of the preprocessor be the new value of
             # instid, thereby allowing the preprocessor to effectively specify
             # which instance of the model to process on.
@@ -1401,10 +1572,10 @@ class API(APIBase):
                     resource_id = temp_result
                 else:
                     resource_id, relation_name = temp_result
+
         # Get the resource with the specified ID.
-        resource = get_by(self.session, self.model, resource_id,
-                          self.primary_key)
-        if resource is None:
+        primary_resource = get_by(self.session, self.model, resource_id, self.primary_key)
+        if primary_resource is None:
             detail = 'No resource with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
         # Get the model of the specified relation.
@@ -1413,55 +1584,16 @@ class API(APIBase):
             detail = 'No such relation: {0}'.format(related_model)
             return error_response(404, detail=detail)
         # Determine if this is a to-one or a to-many relation.
-        is_to_many = is_like_list(resource, relation_name)
-        # Get the resource or resources of the relation.
-        if is_to_many:
-            resources = getattr(resource, relation_name)
+        if is_like_list(primary_resource, relation_name):
+            return self._get_collection_helper(resource=primary_resource,
+                                               relation_name=relation_name,
+                                               filters=filters, sort=sort,
+                                               group_by=group_by, single=single)
         else:
-            resource = getattr(resource, relation_name)
-        # Get the fields to include for each type of object.
-        fields = parse_sparse_fields()
-        type_ = collection_name(related_model)
-        fields_for_related = fields.get(type_)
-        # Serialize the related resource or collection of resources.
-        try:
-            if is_to_many:
-                result = [self.serialize(inst, only=fields_for_related)
-                          for inst in resources]
-            else:
-                result = self.serialize(resource, only=fields_for_related)
-        except SerializationException as exception:
-            current_app.logger.exception(str(exception))
-            detail = 'Failed to serialize resource of type {0}'.format(type_)
-            return error_response(400, detail=detail)
-        # Wrap the related resource or collection of resources in the `data`
-        # key.
-        result = dict(data=result)
-        # Determine the resources to include (in a compound document).
-        if is_to_many:
-            to_include = set(chain(self.resources_to_include(resource)
-                                   for resource in resources))
-        else:
-            to_include = self.resources_to_include(resource)
-        # Include any requested resources in a compound document.
-        included = []
-        for included_resource in to_include:
-            type_ = collection_name(get_model(included_resource))
-            fields_for_this = fields.get(type_)
-            try:
-                serialized = self.serialize(included_resource,
-                                            only=fields_for_this)
-            except SerializationException as exception:
-                current_app.logger.exception(str(exception))
-                detail = 'Failed to serialize resource of type {0}'
-                detail = detail.format(type_)
-                return error_response(400, detail=detail)
-            included.append(serialized)
-        if included:
-            result['included'] = included
-        for postprocessor in self.postprocessors['GET_RESOURCE']:
-            postprocessor(result=result)
-        return result, 200
+            resource = getattr(primary_resource, relation_name)
+            return self._get_resource_helper(resource=resource,
+                                             primary_resource=primary_resource,
+                                             relation_name=relation_name)
 
     def _get_resource(self, resource_id):
         """Returns a response containing a single resource with the specified
@@ -1495,40 +1627,7 @@ class API(APIBase):
         if resource is None:
             detail = 'No resource with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
-        # Determine the fields to include for each type of object.
-        fields = parse_sparse_fields()
-        type_ = self.collection_name
-        fields_for_resource = fields.get(type_)
-        # Serialize the resource.
-        try:
-            result = self.serialize(resource, only=fields_for_resource)
-        except SerializationException as exception:
-            current_app.logger.exception(str(exception))
-            detail = 'Failed to serialize resource of type {0}'.format(type_)
-            return error_response(400, detail=detail)
-        # Wrap the resource in the `data` key.
-        result = dict(data=result)
-        # Determine resources to include.
-        to_include = self.resources_to_include(resource)
-        # Include any requested resources in a compound document.
-        included = []
-        for included_resource in to_include:
-            type_ = collection_name(get_model(included_resource))
-            fields_for_this = fields.get(type_)
-            try:
-                serialized = self.serialize(included_resource,
-                                            only=fields_for_this)
-            except SerializationException as exception:
-                current_app.logger.exception(str(exception))
-                detail = 'Failed to serialize resource of type {0}'
-                detail = detail.format(type_)
-                return error_response(400, detail=detail)
-            included.append(serialized)
-        if included:
-            result['included'] = included
-        for postprocessor in self.postprocessors['GET_RESOURCE']:
-            postprocessor(result=result)
-        return result, 200
+        return self._get_resource_helper(resource)
 
     # TODO This method is essentially exactly the same as the
     # corresponding method in the RelationshipAPI class. The only
@@ -1571,78 +1670,8 @@ class API(APIBase):
             preprocessor(filters=filters, sort=sort, group_by=group_by,
                          single=single)
 
-        # Compute the result of the search on the model.
-        try:
-            search_items = search(self.session, self.model, filters=filters,
-                                  sort=sort, group_by=group_by)
-        except ComparisonToNull as exception:
-            current_app.logger.exception(str(exception))
-            return error_response(400, detail=str(exception))
-        except Exception as exception:
-            current_app.logger.exception(str(exception))
-            return error_response(400, detail='Unable to construct query')
-
-        # Determine the client's request for which fields to include for this
-        # type of object.
-        fields = parse_sparse_fields(self.collection_name)
-
-        # Prepare the dictionary that will contain the JSON API response.
-        result = {'links': {'self': url_for(self.model)},
-                  'jsonapi': {'version': JSONAPI_VERSION},
-                  'meta': {}}
-
-        # Add the primary data (and any necessary links) to the JSON API
-        # response object.
-        #
-        # If the result of the search is a SQLAlchemy query object, we need to
-        # return a collection.
-        if not single:
-            try:
-                paginated = self._paginated(search_items, filters=filters,
-                                            sort=sort, group_by=group_by,
-                                            only=fields)
-            except PaginationError as exception:
-                current_app.logger.exception(str(exception))
-                detail = exception.args[0]
-                return error_response(400, detail=detail)
-            # Wrap the resulting object or list of objects under a `data` key.
-            result['data'] = paginated.items
-            # Provide top-level links.
-            result['links'].update(paginated.pagination_links)
-            link_header = ','.join(paginated.header_links)
-            headers = dict(Link=link_header)
-            num_results = paginated.num_results
-        # Otherwise, the result of the search should be a single resource.
-        else:
-            try:
-                data = search_items.one()
-            except NoResultFound:
-                return error_response(404, detail='No result found')
-            except MultipleResultsFound:
-                return error_response(404, detail='Multiple results found')
-            # Wrap the resulting resource under a `data` key.
-            result['data'] = self.serialize(data, only=fields)
-            primary_key = self.primary_key or primary_key_name(data)
-            pk_value = result['data'][primary_key]
-            # The URL at which a client can access the instance matching this
-            # search query.
-            url = '{0}/{1}'.format(request.base_url, pk_value)
-            headers = dict(Location=url)
-            num_results = 1
-        for postprocessor in self.postprocessors['GET_COLLECTION']:
-            postprocessor(result=result, filters=filters, sort=sort,
-                          single=single)
-        # Add the metadata to the JSON API response object.
-        #
-        # HACK Provide the headers directly in the result dictionary, so that
-        # the :func:`jsonpify` function has access to them. See the note there
-        # for more information. They don't really need to be under the ``meta``
-        # key, that's just for semantic consistency.
-        status = 200
-        result['meta'][_HEADERS] = headers
-        result['meta'][_STATUS] = status
-        result['meta']['total'] = num_results
-        return result, status, headers
+        return self._get_collection_helper(filters=filters, sort=sort,
+                                           group_by=group_by, single=single)
 
     def get(self, resource_id, relation_name, related_resource_id):
         """Returns the JSON document representing a resource or a collection of
@@ -2042,6 +2071,10 @@ class RelationshipAPI(APIBase):
                 paginated = self._paginated(search_items, filters=filters,
                                             sort=sort, group_by=group_by,
                                             relationship=True)
+            except SerializationException as exception:
+                current_app.logger.exception(str(exception))
+                detail = 'Failed to deserialize object'
+                return error_response(400, detail=detail)
             except PaginationError as exception:
                 current_app.logger.exception(str(exception))
                 detail = exception.args[0]

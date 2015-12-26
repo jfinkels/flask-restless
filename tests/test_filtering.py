@@ -547,6 +547,20 @@ class TestFiltering(SearchTestBase):
         assert response.status_code == 400
         # TODO check error message here
 
+    def test_to_many_relation(self):
+        """Tests for filtering a to-many relation."""
+        person = self.Person(id=1)
+        articles = [self.Article(id=i) for i in range(5)]
+        person.articles = articles
+        self.session.add(person)
+        self.session.add_all(articles)
+        self.session.commit()
+        filters = [dict(name='id', op='gt', val=2)]
+        response = self.search('/api/person/1/articles', filters)
+        document = loads(response.data)
+        articles = document['data']
+        assert ['3', '4'] == sorted(article['id'] for article in articles)
+
 
 class TestOperators(SearchTestBase):
 
