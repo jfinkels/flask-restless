@@ -1394,14 +1394,19 @@ class API(APIBase):
         else:
             try:
                 data = search_items.one()
-            except NoResultFound:
+            except NoResultFound as exception:
+                current_app.logger.exception(str(exception))
                 return error_response(404, detail='No result found')
-            except MultipleResultsFound:
+            except MultipleResultsFound as exception:
+                current_app.logger.exception(str(exception))
                 return error_response(404, detail='Multiple results found')
             # Wrap the resulting resource under a `data` key.
-            #
-            # TODO Add a try/except for SerializationException.
-            result['data'] = self.serialize(data, only=fields_for_this)
+            try:
+                result['data'] = self.serialize(data, only=fields_for_this)
+            except SerializationException as exception:
+                current_app.logger.exception(str(exception))
+                detail = 'Failed to serialize resource'
+                return error_response(400, detail=detail)
             primary_key = self.primary_key or primary_key_name(data)
             pk_value = result['data'][primary_key]
             # The URL at which a client can access the instance matching this
