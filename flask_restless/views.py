@@ -163,15 +163,6 @@ chain = chain.from_iterable
 register_mime('jsonapi', (CONTENT_TYPE, ))
 
 
-class SortKeyError(KeyError):
-    """Raised when attempting to parse the sort query parameter reveals that
-    the client did not correctly specify the sort order using ``'+'`` or
-    ``'-'``.
-
-    """
-    pass
-
-
 class SingleKeyError(KeyError):
     """Raised when attempting to parse the "single" query parameter reveals
     that the client did not correctly provide a Boolean value.
@@ -1148,8 +1139,6 @@ class APIBase(ModelView):
                     for value in sort.split(',')]
         else:
             sort = []
-        if any(order not in ('+', '-') for order, field in sort):
-            raise SortKeyError('sort parameter must begin with "+" or "-"')
 
         # Determine grouping options.
         group_by = request.args.get(GROUP_PARAM)
@@ -1618,9 +1607,6 @@ class API(APIBase):
         except (TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode filter objects as JSON list'
             return error_response(400, cause=exception, detail=detail)
-        except SortKeyError as exception:
-            detail = 'Each sort parameter must begin with "+" or "-"'
-            return error_response(400, cause=exception, detail=detail)
         except SingleKeyError as exception:
             detail = 'Invalid format for filter[single] query parameter'
             return error_response(400, cause=exception, detail=detail)
@@ -1723,9 +1709,6 @@ class API(APIBase):
             filters, sort, group_by, single = self._collection_parameters()
         except (TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode filter objects as JSON list'
-            return error_response(400, cause=exception, detail=detail)
-        except SortKeyError as exception:
-            detail = 'Each sort parameter must begin with "+" or "-"'
             return error_response(400, cause=exception, detail=detail)
         except SingleKeyError as exception:
             detail = 'Invalid format for filter[single] query parameter'
@@ -2126,9 +2109,6 @@ class RelationshipAPI(APIBase):
                 filters, sort, group_by, single = self._collection_parameters()
             except (TypeError, ValueError, OverflowError) as exception:
                 detail = 'Unable to decode filter objects as JSON list'
-                return error_response(400, cause=exception, detail=detail)
-            except SortKeyError as exception:
-                detail = 'Each sort parameter must begin with "+" or "-"'
                 return error_response(400, cause=exception, detail=detail)
             except SingleKeyError as exception:
                 detail = 'Invalid format for filter[single] query parameter'
