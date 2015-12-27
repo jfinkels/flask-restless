@@ -103,6 +103,17 @@ def skip(reason=None):
     return skip_unless(False, reason)
 
 
+def parse_version(version_string):
+    """Parses the Flask-SQLAlchemy version string into a pair of
+    integers.
+
+    """
+    # First, check for '-dev' suffix.
+    split_on_hyphen = version_string.split('-')
+    version_string = split_on_hyphen[0]
+    return tuple(int(n) for n in version_string.split('.'))
+
+
 def unregister_fsa_session_signals():
     """Unregisters Flask-SQLAlchemy session commit and rollback signal
     handlers.
@@ -117,11 +128,18 @@ def unregister_fsa_session_signals():
         AttributeError: 'Session' object has no attribute '_model_changes'
 
     """
+    # We don't need to do this if Flask-SQLAlchemy is not installed.
     if not has_flask_sqlalchemy:
+        return
+    # We don't need to do this if Flask-SQLAlchemy version 2.0 or
+    # greater is installed.
+    version = parse_version(flask_sqlalchemy.__version__)
+    if version >= (2, 0):
         return
     events = flask_sqlalchemy._SessionSignalEvents
     signal_names = ('before_commit', 'after_commit', 'after_rollback')
     for signal_name in signal_names:
+        # For Flask-SQLAlchemy version less than 3.0.
         signal = getattr(events, 'session_signal_{0}'.format(signal_name))
         event.remove(SessionBase, signal_name, signal)
 
@@ -197,6 +215,8 @@ class FlaskTestBase(object):
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
         app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
+        # This is to avoid a warning in earlier versions of Flask-SQLAlchemy.
+        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
         # This is required by `manager.url_for()` in order to construct
         # absolute URLs.
         app.config['SERVER_NAME'] = 'localhost'
