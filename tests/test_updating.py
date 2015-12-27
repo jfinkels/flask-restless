@@ -270,8 +270,8 @@ class TestUpdating(ManagerTestBase):
         after this rollback.
 
         """
-        person1 = self.Person(id=1, name='foo')
-        person2 = self.Person(id=2, name='bar')
+        person1 = self.Person(id=1, name=u'foo')
+        person2 = self.Person(id=2, name=u'bar')
         self.session.add_all([person1, person2])
         self.session.commit()
         data = {'data':
@@ -388,7 +388,7 @@ class TestUpdating(ManagerTestBase):
         data = {'data':
                     {'type': 'people',
                      'id': '1',
-                     'attributes': {'name': 'foo'}
+                     'attributes': {'name': u'foo'}
                      }
                 }
         response = self.app.patch('/api/people/1', data=dumps(data))
@@ -405,7 +405,7 @@ class TestUpdating(ManagerTestBase):
         data = {'data':
                     {'type': 'person',
                      'id': '1',
-                     'attributes': {'name': 'foo'}
+                     'attributes': {'name': u'foo'}
                      }
                 }
         response = self.app.patch('/api/person/1', data=dumps(data))
@@ -414,7 +414,7 @@ class TestUpdating(ManagerTestBase):
         data = {'data':
                     {'type': 'person',
                      'id': '1',
-                     'attributes': {'name': 'bar'}
+                     'attributes': {'name': u'bar'}
                      }
                 }
         response = self.app.patch('/api2/person/1', data=dumps(data))
@@ -589,12 +589,12 @@ class TestUpdating(ManagerTestBase):
         resource type yields an error.
 
         """
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         self.session.add(person)
         self.session.commit()
         data = {'data':
                     {'id': '1',
-                     'attributes': {'name': 'bar'}
+                     'attributes': {'name': u'bar'}
                      }
                 }
         response = self.app.patch('/api/person/1', data=dumps(data))
@@ -607,12 +607,12 @@ class TestUpdating(ManagerTestBase):
         yields an error.
 
         """
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         self.session.add(person)
         self.session.commit()
         data = {'data':
                     {'type': 'person',
-                     'attributes': {'name': 'bar'}
+                     'attributes': {'name': u'bar'}
                      }
                 }
         response = self.app.patch('/api/person/1', data=dumps(data))
@@ -744,7 +744,7 @@ class TestProcessors(ManagerTestBase):
         data = {'data':
                     {'id': '1',
                      'type': 'person',
-                     'attributes': {'name': 'foo'}
+                     'attributes': {'name': u'foo'}
                      }
                 }
         response = self.app.patch('/api/person/0', data=dumps(data))
@@ -756,7 +756,7 @@ class TestProcessors(ManagerTestBase):
         when updating a single resource.
 
         """
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         self.session.add(person)
         self.session.commit()
 
@@ -769,7 +769,7 @@ class TestProcessors(ManagerTestBase):
         data = {'data':
                     {'id': '1',
                      'type': 'person',
-                     'attributes': {'name': 'bar'}
+                     'attributes': {'name': u'bar'}
                      }
                 }
         response = self.app.patch('/api/person/1', data=dumps(data))
@@ -786,7 +786,7 @@ class TestProcessors(ManagerTestBase):
         preprocessor function.
 
         """
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         self.session.add(person)
         self.session.commit()
 
@@ -796,7 +796,7 @@ class TestProcessors(ManagerTestBase):
 
             """
             if data is not None:
-                data['data']['attributes']['name'] = 'bar'
+                data['data']['attributes']['name'] = u'bar'
 
         preprocessors = dict(PATCH_RESOURCE=[set_name])
         self.manager.create_api(self.Person, methods=['PATCH'],
@@ -804,7 +804,7 @@ class TestProcessors(ManagerTestBase):
         data = {'data':
                     {'id': '1',
                      'type': 'person',
-                     'attributes': {'name': 'baz'}
+                     'attributes': {'name': u'baz'}
                      }
                 }
         response = self.app.patch('/api/person/1', data=dumps(data))
@@ -815,7 +815,7 @@ class TestProcessors(ManagerTestBase):
         """Tests that a request to update a resource invokes a postprocessor.
 
         """
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         self.session.add(person)
         self.session.commit()
 
@@ -830,7 +830,7 @@ class TestProcessors(ManagerTestBase):
         data = {'data':
                     {'id': '1',
                      'type': 'person',
-                     'attributes': {'name': 'bar'}
+                     'attributes': {'name': u'bar'}
                      }
                 }
         response = self.app.patch('/api/person/1', data=dumps(data))
@@ -1066,13 +1066,13 @@ class TestFlaskSqlalchemy(FlaskTestBase):
 
     def test_create(self):
         """Tests for creating a resource."""
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         self.session.add(person)
         self.session.commit()
         data = {'data':
                     {'id': '1',
                      'type': 'person',
-                     'attributes': {'name': 'bar'}
+                     'attributes': {'name': u'bar'}
                      }
                 }
         response = self.app.patch('/api/person/1', data=dumps(data))

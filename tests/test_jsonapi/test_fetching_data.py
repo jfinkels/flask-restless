@@ -460,7 +460,7 @@ class TestInclusion(ManagerTestBase):
         .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
         """
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         article1 = self.Article(id=1)
         article2 = self.Article(id=2)
         comment = self.Comment()
@@ -488,7 +488,7 @@ class TestInclusion(ManagerTestBase):
         .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
         """
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         article = self.Article(id=2)
         comment = self.Comment(id=3)
         person.articles = [article]
@@ -681,7 +681,7 @@ class TestSparseFieldsets(ManagerTestBase):
         .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
 
         """
-        person = self.Person(id=1, name='foo', age=99)
+        person = self.Person(id=1, name=u'foo', age=99)
         self.session.add(person)
         self.session.commit()
         query_string = {'fields[person]': 'id,name'}
@@ -703,7 +703,7 @@ class TestSparseFieldsets(ManagerTestBase):
         .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
 
         """
-        person = self.Person(id=1, name='foo', age=99)
+        person = self.Person(id=1, name=u'foo', age=99)
         self.session.add(person)
         self.session.commit()
         query_string = {'fields[person]': 'id'}
@@ -723,8 +723,8 @@ class TestSparseFieldsets(ManagerTestBase):
         .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
 
         """
-        person1 = self.Person(id=1, name='foo', age=99)
-        person2 = self.Person(id=2, name='bar', age=80)
+        person1 = self.Person(id=1, name=u'foo', age=99)
+        person2 = self.Person(id=2, name=u'bar', age=80)
         self.session.add_all([person1, person2])
         self.session.commit()
         query_string = {'fields[person]': 'id,name'}
@@ -744,8 +744,8 @@ class TestSparseFieldsets(ManagerTestBase):
         .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
 
         """
-        article = self.Article(id=1, title='bar')
-        person = self.Person(id=1, name='foo', age=99, articles=[article])
+        article = self.Article(id=1, title=u'bar')
+        person = self.Person(id=1, name=u'foo', age=99, articles=[article])
         self.session.add_all([person, article])
         self.session.commit()
         # Person objects should only have ID and name, while article objects
@@ -808,9 +808,9 @@ class TestSorting(ManagerTestBase):
         .. _Sorting: http://jsonapi.org/format/#fetching-sorting
 
         """
-        person1 = self.Person(name='foo', age=20)
-        person2 = self.Person(name='bar', age=10)
-        person3 = self.Person(name='baz', age=30)
+        person1 = self.Person(name=u'foo', age=20)
+        person2 = self.Person(name=u'bar', age=10)
+        person3 = self.Person(name=u'baz', age=30)
         self.session.add_all([person1, person2, person3])
         self.session.commit()
         query_string = {'sort': 'age'}
@@ -830,9 +830,9 @@ class TestSorting(ManagerTestBase):
         .. _Sorting: http://jsonapi.org/format/#fetching-sorting
 
         """
-        person1 = self.Person(name='foo', age=20)
-        person2 = self.Person(name='bar', age=10)
-        person3 = self.Person(name='baz', age=30)
+        person1 = self.Person(name=u'foo', age=20)
+        person2 = self.Person(name=u'bar', age=10)
+        person3 = self.Person(name=u'baz', age=30)
         self.session.add_all([person1, person2, person3])
         self.session.commit()
         query_string = {'sort': '-age'}
@@ -851,10 +851,10 @@ class TestSorting(ManagerTestBase):
         .. _Sorting: http://jsonapi.org/format/#fetching-sorting
 
         """
-        person1 = self.Person(name='foo', age=99)
-        person2 = self.Person(name='bar', age=99)
-        person3 = self.Person(name='baz', age=80)
-        person4 = self.Person(name='xyzzy', age=80)
+        person1 = self.Person(name=u'foo', age=99)
+        person2 = self.Person(name=u'bar', age=99)
+        person3 = self.Person(name=u'baz', age=80)
+        person4 = self.Person(name=u'xyzzy', age=80)
         self.session.add_all([person1, person2, person3, person4])
         self.session.commit()
         # Sort by age, decreasing, then by name, increasing.
@@ -902,7 +902,12 @@ class TestSorting(ManagerTestBase):
 
         """
         person = self.Person(id=1)
-        articles = [self.Article(id=i, title=str(i)) for i in range(5)]
+        # In Python 3, the `unicode` class doesn't exist.
+        try:
+            to_string = unicode
+        except NameError:
+            to_string = str
+        articles = [self.Article(id=i, title=to_string(i)) for i in range(5)]
         self.session.add(person)
         self.session.add_all(articles)
         self.session.commit()

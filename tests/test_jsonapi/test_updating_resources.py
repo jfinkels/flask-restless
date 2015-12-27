@@ -65,11 +65,11 @@ class TestUpdatingResources(ManagerTestBase):
         .. _Updating a Resource's Attributes: http://jsonapi.org/format/#crud-updating-resource-attributes
 
         """
-        person = self.Person(id=1, name='foo', age=10)
+        person = self.Person(id=1, name=u'foo', age=10)
         self.session.add(person)
         self.session.commit()
         data = dict(data=dict(type='person', id='1',
-                              attributes=dict(name='bar')))
+                              attributes=dict(name=u'bar')))
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 204
         assert person.id == 1
@@ -239,7 +239,12 @@ class TestUpdatingResources(ManagerTestBase):
         tag = self.Tag(id=1)
         self.session.add(tag)
         self.session.commit()
-        data = dict(data=dict(type='tag', id='1', attributes=dict(name='foo')))
+        data = {'data':
+                {'type': 'tag',
+                 'id': '1',
+                 'attributes': {'name': u'foo'}
+                }
+        }
         response = self.app.patch('/api/tag/1', data=dumps(data))
         assert response.status_code == 200
         document = loads(response.data)
@@ -303,12 +308,12 @@ class TestUpdatingResources(ManagerTestBase):
         .. _409 Conflict: http://jsonapi.org/format/#crud-updating-responses-409
 
         """
-        person1 = self.Person(id=1, name='foo')
+        person1 = self.Person(id=1, name=u'foo')
         person2 = self.Person(id=2)
         self.session.add_all([person1, person2])
         self.session.commit()
         data = dict(data=dict(type='person', id='2',
-                              attributes=dict(name='foo')))
+                              attributes=dict(name=u'foo')))
         response = self.app.patch('/api/person/2', data=dumps(data))
         assert response.status_code == 409
         # TODO test for error details

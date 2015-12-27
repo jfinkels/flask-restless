@@ -191,9 +191,9 @@ class TestFetchCollection(ManagerTestBase):
 
     def test_group_by(self):
         """Tests for grouping results."""
-        person1 = self.Person(id=1, name='foo')
-        person2 = self.Person(id=2, name='foo')
-        person3 = self.Person(id=3, name='bar')
+        person1 = self.Person(id=1, name=u'foo')
+        person2 = self.Person(id=2, name=u'foo')
+        person3 = self.Person(id=3, name=u'bar')
         self.session.add_all([person1, person2, person3])
         self.session.commit()
         query_string = {'group': 'name'}
@@ -205,8 +205,8 @@ class TestFetchCollection(ManagerTestBase):
 
     def test_group_by_related(self):
         """Tests for grouping results by a field on a related model."""
-        person1 = self.Person(id=1, name='foo')
-        person2 = self.Person(id=2, name='bar')
+        person1 = self.Person(id=1, name=u'foo')
+        person2 = self.Person(id=2, name=u'bar')
         article1 = self.Article(id=1)
         article2 = self.Article(id=2)
         article3 = self.Article(id=3)
@@ -358,7 +358,7 @@ class TestFetchResource(ManagerTestBase):
         a primary key specified by the server.
 
         """
-        article = self.Article(id=1, title='foo')
+        article = self.Article(id=1, title=u'foo')
         self.session.add(article)
         self.session.commit()
         self.manager.create_api(self.Article, url_prefix='/api2',
@@ -446,7 +446,7 @@ class TestFetchResource(ManagerTestBase):
 
         """
         person = self.Person(id=1)
-        article = self.Article(id=1, title='')
+        article = self.Article(id=1, title=u'')
         article.author = person
         self.session.add_all([article, person])
         self.session.commit()
@@ -469,8 +469,8 @@ class TestFetchResource(ManagerTestBase):
         person2 = self.Person(id=2)
         comment1 = self.Comment(id=1)
         comment2 = self.Comment(id=2)
-        article1 = self.Article(id=1, title='')
-        article2 = self.Article(id=2, title='')
+        article1 = self.Article(id=1, title=u'')
+        article2 = self.Article(id=2, title=u'')
         comment1.article = article1
         comment2.article = article2
         comment1.author = person1
@@ -638,9 +638,9 @@ class TestFetchRelation(ManagerTestBase):
     def test_to_many_sorting(self):
         """Tests for sorting a to-many relation."""
         person = self.Person(id=1)
-        article1 = self.Article(id=1, title='b')
-        article2 = self.Article(id=2, title='c')
-        article3 = self.Article(id=3, title='a')
+        article1 = self.Article(id=1, title=u'b')
+        article2 = self.Article(id=2, title=u'c')
+        article3 = self.Article(id=3, title=u'a')
         articles = [article1, article2, article3]
         person.articles = articles
         self.session.add(person)
@@ -657,9 +657,9 @@ class TestFetchRelation(ManagerTestBase):
     def test_to_many_grouping(self):
         """Tests for grouping a to-many relation."""
         person = self.Person(id=1)
-        article1 = self.Article(id=1, title='b')
-        article2 = self.Article(id=2, title='a')
-        article3 = self.Article(id=3, title='b')
+        article1 = self.Article(id=1, title=u'b')
+        article2 = self.Article(id=2, title=u'a')
+        article3 = self.Article(id=3, title=u'b')
         articles = [article1, article2, article3]
         person.articles = articles
         self.session.add(person)
@@ -905,7 +905,7 @@ class TestServerSparseFieldsets(ManagerTestBase):
         column fields.
 
         """
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         self.session.add(person)
         self.session.commit()
         self.manager.create_api(self.Person, only=['name'])
@@ -963,7 +963,7 @@ class TestServerSparseFieldsets(ManagerTestBase):
         instead of strings.
 
         """
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         self.session.add(person)
         self.session.commit()
         self.manager.create_api(self.Person, only=[self.Person.name])
@@ -1183,7 +1183,7 @@ class TestProcessors(ManagerTestBase):
         the resource to fetch as given in the request URL.
 
         """
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         self.session.add(person)
         self.session.commit()
 
@@ -1287,7 +1287,7 @@ class TestProcessors(ManagerTestBase):
         overrides the ID of the resource to fetch as given in the request URL.
 
         """
-        person = self.Person(id=2, name='foo')
+        person = self.Person(id=2, name=u'foo')
         self.session.add(person)
         self.session.commit()
 
@@ -1576,8 +1576,8 @@ class TestAssociationProxy(ManagerTestBase):
 
         """
         article = self.Article(id=1)
-        tag1 = self.Tag(name='foo')
-        tag2 = self.Tag(name='bar')
+        tag1 = self.Tag(name=u'foo')
+        tag2 = self.Tag(name=u'bar')
         article.tags = [tag1, tag2]
         self.session.add_all([article, tag1, tag2])
         self.session.commit()

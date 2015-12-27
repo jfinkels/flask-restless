@@ -141,9 +141,9 @@ class TestFiltering(SearchTestBase):
 
     def test_like(self):
         """Tests for filtering using the ``like`` operator."""
-        person1 = self.Person(name='Jesus')
-        person2 = self.Person(name='Mary')
-        person3 = self.Person(name='Joseph')
+        person1 = self.Person(name=u'Jesus')
+        person2 = self.Person(name=u'Mary')
+        person3 = self.Person(name=u'Joseph')
         self.session.add_all([person1, person2, person3])
         self.session.commit()
         filters = [dict(name='name', op='like', val='%s%')]
@@ -258,9 +258,9 @@ class TestFiltering(SearchTestBase):
         person1 = self.Person(id=1)
         person2 = self.Person(id=2)
         person3 = self.Person(id=3)
-        comment1 = self.Comment(content="that's cool!", author=person1)
-        comment2 = self.Comment(content='i like turtles', author=person2)
-        comment3 = self.Comment(content='not cool dude', author=person3)
+        comment1 = self.Comment(content=u"that's cool!", author=person1)
+        comment2 = self.Comment(content=u'i like turtles', author=person2)
+        comment3 = self.Comment(content=u'not cool dude', author=person3)
         self.session.add_all([person1, person2, person3])
         self.session.add_all([comment1, comment2, comment3])
         self.session.commit()
@@ -280,9 +280,9 @@ class TestFiltering(SearchTestBase):
         person1 = self.Person(id=1)
         person2 = self.Person(id=2)
         person3 = self.Person(id=3)
-        comment1 = self.Comment(content="that's cool!", author=person1)
-        comment2 = self.Comment(content="i like turtles", author=person2)
-        comment3 = self.Comment(content="not cool dude", author=person3)
+        comment1 = self.Comment(content=u"that's cool!", author=person1)
+        comment2 = self.Comment(content=u"i like turtles", author=person2)
+        comment3 = self.Comment(content=u"not cool dude", author=person3)
         self.session.add_all([person1, person2, person3])
         self.session.add_all([comment1, comment2, comment3])
         self.session.commit()
@@ -366,7 +366,7 @@ class TestFiltering(SearchTestBase):
         for i in range(5):
             person = self.Person(id=i)
             article = self.Article(id=i)
-            content = 'me' if i % 2 else 'you'
+            content = u'me' if i % 2 else u'you'
             comment = self.Comment(id=i, content=content)
             article.author = person
             comment.author = person
@@ -505,10 +505,10 @@ class TestFiltering(SearchTestBase):
 
     def test_search_boolean_formula(self):
         """Tests for Boolean formulas of filters in a search query."""
-        person1 = self.Person(id=1, name='John', age=10)
-        person2 = self.Person(id=2, name='Paul', age=20)
-        person3 = self.Person(id=3, name='Luke', age=30)
-        person4 = self.Person(id=4, name='Matthew', age=40)
+        person1 = self.Person(id=1, name=u'John', age=10)
+        person2 = self.Person(id=2, name=u'Paul', age=20)
+        person3 = self.Person(id=3, name=u'Luke', age=30)
+        person4 = self.Person(id=4, name=u'Matthew', age=40)
         self.session.add_all([person1, person2, person3, person4])
         self.session.commit()
         # This searches for people whose name is John, or people older than age
@@ -718,9 +718,9 @@ class TestOperators(SearchTestBase):
 
     def test_like(self):
         """Tests for the ``like`` operator."""
-        person1 = self.Person(name='foo')
-        person2 = self.Person(name='bar')
-        person3 = self.Person(name='baz')
+        person1 = self.Person(name=u'foo')
+        person2 = self.Person(name=u'bar')
+        person3 = self.Person(name=u'baz')
         self.session.add_all([person1, person2, person3])
         self.session.commit()
         filters = [dict(name='name', op='like', val='%ba%')]
@@ -732,9 +732,9 @@ class TestOperators(SearchTestBase):
 
     def test_ilike(self):
         """Tests for the ``ilike`` operator."""
-        person1 = self.Person(name='foo')
-        person2 = self.Person(name='bar')
-        person3 = self.Person(name='baz')
+        person1 = self.Person(name=u'foo')
+        person2 = self.Person(name=u'bar')
+        person3 = self.Person(name=u'baz')
         self.session.add_all([person1, person2, person3])
         self.session.commit()
         filters = [dict(name='name', op='ilike', val='%BA%')]
@@ -773,7 +773,7 @@ class TestOperators(SearchTestBase):
     def test_is_null(self):
         """Tests for the ``is_null`` operator."""
         person1 = self.Person(id=1)
-        person2 = self.Person(id=2, name='foo')
+        person2 = self.Person(id=2, name=u'foo')
         self.session.add_all([person1, person2])
         self.session.commit()
         filters = [dict(name='name', op='is_null')]
@@ -785,7 +785,7 @@ class TestOperators(SearchTestBase):
     def test_is_not_null(self):
         """Tests for the ``is_not_null`` operator."""
         person1 = self.Person(id=1)
-        person2 = self.Person(id=2, name='foo')
+        person2 = self.Person(id=2, name=u'foo')
         self.session.add_all([person1, person2])
         self.session.commit()
         filters = [dict(name='name', op='is_not_null')]
@@ -860,9 +860,9 @@ class TestAssociationProxy(SearchTestBase):
         article1 = self.Article(id=1)
         article2 = self.Article(id=2)
         article3 = self.Article(id=3)
-        tag1 = self.Tag(name='foo')
-        tag2 = self.Tag(name='bar')
-        tag3 = self.Tag(name='baz')
+        tag1 = self.Tag(name=u'foo')
+        tag2 = self.Tag(name=u'bar')
+        tag3 = self.Tag(name=u'baz')
         article1.tags = [tag1, tag2]
         article2.tags = [tag2, tag3]
         article3.tags = [tag3, tag1]

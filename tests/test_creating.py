@@ -248,10 +248,10 @@ class TestCreating(ManagerTestBase):
         :http:status:`409` response.
 
         """
-        person = self.Person(name='foo')
+        person = self.Person(name=u'foo')
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='person', attributes=dict(name='foo')))
+        data = dict(data=dict(type='person', attributes=dict(name=u'foo')))
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 409  # Conflict
         # TODO check error message here
@@ -262,14 +262,14 @@ class TestCreating(ManagerTestBase):
         after this rollback.
 
         """
-        person = self.Person(name='foo')
+        person = self.Person(name=u'foo')
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='person', attributes=dict(name='foo')))
+        data = dict(data=dict(type='person', attributes=dict(name=u'foo')))
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 409  # Conflict
         assert self.session.is_active, 'Session is in `partial rollback` state'
-        person = dict(data=dict(type='person', attributes=dict(name='bar')))
+        person = dict(data=dict(type='person', attributes=dict(name=u'bar')))
         response = self.app.post('/api/person', data=dumps(person))
         assert response.status_code == 201
 
@@ -585,12 +585,12 @@ class TestProcessors(ManagerTestBase):
 
             """
             if data is not None:
-                data['data']['attributes']['name'] = 'bar'
+                data['data']['attributes']['name'] = u'bar'
 
         preprocessors = dict(POST=[set_name])
         self.manager.create_api(self.Person, methods=['POST'],
                                 preprocessors=preprocessors)
-        data = dict(data=dict(type='person', attributes=dict(name='foo')))
+        data = dict(data=dict(type='person', attributes=dict(name=u'foo')))
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 201
         document = loads(response.data)
