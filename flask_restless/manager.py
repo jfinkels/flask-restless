@@ -1,15 +1,18 @@
-"""
-    flask.ext.restless.manager
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+# manager.py - class that creates endpoints compliant JSON API
+#
+# Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
+# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+#           <jeffrey.finkelstein@gmail.com> and contributors.
+#
+# This file is part of Flask-Restless.
+#
+# Flask-Restless is distributed under both the GNU Affero General Public
+# License version 3 and under the 3-clause BSD license. For more
+# information, see LICENSE.AGPL and LICENSE.BSD.
+"""Provides the main class with which users of Flask-Restless interact.
 
-    Provides :class:`flask.ext.restless.manager.APIManager`, the class which
-    users of Flask-Restless must instantiate to create ReSTful APIs for their
-    database models.
-
-    :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
-    :copyright: 2012, 2013, 2014, 2015 Jeffrey Finkelstein
-                <jeffrey.finkelstein@gmail.com> and contributors.
-    :license: GNU AGPLv3+ or BSD
+The :class:`APIManager` class allow users to create ReSTful APIs for
+their SQLAlchemy models.
 
 """
 from collections import defaultdict

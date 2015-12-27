@@ -1,17 +1,21 @@
-"""
-    tests.test_validation
-    ~~~~~~~~~~~~~~~~~~~~~
+# test_validation.py - unit tests for model validation
+#
+# Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
+# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+#           <jeffrey.finkelstein@gmail.com> and contributors.
+#
+# This file is part of Flask-Restless.
+#
+# Flask-Restless is distributed under both the GNU Affero General Public
+# License version 3 and under the 3-clause BSD license. For more
+# information, see LICENSE.AGPL and LICENSE.BSD.
+"""Unit tests for SQLAlchemy models that include some validation
+functionality and therefore raise validation errors on requests to
+update resources.
 
-    Provides unit tests for SQLAlchemy models which have some validation
-    functionality and therefore raise validation errors when requests are made
-    to write to the database.
-
-    Validation is not provided by Flask-Restless itself, but it must capture
-    validation errors and return them to the client.
-
-    :copyright: 2012, 2013, 2014, 2015 Jeffrey Finkelstein
-                <jeffrey.finkelstein@gmail.com> and contributors.
-    :license: GNU AGPLv3+ or BSD
+Validation is not provided by Flask-Restless itself, but we still need
+to test that it captures validation errors and returns them to the
+client.
 
 """
 import sys

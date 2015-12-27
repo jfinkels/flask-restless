@@ -1,3 +1,15 @@
+# helpers.py - helper functions for view classes
+#
+# Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
+# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+#           <jeffrey.finkelstein@gmail.com> and contributors.
+#
+# This file is part of Flask-Restless.
+#
+# Flask-Restless is distributed under both the GNU Affero General Public
+# License version 3 and under the 3-clause BSD license. For more
+# information, see LICENSE.AGPL and LICENSE.BSD.
+"""Helper functions for view classes."""
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from sqlalchemy.sql import func

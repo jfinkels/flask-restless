@@ -1,14 +1,15 @@
-"""
-    tests.helpers
-    ~~~~~~~~~~~~~
-
-    Provides helper functions for unit tests in this package.
-
-    :copyright: 2012, 2013, 2014, 2015 Jeffrey Finkelstein
-                <jeffrey.finkelstein@gmail.com> and contributors.
-    :license: GNU AGPLv3+ or BSD
-
-"""
+# helpers.py - helper functions for unit tests
+#
+# Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
+# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+#           <jeffrey.finkelstein@gmail.com> and contributors.
+#
+# This file is part of Flask-Restless.
+#
+# Flask-Restless is distributed under both the GNU Affero General Public
+# License version 3 and under the 3-clause BSD license. For more
+# information, see LICENSE.AGPL and LICENSE.BSD.
+"""Helper functions for unit tests."""
 from datetime import date
 from datetime import datetime
 from datetime import time

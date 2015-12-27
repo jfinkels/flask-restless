@@ -1,13 +1,22 @@
-"""
-    flask.ext.restless.serialization
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# serialization.py - JSON serialization for SQLAlchemy models
+#
+# Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
+# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+#           <jeffrey.finkelstein@gmail.com> and contributors.
+#
+# This file is part of Flask-Restless.
+#
+# Flask-Restless is distributed under both the GNU Affero General Public
+# License version 3 and under the 3-clause BSD license. For more
+# information, see LICENSE.AGPL and LICENSE.BSD.
+"""Classes for JSON serialization of SQLAlchemy models.
 
-    Provides basic serialization for SQLAlchemy models.
-
-    :copyright: 2011 by Lincoln de Sousa <lincoln@comum.org>
-    :copyright: 2012, 2013, 2014, 2015 Jeffrey Finkelstein
-                <jeffrey.finkelstein@gmail.com> and contributors.
-    :license: GNU AGPLv3+ or BSD
+The abstract base classes :class:`Serializer` and :class:`Deserializer`
+can be used to implement custom serialization from and deserialization
+to SQLAlchemy objects. The :class:`DefaultSerializer` and
+:class:`DefaultDeserializer` provide some basic serialization and
+deserialization as expected by classes that follow the JSON API
+protocol.
 
 """
 import datetime
@@ -191,7 +200,6 @@ class DefaultSerializer(Serializer):
         self.default_fields = only
         self.exclude = exclude
         self.additional_attributes = additional_attributes
-
 
     def _create_relationship(self, model, instance, relation):
         """Creates a relationship from the given relation name.

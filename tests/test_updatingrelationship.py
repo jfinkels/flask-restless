@@ -1,16 +1,20 @@
-"""
-    tests.test_updatingrelationship
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# test_updatingrelationship.py - unit tests for updating relationships
+#
+# Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
+# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+#           <jeffrey.finkelstein@gmail.com> and contributors.
+#
+# This file is part of Flask-Restless.
+#
+# Flask-Restless is distributed under both the GNU Affero General Public
+# License version 3 and under the 3-clause BSD license. For more
+# information, see LICENSE.AGPL and LICENSE.BSD.
+"""Unit tests for updating relationships via relationship URLs.
 
-    Provides tests for updating relationships via relationship URLs.
-
-    This module includes tests for additional functionality that is not already
-    tested by :mod:`test_jsonapi`, the module that guarantees Flask-Restless
-    meets the minimum requirements of the JSON API specification.
-
-    :copyright: 2015 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com> and
-                contributors.
-    :license: GNU AGPLv3+ or BSD
+This module includes tests for additional functionality that is not
+already tested by :mod:`test_jsonapi`, the package that guarantees
+Flask-Restless meets the minimum requirements of the JSON API
+specification.
 
 """
 from sqlalchemy import Column

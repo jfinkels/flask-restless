@@ -1,17 +1,20 @@
-"""
-    flask.ext.restless.search
-    ~~~~~~~~~~~~~~~~~~~~~~~~~
+# search.py - searching on SQLAlchemy models
+#
+# Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
+# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+#           <jeffrey.finkelstein@gmail.com> and contributors.
+#
+# This file is part of Flask-Restless.
+#
+# Flask-Restless is distributed under both the GNU Affero General Public
+# License version 3 and under the 3-clause BSD license. For more
+# information, see LICENSE.AGPL and LICENSE.BSD.
+"""Provides search queries for SQLAlchemy models.
 
-    Provides search queries for SQLAlchemy models.
-
-    The most important function in this module is the :func:`search` function,
-    which creates a SQLAlchemy query object for a given set of filters, sorting
-    rules, etc.
-
-    :copyright: 2011 by Lincoln de Sousa <lincoln@comum.org>
-    :copyright: 2012, 2013, 2014, 2015 Jeffrey Finkelstein
-                <jeffrey.finkelstein@gmail.com> and contributors.
-    :license: GNU AGPLv3+ or BSD
+The :func:`search` function creates a SQLAlchemy query object for a
+given set of filters, sorting rules, etc. The
+:func:`search_relationship` function creates a query restricted to a
+relationship on a particular instance of a SQLAlchemy model.
 
 """
 import inspect

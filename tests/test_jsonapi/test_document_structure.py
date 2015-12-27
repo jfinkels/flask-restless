@@ -1,3 +1,23 @@
+# test_document_structure.py - tests JSON API document structure
+#
+# Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
+# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+#           <jeffrey.finkelstein@gmail.com> and contributors.
+#
+# This file is part of Flask-Restless.
+#
+# Flask-Restless is distributed under both the GNU Affero General Public
+# License version 3 and under the 3-clause BSD license. For more
+# information, see LICENSE.AGPL and LICENSE.BSD.
+"""Tests that Flask-Restless responds to the client with correctly
+structured JSON documents.
+
+The tests in this module correspond to the `Document Structure`_ section
+of the JSON API specification.
+
+.. _Document Structure: http://jsonapi.org/format/#document-structure
+
+"""
 import string
 try:
     from urllib.parse import urlparse

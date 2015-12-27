@@ -1,3 +1,21 @@
+# function.py - views for evaluating SQL functions on SQLAlchemy models
+#
+# Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
+# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+#           <jeffrey.finkelstein@gmail.com> and contributors.
+#
+# This file is part of Flask-Restless.
+#
+# Flask-Restless is distributed under both the GNU Affero General Public
+# License version 3 and under the 3-clause BSD license. For more
+# information, see LICENSE.AGPL and LICENSE.BSD.
+"""Views for evaluating functions on a SQLAlchemy model.
+
+The main class in this module, :class:`FunctionAPI`, is a
+:class:`~flask.MethodView` subclass that creates endpoints for fetching
+the result of evaluating a SQL function on a SQLAlchemy model.
+
+"""
 from flask import json
 from flask import request
 from sqlalchemy.exc import OperationalError

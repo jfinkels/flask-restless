@@ -1,3 +1,22 @@
+# test_updating_relationships.py - tests updating relationships via JSON API
+#
+# Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
+# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+#           <jeffrey.finkelstein@gmail.com> and contributors.
+#
+# This file is part of Flask-Restless.
+#
+# Flask-Restless is distributed under both the GNU Affero General Public
+# License version 3 and under the 3-clause BSD license. For more
+# information, see LICENSE.AGPL and LICENSE.BSD.
+"""Unit tests for requests that update relationships.
+
+The tests in this module correspond to the `Updating Relationships`_
+section of the JSON API specification.
+
+.. _Updating Relationships: http://jsonapi.org/format/#crud-updating-relationships
+
+"""
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer

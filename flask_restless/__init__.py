@@ -1,24 +1,18 @@
-"""
-    flask.ext.restless
-    ~~~~~~~~~~~~~~~~~~
-
-    Flask-Restless is a `Flask`_ extension that creates URL endpoints that
-    satisfy the requirements of the `JSON API`_ specification. It is compatible
-    with models that have been defined using `SQLAlchemy`_ or
-    `Flask-SQLAlchemy`_.
-
-    .. _Flask: http://flask.pocoo.org
-    .. _JSON API: http://jsonapi.org
-    .. _SQLAlchemy: http://sqlalchemy.org
-    .. _Flask-SQLAlchemy: https://pythonhosted.org/Flask-SQLAlchemy
-
-    :copyright:2011 by Lincoln de Sousa <lincoln@comum.org>
-    :copyright: 2012, 2013, 2014, 2015 Jeffrey Finkelstein
-                <jeffrey.finkelstein@gmail.com> and contributors.
-    :license: GNU AGPLv3+ or BSD
+# __init__.py - indicates that this directory is a Python package
+#
+# Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
+# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+#           <jeffrey.finkelstein@gmail.com> and contributors.
+#
+# This file is part of Flask-Restless.
+#
+# Flask-Restless is distributed under both the GNU Affero General Public
+# License version 3 and under the 3-clause BSD license. For more
+# information, see LICENSE.AGPL and LICENSE.BSD.
+"""Provides classes for creating endpoints for interacting with
+SQLAlchemy models via the JSON API protocol.
 
 """
-
 #: The current version of this extension.
 #:
 #: This should be the same as the version specified in the :file:`setup.py`

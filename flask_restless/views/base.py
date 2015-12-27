@@ -1,38 +1,22 @@
-"""
-    flask.ext.restless.views
-    ~~~~~~~~~~~~~~~~~~~~~~~~
+# base.py - base classes for views of SQLAlchemy objects
+#
+# Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
+# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+#           <jeffrey.finkelstein@gmail.com> and contributors.
+#
+# This file is part of Flask-Restless.
+#
+# Flask-Restless is distributed under both the GNU Affero General Public
+# License version 3 and under the 3-clause BSD license. For more
+# information, see LICENSE.AGPL and LICENSE.BSD.
+"""Base classes for fetching, creating, updating, and deleting
+SQLAlchemy resources and relationships.
 
-    Provides the following view classes, subclasses of
-    :class:`flask.MethodView` which provide generic endpoints for fetching,
-    creating, updating, and deleting instances of a SQLAlchemy model.
-
-    The implementations here are designed to meet the requirements of the JSON
-    API specification.
-
-    :class:`API`
-
-      Provides the endpoints for accessing resources via each of the basic HTTP
-      methods. This is the main class used by the :meth:`APIManager.create_api`
-      method to create endpoints.
-
-    :class:`RelationshipAPI`
-
-      Provides endpoints for accessing relationship URLs. This allows accessing
-      **link objects**, as described in the JSON API specification.
-
-    :class:`FunctionAPI`
-
-      Provides a :http:method:`get` endpoint which returns the result of
-      evaluating a given function on the entire collection of a given model.
-
-    :copyright: 2011 by Lincoln de Sousa <lincoln@comum.org>
-    :copyright: 2012, 2013, 2014, 2015 Jeffrey Finkelstein
-                <jeffrey.finkelstein@gmail.com> and contributors.
-    :license: GNU AGPLv3+ or BSD
+The main class in this module, :class:`APIBase`, is a
+:class:`~flask.MethodView` subclass that is also an abstract base class
+for JSON API requests on a SQLAlchemy backend.
 
 """
-from __future__ import division
-
 from collections import defaultdict
 from functools import partial
 from functools import wraps
