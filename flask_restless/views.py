@@ -1428,7 +1428,8 @@ class APIBase(ModelView):
 
         # This method could have been called on either a request to
         # fetch a collection of resources or a to-many relation.
-        processor_type = self.collection_processor_type(is_relation=is_relation)
+        processor_type = \
+            self.collection_processor_type(is_relation=is_relation)
         processor_type = 'GET_{0}'.format(processor_type)
         for postprocessor in self.postprocessors[processor_type]:
             postprocessor(result=result, filters=filters, sort=sort,
@@ -2097,7 +2098,7 @@ class RelationshipAPI(APIBase):
                 resource_id = temp_result
         # get the instance of the "main" model whose ID is `resource_id`
         primary_resource = get_by(self.session, self.model, resource_id,
-                          self.primary_key)
+                                  self.primary_key)
         if primary_resource is None:
             detail = 'No resource with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
