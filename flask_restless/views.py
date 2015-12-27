@@ -490,6 +490,77 @@ def parse_sparse_fields(type_=None):
     return fields.get(type_) if type_ is not None else fields
 
 
+def resources_from_path(instance, path):
+    """Returns an iterable of all resources along the given relationship
+    path for the specified instance of the model.
+
+    For example, if our model includes three classes, ``Article``,
+    ``Person``, and ``Comment``::
+
+        >>> article = Article(id=1)
+        >>> comment1 = Comment(id=1)
+        >>> comment2 = Comment(id=2)
+        >>> person1 = Person(id=1)
+        >>> person2 = Person(id=2)
+        >>> article.comments = [comment1, comment2]
+        >>> comment1.author = person1
+        >>> comment2.author = person2
+        >>> instances = [article, comment1, comment2, person1, person2]
+        >>> session.add_all(instances)
+        >>>
+        >>> l = list(api.resources_from_path(article, 'comments.author'))
+        >>> len(l)
+        4
+        >>> [r.id for r in l if isinstance(r, Person)]
+        [1, 2]
+        >>> [r.id for r in l if isinstance(r, Comment)]
+        [1, 2]
+
+    """
+    # First, split the path to determine the sequence of relationships
+    # to follow.
+    if '.' in path:
+        path = path.split('.')
+    else:
+        path = [path]
+    # Next, do a breadth-first traversal of the resources related to
+    # `instance` via the given path.
+    seen = set()
+    nextlevel = {instance}
+    first_time = True
+    while nextlevel:
+        thislevel = nextlevel
+        nextlevel = set()
+        # Follow the relation given in the path to get the "neighbor"
+        # resources of any resource in the curret level of the
+        # breadth-first traversal.
+        if path:
+            relation = path.pop(0)
+        else:
+            relation = None
+        for resource in thislevel:
+            if resource in seen:
+                continue
+            # Since this method is going to be used to populate the
+            # `included` section of a compound document, we don't want
+            # to yield the instance from which related resources are
+            # being included.
+            if first_time:
+                first_time = False
+            else:
+                yield resource
+            seen.add(resource)
+            # If there are still parts of the relationship path to
+            # traverse, queue up the related resources at the next
+            # level.
+            if relation is not None:
+                if is_like_list(resource, relation):
+                    update = nextlevel.update
+                else:
+                    update = nextlevel.add
+                update(getattr(resource, relation))
+
+
 # TODO these need to become JSON Pointers
 def extract_error_messages(exception):
     """Tries to extract a dictionary mapping field name to validation error
@@ -1356,77 +1427,6 @@ class APIBase(ModelView):
         result['meta']['total'] = num_results
         return result, status, headers
 
-    # TODO This doesn't need to be an instance method.
-    def resources_from_path(self, instance, path):
-        """Returns an iterable of all resources along the given
-        relationship path for the specified instance of the model.
-
-        For example, if our model includes three classes, ``Article``,
-        ``Person``, and ``Comment``::
-
-            >>> article = Article(id=1)
-            >>> comment1 = Comment(id=1)
-            >>> comment2 = Comment(id=2)
-            >>> person1 = Person(id=1)
-            >>> person2 = Person(id=2)
-            >>> article.comments = [comment1, comment2]
-            >>> comment1.author = person1
-            >>> comment2.author = person2
-            >>> instances = [article, comment1, comment2, person1, person2]
-            >>> session.add_all(instances)
-            >>>
-            >>> l = list(api.resources_from_path(article, 'comments.author'))
-            >>> len(l)
-            4
-            >>> [r.id for r in l if isinstance(r, Person)]
-            [1, 2]
-            >>> [r.id for r in l if isinstance(r, Comment)]
-            [1, 2]
-
-        """
-        # First, split the path to determine the sequence of
-        # relationships to follow.
-        if '.' in path:
-            path = path.split('.')
-        else:
-            path = [path]
-        # Next, do a breadth-first traversal of the resources related to
-        # `instance` via the given path.
-        seen = set()
-        nextlevel = {instance}
-        first_time = True
-        while nextlevel:
-            thislevel = nextlevel
-            nextlevel = set()
-            # Follow the relation given in the path to get the
-            # "neighbor" resources of any resource in the curret level
-            # of the breadth-first traversal.
-            if path:
-                relation = path.pop(0)
-            else:
-                relation = None
-            for resource in thislevel:
-                if resource in seen:
-                    continue
-                # Since this method is going to be used to populate the
-                # `included` section of a compound document, we don't
-                # want to yield the instance from which related
-                # resources are being included.
-                if first_time:
-                    first_time = False
-                else:
-                    yield resource
-                seen.add(resource)
-                # If there are still parts of the relationship path to
-                # traverse, queue up the related resources at the next
-                # level.
-                if relation is not None:
-                    if is_like_list(resource, relation):
-                        update = nextlevel.update
-                    else:
-                        update = nextlevel.add
-                    update(getattr(resource, relation))
-
     def resources_to_include(self, instance):
         """Returns a set of resources to include in a compound document
         response based on the ``include`` query parameter and the default
@@ -1451,7 +1451,7 @@ class APIBase(ModelView):
             toinclude = self.default_includes
         else:
             toinclude = set(toinclude.split(','))
-        return set(chain(self.resources_from_path(instance, path)
+        return set(chain(resources_from_path(instance, path)
                          for path in toinclude))
 
 
