@@ -486,6 +486,7 @@ class TestDocumentStructure(ManagerTestBase):
         links = document['links']
         assert links['self'].endswith('/api/person')
 
+    # TODO Test this for every possible type of request.
     def test_jsonapi_object(self):
         """Tests that the server provides a jsonapi object.
 
