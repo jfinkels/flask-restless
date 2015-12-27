@@ -1051,6 +1051,36 @@ class APIBase(ModelView):
             if hasattr(self, method):
                 decorate(method, catch_integrity_errors(self.session))
 
+    def collection_processor_type(self, *args, **kw):
+        """The suffix for the pre- and postprocessor identifiers for
+        requests on collections of resources.
+
+        This is an abstract method; subclasses must override this
+        method.
+
+        """
+        raise NotImplemented
+
+    def resource_processor_type(self, *args, **kw):
+        """The suffix for the pre- and postprocessor identifiers for
+        requests on resource objects.
+
+        This is an abstract method; subclasses must override this
+        method.
+
+        """
+        raise NotImplemented
+
+    def use_resource_identifiers(self):
+        """Whether primary data in responses use resource identifiers or
+        full resource objects.
+
+        Subclasses that handle resource linkage should override this
+        method so that it returns ``True``.
+
+        """
+        return False
+
     def _handle_validation_exception(self, exception):
         """Rolls back the session, extracts validation error messages, and
         returns an error response with :http:statuscode:`400` containing the
@@ -1162,7 +1192,7 @@ class APIBase(ModelView):
         serializing any of the resources.
 
         """
-        if self.use_relationship_links():
+        if self.use_resource_identifiers():
             serialize = self.serialize_relationship
         else:
             serialize = self.serialize
@@ -1219,21 +1249,9 @@ class APIBase(ModelView):
                          page_size=page_size, page_number=page_number,
                          filters=filters, sort=sort, group_by=group_by)
 
-    # TODO Document that subclasses should override these.
-    def collection_processor_type(self, *args, **kw):
-        raise NotImplemented
-
-    def resource_processor_type(self, *args, **kw):
-        raise NotImplemented
-
-    # TODO Change the name of this method, since it is used for more
-    # than just determining whether to use relationship links.
-    def use_relationship_links(self):
-        return False
-
     def _get_resource_helper(self, resource, primary_resource=None,
                              relation_name=None, related_resource=False):
-        if self.use_relationship_links():
+        if self.use_resource_identifiers():
             serialize = self.serialize_relationship
         else:
             serialize = self.serialize
@@ -1270,7 +1288,7 @@ class APIBase(ModelView):
         elif is_relation:
             resource_id = primary_key_value(primary_resource)
             # `self.model` should match `get_model(primary_resource)`
-            if self.use_relationship_links():
+            if self.use_resource_identifiers():
                 self_link = url_for(self.model, resource_id, relation_name,
                                     relationship=True)
                 related_link = url_for(self.model, resource_id, relation_name)
@@ -1387,7 +1405,7 @@ class APIBase(ModelView):
             num_results = 1
 
         # Determine the resources to include (in a compound document).
-        if self.use_relationship_links():
+        if self.use_resource_identifiers():
             to_include = self.resources_to_include(resource)
         else:
             to_include = set(chain(self.resources_to_include(resource)
@@ -1609,7 +1627,8 @@ class API(APIBase):
                     resource_id, relation_name = temp_result
 
         # Get the resource with the specified ID.
-        primary_resource = get_by(self.session, self.model, resource_id, self.primary_key)
+        primary_resource = get_by(self.session, self.model, resource_id,
+                                  self.primary_key)
         if primary_resource is None:
             detail = 'No resource with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
@@ -1623,7 +1642,8 @@ class API(APIBase):
             return self._get_collection_helper(resource=primary_resource,
                                                relation_name=relation_name,
                                                filters=filters, sort=sort,
-                                               group_by=group_by, single=single)
+                                               group_by=group_by,
+                                               single=single)
         else:
             resource = getattr(primary_resource, relation_name)
             return self._get_resource_helper(resource=resource,
@@ -2049,7 +2069,7 @@ class RelationshipAPI(APIBase):
     def resource_processor_type(self, *args, **kw):
         return 'TO_ONE_RELATIONSHIP'
 
-    def use_relationship_links(self):
+    def use_resource_identifiers(self):
         return True
 
     def get(self, resource_id, relation_name):
