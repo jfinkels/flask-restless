@@ -1900,9 +1900,12 @@ class API(APIBase):
         # Update any relationships.
         links = data.pop('relationships', {})
         for linkname, link in links.items():
-            # TODO: The client is obligated by JSON API to provide linkage if
-            # the `links` attribute exists, but we should probably error out
-            # in a more constructive way if it's missing.
+            # The client is obligated by JSON API to provide linkage if
+            # the `links` attribute exists.
+            if 'data' not in link:
+                detail = 'relationship "{0}" is missing resource linkage'
+                detail = detail.format(linkname)
+                return error_response(400, detail=detail)
             linkage = link['data']
             related_model = get_related_model(self.model, linkname)
             # If the client provided "null" for this relation, remove it by
