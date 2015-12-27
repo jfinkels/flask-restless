@@ -2226,7 +2226,9 @@ class RelationshipAPI(APIBase):
         # If the client sent a null value, we assume it wants to remove a
         # to-one relationship.
         if data is None:
-            # TODO check that the relationship is a to-one relationship.
+            if is_like_list(instance, relation_name):
+                detail = 'Cannot set null value on a to-many relationship'
+                return error_response(400, detail=detail)
             setattr(instance, relation_name, None)
         else:
             # If this is a list, we assume the client is trying to set a
