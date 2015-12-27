@@ -372,6 +372,26 @@ class TestDeleting(ManagerTestBase):
         assert response.status_code == 400
         # TODO check error message here
 
+    def test_preprocessor(self):
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def change_id(*args, **kw):
+            return 1
+
+        preprocessors = {'DELETE_RELATIONSHIP': [change_id]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors,
+                                allow_delete_from_to_many_relationships=True,
+                                url_prefix='/api2', methods=['PATCH'])
+        data = {'data': [{'type': 'article', 'id': '1'}]}
+        response = self.app.delete('/api2/person/bogus/relationships/articles',
+                                   data=dumps(data))
+        assert response.status_code == 204
+        assert article.author is None
+
 
 class TestUpdatingToMany(ManagerTestBase):
     """Tests for updating a resource's to-many relationship via the

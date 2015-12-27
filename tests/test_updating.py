@@ -690,6 +690,25 @@ class TestUpdating(ManagerTestBase):
         assert response.status_code == 409
         # TODO check error message here
 
+    def test_relationship_missing_data(self):
+        """Tests for an error response on a missing ``'data'`` key in a
+        relationship object.
+
+        """
+        article = self.Article(id=1)
+        self.session.add(article)
+        self.session.commit()
+        data = {'data':
+                    {'type': 'article',
+                     'id': '1',
+                     'relationships':
+                         {'author': {}}
+                     }
+                }
+        response = self.app.patch('/api/article/1', data=dumps(data))
+        assert response.status_code == 400
+        # TODO check error message here
+
 
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""

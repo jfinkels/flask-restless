@@ -120,7 +120,22 @@ class TestFiltering(SearchTestBase):
         response.
 
         """
-        response = self.app.get('/api/person?filter[objects]=bogus')
+        query_string = {'filter[objects]': 'bogus'}
+        response = self.app.get('/api/person', query_string=query_string)
+        assert response.status_code == 400
+        # TODO check error messages here
+
+    def test_bad_filter_relationship(self):
+        """Test for providing a bad filter parameter for fetching
+        relationship objects.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        query_string = {'filter[objects]': 'bogus'}
+        response = self.app.get('/api/person/1/relationships/articles',
+                                query_string=query_string)
         assert response.status_code == 400
         # TODO check error messages here
 
@@ -195,8 +210,26 @@ class TestFiltering(SearchTestBase):
         relation.
 
         """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
         params = {'filter[single]': 'bogus'}
         response = self.app.get('/api/person/1/articles', query_string=params)
+        assert response.status_code == 400
+        # TODO check the error message here.
+
+    def test_relationship_single_wrong_format(self):
+        """Tests that providing an incorrectly formatted argument to
+        ``filter[single]`` yields an error response when fetching
+        relationship.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        query_string = {'filter[single]': 'bogus'}
+        response = self.app.get('/api/person/1/relationships/articles',
+                                query_string=query_string)
         assert response.status_code == 400
         # TODO check the error message here.
 

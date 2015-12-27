@@ -498,6 +498,7 @@ class TestFetchResource(ManagerTestBase):
         assert expected_types == resource_types
         assert expected_ids == resource_ids
 
+
 class TestFetchRelation(ManagerTestBase):
 
     def setUp(self):
@@ -1220,6 +1221,34 @@ class TestProcessors(ManagerTestBase):
         # Article has a URL.
         self.manager.create_api(self.Article)
         response = self.app.get('/api/person/bogus/articles')
+        document = loads(response.data)
+        articles = document['data']
+        assert len(articles) == 1
+        article = articles[0]
+        assert 'article' == article['type']
+        assert '1' == article['id']
+
+    def test_relationship(self):
+        """Tests for changing the resource ID when fetching a
+        relationship.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def change_id(*args, **kw):
+            # We will change the primary resource ID.
+            return 1
+
+        preprocessors = {'GET_RELATIONSHIP': [change_id]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors)
+        # Need to create an API for Article resources so that each
+        # Article has a URL.
+        self.manager.create_api(self.Article)
+        response = self.app.get('/api/person/bogus/relationships/articles')
         document = loads(response.data)
         articles = document['data']
         assert len(articles) == 1
