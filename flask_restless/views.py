@@ -1822,12 +1822,6 @@ class API(APIBase):
         # of the model.
         url = '{0}/{1}'.format(request.base_url, primary_key)
         # Provide that URL in the Location header in the response.
-        #
-        # TODO should the many Location header fields be combined into a
-        # single comma-separated header field::
-        #
-        #     headers = dict(Location=', '.join(urls))
-        #
         headers = dict(Location=url)
         # Wrap the resulting object or list of objects under a 'data' key.
         result = dict(data=result)
