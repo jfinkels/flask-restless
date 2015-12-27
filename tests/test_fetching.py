@@ -252,15 +252,25 @@ class TestFetchResource(ManagerTestBase):
                     return self.bedtime < nine_oclock
                 return False
 
+        class Comment(self.Base):
+            __tablename__ = 'comment'
+            id = Column(Integer, primary_key=True)
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship('Person', backref=backref('comments'))
+            article_id = Column(Integer, ForeignKey('article.id'))
+            article = relationship('Article', backref=backref('comments'))
+
         class Tag(self.Base):
             __tablename__ = 'tag'
             name = Column(Unicode, primary_key=True)
 
         self.Article = Article
+        self.Comment = Comment
         self.Person = Person
         self.Tag = Tag
         self.Base.metadata.create_all()
         self.manager.create_api(Article)
+        self.manager.create_api(Comment)
         self.manager.create_api(Person)
         # self.manager.create_api(Tag)
 
@@ -453,6 +463,40 @@ class TestFetchResource(ManagerTestBase):
         assert response.status_code == 400
         # TODO check error message
 
+    def test_circular_includes(self):
+        """Tests that circular includes are only included once."""
+        person1 = self.Person(id=1)
+        person2 = self.Person(id=2)
+        comment1 = self.Comment(id=1)
+        comment2 = self.Comment(id=2)
+        article1 = self.Article(id=1, title='')
+        article2 = self.Article(id=2, title='')
+        comment1.article = article1
+        comment2.article = article2
+        comment1.author = person1
+        comment2.author = person2
+        article1.author = person1
+        article2.author = person1
+        resources = [article1, article2, comment1, comment2, person1, person2]
+        self.session.add_all(resources)
+        self.session.commit()
+        # The response to this request should include person1 once (for
+        # the first 'author') and person 2 once (for the last 'author').
+        query_string = {'include': 'author.articles.comments.author'}
+        response = self.app.get('/api/comment/1', query_string=query_string)
+        document = loads(response.data)
+        included = document['included']
+        # Sort the included resources, first by type, then by ID.
+        resources = sorted(included, key=lambda x: (x['type'], x['id']))
+        resource_types = [resource['type'] for resource in resources]
+        resource_ids = [resource['id'] for resource in resources]
+        # We expect two articles, two persons, and one comment (since
+        # the other comment is the primary data in the response
+        # document).
+        expected_types = ['article', 'article', 'comment', 'person', 'person']
+        expected_ids = ['1', '2', '2', '1', '2']
+        assert expected_types == resource_types
+        assert expected_ids == resource_ids
 
 class TestFetchRelation(ManagerTestBase):
 
