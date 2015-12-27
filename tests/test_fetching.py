@@ -226,6 +226,28 @@ class TestFetchCollection(ManagerTestBase):
                             for article in articles)
         assert ['1', '2'] == author_ids
 
+    def test_serialization_exception_single(self):
+        """Tests for a serialization exception on a filtered single
+        response.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+
+        def serializer(*args, **kw):
+            raise SerializationException
+
+        self.manager.create_api(self.Person, serializer=serializer,
+                                url_prefix='/api2')
+        query_string = {'filter[single]': 1}
+        response = self.app.get('/api2/person', query_string=query_string)
+        assert response.status_code == 400
+        document = loads(response.data)
+        errors = document['errors']
+        error = errors[0]
+        assert 'serialize' in error['detail']
+
 
 class TestFetchResource(ManagerTestBase):
 
