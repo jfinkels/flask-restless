@@ -945,6 +945,15 @@ class APIBase(ModelView):
         #: A custom serialization function for linkage objects.
         self.serialize_relationship = simple_relationship_serialize
 
+        # :attr:`primary_serializer` serializes linkage objects if
+        # :meth:`use_resource_identifiers` indicates that the instance
+        # of this class fetches relationship objects. Otherwise it
+        # serializes resource objects.
+        if self.use_resource_identifiers():
+            self.primary_serializer = self.serialize_relationship
+        else:
+            self.primary_serializer = self.serialize
+
         #: A custom deserialization function for primary resources; see
         #: :ref:`serialization` for more information.
         #:
@@ -1118,10 +1127,6 @@ class APIBase(ModelView):
         serializing any of the resources.
 
         """
-        if self.use_resource_identifiers():
-            serialize = self.serialize_relationship
-        else:
-            serialize = self.serialize
         # Determine the client's page size request. Raise an exception
         # if the page size is out of bounds, either too small or too
         # large.
@@ -1135,7 +1140,8 @@ class APIBase(ModelView):
         # If the page size is 0, just return everything.
         if page_size == 0:
             num_results = count(self.session, items)
-            items = [serialize(instance, only=only) for instance in items]
+            items = [self.primary_serializer(instance, only=only)
+                     for instance in items]
             return Paginated(items, page_size=page_size,
                              num_results=num_results)
         # Determine the client's page number request. Raise an exception
@@ -1169,7 +1175,8 @@ class APIBase(ModelView):
             next_ = page_number + 1 if page_number < last else None
             offset = (page_number - 1) * page_size
             items = items.limit(page_size).offset(offset)
-        items = [serialize(instance, only=only) for instance in items]
+        items = [self.primary_serializer(instance, only=only)
+                 for instance in items]
         return Paginated(items, num_results=num_results, first=first,
                          last=last, next_=next_, prev=prev,
                          page_size=page_size, page_number=page_number,
@@ -1177,10 +1184,6 @@ class APIBase(ModelView):
 
     def _get_resource_helper(self, resource, primary_resource=None,
                              relation_name=None, related_resource=False):
-        if self.use_resource_identifiers():
-            serialize = self.serialize_relationship
-        else:
-            serialize = self.serialize
         # Determine the fields to include for each type of object.
         fields = parse_sparse_fields()
 
@@ -1194,7 +1197,8 @@ class APIBase(ModelView):
             fields_for_resource = fields.get(type_)
             # Serialize the resource.
             try:
-                data = serialize(resource, only=fields_for_resource)
+                data = self.primary_serializer(resource,
+                                               only=fields_for_resource)
             except SerializationException as exception:
                 detail = 'Failed to serialize resource of type {0}'.format(type_)
                 return error_response(400, cause=exception, detail=detail)
@@ -1318,7 +1322,8 @@ class APIBase(ModelView):
                 return error_response(404, cause=exception, detail=detail)
             # Wrap the resulting resource under a `data` key.
             try:
-                result['data'] = self.serialize(data, only=fields_for_this)
+                result['data'] = self.primary_serializer(data,
+                                                         only=fields_for_this)
             except SerializationException as exception:
                 detail = 'Failed to serialize resource'
                 return error_response(400, cause=exception, detail=detail)

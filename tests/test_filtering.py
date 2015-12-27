@@ -171,6 +171,28 @@ class TestFiltering(SearchTestBase):
         person = document['data']
         assert person['id'] == '1'
 
+    def test_single_relationship(self):
+        """Tests for requiring a single relationship object in a
+        response to a filtered request.
+
+        """
+        person = self.Person(id=1)
+        article1 = self.Article(id=1)
+        article2 = self.Article(id=2)
+        self.session.add_all([person, article1, article2])
+        self.session.commit()
+        filters = [dict(name='id', op='equals', val='1')]
+        response = self.search('/api/person/1/relationships/articles', filters,
+                               single=True)
+        assert response.status_code == 200
+        document = loads(response.data)
+        article = document['data']
+        # Check that this is just a resource identifier object and not a
+        # full resource object representing the Article.
+        assert ['id', 'type'] == sorted(article)
+        assert article['type'] == 'article'
+        assert article['id'] == '1'
+
     def test_single_too_many(self):
         """Tests that requiring a single resource response returns an error if
         the filtered request would have returned more than one resource.
