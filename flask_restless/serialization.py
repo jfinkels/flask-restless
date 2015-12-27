@@ -100,7 +100,7 @@ class Serializer(object):
         override this method.**
 
         """
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class Deserializer(object):
@@ -136,7 +136,7 @@ class Deserializer(object):
         .. _Resource Objects: http://jsonapi.org/format/#document-structure-resource-objects
 
         """
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class DefaultSerializer(Serializer):

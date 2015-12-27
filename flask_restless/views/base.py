@@ -1003,7 +1003,7 @@ class APIBase(ModelView):
         method.
 
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def resource_processor_type(self, *args, **kw):
         """The suffix for the pre- and postprocessor identifiers for
@@ -1013,7 +1013,7 @@ class APIBase(ModelView):
         method.
 
         """
-        raise NotImplemented
+        raise NotImplementedError
 
     def use_resource_identifiers(self):
         """Whether primary data in responses use resource identifiers or
