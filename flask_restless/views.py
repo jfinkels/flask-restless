@@ -1503,9 +1503,25 @@ class API(APIBase):
         self.changes_on_update = changes_on_update(self.model)
 
     def collection_processor_type(self, is_relation=False, **kw):
+        """The suffix for the pre- and postprocessor identifiers for
+        requests on collections of resources.
+
+        `is_relation` is ``True`` if and only if the request is for a
+        to-many relation. Otherwise, the request is for a collection of
+        primary resources.
+
+        """
         return 'TO_MANY_RELATION' if is_relation else 'COLLECTION'
 
     def resource_processor_type(self, is_relation=False, **kw):
+        """The suffix for the pre- and postprocessor identifiers for
+        requests on a single resource.
+
+        `is_relation` is ``True`` if and only if the request is for a
+        to-one relation. Otherwise, the request is for a single
+        resource.
+
+        """
         return 'TO_ONE_RELATION' if is_relation else 'RESOURCE'
 
     def _get_related_resource(self, resource_id, relation_name,
