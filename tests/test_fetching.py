@@ -1124,7 +1124,15 @@ class TestProcessors(ManagerTestBase):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
             name = Column(Unicode)
+            articles = relationship('Article')
 
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship(Person)
+
+        self.Article = Article
         self.Person = Person
         self.Base.metadata.create_all()
 
@@ -1191,6 +1199,32 @@ class TestProcessors(ManagerTestBase):
         person = document['data']
         assert person['id'] == '1'
         assert person['attributes']['name'] == 'foo'
+
+    def test_change_related_resource(self):
+        """Tests for changing the primary resource ID and the relation
+        name in a preprocessor for fetching a related resource.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def change_two(*args, **kw):
+            # We will change the primary resource ID and the relation name.
+            return 1, 'articles'
+
+        preprocessors = {'GET_RELATED_RESOURCE': [change_two]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors)
+        # Need to create an API for Article resources so that each
+        # Article has a URL.
+        self.manager.create_api(self.Article)
+        response = self.app.get('/api/person/foo/bar/1')
+        document = loads(response.data)
+        resource = document['data']
+        assert 'article' == resource['type']
+        assert '1' == resource['id']
 
     def test_last_preprocessor_changes_id(self):
         """Tests that a return value from the last preprocessor in the list
