@@ -1200,6 +1200,33 @@ class TestProcessors(ManagerTestBase):
         assert person['id'] == '1'
         assert person['attributes']['name'] == 'foo'
 
+    def test_change_relation(self):
+        """Tests for changing the resource ID when fetching a relation.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def change_id(*args, **kw):
+            # We will change the primary resource ID.
+            return 1
+
+        preprocessors = {'GET_RELATION': [change_id]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors)
+        # Need to create an API for Article resources so that each
+        # Article has a URL.
+        self.manager.create_api(self.Article)
+        response = self.app.get('/api/person/bogus/articles')
+        document = loads(response.data)
+        articles = document['data']
+        assert len(articles) == 1
+        article = articles[0]
+        assert 'article' == article['type']
+        assert '1' == article['id']
+
     def test_change_related_resource(self):
         """Tests for changing the primary resource ID and the relation
         name in a preprocessor for fetching a related resource.

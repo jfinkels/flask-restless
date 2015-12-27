@@ -1540,14 +1540,15 @@ class API(APIBase):
             # We assume that if the preprocessor returns None, it really just
             # didn't return anything, which means we shouldn't overwrite the
             # instid.
-            if temp_result is not None and isinstance(temp_result, tuple):
-                if len(temp_result) == 1:
-                    resource_id = temp_result
-                elif len(temp_result) == 2:
-                    resource_id, relation_name = temp_result
+            if temp_result is not None:
+                if isinstance(temp_result, tuple):
+                    if len(temp_result) == 2:
+                        resource_id, relation_name = temp_result
+                    else:
+                        resource_id, relation_name, related_resource_id = \
+                            temp_result
                 else:
-                    resource_id, relation_name, related_resource_id = \
-                        temp_result
+                    resource_id = temp_result
         # Get the resource with the specified ID.
         primary_resource = get_by(self.session, self.model, resource_id,
                                   self.primary_key)
@@ -1623,11 +1624,11 @@ class API(APIBase):
             # We assume that if the preprocessor returns None, it really just
             # didn't return anything, which means we shouldn't overwrite the
             # instid.
-            if temp_result is not None and isinstance(temp_result, tuple):
-                if len(temp_result) == 1:
-                    resource_id = temp_result
-                else:
+            if temp_result is not None:
+                if isinstance(temp_result, tuple) and len(temp_result) == 2:
                     resource_id, relation_name = temp_result
+                else:
+                    resource_id = temp_result
 
         # Get the resource with the specified ID.
         primary_resource = get_by(self.session, self.model, resource_id,
