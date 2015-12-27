@@ -1479,6 +1479,10 @@ class API(APIBase):
         #: :ref:`clientids`.
         self.allow_client_generated_ids = allow_client_generated_ids
 
+        #: Whether any side-effect changes are made to the SQLAlchemy
+        #: model on updates.
+        self.changes_on_update = changes_on_update(self.model)
+
     def collection_processor_type(self, is_relation=False, **kw):
         return 'TO_MANY_RELATION' if is_relation else 'COLLECTION'
 
@@ -2010,9 +2014,7 @@ class API(APIBase):
         # If we believe that the resource changes in ways other than the
         # updates specified by the request, we must return 200 OK and a
         # representation of the modified resource.
-        #
-        # TODO This should be checked just once, at instantiation time.
-        if changes_on_update(self.model):
+        if self.changes_on_update:
             result = dict(data=self.serialize(instance))
             status = 200
         else:
