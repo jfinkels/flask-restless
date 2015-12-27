@@ -9,10 +9,6 @@
     :license: GNU AGPLv3+ or BSD
 
 """
-try:
-    from urllib.parse import quote as url_quote
-except ImportError:
-    from urllib import quote as url_quote
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -57,11 +53,10 @@ class SearchTestBase(ManagerTestBase):
         """
         if filters is None:
             filters = []
-        target_url = '{0}?filter[objects]={1}'.format(url, dumps(filters))
+        params = {'filter[objects]': dumps(filters)}
         if single is not None:
-            target_url += '&filter[single]={0}'.format(1 if single else 0)
-        # TODO change this to use get(url, query_string=dict(...))
-        return self.app.get(target_url)
+            params['filter[single]'] = 1 if single else 0
+        return self.app.get(url, query_string=params)
 
 
 class TestFiltering(SearchTestBase):
@@ -136,7 +131,7 @@ class TestFiltering(SearchTestBase):
         person3 = self.Person(name='Joseph')
         self.session.add_all([person1, person2, person3])
         self.session.commit()
-        filters = [dict(name='name', op='like', val=url_quote('%s%'))]
+        filters = [dict(name='name', op='like', val='%s%')]
         response = self.search('/api/person', filters)
         document = loads(response.data)
         people = document['data']
@@ -189,7 +184,19 @@ class TestFiltering(SearchTestBase):
         ``filter[single]`` yields an error response.
 
         """
-        response = self.app.get('/api/person?filter[single]=bogus')
+        params = {'filter[single]': 'bogus'}
+        response = self.app.get('/api/person', query_string=params)
+        assert response.status_code == 400
+        # TODO check the error message here.
+
+    def test_relation_single_wrong_format(self):
+        """Tests that providing an incorrectly formatted argument to
+        ``filter[single]`` yields an error response when fetching a
+        relation.
+
+        """
+        params = {'filter[single]': 'bogus'}
+        response = self.app.get('/api/person/1/articles', query_string=params)
         assert response.status_code == 400
         # TODO check the error message here.
 
@@ -226,8 +233,7 @@ class TestFiltering(SearchTestBase):
         self.session.commit()
         # Search for any people who have comments that contain the word "cool".
         filters = [dict(name='comments', op='any',
-                        val=dict(name='content', op='like',
-                                 val=url_quote('%cool%')))]
+                        val=dict(name='content', op='like', val='%cool%'))]
         response = self.search('/api/person', filters)
         document = loads(response.data)
         people = document['data']
@@ -335,7 +341,7 @@ class TestFiltering(SearchTestBase):
         self.session.commit()
         # Search for any articles with an author who has made comments that
         # include the word "me".
-        content_filter = dict(name='content', op='like', val=url_quote('%me%'))
+        content_filter = dict(name='content', op='like', val='%me%')
         comment_filter = dict(name='comments', op='any', val=content_filter)
         author_filter = dict(name='author', op='has', val=comment_filter)
         filters = [author_filter]
@@ -475,8 +481,7 @@ class TestFiltering(SearchTestBase):
         # This searches for people whose name is John, or people older than age
         # 10 who have a "u" in their names. This should return three people:
         # John, Paul, and Luke.
-        filters = [{'or': [{'and': [dict(name='name', op='like',
-                                         val=url_quote('%u%')),
+        filters = [{'or': [{'and': [dict(name='name', op='like', val='%u%'),
                                     dict(name='age', op='ge', val=10)]},
                            dict(name='name', op='eq', val='John')]
                     }]
@@ -685,8 +690,7 @@ class TestOperators(SearchTestBase):
         person3 = self.Person(name='baz')
         self.session.add_all([person1, person2, person3])
         self.session.commit()
-        # TODO refactor the url_quote() calls into the search() method
-        filters = [dict(name='name', op='like', val=url_quote('%ba%'))]
+        filters = [dict(name='name', op='like', val='%ba%')]
         response = self.search('/api/person', filters)
         document = loads(response.data)
         people = document['data']
@@ -700,7 +704,7 @@ class TestOperators(SearchTestBase):
         person3 = self.Person(name='baz')
         self.session.add_all([person1, person2, person3])
         self.session.commit()
-        filters = [dict(name='name', op='ilike', val=url_quote('%BA%'))]
+        filters = [dict(name='name', op='ilike', val='%BA%')]
         response = self.search('/api/person', filters)
         document = loads(response.data)
         people = document['data']
