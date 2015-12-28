@@ -21,8 +21,11 @@ client.
 import sys
 
 from sqlalchemy import Column
+from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Unicode
+from sqlalchemy.orm import backref
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import validates
 
 # for SAValidation package on pypi.python.org
@@ -70,8 +73,25 @@ class TestSimpleValidation(ManagerTestBase):
                     raise exception
                 return number
 
+            @validates('articles')
+            def validate_articles(self, key, article):
+                if article.title is not None and len(article.title) == 0:
+                    exception = CoolValidationError()
+                    exception.errors = {'articles': 'empty title not allowed'}
+                    raise exception
+                return article
+
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            title = Column(Unicode)
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship('Person', backref=backref('articles'))
+
+        self.Article = Article
         self.Person = Person
         self.Base.metadata.create_all()
+        self.manager.create_api(Article)
         self.manager.create_api(Person, methods=['POST', 'PATCH'],
                                 validation_exceptions=[CoolValidationError])
 
@@ -144,6 +164,27 @@ class TestSimpleValidation(ManagerTestBase):
         assert 'must be between' in error['detail'].lower()
         # Check that the person was not updated.
         assert person.age == 1
+
+    def test_adding_to_relationship_invalid(self):
+        """Tests that an attempt to update a resource with invalid data
+        yields an error response.
+
+        """
+        person = self.Person(id=1, age=1)
+        article = self.Article(id=1, title='')
+        self.session.add_all([person, article])
+        self.session.commit()
+        data = {'data': [{'type': 'article', 'id': 1}]}
+        response = self.app.post('/api/person/1/relationships/articles',
+                                 data=dumps(data))
+        assert response.status_code == 400
+        document = loads(response.data)
+        errors = document['errors']
+        error = errors[0]
+        assert 'validation' in error['title'].lower()
+        assert 'empty title not allowed' in error['detail'].lower()
+        # Check that the relationship was not updated.
+        assert article.author is None
 
 
 @skip_unless(has_savalidation and sav_version >= (0, 2) and
