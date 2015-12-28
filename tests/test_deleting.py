@@ -227,7 +227,7 @@ class TestProcessors(ManagerTestBase):
 
         def increment_id(instance_id=None, **kw):
             if instance_id is None:
-                raise ProcessingException(code=400)
+                raise ProcessingException
             return int(instance_id) + 1
 
         preprocessors = dict(DELETE_RESOURCE=[increment_id])
@@ -247,7 +247,7 @@ class TestProcessors(ManagerTestBase):
         self.session.commit()
 
         def forbidden(**kw):
-            raise ProcessingException(code=403, description='forbidden')
+            raise ProcessingException(status=403, detail='forbidden')
 
         preprocessors = dict(DELETE_RESOURCE=[forbidden])
         self.manager.create_api(self.Person, methods=['DELETE'],

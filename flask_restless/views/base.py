@@ -137,6 +137,10 @@ ACCEPT_RE = re.compile(
         )?                      # accept params are optional
     ''', re.VERBOSE)
 
+#: Keys in a JSON API error object.
+ERROR_FIELDS = ('id_', 'links', 'status', 'code_', 'title', 'detail', 'source',
+                'meta')
+
 # For the sake of brevity, rename this function.
 chain = chain.from_iterable
 
@@ -166,20 +170,33 @@ class ProcessingException(HTTPException):
     This exception should be raised by functions supplied in the
     ``preprocessors`` and ``postprocessors`` keyword arguments to
     :class:`APIManager.create_api`. When this exception is raised, all
-    preprocessing or postprocessing halts, so any processors appearing later in
-    the list will not be invoked.
+    preprocessing or postprocessing halts, so any processors appearing
+    later in the list will not be invoked.
 
-    `code` is the HTTP status code of the response supplied to the client in
-    the case that this exception is raised. `description` is an error message
-    describing the cause of this exception. This message will appear in the
-    JSON object in the body of the response to the client.
+    The keyword arguments ``id_``, ``href`` ``status``, ``code``,
+    ``title``, ``detail``, ``links``, ``paths`` correspond to the
+    elements of the JSON API error object; the values of these keyword
+    arguments will appear in the error object returned to the client.
+
+    Any additional positional or keyword arguments are supplied directly
+    to the superclass, :exc:`werkzeug.exceptions.HTTPException`.
 
     """
 
-    def __init__(self, description='', code=400, *args, **kwargs):
-        super(ProcessingException, self).__init__(*args, **kwargs)
-        self.code = code
-        self.description = description
+    def __init__(self, id_=None, links=None, status=400, code=None, title=None,
+                 detail=None, source=None, meta=None, *args, **kw):
+        super(ProcessingException, self).__init__(*args, **kw)
+        self.id_ = id_
+        self.links = links
+        self.status = status
+        # This attribute would otherwise override the class-level
+        # attribute `code` in the superclass, HTTPException.
+        self.code_ = code
+        self.code = status
+        self.title = title
+        self.detail = detail
+        self.source = source
+        self.meta = meta
 
 
 def _is_msie8or9():
@@ -214,9 +231,11 @@ def catch_processing_exceptions(func):
         try:
             return func(*args, **kw)
         except ProcessingException as exception:
-            detail = exception.description or str(exception)
-            status = exception.code
-            return error_response(status, cause=exception, detail=detail)
+            kw = {key: getattr(exception, key) for key in ERROR_FIELDS}
+            # Need to change the name of the `code` key as a workaround
+            # for name collisions with Werkzeug exception classes.
+            kw['code'] = kw.pop('code_')
+            return error_response(cause=exception, **kw)
     return new_func
 
 
@@ -598,10 +617,13 @@ def extract_error_messages(exception):
     return None
 
 
-def error(id=None, href=None, status=None, code=None, title=None,
-          detail=None, links=None, paths=None):
-    """Returns a dictionary representation of an error as described in the JSON
-    API specification.
+def error(id_=None, links=None, status=None, code=None, title=None,
+          detail=None, source=None, meta=None):
+    """Returns a dictionary representation of an error as described in the
+    JSON API specification.
+
+    Note: the ``id_`` keyword argument corresponds to the ``id`` element
+    of the JSON API error object.
 
     For more information, see the `Errors`_ section of the JSON API
     specification.
@@ -612,11 +634,11 @@ def error(id=None, href=None, status=None, code=None, title=None,
     # HACK We use locals() so we don't have to list every keyword argument.
     if all(kwvalue is None for kwvalue in locals().values()):
         raise ValueError('At least one of the arguments must not be None.')
-    return dict(id=id, href=href, status=status, code=code, title=title,
-                detail=detail, links=links, paths=paths)
+    return dict(id_=id_, links=links, status=status, code=code, title=title,
+                detail=detail, source=source, meta=meta)
 
 
-def error_response(status, cause=None, **kw):
+def error_response(status=400, cause=None, **kw):
     """Returns a correctly formatted error response with the specified
     parameters.
 
@@ -629,6 +651,7 @@ def error_response(status, cause=None, **kw):
     """
     if cause is not None:
         current_app.logger.exception(str(cause))
+    kw['status'] = status
     return errors_response(status, [error(**kw)])
 
 

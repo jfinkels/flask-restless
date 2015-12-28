@@ -506,13 +506,14 @@ authentication function can be implemented like this::
         # Next, check if the user is authorized to modify the specified
         # instance of the model.
         if not is_authorized_to_modify(current_user, instance_id):
-            raise ProcessingException(description='Not Authorized',
-                                      code=401)
+            raise ProcessingException(detail='Not Authorized', code=401)
     manager.create_api(Person, preprocessors=dict(GET_SINGLE=[check_auth]))
 
-The :exc:`ProcessingException` allows you to specify an HTTP status code for
-the generated response and an error message which the client will receive as
-part of the JSON in the body of the response.
+The :exc:`ProcessingException` allows you to specify as keyword arguments to
+the constructor the elements of the JSON API `error object`_. If no arguments
+are provided, the error is assumed to have status code :http:status:`400`.
+
+.. _error object: https://jsonapi.org/format/#error-objects
 
 .. _universal:
 
