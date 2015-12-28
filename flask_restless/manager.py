@@ -249,9 +249,9 @@ class APIManager(object):
         """Returns the URL for the specified model, similar to
         :func:`flask.url_for`.
 
-        `model` is a SQLAlchemy model class. This should be a model on which
-        :meth:`create_api_blueprint` has been invoked previously. If not, this
-        method raises a :exc:`ValueError`.
+        `model` is a SQLAlchemy model class. This must be a model on
+        which :meth:`create_api_blueprint` has been invoked previously,
+        otherwise a :exc:`KeyError` is raised.
 
         If `_absolute_url` is ``False``, this function will return just the URL
         path without the ``scheme`` and ``netloc`` part of the URL. If it is
@@ -276,12 +276,8 @@ class APIManager(object):
         .. _Flask request context: http://flask.pocoo.org/docs/0.10/reqcontext/
 
         """
-        try:
-            collection_name = self.created_apis_for[model].collection_name
-            blueprint_name = self.created_apis_for[model].blueprint_name
-        except KeyError:
-            raise ValueError('Model {0} unknown. Maybe you need to call'
-                             ' `create_api()`?'.format(model))
+        collection_name = self.created_apis_for[model].collection_name
+        blueprint_name = self.created_apis_for[model].blueprint_name
         api_name = APIManager.api_name(collection_name)
         parts = [blueprint_name, api_name]
         # If we are looking for a relationship URL, the view name ends with
@@ -298,19 +294,15 @@ class APIManager(object):
         the ``collection_name`` keyword argument to
         :meth:`create_api_blueprint`.
 
-        `model` is a SQLAlchemy model class. This should be a model on which
-        :meth:`create_api_blueprint` has been invoked previously. If not, this
-        method raises a :exc:`ValueError`.
+        `model` is a SQLAlchemy model class. This must be a model on
+        which :meth:`create_api_blueprint` has been invoked previously,
+        otherwise a :exc:`KeyError` is raised.
 
         This method only returns URLs for endpoints created by this
         :class:`APIManager`.
 
         """
-        try:
-            return self.created_apis_for[model].collection_name
-        except KeyError:
-            raise ValueError('Model {0} unknown. Maybe you need to call'
-                             ' `create_api()`?'.format(model))
+        return self.created_apis_for[model].collection_name
 
     def init_app(self, app, session=None, flask_sqlalchemy_db=None,
                  preprocessors=None, postprocessors=None):

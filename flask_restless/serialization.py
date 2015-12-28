@@ -373,23 +373,14 @@ class DefaultSerializer(Serializer):
         #                 value = value()
         #             result[method] = value
 
-        # TODO Should the responsibility for serializing date and uuid objects
-        # move outside of this function? I think so.
+        # Recursively serialize values that are themselves SQLAlchemy
+        # models.
         #
-        # Check for objects in the dictionary that may not be serializable by
-        # default.
+        # TODO We really need to serialize each model using the
+        # serializer defined for that class when the user called
+        # APIManager.create_api
         for key, value in result.items():
-            # Convert date, time, and datetime objects to ISO 8601 format.
-            if isinstance(value, (datetime.date, datetime.time)):
-                result[key] = value.isoformat()
-            # Convert UUIDs to hexadecimal strings.
-            elif isinstance(value, uuid.UUID):
-                result[key] = str(value)
-            # Recurse on values that are themselves SQLAlchemy models.
-            #
-            # TODO really we need to serialize each model using the serializer
-            # defined for that class when the user called APIManager.create_api
-            elif key not in column_attrs and is_mapped_class(type(value)):
+            if key not in column_attrs and is_mapped_class(type(value)):
                 result[key] = simple_serialize(value)
         # If the primary key is not named "id", we'll duplicate the
         # primary key under the "id" key.
