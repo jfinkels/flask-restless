@@ -198,6 +198,31 @@ class TestAdding(ManagerTestBase):
         assert response.status_code == 400
         # TODO check error message here
 
+    def test_preprocessor(self):
+        """Test for a preprocessor that changes both the primary
+        resource ID and the relation name from the ones given in the
+        requested URL.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def change_two(*args, **kw):
+            return 1, 'articles'
+
+        preprocessors = {'POST_RELATIONSHIP': [change_two]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors,
+                                url_prefix='/api2', methods=['PATCH'])
+        data = {'data': [{'type': 'article', 'id': '1'}]}
+        # The preprocessor will change the resource ID and the
+        # relationship name.
+        response = self.app.post('/api2/person/bogus1/relationships/bogus2',
+                                 data=dumps(data))
+        assert response.status_code == 204
+        assert article.author is person
+
 
 class TestDeleting(ManagerTestBase):
     """Tests for deleting a link from a resource's to-many relationship via the
