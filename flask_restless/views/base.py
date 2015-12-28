@@ -91,7 +91,11 @@ ROLLBACK_ERRORS = (DataError, IntegrityError, ProgrammingError, FlushError)
 
 #: Strings that indicate a database conflict when appearing in an error
 #: message of an exception raised by SQLAlchemy.
-CONFLICT_INDICATORS = ('conflicts with', 'UNIQUE constraint failed')
+#:
+#: The particular error message depends on the particular environment
+#: containing the SQLite backend, it seems.
+CONFLICT_INDICATORS = ('conflicts with', 'UNIQUE constraint failed',
+                       'column name is not unique')
 
 #: The names of pagination links that appear in both ``Link`` headers
 #: and JSON API links.
