@@ -53,5 +53,39 @@ yields the response
      }
    }
 
+To create a new resource with a client-generated ID, the request
+
+.. sourcecode:: http
+
+   POST /api/person HTTP/1.1
+   Host: example.com
+   Content-Type: application/vnd.api+json
+   Accept: application/vnd.api+json
+
+   {
+     "data": {
+       "type": "person",
+       "id": "bd34b544-ad39-11e5-a2aa-4cbb58b9ee34",
+       "name": "foo"
+     }
+   }
+
+yields the response
+
+.. sourcecode:: http
+
+   HTTP/1.1 201 Created
+   Content-Type: application/vnd.api+json
+
+   {
+     "data": {
+       "id": "bd34b544-ad39-11e5-a2aa-4cbb58b9ee34",
+       "type": "person"
+     }
+   }
+
+The server always responds with :http:status:`201` and a complete resource
+object on a request with a client-generated ID.
+
 The server will respond with :http:statuscode:`400` if the request specifies a
 field that does not exist on the model.
