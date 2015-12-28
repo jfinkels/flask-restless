@@ -223,6 +223,29 @@ class TestAdding(ManagerTestBase):
         assert response.status_code == 204
         assert article.author is person
 
+    def test_postprocessor(self):
+        """Tests that a postprocessor gets executing when adding a link
+        to a to-many relationship.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        has_run = []
+        def enable_flag(*args, **kw):
+            has_run.append(True)
+
+        postprocessors = {'POST_RELATIONSHIP': [enable_flag]}
+        self.manager.create_api(self.Person, postprocessors=postprocessors,
+                                url_prefix='/api2', methods=['PATCH'])
+        data = {'data': [{'type': 'article', 'id': '1'}]}
+        response = self.app.post('/api2/person/1/relationships/articles',
+                                 data=dumps(data))
+        assert response.status_code == 204
+        assert has_run == [True]
+
 
 class TestDeleting(ManagerTestBase):
     """Tests for deleting a link from a resource's to-many relationship via the
@@ -421,6 +444,31 @@ class TestDeleting(ManagerTestBase):
         assert response.status_code == 204
         assert article.author is None
 
+    def test_postprocessor(self):
+        """Tests that a postprocessor gets executing when deleting from
+        a to-many relationship.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        has_run = []
+        def enable_flag(was_deleted=None, *args, **kw):
+            has_run.append(was_deleted)
+
+        postprocessors = {'DELETE_RELATIONSHIP': [enable_flag]}
+        self.manager.create_api(self.Person, postprocessors=postprocessors,
+                                url_prefix='/api2', methods=['PATCH'],
+                                allow_delete_from_to_many_relationships=True)
+        data = {'data': [{'type': 'article', 'id': '1'}]}
+        response = self.app.delete('/api2/person/1/relationships/articles',
+                                   data=dumps(data))
+        assert response.status_code == 204
+        assert has_run == [True]
+
 
 class TestUpdatingToMany(ManagerTestBase):
     """Tests for updating a resource's to-many relationship via the
@@ -598,6 +646,70 @@ class TestUpdatingToMany(ManagerTestBase):
                                   data=data)
         assert response.status_code == 400
         # TODO check error message here
+
+    def test_preprocessor(self):
+        """Test for a preprocessor that changes both the primary
+        resource ID and the relation name from the ones given in the
+        requested URL.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def change_two(*args, **kw):
+            return 1, 'articles'
+
+        preprocessors = {'PATCH_RELATIONSHIP': [change_two]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors,
+                                url_prefix='/api2', methods=['PATCH'],
+                                allow_to_many_replacement=True)
+        data = {'data': [{'type': 'article', 'id': '1'}]}
+        # The preprocessor will change the resource ID and the
+        # relationship name.
+        response = self.app.patch('/api2/person/bogus1/relationships/bogus2',
+                                  data=dumps(data))
+        assert response.status_code == 204
+        assert person.articles == [article]
+
+    def test_postprocessor(self):
+        """Tests that a postprocessor gets executing when replacing a
+        to-many relationship.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        has_run = []
+        def enable_flag(*args, **kw):
+            has_run.append(True)
+
+        postprocessors = {'PATCH_RELATIONSHIP': [enable_flag]}
+        self.manager.create_api(self.Person, postprocessors=postprocessors,
+                                url_prefix='/api2', methods=['PATCH'],
+                                allow_to_many_replacement=True)
+        data = {'data': [{'type': 'article', 'id': '1'}]}
+        response = self.app.patch('/api2/person/1/relationships/articles',
+                                  data=dumps(data))
+        assert response.status_code == 204
+        assert has_run == [True]
+
+    def test_set_null(self):
+        """Tests that an attempt to set a null value on a to-many
+        relationship causes an error.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        data = {'data': None}
+        response = self.app.patch('/api/person/1/relationships/articles',
+                                  data=dumps(data))
+        assert response.status_code == 400
+        # TODO Check error message here.
 
 
 class TestUpdatingToOne(ManagerTestBase):

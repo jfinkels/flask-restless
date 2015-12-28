@@ -44,6 +44,15 @@ from .helpers import ManagerTestBase
 from .helpers import skip_unless
 
 
+class CoolValidationError(Exception):
+    """Raised when there is a validation error.
+
+    This is used for testing validation errors only.
+
+    """
+    pass
+
+
 class TestSimpleValidation(ManagerTestBase):
     """Tests for validation errors raised by the SQLAlchemy's simple built-in
     validation.
@@ -56,9 +65,6 @@ class TestSimpleValidation(ManagerTestBase):
     def setup(self):
         """Create APIs for the validated models."""
         super(TestSimpleValidation, self).setup()
-
-        class CoolValidationError(Exception):
-            pass
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -166,8 +172,8 @@ class TestSimpleValidation(ManagerTestBase):
         assert person.age == 1
 
     def test_adding_to_relationship_invalid(self):
-        """Tests that an attempt to update a resource with invalid data
-        yields an error response.
+        """Tests that an attempt to add to a relationship with invalid
+        data yields an error response.
 
         """
         person = self.Person(id=1, age=1)
@@ -185,6 +191,32 @@ class TestSimpleValidation(ManagerTestBase):
         assert 'empty title not allowed' in error['detail'].lower()
         # Check that the relationship was not updated.
         assert article.author is None
+
+    def test_updating_relationship_invalid(self):
+        """Tests that an attempt to update a relationship with invalid
+        data yields an error response.
+
+        """
+        person = self.Person(id=1, age=1)
+        article = self.Article(id=1, title='')
+        self.session.add_all([person, article])
+        self.session.commit()
+        self.manager.create_api(self.Person, methods=['PATCH'],
+                                allow_to_many_replacement=True,
+                                url_prefix='/api2',
+                                validation_exceptions=[CoolValidationError])
+        data = {'data': [{'type': 'article', 'id': 1}]}
+        response = self.app.patch('/api2/person/1/relationships/articles',
+                                  data=dumps(data))
+        print(response.data)
+        assert response.status_code == 400
+        document = loads(response.data)
+        errors = document['errors']
+        error = errors[0]
+        assert 'validation' in error['title'].lower()
+        assert 'empty title not allowed' in error['detail'].lower()
+        # Check that the relationship was not updated.
+        assert person.articles == []
 
 
 @skip_unless(has_savalidation and sav_version >= (0, 2) and
