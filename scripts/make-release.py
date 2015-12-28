@@ -111,8 +111,19 @@ def set_setup_version(version):
     set_filename_version('setup.py', version, 'version')
 
 
-def build_and_upload():
-    Popen([sys.executable, 'setup.py', 'release', 'sdist', 'upload', '--sign']).wait()
+def build():
+    Popen([sys.executable, 'setup.py', 'bdist_wheel']).wait()
+
+
+def sign(version)
+    built_wheel = 'dist/Flask-Restless-{0}.tar.gz'.format(version)
+    Popen(['gpg', '--detach-sign', '-a', built_wheel]).wait()
+
+
+def upload(version):
+    built_wheel = 'dist/Flask-Restless-{0}.tar.gz'.format(version)
+    built_wheel_signature = '{0}.asc'.format(built_wheel)
+    Popen(['twine', 'upload', built_wheel, built_wheel_signature]).wait()
 
 
 def fail(message, *args):
@@ -167,12 +178,14 @@ def main():
         fail('You have uncommitted changes in git')
 
     set_init_version(version)
-    set_setup_version(version)
+    #set_setup_version(version)
     make_git_commit('Bump version number to %s', version)
     make_git_tag(version)
-    build_and_upload()
+    build()
+    sign(version)
+    upload(version)
     set_init_version(dev_version)
-    set_setup_version(dev_version)
+    #set_setup_version(dev_version)
     add_new_changelog_section(version, dev_version)
     make_git_commit('Set development version number to %s', dev_version)
     print('*************************************')
