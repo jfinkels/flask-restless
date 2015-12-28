@@ -516,8 +516,8 @@ class TestCreating(ManagerTestBase):
 
         """
 
-        def serializer(*args, **kw):
-            raise SerializationException
+        def serializer(instance, *args, **kw):
+            raise SerializationException(instance)
 
         self.manager.create_api(self.Person, methods=['POST'],
                                 url_prefix='/api2', serializer=serializer)

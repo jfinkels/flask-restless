@@ -235,14 +235,14 @@ class TestFetchCollection(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
 
-        def serializer(*args, **kw):
-            raise SerializationException
+        def serializer(instance, *args, **kw):
+            raise SerializationException(instance)
 
         self.manager.create_api(self.Person, serializer=serializer,
                                 url_prefix='/api2')
         query_string = {'filter[single]': 1}
         response = self.app.get('/api2/person', query_string=query_string)
-        assert response.status_code == 400
+        assert response.status_code == 500
         document = loads(response.data)
         errors = document['errors']
         error = errors[0]
@@ -457,13 +457,13 @@ class TestFetchResource(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
 
-        def serializer(*args, **kw):
-            raise SerializationException
+        def serializer(instance, *args, **kw):
+            raise SerializationException(instance)
 
         self.manager.create_api(self.Person, serializer=serializer,
                                 url_prefix='/api2')
         response = self.app.get('/api2/person/1')
-        assert response.status_code == 400
+        assert response.status_code == 500
         # TODO check error message
 
     def test_serialization_exception_on_included(self):
@@ -480,13 +480,14 @@ class TestFetchResource(ManagerTestBase):
         def serializer(instance, **kw):
             # Only raise an exception when serializing the included resources.
             if isinstance(instance, self.Article):
-                raise SerializationException
+                raise SerializationException(instance)
             return simple_serialize(instance, **kw)
 
         self.manager.create_api(self.Person, serializer=serializer,
                                 url_prefix='/api2')
-        response = self.app.get('/api2/person/1?include=articles')
-        assert response.status_code == 400
+        query_string = {'include': 'articles'}
+        response = self.app.get('/api2/person/1', query_string=query_string)
+        assert response.status_code == 500
         # TODO check error message
 
     def test_circular_includes(self):
@@ -576,13 +577,13 @@ class TestFetchRelation(ManagerTestBase):
         self.session.add_all([person, article])
         self.session.commit()
 
-        def serializer(*args, **kw):
-            raise SerializationException
+        def serializer(instance, *args, **kw):
+            raise SerializationException(instance)
 
         self.manager.create_api(self.Person, serializer=serializer,
                                 url_prefix='/api2')
         response = self.app.get('/api2/person/1/articles')
-        assert response.status_code == 400
+        assert response.status_code == 500
         # TODO check error message
 
     def test_serialization_exception_to_one(self):
@@ -596,13 +597,13 @@ class TestFetchRelation(ManagerTestBase):
         self.session.add_all([person, article])
         self.session.commit()
 
-        def serializer(*args, **kw):
-            raise SerializationException
+        def serializer(instance, *args, **kw):
+            raise SerializationException(instance)
 
         self.manager.create_api(self.Article, serializer=serializer,
                                 url_prefix='/api2')
         response = self.app.get('/api2/article/1/author')
-        assert response.status_code == 400
+        assert response.status_code == 500
         # TODO check error message
 
     def test_serialization_exception_on_included(self):
@@ -619,13 +620,14 @@ class TestFetchRelation(ManagerTestBase):
         def serializer(instance, **kw):
             # Only raise an exception when serializing the included resources.
             if isinstance(instance, self.Person):
-                raise SerializationException
+                raise SerializationException(instance)
             return simple_serialize(instance, **kw)
 
         self.manager.create_api(self.Person, serializer=serializer,
                                 url_prefix='/api2')
-        response = self.app.get('/api2/person/1/articles?include=author')
-        assert response.status_code == 400
+        params = {'include': 'author'}
+        response = self.app.get('/api2/person/1/articles', query_string=params)
+        assert response.status_code == 500
         # TODO check error message
 
     def test_to_many_pagination(self):
@@ -802,13 +804,13 @@ class TestFetchRelatedResource(ManagerTestBase):
         self.session.add_all([person, article])
         self.session.commit()
 
-        def serializer(*args, **kw):
-            raise SerializationException
+        def serializer(instance, *args, **kw):
+            raise SerializationException(instance)
 
         self.manager.create_api(self.Person, serializer=serializer,
                                 url_prefix='/api2')
         response = self.app.get('/api2/person/1/articles/1')
-        assert response.status_code == 400
+        assert response.status_code == 500
         # TODO check error message
 
     def test_serialization_exception_on_included(self):
@@ -825,13 +827,15 @@ class TestFetchRelatedResource(ManagerTestBase):
         def serializer(instance, **kw):
             # Only raise an exception when serializing the included resources.
             if isinstance(instance, self.Person):
-                raise SerializationException
+                raise SerializationException(instance)
             return simple_serialize(instance, **kw)
 
         self.manager.create_api(self.Person, serializer=serializer,
                                 url_prefix='/api2')
-        response = self.app.get('/api2/person/1/articles/1?include=author')
-        assert response.status_code == 400
+        query_string = {'include': 'author'}
+        response = self.app.get('/api2/person/1/articles/1',
+                                query_string=query_string)
+        assert response.status_code == 500
         # TODO check error message
 
 

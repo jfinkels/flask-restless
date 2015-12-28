@@ -22,7 +22,6 @@ from werkzeug.exceptions import BadRequest
 
 from ..helpers import collection_name
 from ..helpers import get_by
-from ..helpers import get_model
 from ..helpers import get_related_model
 from ..helpers import has_field
 from ..helpers import is_like_list
@@ -33,7 +32,10 @@ from ..serialization import DeserializationException
 from .base import APIBase
 from .base import error
 from .base import error_response
+from .base import errors_from_serialization_exceptions
 from .base import errors_response
+from .base import JSONAPI_VERSION
+from .base import MultipleExceptions
 from .base import parse_sparse_fields
 from .base import SingleKeyError
 from .helpers import changes_on_update
@@ -408,7 +410,7 @@ class API(APIBase):
         # Get the dictionary representation of the new instance as it
         # appears in the database.
         try:
-            result = self.serialize(instance, only=fields_for_this)
+            data = self.serialize(instance, only=fields_for_this)
         except SerializationException as exception:
             detail = 'Failed to serialize object'
             return error_response(400, cause=exception, detail=detail)
@@ -421,21 +423,17 @@ class API(APIBase):
         # Provide that URL in the Location header in the response.
         headers = dict(Location=url)
         # Wrap the resulting object or list of objects under a 'data' key.
-        result = dict(data=result)
+        result = {'jsonapi': {'version': JSONAPI_VERSION}, 'meta': {},
+                  'links': {}, 'data': data}
         # Include any requested resources in a compound document.
-        to_include = self.resources_to_include(instance)
-        included = []
-        for included_resource in to_include:
-            type_ = collection_name(get_model(included_resource))
-            fields_for_this = fields.get(type_)
-            try:
-                serialized = self.serialize(included_resource,
-                                            only=fields_for_this)
-            except SerializationException as exception:
-                detail = 'Failed to serialize resource of type {0}'
-                detail = detail.format(type_)
-                return error_response(400, cause=exception, detail=detail)
-            included.append(serialized)
+        try:
+            included = self.get_all_inclusions(instance, fields)
+        except MultipleExceptions as e:
+            # By the way we defined `get_all_inclusions()`, we are
+            # guaranteed that each of the underlying exceptions is a
+            # `SerializationException`. Thus we can use
+            # `errors_from_serialization_exception()`.
+            return errors_from_serialization_exceptions(e.exceptions)
         if included:
             result['included'] = included
         status = 201

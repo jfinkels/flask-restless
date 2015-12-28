@@ -55,11 +55,21 @@ COLUMN_BLACKLIST = ('_sa_polymorphic_on', )
 
 
 class SerializationException(Exception):
-    """Raised when there is a problem serializing an instance of a SQLAlchemy
-    model to a dictionary representation.
+    """Raised when there is a problem serializing an instance of a
+    SQLAlchemy model to a dictionary representation.
+
+    ``instance`` is the (problematic) instance on which
+    :meth:`Serializer.__call__` was invoked.
+
+    `resource` is an optional partially-constructed serialized
+    representation of ``instance``.
 
     """
-    pass
+
+    def __init__(self, instance, resource=None, *args, **kw):
+        super(SerializationException, self).__init__(*args, **kw)
+        self.resource = resource
+        self.instance = instance
 
 
 class DeserializationException(Exception):
