@@ -76,9 +76,15 @@ def skip_unless(condition, reason=None):
     This decorator can be applied to functions, methods, or classes.
 
     """
-    def skip(test):
+    def decorated(test):
+        """Returns a decorated version of ``test``, as described in the
+        wrapper defined within.
+
+        """
         message = 'Skipped {0}: {1}'.format(test.__name__, reason)
 
+        # If the test is actually a test class, skip each of the methods
+        # in the class as well.
         if isclass(test):
             for attr, val in test.__dict__.items():
                 if callable(val) and not attr.startswith('__'):
@@ -87,12 +93,17 @@ def skip_unless(condition, reason=None):
 
         @functools.wraps(test)
         def inner(*args, **kw):
+            """Checks that ``condition`` is ``True`` before executing
+            ``test(*args, **kw)``.
+
+            """
             if not condition:
                 raise SkipTest(message)
             return test(*args, **kw)
+
         return inner
 
-    return skip
+    return decorated
 
 
 def skip(reason=None):
@@ -155,27 +166,37 @@ def force_json_contenttype(test_client):
     type is explicitly specified at the time the method is invoked.
 
     """
-    # Create a decorator for the test client request methods that adds a
-    # JSON Content-Type by default if none is specified.
     def set_content_type(func):
+        """Returns a decorated version of ``func``, as described in the
+        wrapper defined below.
+
+        """
+
         @functools.wraps(func)
         def new_func(*args, **kw):
+            """Sets the correct Accept and Content-Type headers before
+            executing ``func(*args, **kw)``.
+
+            """
             #if 'content_type' not in kw:
             #    kw['content_type'] = CONTENT_TYPE
             if 'headers' not in kw:
                 kw['headers'] = dict()
             headers = kw['headers']
-            if (isinstance(headers, dict) and 'Accept' not in headers
-                or isinstance(headers, list) and all(x[0] != 'Accept'
-                                                     for x in headers)):
+            is_dict = isinstance(headers, dict)
+            is_list = isinstance(headers, list)
+            if (is_dict and 'Accept' not in headers
+                    or is_list and all(x[0] != 'Accept' for x in headers)):
                 headers['Accept'] = CONTENT_TYPE
             if 'content_type' not in kw and 'Content-Type' not in headers:
                 kw['content_type'] = CONTENT_TYPE
             return func(*args, **kw)
         return new_func
 
+    # Decorate each of the test client request methods with a function
+    # that adds the correct Content-Type and Accept headers, if none are
+    # specified by the request.
     for methodname in ('get', 'patch', 'post', 'delete'):
-        # Decorate the original test client request method.
         old_method = getattr(test_client, methodname)
         setattr(test_client, methodname, set_content_type(old_method))
     # # PATCH methods need to have `application/json-patch+json` content type.
@@ -209,7 +230,7 @@ class FlaskTestBase(object):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the Flask application and the APIManager."""
         # create the Flask application
         app = Flask(__name__)
@@ -235,18 +256,18 @@ class FlaskTestBase(object):
 class DatabaseTestBase(FlaskTestBase):
     """Base class for tests that use a SQLAlchemy database.
 
-    The :meth:`setUp` method does the necessary SQLAlchemy initialization, and
+    The :meth:`setup` method does the necessary SQLAlchemy initialization, and
     the subclasses should populate the database with models and then create the
     database (by calling ``self.Base.metadata.create_all()``).
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Initializes the components necessary for models in a SQLAlchemy
         database.
 
         """
-        super(DatabaseTestBase, self).setUp()
+        super(DatabaseTestBase, self).setup()
         # initialize SQLAlchemy
         app = self.flaskapp
         engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'],
@@ -257,7 +278,7 @@ class DatabaseTestBase(FlaskTestBase):
         self.Base = declarative_base()
         self.Base.metadata.bind = engine
 
-    def tearDown(self):
+    def teardown(self):
         """Drops all tables from the temporary database."""
         self.session.remove()
         self.Base.metadata.drop_all()
@@ -271,9 +292,9 @@ class ManagerTestBase(DatabaseTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Initializes an instance of :class:`flask.ext.restless.APIManager`.
 
         """
-        super(ManagerTestBase, self).setUp()
+        super(ManagerTestBase, self).setup()
         self.manager = APIManager(self.flaskapp, session=self.session)

@@ -58,8 +58,8 @@ from .helpers import unregister_fsa_session_signals
 
 class TestFetchCollection(ManagerTestBase):
 
-    def setUp(self):
-        super(TestFetchCollection, self).setUp()
+    def setup(self):
+        super(TestFetchCollection, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -251,8 +251,8 @@ class TestFetchCollection(ManagerTestBase):
 
 class TestFetchResource(ManagerTestBase):
 
-    def setUp(self):
-        super(TestFetchResource, self).setUp()
+    def setup(self):
+        super(TestFetchResource, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -527,8 +527,8 @@ class TestFetchResource(ManagerTestBase):
 
 class TestFetchRelation(ManagerTestBase):
 
-    def setUp(self):
-        super(TestFetchRelation, self).setUp()
+    def setup(self):
+        super(TestFetchRelation, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -701,8 +701,8 @@ class TestFetchRelation(ManagerTestBase):
 
 class TestFetchRelatedResource(ManagerTestBase):
 
-    def setUp(self):
-        super(TestFetchRelatedResource, self).setUp()
+    def setup(self):
+        super(TestFetchRelatedResource, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -838,8 +838,8 @@ class TestFetchRelatedResource(ManagerTestBase):
 class TestFetchRelationship(ManagerTestBase):
     """Tests for fetching from a relationship URL."""
 
-    def setUp(self):
-        super(TestFetchRelationship, self).setUp()
+    def setup(self):
+        super(TestFetchRelationship, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -882,8 +882,8 @@ class TestFetchRelationship(ManagerTestBase):
 class TestServerSparseFieldsets(ManagerTestBase):
     """Tests for specifying default sparse fieldsets on the server."""
 
-    def setUp(self):
-        super(TestServerSparseFieldsets, self).setUp()
+    def setup(self):
+        super(TestServerSparseFieldsets, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -1138,14 +1138,14 @@ class TestServerSparseFieldsets(ManagerTestBase):
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestProcessors, self).setUp()
+        super(TestProcessors, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -1431,14 +1431,14 @@ class TestProcessors(ManagerTestBase):
 class TestDynamicRelationships(ManagerTestBase):
     """Tests for fetching resources from dynamic to-many relationships."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestDynamicRelationships, self).setUp()
+        super(TestDynamicRelationships, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -1535,14 +1535,14 @@ class TestAssociationProxy(ManagerTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask.ext.restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestAssociationProxy, self).setUp()
+        super(TestAssociationProxy, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -1620,9 +1620,9 @@ class TestFlaskSqlalchemy(FlaskTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSqlalchemy, self).setUp()
+        super(TestFlaskSqlalchemy, self).setup()
         self.db = SQLAlchemy(self.flaskapp)
         self.session = self.db.session
 
@@ -1634,7 +1634,7 @@ class TestFlaskSqlalchemy(FlaskTestBase):
         self.manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
         self.manager.create_api(self.Person)
 
-    def tearDown(self):
+    def teardown(self):
         """Drops all tables and unregisters Flask-SQLAlchemy session signals.
 
         """

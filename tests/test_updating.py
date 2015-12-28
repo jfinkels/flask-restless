@@ -58,14 +58,14 @@ from .helpers import unregister_fsa_session_signals
 class TestUpdating(ManagerTestBase):
     """Tests for updating resources."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestUpdating, self).setUp()
+        super(TestUpdating, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -717,8 +717,8 @@ class TestUpdating(ManagerTestBase):
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setUp(self):
-        super(TestProcessors, self).setUp()
+    def setup(self):
+        super(TestProcessors, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -849,14 +849,14 @@ class TestAssociationProxy(ManagerTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask.ext.restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestAssociationProxy, self).setUp()
+        super(TestAssociationProxy, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -1041,9 +1041,9 @@ class TestFlaskSqlalchemy(FlaskTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSqlalchemy, self).setUp()
+        super(TestFlaskSqlalchemy, self).setup()
         # HACK During testing, we don't want the session to expire, so that we
         # can access attributes of model instances *after* a request has been
         # made (that is, after Flask-Restless does its work and commits the
@@ -1061,7 +1061,7 @@ class TestFlaskSqlalchemy(FlaskTestBase):
         self.manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
         self.manager.create_api(self.Person, methods=['PATCH'])
 
-    def tearDown(self):
+    def teardown(self):
         """Drops all tables and unregisters Flask-SQLAlchemy session signals.
 
         """

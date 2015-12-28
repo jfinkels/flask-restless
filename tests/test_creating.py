@@ -25,7 +25,7 @@ from datetime import datetime
 import dateutil
 try:
     from flask.ext.sqlalchemy import SQLAlchemy
-except:
+except ImportError:
     has_flask_sqlalchemy = False
 else:
     has_flask_sqlalchemy = True
@@ -62,14 +62,14 @@ from .helpers import unregister_fsa_session_signals
 class TestCreating(ManagerTestBase):
     """Tests for creating resources."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestCreating, self).setUp()
+        super(TestCreating, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -568,8 +568,8 @@ class TestCreating(ManagerTestBase):
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setUp(self):
-        super(TestProcessors, self).setUp()
+    def setup(self):
+        super(TestProcessors, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -622,14 +622,14 @@ class TestAssociationProxy(ManagerTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask.ext.restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestAssociationProxy, self).setUp()
+        super(TestAssociationProxy, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -725,9 +725,9 @@ class TestFlaskSqlalchemy(FlaskTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSqlalchemy, self).setUp()
+        super(TestFlaskSqlalchemy, self).setup()
         self.db = SQLAlchemy(self.flaskapp)
 
         class Person(self.db.Model):
@@ -738,7 +738,7 @@ class TestFlaskSqlalchemy(FlaskTestBase):
         self.manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
         self.manager.create_api(self.Person, methods=['POST'])
 
-    def tearDown(self):
+    def teardown(self):
         """Drops all tables and unregisters Flask-SQLAlchemy session signals.
 
         """

@@ -35,8 +35,8 @@ class TestServerResponsibilities(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestServerResponsibilities, self).setUp()
+    def setup(self):
+        super(TestServerResponsibilities, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'

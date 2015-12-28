@@ -17,6 +17,8 @@ The main class in this module, :class:`APIBase`, is a
 for JSON API requests on a SQLAlchemy backend.
 
 """
+from __future__ import division
+
 from collections import defaultdict
 from functools import partial
 from functools import wraps
@@ -114,8 +116,11 @@ PAGE_NUMBER_PARAM = 'page[number]'
 #: :http:method:`get` request.
 PAGE_SIZE_PARAM = 'page[size]'
 
-# for explanation of "media-range", etc. see Sections 5.3.{1,2} of RFC 7231
-_accept_re = re.compile(
+#: A regular expression for Accept headers.
+#:
+#: For an explanation of "media-range", etc., see Sections 5.3.{1,2} of
+#: RFC 7231.
+ACCEPT_RE = re.compile(
     r'''(                       # media-range capturing-parenthesis
           [^\s;,]+              # type/subtype
           (?:[ \t]*;[ \t]*      # ";"
@@ -202,6 +207,10 @@ def catch_processing_exceptions(func):
     """
     @wraps(func)
     def new_func(*args, **kw):
+        """Executes ``func(*args, **kw)`` but catches
+        :exc:`ProcessingException`s.
+
+        """
         try:
             return func(*args, **kw)
         except ProcessingException as exception:
@@ -228,6 +237,14 @@ def parse_accept_header(value):
 
     """
     def match_to_pair(match):
+        """Returns the pair ``(name, quality)`` from the given match
+        object for the Accept header regular expression.
+
+        ``name`` is the name of the content type that is accepted, and
+        ``quality`` is the integer given by the header's media type
+        parameter, or ``None`` if it has no such media type paramer.
+
+        """
         name = match.group(1)
         extra = match.group(2)
         # This is the main difference between our implementation and
@@ -236,7 +253,7 @@ def parse_accept_header(value):
         # quality is ``None`` instead of ``1`` here.
         quality = max(min(float(extra), 1), 0) if extra else None
         return name, quality
-    return (match_to_pair(match) for match in _accept_re.finditer(value))
+    return (match_to_pair(match) for match in ACCEPT_RE.finditer(value))
 
 
 def requires_json_api_accept(func):
@@ -264,6 +281,10 @@ def requires_json_api_accept(func):
     """
     @wraps(func)
     def new_func(*args, **kw):
+        """Executes ``func(*args, **kw)`` only after checking for the
+        correct JSON API :http:header:`Accept` header.
+
+        """
         header = request.headers.get('Accept')
         header_pairs = parse_accept_header(header)
         jsonapi_pairs = [(name, extra) for name, extra in header_pairs
@@ -295,6 +316,10 @@ def requires_json_api_mimetype(func):
     """
     @wraps(func)
     def new_func(*args, **kw):
+        """Executes ``func(*args, **kw)`` only after checking for the
+        correct JSON API :http:header:`Content-Type` header.
+
+        """
         header = request.headers.get('Content-Type')
         content_type, extra = parse_options_header(header)
         content_is_json = content_type.startswith(CONTENT_TYPE)
@@ -335,9 +360,17 @@ def catch_integrity_errors(session):
     Flask application, and an error response is returned to the client.
 
     """
-    def decorator(func):
+    def decorated(func):
+        """Returns a decorated version of ``func``, as described in the
+        wrapper defined within.
+
+        """
         @wraps(func)
         def wrapped(*args, **kw):
+            """Executes ``func(*args, **kw)`` but catches any exception
+            that warrants a database rollback.
+
+            """
             try:
                 return func(*args, **kw)
             # TODO should `sqlalchemy.exc.InvalidRequestError`s also be caught?
@@ -348,7 +381,7 @@ def catch_integrity_errors(session):
                 detail = str(exception)
                 return error_response(status, cause=exception, detail=detail)
         return wrapped
-    return decorator
+    return decorated
 
 
 def is_conflict(exception):
@@ -755,8 +788,8 @@ class Paginated(object):
         return urlunparse(parsed)
 
     def __init__(self, items, first=None, last=None, prev=None, next_=None,
-                 page_size=None, page_number=None, num_results=None,
-                 filters=None, sort=None, group_by=None):
+                 page_size=None, num_results=None, filters=None, sort=None,
+                 group_by=None):
         self._items = items
         self._num_results = num_results
         # Pagination links and the link header are computed by the code below.
@@ -839,10 +872,15 @@ class Paginated(object):
 
     @property
     def items(self):
+        """The items in the current page that this object represents."""
         return self._items
 
     @property
     def num_results(self):
+        """The total number of elements in the search result, one page
+        of which this object represents.
+
+        """
         return self._num_results
 
 
@@ -1174,13 +1212,14 @@ class APIBase(ModelView):
             prev = page_number - 1 if page_number > 1 else None
             next_ = page_number + 1 if page_number < last else None
             offset = (page_number - 1) * page_size
+            # TODO Use Query.slice() instead, since it's easier to use.
             items = items.limit(page_size).offset(offset)
         items = [self.primary_serializer(instance, only=only)
                  for instance in items]
         return Paginated(items, num_results=num_results, first=first,
                          last=last, next_=next_, prev=prev,
-                         page_size=page_size, page_number=page_number,
-                         filters=filters, sort=sort, group_by=group_by)
+                         page_size=page_size, filters=filters, sort=sort,
+                         group_by=group_by)
 
     def _get_resource_helper(self, resource, primary_resource=None,
                              relation_name=None, related_resource=False):

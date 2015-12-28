@@ -23,13 +23,13 @@ from .helpers import skip
 class TestMetadata(ManagerTestBase):
     """Tests for receiving metadata in responses."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`.
 
         """
-        super(TestMetadata, self).setUp()
+        super(TestMetadata, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'

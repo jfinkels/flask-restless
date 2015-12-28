@@ -37,14 +37,14 @@ class TestFetchingData(ManagerTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestFetchingData, self).setUp()
+        super(TestFetchingData, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -386,8 +386,8 @@ class TestInclusion(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestInclusion, self).setUp()
+    def setup(self):
+        super(TestInclusion, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -667,8 +667,8 @@ class TestSparseFieldsets(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestSparseFieldsets, self).setUp()
+    def setup(self):
+        super(TestSparseFieldsets, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -794,8 +794,8 @@ class TestSorting(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestSorting, self).setUp()
+    def setup(self):
+        super(TestSorting, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -949,8 +949,8 @@ class TestPagination(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestPagination, self).setUp()
+    def setup(self):
+        super(TestPagination, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -1042,7 +1042,8 @@ class TestPagination(ManagerTestBase):
         people = [self.Person() for i in range(25)]
         self.session.add_all(people)
         self.session.commit()
-        response = self.app.get('/api/person?page[number]=2')
+        query_string = {'page[number]': 2}
+        response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
         pagination = document['links']
         assert '/api/person?' in pagination['first']
@@ -1067,7 +1068,8 @@ class TestPagination(ManagerTestBase):
         people = [self.Person() for i in range(40)]
         self.session.add_all(people)
         self.session.commit()
-        response = self.app.get('/api/person?sort=-id&page[number]=2')
+        query_string = {'sort': '-id', 'page[number]': 2}
+        response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
         # In reverse order, the first page should have Person instances with
         # IDs 40 through 31, so the second page should have Person instances
@@ -1107,7 +1109,8 @@ class TestPagination(ManagerTestBase):
         people = [self.Person() for i in range(25)]
         self.session.add_all(people)
         self.session.commit()
-        response = self.app.get('/api/person?page[size]=5')
+        query_string = {'page[size]': 5}
+        response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
         pagination = document['links']
         assert '/api/person?' in pagination['first']
@@ -1132,7 +1135,8 @@ class TestPagination(ManagerTestBase):
         people = [self.Person() for i in range(25)]
         self.session.add_all(people)
         self.session.commit()
-        response = self.app.get('/api/person?page[number]=3')
+        query_string = {'page[number]': 3}
+        response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
         pagination = document['links']
         assert '/api/person?' in pagination['first']
@@ -1157,7 +1161,8 @@ class TestPagination(ManagerTestBase):
         self.session.add_all(people)
         self.session.commit()
         self.manager.create_api(self.Person, url_prefix='/api2', page_size=5)
-        response = self.app.get('/api2/person?page[number]=3')
+        query_string = {'page[number]': 3}
+        response = self.app.get('/api2/person', query_string=query_string)
         document = loads(response.data)
         pagination = document['links']
         assert '/api2/person?' in pagination['first']
@@ -1206,7 +1211,8 @@ class TestPagination(ManagerTestBase):
         self.session.add_all(people)
         self.session.commit()
         self.manager.create_api(self.Person, url_prefix='/api2', page_size=0)
-        response = self.app.get('/api2/person?page[number]=2')
+        query_string = {'page[number]': 2}
+        response = self.app.get('/api2/person', query_string=query_string)
         document = loads(response.data)
         pagination = document['links']
         assert 'first' not in pagination
@@ -1230,7 +1236,8 @@ class TestPagination(ManagerTestBase):
         self.session.commit()
         self.manager.create_api(self.Person, url_prefix='/api2',
                                 max_page_size=15)
-        response = self.app.get('/api2/person?page[size]=20')
+        query_string = {'page[size]': 20}
+        response = self.app.get('/api2/person', query_string=query_string)
         assert response.status_code == 400
         # TODO check the error message here.
 
@@ -1243,7 +1250,8 @@ class TestPagination(ManagerTestBase):
         .. _Pagination: http://jsonapi.org/format/#fetching-pagination
 
         """
-        response = self.app.get('/api/person?page[size]=-1')
+        query_string = {'page[size]': -1}
+        response = self.app.get('/api/person', query_string=query_string)
         assert response.status_code == 400
         # TODO check the error message here.
 
@@ -1256,7 +1264,8 @@ class TestPagination(ManagerTestBase):
         .. _Pagination: http://jsonapi.org/format/#fetching-pagination
 
         """
-        response = self.app.get('/api/person?page[number]=-1')
+        query_string = {'page[number]': -1}
+        response = self.app.get('/api/person', query_string=query_string)
         assert response.status_code == 400
         # TODO check the error message here.
 
@@ -1270,7 +1279,8 @@ class TestPagination(ManagerTestBase):
         people = [self.Person() for i in range(25)]
         self.session.add_all(people)
         self.session.commit()
-        response = self.app.get('/api/person?page[number]=4&page[size]=3')
+        query_string = {'page[number]': 4, 'page[size]': 3}
+        response = self.app.get('/api/person', query_string=query_string)
         links = response.headers['Link'].split(',')
         assert any(all(('/api/person?' in l, 'page[number]=1' in l,
                         'page[size]=3' in l, 'rel="first"' in l))

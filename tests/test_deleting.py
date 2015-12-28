@@ -47,14 +47,14 @@ from .helpers import unregister_fsa_session_signals
 class TestDeleting(ManagerTestBase):
     """Tests for deleting resources."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestDeleting, self).setUp()
+        super(TestDeleting, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -205,8 +205,8 @@ class TestDeleting(ManagerTestBase):
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setUp(self):
-        super(TestProcessors, self).setUp()
+    def setup(self):
+        super(TestProcessors, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -285,9 +285,9 @@ class TestFlaskSqlalchemy(FlaskTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSqlalchemy, self).setUp()
+        super(TestFlaskSqlalchemy, self).setup()
         self.db = SQLAlchemy(self.flaskapp)
         self.session = self.db.session
 
@@ -299,7 +299,7 @@ class TestFlaskSqlalchemy(FlaskTestBase):
         self.manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
         self.manager.create_api(self.Person, methods=['DELETE'])
 
-    def tearDown(self):
+    def teardown(self):
         """Drops all tables and unregisters Flask-SQLAlchemy session signals.
 
         """

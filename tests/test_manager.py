@@ -47,8 +47,8 @@ class TestLocalAPIManager(DatabaseTestBase):
 
     """
 
-    def setUp(self):
-        super(TestLocalAPIManager, self).setUp()
+    def setup(self):
+        super(TestLocalAPIManager, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -177,8 +177,8 @@ class TestLocalAPIManager(DatabaseTestBase):
 class TestAPIManager(ManagerTestBase):
     """Unit tests for the :class:`flask_restless.manager.APIManager` class."""
 
-    def setUp(self):
-        super(TestAPIManager, self).setUp()
+    def setup(self):
+        super(TestAPIManager, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -203,13 +203,13 @@ class TestAPIManager(ManagerTestBase):
 
     # HACK If we don't include this, there seems to be an issue with the
     # globally known APIManager objects not being cleared after every test.
-    def tearDown(self):
+    def teardown(self):
         """Clear the :class:`flask.ext.restless.APIManager` objects known by
         the global functions :data:`model_for`, :data:`url_for`, and
         :data:`collection_name`.
 
         """
-        super(TestAPIManager, self).tearDown()
+        super(TestAPIManager, self).teardown()
         model_for.created_managers.clear()
         url_for.created_managers.clear()
         collection_name.created_managers.clear()
@@ -326,12 +326,12 @@ class TestFSA(FlaskTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the Flask application, the APIManager, the database, and the
         Flask-SQLAlchemy models.
 
         """
-        super(TestFSA, self).setUp()
+        super(TestFSA, self).setup()
         self.db = SQLAlchemy(self.flaskapp)
 
         class Person(self.db.Model):
@@ -340,7 +340,7 @@ class TestFSA(FlaskTestBase):
         self.Person = Person
         self.db.create_all()
 
-    def tearDown(self):
+    def teardown(self):
         """Drops all tables from the temporary database."""
         self.db.drop_all()
         unregister_fsa_session_signals()

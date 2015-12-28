@@ -21,14 +21,14 @@ from .helpers import ManagerTestBase
 class TestFunctionEvaluation(ManagerTestBase):
     """Unit tests for the :class:`flask_restless.views.FunctionAPI` class."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`testapp.Person` and
         :class:`testapp.Computer` models.
 
         """
-        super(TestFunctionEvaluation, self).setUp()
+        super(TestFunctionEvaluation, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'

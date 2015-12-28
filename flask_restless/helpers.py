@@ -229,14 +229,15 @@ def is_mapped_class(cls):
     """
     try:
         sqlalchemy_inspect(cls)
-        return True
-    except:
+    except NoInspectionAvailable:
         return False
+    else:
+        return True
 
 
-def query_by_primary_key(session, model, primary_key_value, primary_key=None):
+def query_by_primary_key(session, model, pk_value, primary_key=None):
     """Returns a SQLAlchemy query object containing the result of querying
-    `model` for instances whose primary key has the value `primary_key_value`.
+    `model` for instances whose primary key has the value `pk_value`.
 
     If `primary_key` is specified, the column specified by that string is used
     as the primary key column. Otherwise, the column named ``id`` is used.
@@ -246,23 +247,34 @@ def query_by_primary_key(session, model, primary_key_value, primary_key=None):
     """
     pk_name = primary_key or primary_key_name(model)
     query = session_query(session, model)
-    return query.filter(getattr(model, pk_name) == primary_key_value)
+    return query.filter(getattr(model, pk_name) == pk_value)
 
 
-def get_by(session, model, primary_key_value, primary_key=None):
+def get_by(session, model, pk_value, primary_key=None):
     """Returns the first instance of `model` whose primary key has the value
-    `primary_key_value`, or ``None`` if no such instance exists.
+    `pk_value`, or ``None`` if no such instance exists.
 
     If `primary_key` is specified, the column specified by that string is used
     as the primary key column. Otherwise, the column named ``id`` is used.
 
     """
-    result = query_by_primary_key(session, model, primary_key_value,
-                                  primary_key)
+    result = query_by_primary_key(session, model, pk_value, primary_key)
     return result.first()
 
 
 def string_to_datetime(model, fieldname, value):
+    """Casts `value` to a :class:`datetime.datetime` or
+    :class:`datetime.timedelta` object if the given field of the given
+    model is a date-like or interval column.
+
+    If the field name corresponds to a field in the model which is a
+    :class:`sqlalchemy.types.Date`, :class:`sqlalchemy.types.DateTime`,
+    or :class:`sqlalchemy.Interval`, then the returned value will be the
+    :class:`datetime.datetime` or :class:`datetime.timedelta` Python
+    object corresponding to `value`. Otherwise, the `value` is returned
+    unchanged.
+
+    """
     if value is None:
         return value
     # If this is a date, time or datetime field, parse it and convert it to
@@ -308,12 +320,8 @@ def strings_to_datetimes(model, dictionary):
     This function outputs a new dictionary; it does not modify the argument.
 
     """
-    # In Python 3, this should be
-    #     return {k: string_to_datetime(model, k, v)
-    #             for k, v in dictionary.items() if k not in ('type', 'links')}
-    #
-    return dict((k, string_to_datetime(model, k, v))
-                for k, v in dictionary.items() if k not in ('type', 'links'))
+    return {k: string_to_datetime(model, k, v) for k, v in dictionary.items()
+            if k not in ('type', 'links')}
 
 
 def get_model(instance):
@@ -351,12 +359,19 @@ class Singleton(_Singleton('SingletonMeta', (object,), {})):
 
 
 class KnowsAPIManagers:
+    """An object that allows client code to register :class:`APIManager`
+    objects.
+
+    """
 
     def __init__(self):
         #: A global list of created :class:`APIManager` objects.
         self.created_managers = set()
 
     def register(self, apimanager):
+        """Inform this object about the specified :class:`APIManager` object.
+
+        """
         self.created_managers.add(apimanager)
 
 

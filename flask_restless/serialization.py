@@ -88,6 +88,54 @@ def get_column_name(column):
     return column
 
 
+def create_relationship(model, instance, relation):
+    """Creates a relationship from the given relation name.
+
+    Returns a dictionary representing a relationship as described in
+    the `Relationships`_ section of the JSON API specification.
+
+    .. _Relationships: http://jsonapi.org/format/#document-resource-object-relationships
+
+    """
+    result = {}
+    # Create the self and related links.
+    self_link = url_for(model, primary_key_value(instance), relation,
+                        relationship=True)
+    related_link = url_for(model, primary_key_value(instance), relation)
+    result['links'] = {'self': self_link, 'related': related_link}
+    # Get the related value so we can see if it is a to-many
+    # relationship or a to-one relationship.
+    related_value = getattr(instance, relation)
+    # If the related value is list-like, it represents a to-many
+    # relationship.
+    if is_like_list(instance, relation):
+        # For the sake of brevity, rename these functions.
+        cn = collection_name
+        gm = get_model
+        pkv = primary_key_value
+        # Create the resource linkage objects.
+        result['data'] = [dict(type=cn(gm(i)), id=str(pkv(i)))
+                          for i in related_value]
+        return result
+    # At this point, we know we have a to-one relationship.
+    related_model = get_related_model(model, relation)
+    # If the related value is None, that means we have an empty
+    # to-one relationship.
+    if related_value is None:
+        result['data'] = None
+        return result
+    # If the related value is dynamically loaded, resolve the query
+    # to get the single instance in the to-one relationship.
+    if isinstance(related_value, Query):
+        related_value = related_value.one()
+    # Create the resource linkage object for the to-one
+    # relationship.
+    related_type = collection_name(related_model)
+    related_id = str(primary_key_value(related_value))
+    result['data'] = {'type': related_type, 'id': related_id}
+    return result
+
+
 class Serializer(object):
     """An object that, when called, returns a dictionary representation of a
     given instance of a SQLAlchemy model.
@@ -184,7 +232,7 @@ class DefaultSerializer(Serializer):
             raise ValueError('Cannot specify both `only` and `exclude` keyword'
                              ' arguments simultaneously')
         if (additional_attributes is not None and exclude is not None and
-            any(attr in exclude for attr in additional_attributes)):
+                any(attr in exclude for attr in additional_attributes)):
             raise ValueError('Cannot exclude attributes listed in the'
                              ' `additional_attributes` keyword argument')
         # Always include at least the type and ID, regardless of what the user
@@ -200,53 +248,6 @@ class DefaultSerializer(Serializer):
         self.default_fields = only
         self.exclude = exclude
         self.additional_attributes = additional_attributes
-
-    def _create_relationship(self, model, instance, relation):
-        """Creates a relationship from the given relation name.
-
-        Returns a dictionary representing a relationship as described in
-        the `Relationships`_ section of the JSON API specification.
-
-        .. _Relationships: http://jsonapi.org/format/#document-resource-object-relationships
-
-        """
-        result = {}
-        # Create the self and related links.
-        self_link = url_for(model, primary_key_value(instance), relation,
-                            relationship=True)
-        related_link = url_for(model, primary_key_value(instance), relation)
-        result['links'] = {'self': self_link, 'related': related_link}
-        # Get the related value so we can see if it is a to-many
-        # relationship or a to-one relationship.
-        related_value = getattr(instance, relation)
-        # If the related value is list-like, it represents a to-many
-        # relationship.
-        if is_like_list(instance, relation):
-            # For the sake of brevity, rename these functions.
-            cn = collection_name
-            gm = get_model
-            pkv = primary_key_value
-            # Create the resource linkage objects.
-            result['data'] = [dict(type=cn(gm(i)), id=str(pkv(i)))
-                              for i in related_value]
-            return result
-        # At this point, we know we have a to-one relationship.
-        related_model = get_related_model(model, relation)
-        # If the related value is None, that means we have an empty
-        # to-one relationship.
-        if related_value is None:
-            result['data'] = None
-            return result
-        # If the related value is dynamically loaded, resolve the query
-        # to get the single instance in the to-one relationship.
-        if isinstance(related_value, Query):
-            related_value = related_value.one()
-        # Create the resource linkage object for the to-one
-        # relationship.
-        related_type = collection_name(related_model)
-        related_id = str(primary_key_value(related_value))
-        result['data'] = {'type': related_type, 'id': related_id}
-        return result
 
     # TODO only=... is the client's request for which fields to include.
     def __call__(self, instance, only=None):
@@ -335,7 +336,7 @@ class DefaultSerializer(Serializer):
             result['attributes'] = attributes
         # Add the self link unless it has been explicitly excluded.
         if ((self.default_fields is None or 'self' in self.default_fields)
-            and (only is None or 'self' in only)):
+                and (only is None or 'self' in only)):
             instance_id = primary_key_value(instance)
             # `url_for` may raise a `BuildError` if the user has not created a
             # GET API endpoint for this model. In this case, we simply don't
@@ -405,18 +406,26 @@ class DefaultSerializer(Serializer):
         if not relations:
             return result
         # For the sake of brevity, rename this function.
-        cr = self._create_relationship
+        cr = create_relationship
         result['relationships'] = {relation: cr(model, instance, relation)
                                    for relation in relations}
         return result
 
 
 class DefaultRelationshipSerializer(Serializer):
-    # TODO documentation
+    """A default implementation of a serializer for resource identifier
+    objects for use in relationship objects in JSON API documents.
+
+    This serializer differs from the default serializer for resources
+    since it only provides an ``'id'`` and a ``'type'`` in the
+    dictionary returned by the :meth:`__call__` method.
+
+    """
+
     def __call__(self, instance, only=None, _type=None):
         if _type is None:
             _type = collection_name(get_model(instance))
-        return dict(id=str(primary_key_value(instance)), type=_type)
+        return {'id': str(primary_key_value(instance)), 'type': _type}
 
 
 class DefaultDeserializer(Deserializer):

@@ -50,9 +50,9 @@ class TestSimpleValidation(ManagerTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Create APIs for the validated models."""
-        super(TestSimpleValidation, self).setUp()
+        super(TestSimpleValidation, self).setup()
 
         class CoolValidationError(Exception):
             pass
@@ -155,9 +155,9 @@ class TestSAValidation(ManagerTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Create APIs for the validated models."""
-        super(TestSAValidation, self).setUp()
+        super(TestSAValidation, self).setup()
 
         class Person(self.Base, _sav.ValidationMixin):
             __tablename__ = 'person'

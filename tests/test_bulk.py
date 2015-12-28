@@ -30,8 +30,8 @@ class TestCreating(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestCreating, self).setUp()
+    def setup(self):
+        super(TestCreating, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -72,8 +72,8 @@ class TestUpdating(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestUpdating, self).setUp()
+    def setup(self):
+        super(TestUpdating, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -229,8 +229,8 @@ class TestDeleting(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestDeleting, self).setUp()
+    def setup(self):
+        super(TestDeleting, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'

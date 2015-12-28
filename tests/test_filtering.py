@@ -70,14 +70,14 @@ class TestFiltering(SearchTestBase):
 
     """
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask.ext.restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestFiltering, self).setUp()
+        super(TestFiltering, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -625,14 +625,14 @@ class TestFiltering(SearchTestBase):
 
 class TestOperators(SearchTestBase):
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask.ext.restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestOperators, self).setUp()
+        super(TestOperators, self).setup()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -832,14 +832,14 @@ class TestOperators(SearchTestBase):
 class TestAssociationProxy(SearchTestBase):
     """Test for filtering on association proxies."""
 
-    def setUp(self):
+    def setup(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask.ext.restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestAssociationProxy, self).setUp()
+        super(TestAssociationProxy, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'

@@ -15,12 +15,12 @@ from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from sqlalchemy.sql import func
 
 
-def upper_keys(d):
-    """Returns a new dictionary with the keys of `d` converted to upper case
-    and the values left unchanged.
+def upper_keys(dictionary):
+    """Returns a new dictionary with the keys of ``dictionary``
+    converted to upper case and the values left unchanged.
 
     """
-    return dict(zip((k.upper() for k in d.keys()), d.values()))
+    return {k.upper(): v for k, v in dictionary.items()}
 
 
 def evaluate_functions(session, model, functions):
@@ -109,7 +109,7 @@ def count(session, query):
     """
     counts = query.selectable.with_only_columns([func.count()])
     num_results = session.execute(counts.order_by(None)).scalar()
-    if num_results is None or query._limit:
+    if num_results is None or query._limit is not None:
         return query.count()
     return num_results
 

@@ -33,8 +33,8 @@ class TestAdding(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestAdding, self).setUp()
+    def setup(self):
+        super(TestAdding, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -205,8 +205,8 @@ class TestDeleting(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestDeleting, self).setUp()
+    def setup(self):
+        super(TestDeleting, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -403,8 +403,8 @@ class TestUpdatingToMany(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestUpdatingToMany, self).setUp()
+    def setup(self):
+        super(TestUpdatingToMany, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -581,8 +581,8 @@ class TestUpdatingToOne(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        super(TestUpdatingToOne, self).setUp()
+    def setup(self):
+        super(TestUpdatingToOne, self).setup()
 
         class Article(self.Base):
             __tablename__ = 'article'
