@@ -706,13 +706,13 @@ def error_from_serialization_exception(exception):
     detailed if :attr:`SerializationException.instance` is not ``None``.
 
     """
-    if exception.instance is not None:
-        type_ = collection_name(get_model(exception.instance))
-        id_ = primary_key_value(exception.instance)
-        detail = 'Failed to serialize resource of type {0} and ID {1}'
-        detail = detail.format(type_, id_)
-    else:
-        detail = 'Failed to serialize resource'
+    # As long as `exception` is a `SerializationException` that has been
+    # initialized with an actual instance of a SQLAlchemy model, these
+    # helper function calls should not cause a problem.
+    type_ = collection_name(get_model(exception.instance))
+    id_ = primary_key_value(exception.instance)
+    detail = 'Failed to serialize resource of type {0} and ID {1}'
+    detail = detail.format(type_, id_)
     return error(status=500, detail=detail)
 
 
