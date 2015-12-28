@@ -289,6 +289,8 @@ class TestCreatingResources(ManagerTestBase):
         self.session.commit()
         data = dict(data=dict(type='article', id=generated_id))
         response = self.app.post('/api/article', data=dumps(data))
+        print(response.status_code)
+        print(response.data)
         assert response.status_code == 409
         # TODO test for error details (for example, a message specifying that
         # client-generated IDs are not allowed).
