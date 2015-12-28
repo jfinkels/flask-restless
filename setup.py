@@ -16,7 +16,7 @@
     Flask-Restless is a `Flask <http://flask.pocoo.org>`_ extension which
     facilitates the creation of ReSTful JSON APIs. It is compatible with models
     which have been defined using `SQLAlchemy <http://sqlalchemy.org>`_ or
-    `FLask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy>`_.
+    `Flask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy>`_.
 
     For more information, check the World Wide Web!
 
@@ -25,7 +25,13 @@
       * `Source code repository <http://github.com/jfinkels/flask-restless>`_
 
 """
+import codecs
+import os.path
+import re
 from setuptools import setup
+
+#: A regular expression capturing the version number from Python code.
+VERSION_RE = r"^__version__ = ['\"]([^'\"]*)['\"]"
 
 # TODO We require Flask version 1.0 or greater if we want Flask to recognize
 # the JSON API mimetype as a form of JSON and therefore automatically be able
@@ -36,8 +42,31 @@ from setuptools import setup
 
 #: The installation requirements for Flask-Restless. Flask-SQLAlchemy is not
 #: required, so the user must install it explicitly.
-requirements = ['flask>=0.10', 'sqlalchemy>=0.8', 'python-dateutil>2.2',
+REQUIREMENTS = ['flask>=0.10', 'sqlalchemy>=0.8', 'python-dateutil>2.2',
                 'mimerender>=0.5.2']
+
+#: The absolute path to this file.
+HERE = os.path.abspath(os.path.dirname(__file__))
+
+
+def read(*parts):
+    """Reads the entire contents of the file whose path is given as `parts`."""
+    with codecs.open(os.path.join(HERE, *parts), 'r') as f:
+        return f.read()
+
+
+def find_version(*file_path):
+    """Returns the version number appearing in the file in the given file
+    path.
+
+    Each positional argument indicates a member of the path.
+
+    """
+    version_file = read(*file_path)
+    version_match = re.search(VERSION_RE, version_file, re.MULTILINE)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError('Unable to find version string.')
 
 
 setup(
@@ -63,7 +92,7 @@ setup(
     ],
     description='A Flask extension for easy ReSTful API generation',
     download_url='http://pypi.python.org/pypi/Flask-Restless',
-    install_requires=requirements,
+    install_requires=REQUIREMENTS,
     include_package_data=True,
     keywords=['ReST', 'API', 'Flask'],
     license='GNU AGPLv3+ or BSD',
@@ -74,6 +103,6 @@ setup(
     test_suite='nose.collector',
     tests_require=['nose'],
     url='http://github.com/jfinkels/flask-restless',
-    version='0.17.1-dev',
+    version=find_version('flask_restless', '__init__.py'),
     zip_safe=False
 )
