@@ -320,8 +320,12 @@ def strings_to_datetimes(model, dictionary):
     This function outputs a new dictionary; it does not modify the argument.
 
     """
-    return {k: string_to_datetime(model, k, v) for k, v in dictionary.items()
-            if k not in ('type', 'links')}
+    # In Python 3, this should be
+    #     return {k: string_to_datetime(model, k, v)
+    #             for k, v in dictionary.items() if k not in ('type', 'links')}
+    #
+    return dict((k, string_to_datetime(model, k, v))
+                for k, v in dictionary.items() if k not in ('type', 'links'))
 
 
 def get_model(instance):

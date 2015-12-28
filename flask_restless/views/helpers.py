@@ -20,7 +20,11 @@ def upper_keys(dictionary):
     converted to upper case and the values left unchanged.
 
     """
-    return {k.upper(): v for k, v in dictionary.items()}
+    # In Python 3, this should be
+    #
+    #     return {k.upper(): v for k, v in dictionary.items()}
+    #
+    return dict((k.upper(), v) for k, v in dictionary.items())
 
 
 def evaluate_functions(session, model, functions):
