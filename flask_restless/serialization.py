@@ -263,7 +263,12 @@ class DefaultSerializer(Serializer):
         # specified.
         if only is not None:
             # Convert SQLAlchemy Column objects to strings if necessary.
-            only = {get_column_name(column) for column in only}
+            #
+            # TODO In Python 2.7 or later, this should be
+            #
+            #     only = {get_column_name(column) for column in only}
+            #
+            only = set(get_column_name(column) for column in only)
             # TODO Should the 'self' link be mandatory as well?
             only |= {'type', 'id'}
         if exclude is not None:
