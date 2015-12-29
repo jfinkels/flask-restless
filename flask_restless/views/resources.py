@@ -80,7 +80,8 @@ class API(APIBase):
         """
         return 'TO_MANY_RELATION' if is_relation else 'COLLECTION'
 
-    def resource_processor_type(self, is_relation=False, **kw):
+    def resource_processor_type(self, is_relation=False,
+                                is_related_resource=False, **kw):
         """The suffix for the pre- and postprocessor identifiers for
         requests on a single resource.
 
@@ -89,7 +90,11 @@ class API(APIBase):
         resource.
 
         """
-        return 'TO_ONE_RELATION' if is_relation else 'RESOURCE'
+        if is_relation:
+            if is_related_resource:
+                return 'RELATED_RESOURCE'
+            return 'TO_ONE_RELATION'
+        return 'RESOURCE'
 
     def _get_related_resource(self, resource_id, relation_name,
                               related_resource_id):
@@ -343,7 +348,7 @@ class API(APIBase):
 
         """
         for preprocessor in self.preprocessors['DELETE_RESOURCE']:
-            temp_result = preprocessor(instance_id=resource_id)
+            temp_result = preprocessor(resource_id=resource_id)
             # See the note under the preprocessor in the get() method.
             if temp_result is not None:
                 resource_id = temp_result
@@ -377,7 +382,7 @@ class API(APIBase):
             detail = 'Unable to decode data'
             return error_response(400, cause=exception, detail=detail)
         # apply any preprocessors to the POST arguments
-        for preprocessor in self.preprocessors['POST']:
+        for preprocessor in self.preprocessors['POST_RESOURCE']:
             preprocessor(data=data)
         if 'data' not in data:
             detail = 'Resource must have a "data" key'
@@ -436,7 +441,7 @@ class API(APIBase):
         if included:
             result['included'] = included
         status = 201
-        for postprocessor in self.postprocessors['POST']:
+        for postprocessor in self.postprocessors['POST_RESOURCE']:
             postprocessor(result=result)
         return result, status, headers
 
@@ -567,7 +572,7 @@ class API(APIBase):
             detail = 'Unable to decode data'
             return error_response(400, cause=exception, detail=detail)
         for preprocessor in self.preprocessors['PATCH_RESOURCE']:
-            temp_result = preprocessor(instance_id=resource_id, data=data)
+            temp_result = preprocessor(resource_id=resource_id, data=data)
             # See the note under the preprocessor in the get() method.
             if temp_result is not None:
                 resource_id = temp_result

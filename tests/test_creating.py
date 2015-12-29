@@ -590,7 +590,7 @@ class TestProcessors(ManagerTestBase):
             if data is not None:
                 data['data']['attributes']['name'] = u'bar'
 
-        preprocessors = dict(POST=[set_name])
+        preprocessors = dict(POST_RESOURCE=[set_name])
         self.manager.create_api(self.Person, methods=['POST'],
                                 preprocessors=preprocessors)
         data = dict(data=dict(type='person', attributes=dict(name=u'foo')))
@@ -606,7 +606,7 @@ class TestProcessors(ManagerTestBase):
         def modify_result(result=None, **kw):
             result['foo'] = 'bar'
 
-        postprocessors = dict(POST=[modify_result])
+        postprocessors = dict(POST_RESOURCE=[modify_result])
         self.manager.create_api(self.Person, methods=['POST'],
                                 postprocessors=postprocessors)
         data = dict(data=dict(type='person'))

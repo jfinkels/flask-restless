@@ -225,10 +225,10 @@ class TestProcessors(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
 
-        def increment_id(instance_id=None, **kw):
-            if instance_id is None:
+        def increment_id(resource_id=None, **kw):
+            if resource_id is None:
                 raise ProcessingException
-            return int(instance_id) + 1
+            return int(resource_id) + 1
 
         preprocessors = dict(DELETE_RESOURCE=[increment_id])
         self.manager.create_api(self.Person, methods=['DELETE'],

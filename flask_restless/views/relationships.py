@@ -75,8 +75,8 @@ class RelationshipAPI(APIBase):
 
         """
         for preprocessor in self.preprocessors['GET_RELATIONSHIP']:
-            temp_result = preprocessor(instance_id=resource_id,
-                                       relationship=relation_name)
+            temp_result = preprocessor(resource_id=resource_id,
+                                       relation_name=relation_name)
             # Let the return value of the preprocessor be the new value of
             # instid, thereby allowing the preprocessor to effectively specify
             # which instance of the model to process on.
@@ -126,7 +126,7 @@ class RelationshipAPI(APIBase):
             detail = 'Unable to decode data'
             return error_response(400, cause=exception, detail=detail)
         for preprocessor in self.preprocessors['POST_RELATIONSHIP']:
-            temp_result = preprocessor(instance_id=resource_id,
+            temp_result = preprocessor(resource_id=resource_id,
                                        relation_name=relation_name, data=data)
             # See the note under the preprocessor in the get() method.
             if temp_result is not None:

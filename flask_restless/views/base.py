@@ -1399,9 +1399,11 @@ class APIBase(ModelView):
             return errors_from_serialization_exceptions(e.exceptions)
         if included:
             result['included'] = included
-        # This method could have been called on either a request to
-        # fetch a single resource or a to-one relation.
-        processor_type = self.resource_processor_type(is_relation=is_relation)
+        # This method could have been called on a request to fetch a
+        # single resource, a to-one relation, or a member of a to-many
+        # relation.
+        processor_type = self.resource_processor_type(is_relation=is_relation,
+                             is_related_resource=is_related_resource)
         processor_type = 'GET_{0}'.format(processor_type)
         for postprocessor in self.postprocessors[processor_type]:
             postprocessor(result=result)
@@ -1509,7 +1511,7 @@ class APIBase(ModelView):
         processor_type = 'GET_{0}'.format(processor_type)
         for postprocessor in self.postprocessors[processor_type]:
             postprocessor(result=result, filters=filters, sort=sort,
-                          single=single)
+                          group_by=group_by, single=single)
         # Add the metadata to the JSON API response object.
         #
         # HACK Provide the headers directly in the result dictionary, so that
