@@ -41,7 +41,9 @@ To update an existing resource, the request
      "data": {
        "type": "person",
        "id": 1,
-       "name": "foo"
+       "attributes": {
+         "name": "foo"
+       }
      }
    }
 

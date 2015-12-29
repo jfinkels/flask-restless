@@ -53,12 +53,16 @@ yields the response
        {
          "id": "1",
          "links": {
-           "articles": {
-             "linkage": [],
-             "related": "http://example.com/api/person/1/articles",
-             "self": "http://example.com/api/person/1/links/articles"
-           },
            "self": "http://example.com/api/person/1"
+         },
+         "relationships": {
+           "articles": {
+             "data": [],
+             "links": {
+               "related": "http://example.com/api/person/1/articles",
+               "self": "http://example.com/api/person/1/relationships/articles"
+             }
+           }
          },
          "type": "person"
        }
@@ -94,12 +98,16 @@ yields the response
      "data": {
        "id": "1",
        "links": {
-         "articles": {
-           "linkage": [],
-           "related": "http://example.com/api/person/1/articles",
-           "self": "http://example.com/api/person/1/links/articles"
-         },
          "self": "http://example.com/api/person/1"
+       },
+       "relationships": {
+         "articles": {
+           "data": [],
+           "links": {
+             "related": "http://example.com/api/person/1/articles",
+             "self": "http://example.com/api/person/1/relationships/articles"
+           }
+         }
        },
        "type": "person"
      }
@@ -124,12 +132,21 @@ yields the response
      "data": {
        "id": "1",
        "links": {
-         "articles": {
-           "linkage": [],
-           "related": "http://example.com/api/person/1/articles",
-           "self": "http://example.com/api/person/1/links/articles"
-         },
          "self": "http://example.com/api/person/1"
+       },
+       "relationships": {
+         "articles": {
+           "data": [
+             {
+               "id": "1",
+               "type": "article"
+             }
+           ],
+           "links": {
+             "related": "http://example.com/api/person/1/articles",
+             "self": "http://example.com/api/person/1/relationships/articles"
+           }
+         }
        },
        "type": "person"
      }
@@ -155,15 +172,19 @@ yields the response
        {
          "id": "2",
          "links": {
+           "self": "http://example.com/api/articles/2"
+         },
+         "relationships": {
            "author": {
-             "linkage": {
+             "data": {
                "id": "1",
                "type": "person",
              },
-             "related": "http://example.com/api/articles/2/author",
-             "self": "http://example.com/api/articles/2/links/author"
-           },
-           "self": "http://example.com/api/articles/2"
+             "links": {
+               "related": "http://example.com/api/articles/2/author",
+               "self": "http://example.com/api/articles/2/relationships/author"
+             }
+           }
          },
          "type": "article"
        }
@@ -199,12 +220,19 @@ yields the response
      "data": {
        "id": "2",
        "links": {
-         "author": {
-           "linkage": [],
-           "related": "http://example.com/api/articles/2/author",
-           "self": "http://example.com/api/articles/2/links/author"
-         },
          "self": "http://example.com/api/articles/2"
+       },
+       "relationships": {
+         "author": {
+           "data": {
+             "id": "1",
+             "type": "person"
+           },
+           "links": {
+             "related": "http://example.com/api/articles/2/author",
+             "self": "http://example.com/api/articles/2/relationships/author"
+           }
+         }
        },
        "type": "article"
      }
@@ -214,7 +242,7 @@ To fetch the link object for a to-one relationship, the request
 
 .. sourcecode:: http
 
-   GET /api/article/1/links/author HTTP/1.1
+   GET /api/article/1/relationships/author HTTP/1.1
    Host: example.com
    Accept: application/vnd.api+json
 
@@ -236,7 +264,7 @@ To fetch the link objects for a to-many relationship, the request
 
 .. sourcecode:: http
 
-   GET /api/person/1/links/articles HTTP/1.1
+   GET /api/person/1/relationships/articles HTTP/1.1
    Host: example.com
    Accept: application/vnd.api+json
 
@@ -265,6 +293,8 @@ yields the response
 Function evaluation
 -------------------
 
+*This section describes behavior that is not part of the JSON API specification.*
+
 If the ``allow_functions`` keyword argument to :meth:`APIManager.create_api` is
 set to ``True`` when creating an API for a model, then the endpoint
 :http:get:`/api/eval/person` will be made available. This endpoint responds to
@@ -289,7 +319,7 @@ For example, to get the average age of all people in the database,
 
    GET /api/eval/person?functions=[{"name":"avg","field":"age"}] HTTP/1.1
    Host: example.com
-   Accept: application/vnd.api+json
+   Accept: application/json
 
 The response will be a JSON object with a single element, ``data``, containing
 a list of the results of all the function evaluations requested by the client,
@@ -300,14 +330,14 @@ the sum and the average ages of all people in the database, the request
 
    GET /api/eval/person?functions=[{"name":"avg","field":"age"},{"name":"sum","field":"age"}] HTTP/1.1
    Host: example.com
-   Accept: application/vnd.api+json
+   Accept: application/json
 
 yields the response
 
 .. sourcecode:: http
 
    HTTP/1.1 200 OK
-   Content-Type: application/vnd.api+json
+   Content-Type: application/json
 
    [15.0, 60.0]
 
@@ -316,7 +346,7 @@ yields the response
 .. admonition:: Example
 
    To get the total number of resources in the collection (that is, the number
-   of instances of the model), use the function object
+   of instances of the model), you can use the function object
 
    .. sourcecode:: json
 
@@ -328,14 +358,14 @@ yields the response
 
       GET /api/eval/person?functions=[{"name":"count","field":"id"}] HTTP/1.1
       Host: example.com
-      Accept: application/vnd.api+json
+      Accept: application/json
 
    yields the response
 
    .. sourcecode:: http
 
       HTTP/1.1 200 OK
-      Content-Type: application/vnd.api+json
+      Content-Type: application/json
 
       {
         "data": [42]
@@ -422,12 +452,14 @@ yields the response
 
    {
      "data": {
-       "birthday": "1969-07-20",
        "id": "1",
        "links": {
          "self": "http://example.com/api/person/1"
        },
-       "name": "foo",
+       "attributes": {
+         "birthday": "1969-07-20",
+         "name": "foo"
+       },
        "type": "person"
      }
    }
@@ -448,12 +480,16 @@ Now the same request yields the response
      "data": {
        "id": "1",
        "links": {
-         "articles": {
-           "linkage": [],
-           "related": "http://example.com/api/person/1/articles",
-            "self": "http://example.com/api/person/1/links/articles"
-         },
          "self": "http://example.com/api/person/1"
+       }
+       "relationships": {
+         "articles": {
+           "data": [],
+           "links": {
+             "related": "http://example.com/api/person/1/articles",
+             "self": "http://example.com/api/person/1/links/articles"
+           }
+         },
        },
        "type": "person"
      }
@@ -473,18 +509,24 @@ Now the same request yields the response
 
    {
      "data": {
-       "birthday": "1969-07-20",
-       "foo": "bar",
+       "attributes": {
+         "birthday": "1969-07-20",
+         "foo": "bar",
+         "name": "foo"
+       },
        "id": "1",
        "links": {
-         "articles": {
-           "linkage": [],
-           "related": "http://example.com/api/person/1/articles",
-            "self": "http://example.com/api/person/1/links/articles"
-         },
          "self": "http://example.com/api/person/1"
        }
-       "name": "foo",
+       "relationships": {
+         "articles": {
+           "data": [],
+           "links": {
+             "related": "http://example.com/api/person/1/articles",
+             "self": "http://example.com/api/person/1/links/articles"
+           }
+         }
+       },
        "type": "person"
      }
    }
@@ -519,38 +561,50 @@ yields the response
    {
      "data": [
        {
+         "attributes": {
+           "name": "foo",
+         },
          "id": "1",
          "links": {
-           "articles": {
-             "linkage": [],
-             "related": "http://example.com/api/person/1/articles",
-             "self": "http://example.com/api/person/1/links/articles"
-           },
            "self": "http://example.com/api/person/1"
          },
-         "name": "foo",
+         "relationships": {
+           "articles": {
+             "data": [],
+             "links": {
+               "related": "http://example.com/api/person/1/articles",
+               "self": "http://example.com/api/person/1/relationships/articles"
+             }
+           }
+         },
          "type": "person"
        },
        {
+         "attributes": {
+           "name": "bar",
+         },
          "id": "3",
          "links": {
-           "articles": {
-             "linkage": [],
-             "related": "http://example.com/api/person/1/articles",
-             "self": "http://example.com/api/person/1/links/articles"
-           },
-           "self": "http://example.com/api/person/1"
+           "self": "http://example.com/api/person/3"
          },
-         "name": "bar",
+         "relationships": {
+           "articles": {
+             "data": [],
+             "links": {
+               "related": "http://example.com/api/person/3/articles",
+               "self": "http://example.com/api/person/3/relationships/articles"
+             }
+           }
+         },
          "type": "person"
-       }
+       },
      ],
      "links": {
-       "first": "http://example.com/api/person?page[number]=1&page[size]=10",
-       "last": "http://example.com/api/person?page[number]=1&page[size]=10",
+       "first": "http://example.com/api/person?group=name&page[number]=1&page[size]=10",
+       "last": "http://example.com/api/person?group=name&page[number]=1&page[size]=10",
        "next": null,
        "prev": null,
-       "self": "http://example.com/api/person"
+       "self": "http://example.com/api/person?group=name"
      },
      "meta": {
        "total": 2
@@ -637,10 +691,10 @@ client specifies the ``filter[objects]`` query parameter, it must be a
 
 .. _URL encoded: https://en.wikipedia.org/wiki/Percent-encoding
 
-Quick client examples
-.....................
+Quick client examples for filtering
+...................................
 
-TODO need to test these clients...   
+*TODO: need to test these clients.*
 
 The following are some quick examples of making filtered :http:method:`get`
 requests from different types of clients. More complete documentation is in
@@ -873,19 +927,16 @@ yields the response
    Content-Type: application/vnd.api+json
 
    {
-     "data": [
-       {
-         "id": "1",
-         "type": "person",
-         // ...
+     "data": {
+       "id": "1",
+       "type": "person",
+       "links": {
+         "self": "http://example.com/api/person/1"
        }
-     ],
-     "links": {
-       // ...
      },
-     "meta": {
-       "total": 1
-     }
+     "links": {
+       "self": "http://example.com/api/person?filter[single]=1&filter[objects]=[{\"name\":\"id\",\"op\":\"eq\",\"val\":1}]"
+     },
    }
 
 But a request like
@@ -924,24 +975,31 @@ attribute greater than or equal to 18:
    {
      "data": [
        {
-         "age": 19,
+         "attributes": {
+           "age": 19
+         },
          "id": "2",
-         "type": "person",
-         // ...
+         "links": {
+           "self": "http://example.com/api/person/2"
+         },
+         "type": "person"
        },
        {
-         "age": 29,
+         "attributes": {
+           "age": 29
+         },
          "id": "5",
-         "type": "person",
-         // ...
+         "links": {
+           "self": "http://example.com/api/person/5"
+         },
+         "type": "person"
        },
-       // ...
      ],
      "links": {
-       // ...
+       "self": "/api/person?filter[objects]=[{\"name\":\"age\",\"op\":\"gt\",\"val\":18}]"
      },
      "meta": {
-       "total": 100
+       "total": 2
      }
    }
 
@@ -967,24 +1025,31 @@ attribute either less than 10 or greater than 20:
    {
      "data": [
        {
-         "age": 9,
+         "attributes": {
+           "age": 9
+         },
          "id": "1",
-         "type": "person",
-         // ...
+         "links": {
+           "self": "http://example.com/api/person/1"
+         },
+         "type": "person"
        },
        {
-         "age": 25,
+         "attributes": {
+           "age": 25
+         },
          "id": "3",
-         "type": "person",
-         // ...
-       },
-       // ...
+         "links": {
+           "self": "http://example.com/api/person/3"
+         },
+         "type": "person"
+       }
      ],
      "links": {
-       // ...
+       "self": "/api/person?filter[objects]=[{\"or\":[{\"name\":\"age\",\"op\":\"lt\",\"val\":10},{\"name\":\"age\",\"op\":\"gt\",\"val\":20}]}]"
      },
      "meta": {
-       "total": 100
+       "total": 2
      }
    }
 
@@ -995,7 +1060,7 @@ On request
 
 .. sourcecode:: http
 
-   GET /api/boxes?filter[objects]=[{"name":"width","op":"ge","field":"height"}] HTTP/1.1
+   GET /api/box?filter[objects]=[{"name":"width","op":"ge","field":"height"}] HTTP/1.1
    Host: example.com
    Accept: application/vnd.api+json
 
@@ -1010,23 +1075,30 @@ attribute greater than or equal to the value of the ``height`` attribute:
    {
      "data": [
        {
-         "height": 10,
+         "attributes": {
+           "height": 10,
+           "width": 20,
+         }
          "id": "1",
-         "type": "box",
-         "width": 20,
-         // ...
+         "links": {
+           "self": "http://example.com/api/box/1
+         },
+         "type": "box"
        },
        {
-         "height": 15,
+         "attributes": {
+           "height": 15,
+           "width": 20,
+         }
          "id": "2",
-         "type": "box",
-         "width": 20,
-         // ...
-       },
-       // ...
+         "links": {
+           "self": "http://example.com/api/box/2
+         },
+         "type": "box"
+       }
      ],
      "links": {
-       // ...
+       "self": "/api/box?filter[objects]=[{\"name\":\"width\",\"op\":\"ge\",\"field\":\"height\"}]"
      },
      "meta": {
        "total": 100
@@ -1056,28 +1128,37 @@ before January 1, 2010:
      "data": [
        {
          "id": "1",
-         "type": "person",
          "links": {
+           "self": "http://example.com/api/person/1"
+         }
+         "relationships": {
            "articles": {
              // We can assume at least one of these has a date that matches
              // the filter request.
-             "linkage": [
-               {"id": "1", "type": "article"},
-               {"id": "2", "type": "article"}
+             "data": [
+               {
+                 "id": "1",
+                 "type": "article"
+               },
+               {
+                 "id": "2",
+                 "type": "article"
+               }
              ],
-             "related": "http://example.com/api/person/1/articles",
-             "self": "http://example.com/api/person/1/links/articles"
+             "links": {
+               "related": "http://example.com/api/person/1/articles",
+               "self": "http://example.com/api/person/1/relationships/articles"
+             }
            },
-           "self": "http://example.com/api/person/1"
          }
-       },
-       // ...
+         "type": "person",
+       }
      ],
      "links": {
-       // ...
+       "self": "/api/person?filter[objects]=[{\"name\":\"articles\",\"op\":\"any\",\"val\":{\"name\":\"date\",\"op\":\"lt\",\"val\":\"2010-01-01\"}}]"
      },
      "meta": {
-       "total": 100
+       "total": 1
      }
    }
 
@@ -1101,23 +1182,29 @@ most fifty:
      "data": [
        {
          "id": "1",
-         "type": "article",
          "links": {
+           "self": "http://example.com/api/article/1"
+         },
+         "relationships": {
            "author": {
              // We can assume that this author has age at most fifty.
-             "linkage": {"id": "7", "type": "person"}
-             "related": "http://example.com/api/article/1/author",
-             "self": "http://example.com/api/article/1/links/author"
-           },
-           "self": "http://example.com/api/article/1"
-         }
-       },
-       // ...
+             "data": {
+               "id": "7",
+               "type": "person"
+             },
+             "links": {
+               "related": "http://example.com/api/article/1/author",
+               "self": "http://example.com/api/article/1/relationships/author"
+             }
+           }
+         },
+         "type": "article"
+       }
      ],
      "links": {
-       // ...
+       "self": "/api/article?filter[objects]=[{\"name\":\"author\",\"op\":\"has\",\"val\":{\"name\":\"age\",\"op\":\"lte\",\"val\":50}}]"
      },
      "meta": {
-       "total": 100
+       "total": 1
      }
    }

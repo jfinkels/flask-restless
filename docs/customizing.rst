@@ -18,74 +18,50 @@ argument ``methods``::
 
 This creates an endpoint at ``/api/person`` which responds to
 :http:method:`get`, :http:method:`post`, and :http:method:`delete` methods, but
-not to other ones like :http:method:`put` or :http:method:`patch`.
+not to :http:method:`patch`.
 
-The recognized HTTP methods and their semantics are described below (assuming
-you have created an API for an entity ``Person``). All endpoints which respond
-with data respond with serialized JSON strings.
+If you allow :http:method:`get` requests, you will have access to endpoints of
+the following forms.
 
 .. http:get:: /api/person
+.. http:get:: /api/person/1
+.. http:get:: /api/person/1/comments
+.. http:get:: /api/person/1/relationships/comments
+.. http:get:: /api/person/1/comments/2
 
-   Returns a list of all ``Person`` instances.
+The first four are described explicitly in the JSON API specification. The
+last is particular to Flask-Restless; it allows you to access a particular
+related resource via a relationship on another resource.
 
-.. http:get:: /api/person/(int:id)
+If you allow :http:method:`delete` requests, you will have access to endpoints
+of the form
 
-   Returns a single ``Person`` instance with the given ``id``.
+.. http:delete:: /api/person/1
 
-.. http:get:: /api/person?q=<searchjson>
-
-   Returns a list of all ``Person`` instances which match the search query
-   specified in the query parameter ``q``. For more information on searching,
-   see :ref:`searchformat`.
-
-.. http:delete:: /api/person/(int:id)
-
-   Deletes the person with the given ``id`` and returns :http:statuscode:`204`.
-
-.. http:delete:: /api/person
-
-   This is only available if the ``allow_delete_many`` keyword argument is set
-   to ``True`` when calling the :meth:`~APIManager.create_api` method. For more
-   information, see :ref:`allowmany`.
-
-   Deletes all instances of ``Person`` that match the search query provided in
-   the ``q`` URL query paremeter. For more information on search parameters,
-   see :ref:`searchformat`.
+If you allow :http:method:`post` requests, you will have access to endpoints
+of the form
 
 .. http:post:: /api/person
 
-   Creates a new person in the database and returns its ``id``. The initial
-   attributes of the ``Person`` are read as JSON from the body of the
-   request. For information about the format of this request, see
-   :ref:`requestformat`.
+Finally, if you allow :http:method:`patch` requests, you will have access to
+endpoints of the following forms.
 
-.. http:patch:: /api/person/(int:id)
+.. http:patch:: /api/person/1
+.. http:post:: /api/person/1/relationships/comments
+.. http:patch:: /api/person/1/relationships/comments
+.. http:delete:: /api/person/1/relationships/comments
 
-   Updates the attributes of the ``Person`` with the given ``id``. The
-   attributes are read as JSON from the body of the request. For information
-   about the format of this request, see :ref:`requestformat`.
-
-.. http:patch:: /api/person
-
-   This is only available if the ``allow_patch_many`` keyword argument is set
-   to ``True`` when calling the :meth:`~APIManager.create_api` method. For more
-   information, see :ref:`allowmany`.
-
-   Updates the attributes of all ``Person`` instances. The attributes are read
-   as JSON from the body of the request. For information about the format of
-   this request, see :ref:`requestformat`.
-  
-.. http:put:: /api/person
-.. http:put:: /api/person/(int:id)
-
-   Aliases for :http:patch:`/api/person` and
-   :http:patch:`/api/person/(int:id)`.
+The last three allow the client to interact with the relationships of a
+particular resource. The last two must be enabled explicitly by setting the
+``allow_to_many_replacement`` and ``allow_delete_from_to_many_relationships``,
+respectively, to ``True`` when creating an API using the
+:meth:`APIManager.create_api` method.
 
 API prefix
 ~~~~~~~~~~
 
-To create an API at a different prefix, use the ``url_prefix`` keyword
-argument::
+To create an API at a prefix other than the default ``/api``, use the
+``url_prefix`` keyword argument::
 
     apimanager.create_api(Person, url_prefix='/api/v2')
 
@@ -96,7 +72,7 @@ Then your API for ``Person`` will be available at ``/api/v2/person``.
 Collection name
 ~~~~~~~~~~~~~~~
 
-By default, the name of the collection which appears in the URLs of the API
+By default, the name of the collection that appears in the URLs of the API
 will be the name of the table that backs your model. If your model is a
 SQLAlchemy model, this will be the value of its ``__tablename__`` attribute. If
 your model is a Flask-SQLAlchemy model, this will be the lowercase name of the
@@ -137,26 +113,14 @@ If your model has more than one primary key (one called ``id`` and one called
     manager.create_api(User, primary_key='username')
 
 If you do this, Flask-Restless will create URLs like ``/api/user/myusername``
-instead of ``/api/user/137``.
+instead of ``/api/user/123``.
 
 .. _allowmany:
 
-Enable bulk patching or deleting
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Enable bulk operations
+~~~~~~~~~~~~~~~~~~~~~~
 
-By default, a :http:patch:`/api/person` request (note the missing ID) will
-cause a :http:statuscode:`405` response. By setting the ``allow_patch_many``
-keyword argument of the :meth:`APIManager.create_api` method to be ``True``,
-:http:patch:`/api/person` requests will patch the provided attributes on all
-instances of ``Person``::
-
-    apimanager.create_api(Person, methods=['PATCH'], allow_patch_many=True)
-
-If search parameters are provided via the ``q`` query parameter as described in
-:ref:`searchformat`, only those instances matching the search will be patched.
-
-Similarly, to allow bulk deletions, set the ``allow_delete_many`` keyword
-argument to be ``True``.
+Bulk operations via the JSON API Bulk extension are not yet supported.
 
 .. _serialization:
 
@@ -165,30 +129,48 @@ Custom serialization
 
 .. versionadded:: 0.17.0
 
-Flask-Restless provides very basic object serialization and deserialization. If
-you wish to have more control over the way instances of your models are
-converted to Python dictionary representations, you can specify a custom
-serialization function by providing it to :meth:`APIManager.create_api` via the
-``serializer`` keyword argument. Similarly, to provide a deserialization
-function that converts a Python dictionary representation to an instance of
-your model, use the ``deserializer`` keyword argument.
+Flask-Restless provides serialization and deserialization that work with the
+JSON API specification.  If you wish to have more control over the way
+instances of your models are converted to Python dictionary representations,
+you can specify a custom serialization function by providing it to
+:meth:`APIManager.create_api` via the ``serializer`` keyword argument.
+Similarly, to provide a deserialization function that converts a Python
+dictionary representation to an instance of your model, use the
+``deserializer`` keyword argument.  However, if you provide a serializer that
+fails to produce resource objects that satisfy the JSON API specification, your
+client will receive non-compliant responses!
 
-The serialization function must take a single argument representing the
-instance of the model to serialize, and must return a dictionary representation
-of that instance. The deserialization function must take a single argument
-representing the dictionary representation of an instance of the model and must
-return an instance of `model` that has those attributes.
+Define your serialization functions like this::
+
+    def serialize(instance, only=None):
+        return {'data': ...}
+
+``instance`` is an instance of a SQLAlchemy model and the ``only`` argument is
+a list; only the fields (that is, the attributes and relationships) whose names
+appear as strings in `only` should appear in the returned dictionary. The only
+exception is that the keys ``'id'`` and ``'type'`` must always appear,
+regardless of whether they appear in `only`. The function must return a
+dictionary representation of the object.
+
+Define your deserialization function like this::
+
+    def deserialize(data):
+        return Person(...)
+
+``data`` is a dictionary representation of an instance of the model. The
+function must return return an instance of `model` that has those attributes.
 
 .. note::
 
-   We **strongly suggest** using a Python object serialization library instead
-   of writing your own serialization functions. This is also likely a better
-   approach than specifying which columns to include or exclude
-   (:ref:`includes`) or preprocessors and postprocessors (:ref:`processors`).
+   If you wish to write your own serialization functions, we **strongly
+   suggest** using a Python object serialization library instead of writing
+   your own serialization functions. This is also likely a better approach than
+   specifying which columns to include or exclude (:ref:`includes`) or
+   preprocessors and postprocessors (:ref:`processors`).
 
-For example, if you create schema for your database models using `Marshmallow
-<https://marshmallow.readthedocs.org>`_), then you use that library's built-in
-serialization functions as follows::
+For example, if you create schema for your database models using
+`Marshmallow`_, then you use that library's built-in serialization functions as
+follows::
 
     class PersonSchema(Schema):
         id = fields.Integer()
@@ -213,8 +195,10 @@ serialization functions as follows::
 
 For a complete version of this example, see the
 :file:`examples/server_configurations/custom_serialization.py` module in the
-source distribution, or view it online at `GitHub
-<https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/custom_serialization.py>`__.
+source distribution, or `view it online`_
+
+.. _Marshmallow: https://marshmallow.readthedocs.org
+.. _view it online: https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/custom_serialization.py
 
 .. _validation:
 
@@ -227,25 +211,27 @@ specifying a list of exceptions raised by your backend on validation errors,
 Flask-Restless will forward messages from raised exceptions to the client in an
 error response.
 
-A reasonable validation framework you might use for this purpose is `SQLAlchemy
-Validation <https://bitbucket.org/blazelibs/sqlalchemy-validation>`_. You can
-also use the :func:`~sqlalchemy.orm.validates` decorator that comes with
-SQLAlchemy.
+.. COMMENT
+
+   A reasonable validation framework you might use for this purpose is
+   `SQLAlchemy Validation
+   <https://bitbucket.org/blazelibs/sqlalchemy-validation>`_. You can also use
+   the :func:`~sqlalchemy.orm.validates` decorator that comes with SQLAlchemy.
 
 For example, if your validation framework includes an exception called
 ``ValidationError``, then call the :meth:`APIManager.create_api` method with
 the ``validation_exceptions`` keyword argument::
 
     from cool_validation_framework import ValidationError
-    apimanager.create_api(Person, validation_exceptions=[ValidationError])
+    apimanager.create_api(Person, validation_exceptions=[ValidationError],
+                          methods=['PATCH', 'POST'])
 
 .. note::
 
    Currently, Flask-Restless expects that an instance of a specified validation
    error will have a ``errors`` attribute, which is a dictionary mapping field
    name to error description (note: one error per field). If you have a better,
-   more general solution to this problem, please visit `our issue tracker
-   <https://github.com/jfinkels/flask-restless/issues>`_.
+   more general solution to this problem, please visit our `issue tracker`_.
 
 Now when you make :http:method:`post` and :http:method:`patch` requests with
 invalid fields, the JSON response will look like this:
@@ -254,14 +240,17 @@ invalid fields, the JSON response will look like this:
 
    HTTP/1.1 400 Bad Request
 
-   { "validation_errors":
+   {
+     "errors": [
        {
-         "age": "Must be an integer",
+         "status": 400,
+         "title": "Validation error",
+         "detail": "age: must be an integer"
        }
+     ]
    }
 
-Currently, Flask-Restless can only forward one exception at a time to the
-client.
+.. _issue tracker: https://github.com/jfinkels/flask-restless/issues
 
 .. _processors:
 
@@ -277,221 +266,147 @@ method names as strings (with exceptions as described below) to a list of
 functions. The specified functions will be applied in the order given in the
 list.
 
-Since :http:method:`get` and :http:method:`patch` (and :http:method:`put`)
-requests can be made not only on individual instances of the model but also the
-entire collection of instances, you must separately specify which functions to
-apply in the individual case and which to apply in the collection case. For
-example::
+There are many different routes on which you can apply preprocessors and
+postprocessors, depending on HTTP method type, whether the client is accessing
+a resource or a relationship, whether the client is accessing a collection or a
+single resource, etc.
 
-    # Define pre- and postprocessor functions as described below.
-    def pre_get_single(**kw): pass
-    def pre_get_many(**kw): pass
-    def post_patch_many(**kw): pass
-    def pre_delete(**kw): pass
+This table states the preprocessors that apply to each type of endpoint.
 
-    # Create an API for the Person model.
-    manager.create_api(Person,
-                       # Allow GET, PATCH, and POST requests.
-                       methods=['GET', 'PATCH', 'DELETE'],
-                       # Allow PATCH requests modifying the whole collection.
-                       allow_patch_many=True,
-                       # A list of preprocessors for each method.
-                       preprocessors={
-                           'GET_SINGLE': [pre_get_single],
-                           'GET_MANY': [pre_get_many],
-                           'DELETE': [pre_delete]
-                           },
-                       # A list of postprocessors for each method.
-                       postprocessors={
-                           'PATCH_MANY': [post_patch_many]
-                           }
-                       )
+    ==================== ====================================
+    preprocessor name    for URLs like...
+    ==================== ====================================
+    GET_COLLECTION       /api/person
+    GET_RESOURCE         /api/person/1
+    GET_RELATION         /api/person/1/articles
+    GET_RELATED_RESOURCE /api/person/1/articles/2
 
-As introduced in the above example, the dictionary keys for the `preprocessors`
-and `postprocessors` can be one of the following strings:
+    DELETE_RESOURCE      /api/person/1
 
-* ``'POST'`` for requests to post a new instance of the model.
-* ``'GET_SINGLE'`` for requests to get a single instance of the model.
-* ``'GET_MANY'`` for requests to get multiple instances of the model.
-* ``'PATCH_SINGLE'`` or ``'PUT_SINGLE'`` for requests to patch a single
-  instance of the model.
-* ``'PATCH_MANY'`` or ``'PUT_MANY'`` for requests to patch multiple instances
-  of the model.
-* ``'DELETE_SINGLE'`` for requests to delete an instance of the model.
-* ``'DELETE_MANY'`` for requests to delete multiple instances of the model.
+    POST_RESOURCE        /api/person
 
-.. note::
+    PATCH_RESOURCE       /api/person/1
 
-   Since :http:method:`put` requests are handled by the :http:method:`patch`
-   handler, any preprocessors or postprocessors specified for the
-   :http:method:`put` method will be applied on :http:method:`patch` requests
-   *after* the preprocessors or postprocessors specified for the
-   :http:method:`patch` method.
+    GET_RELATIONSHIP     /api/person/1/relationships/articles
+    DELETE_RELATIONSHIP  /api/person/1/relationships/articles
+    POST_RELATIONSHIP    /api/person/1/relationships/articles
+    PATCH_RELATIONSHIP   /api/person/1/relationships/articles
 
-The preprocessors and postprocessors for each type of request accept different
-arguments. Most of them should have no return value (more specifically, any
-returned value is ignored). The return value from each of the ``GET_SINGLE``,
-``PATCH_SINGLE``, and ``DELETE_SINGLE`` preprocessors is interpreted as a value
-with which to replace ``instance_id``, the variable containing the value of the
-primary key of the requested instance of the model. For example, if a request
-for :http:get:`/api/person/1` encounters a preprocessor (for ``GET_SINGLE``)
-that returns the integer ``8``, Flask-Restless will continue to process the
-request as if it had received :http:get:`/api/person/8`. (If multiple
-preprocessors are specified for a single HTTP method and each one has a return
-value, Flask-Restless will only remember the value returned by the last
-preprocessor function.)
+This table states the postprocessors that apply to each type of endpoint.
+
+    ======================== ====================================
+    postprocessor name       for URLs like...
+    ======================== ====================================
+    GET_COLLECTION           /api/person
+    GET_RESOURCE             /api/person/1
+    GET_TO_MANY_RELATION     /api/person/1/articles
+    GET_TO_ONE_RELATION      /api/articles/1/author
+    GET_RELATED_RESOURCE     /api/person/1/articles/2
+
+    DELETE_RESOURCE          /api/person/1
+
+    POST_RESOURCE            /api/person
+
+    PATCH_RESOURCE           /api/person/1
+
+    GET_TO_MANY_RELATIONSHIP /api/person/1/relationships/articles
+    GET_TO_ONE_RELATIONSHIP  /api/articles/1/relationships/author
+    GET_RELATIONSHIP         /api/person/1/relationships/articles
+    DELETE_RELATIONSHIP      /api/person/1/relationships/articles
+    POST_RELATIONSHIP        /api/person/1/relationships/articles
+    PATCH_RELATIONSHIP       /api/person/1/relationships/articles
+
+Each type of preprocessor or postprocessor requires different
+arguments. Preprocessors:
+
+    ==================== ====================================
+    preprocessor name    keyword arguments
+    ==================== ====================================
+    GET_COLLECTION       filters, sort, group_by, single
+    GET_RESOURCE         resource_id
+    GET_RELATION         resource_id, relation_name, filters, sort, group_by, single
+    GET_RELATED_RESOURCE resource_id, relation_name, related_resource_id
+
+    DELETE_RESOURCE      resource_id
+
+    POST_RESOURCE        data
+
+    PATCH_RESOURCE       resource_id, data
+
+    GET_RELATIONSHIP     resource_id, relation_name
+    DELETE_RELATIONSHIP  resource_id, relation_name
+    POST_RELATIONSHIP    resource_id, relation_name, data
+    PATCH_RELATIONSHIP   resource_id, relation_name, data
+
+Postprocessors:
+
+    ======================== ====================================
+    postprocessor name       keyword arguments
+    ======================== ====================================
+    GET_COLLECTION           result, filters, sort, group_by, single
+    GET_RESOURCE             result
+    GET_TO_MANY_RELATION     result, filters, sort, group_by, single
+    GET_TO_ONE_RELATION      result
+    GET_RELATED_RESOURCE     result
+
+    DELETE_RESOURCE          was_deleted
+
+    POST_RESOURCE            result
+
+    PATCH_RESOURCE           result
+
+    GET_TO_MANY_RELATIONSHIP result, filters, sort, group_by, single
+    GET_TO_ONE_RELATIONSHIP  result
+    DELETE_RELATIONSHIP      was_deleted
+    POST_RELATIONSHIP        None
+    PATCH_RELATIONSHIP       None
+
+How can one use these tables to create a preprocessor or postprocessor? If you
+want to create a preprocessor that will be applied on requests to
+:http:get:`/api/person`, first define a function that accepts the keyword
+arguments you need, and has a ``**kw`` argument for any additional keyword
+arguments (and any new arguments that may appear in future versions of
+Flask-Restless)::
+
+    def fetch_preprocessor(filters=None, sort=None, group_by=None, single=None,
+                           **kw):
+        # Here perform any application-specific code...
+
+Next, instruct these preprocessors to be applied by Flask-Restless by using the
+``preprocessors`` keyword argument to :meth:`APIManager.create_api`. The value
+of this argument must be a dictionary in which each key is a string containing
+a processor name and each value is a list of functions to be applied for that
+request::
+
+    preprocessors = {'GET_COLLECTION': [fetch_preprocessor]}
+    manager.create_api(Person, preprocessors=preprocessors)
+
+For preprocessors for endpoints of the form ``/api/person/1``, a returned value
+will be interpreted as the resource ID for the request. For example, if a
+preprocessor for a :http:get:`/api/person/1` returns the string ``'foo'``, then
+Flask-Restless will behave as if the request were :http:get:`/api/person/foo`.
+For preprocessors for endpoints of the form ``/api/person/1/articles`` or
+``/api/person/1/relationships/articles``, the function can return either one
+value, in which case the resource ID will be replaced with the return value, or
+a two-tuple, in which case both the resource ID and the relationship name will
+be replaced. Finally, for preprocessors for endpoints of the form
+``/api/person/1/articles/2``, the function can return one, two, or three
+values; if three values are returned, the resource ID, the relationship name,
+and the related resource ID are all replaced. (If multiple preprocessors are
+specified for a single HTTP method and each one has a return value,
+Flask-Restless will only remember the value returned by the last preprocessor
+function.)
 
 Those preprocessors and postprocessors that accept dictionaries as parameters
 can (and should) modify their arguments *in-place*. That means the changes made
 to, for example, the ``result`` dictionary will be seen by the Flask-Restless
 view functions and ultimately returned to the client.
 
-The arguments to the preprocessor and postprocessor functions will be provided
-as keyword arguments, so you should always add ``**kw`` as the final argument
-when defining a preprocessor or postprocessor function. This way, you can
-specify only the keyword arguments you need when defining your
-functions. Furthermore, if a new version of Flask-Restless changes the API,
-you can update Flask-Restless without breaking your code.
-
-.. versionchanged:: 0.16.0
-   Replaced ``DELETE`` with ``DELETE_MANY`` and ``DELETE_SINGLE``.
-
-.. versionadded:: 0.13.0
-   Functions provided as postprocessors for ``GET_MANY`` and ``PATCH_MANY``
-   requests receive the ``search_params`` keyword argument, so that both
-   preprocessors and postprocessors have access to this information.
-
-* :http:method:`get` for a single instance::
-
-      def get_single_preprocessor(instance_id=None, **kw):
-          """Accepts a single argument, `instance_id`, the primary key of the
-          instance of the model to get.
-
-          """
-          pass
-
-      def get_single_postprocessor(result=None, **kw):
-          """Accepts a single argument, `result`, which is the dictionary
-          representation of the requested instance of the model.
-
-          """
-          pass
-
-  and for the collection::
-
-      def get_many_preprocessor(search_params=None, **kw):
-          """Accepts a single argument, `search_params`, which is a dictionary
-          containing the search parameters for the request.
-
-          """
-          pass
-
-      def get_many_postprocessor(result=None, search_params=None, **kw):
-          """Accepts two arguments, `result`, which is the dictionary
-          representation of the JSON response which will be returned to the
-          client, and `search_params`, which is a dictionary containing the
-          search parameters for the request (that produced the specified
-          `result`).
-
-          """
-          pass
-
-* :http:method:`patch` (or :http:method:`put`) for a single instance::
-
-      def patch_single_preprocessor(instance_id=None, data=None, **kw):
-          """Accepts two arguments, `instance_id`, the primary key of the
-          instance of the model to patch, and `data`, the dictionary of fields
-          to change on the instance.
-
-          """
-          pass
-
-      def patch_single_postprocessor(result=None, **kw):
-          """Accepts a single argument, `result`, which is the dictionary
-          representation of the requested instance of the model.
-
-          """
-          pass
-
-  and for the collection::
-
-      def patch_many_preprocessor(search_params=None, data=None, **kw):
-          """Accepts two arguments: `search_params`, which is a dictionary
-          containing the search parameters for the request, and `data`, which
-          is a dictionary representing the fields to change on the matching
-          instances and the values to which they will be set.
-
-          """
-          pass
-
-      def patch_many_postprocessor(query=None, data=None, search_params=None,
-                                   **kw):
-          """Accepts three arguments: `query`, which is the SQLAlchemy query
-          which was inferred from the search parameters in the query string,
-          `data`, which is the dictionary representation of the JSON response
-          which will be returned to the client, and `search_params`, which is a
-          dictionary containing the search parameters for the request.
-
-          """
-          pass
-
-* :http:method:`post`::
-
-      def post_preprocessor(data=None, **kw):
-          """Accepts a single argument, `data`, which is the dictionary of
-          fields to set on the new instance of the model.
-
-          """
-          pass
-
-      def post_postprocessor(result=None, **kw):
-          """Accepts a single argument, `result`, which is the dictionary
-          representation of the created instance of the model.
-
-          """
-          pass
-
-
-* :http:method:`delete` for a single instance::
-
-      def delete_single_preprocessor(instance_id=None, **kw):
-          """Accepts a single argument, `instance_id`, which is the primary key
-          of the instance which will be deleted.
-
-          """
-          pass
-
-      def delete_postprocessor(was_deleted=None, **kw):
-          """Accepts a single argument, `was_deleted`, which represents whether
-          the instance has been deleted.
-
-          """
-          pass
-
-  and for the collection::
-
-      def delete_many_preprocessor(search_params=None, **kw):
-          """Accepts a single argument, `search_params`, which is a dictionary
-          containing the search parameters for the request.
-
-          """
-          pass
-
-      def delete_many_postprocessor(result=None, search_params=None, **kw):
-          """Accepts two arguments: `result`, which is the dictionary
-          representation of which is the dictionary representation of the JSON
-          response which will be returned to the client, and `search_params`,
-          which is a dictionary containing the search parameters for the
-          request.
-
-          """
-          pass
-
 .. note::
 
-   For more information about search parameters, see :ref:`searchformat`, and
-   for more information about request and response formats, see
-   :ref:`requestformat`.
+   For more information about the ``filters`` and ``single`` keyword arguments,
+   see :ref:`filtering`. For more information about ``sort`` and ``group_by``
+   keyword arguments, see :ref:`sorting`.
 
 In order to halt the preprocessing or postprocessing and return an error
 response directly to the client, your preprocessor or postprocessor functions
@@ -500,13 +415,13 @@ preprocessing or postprocessing functions that appear later in the list
 specified when the API was created will be invoked. For example, an
 authentication function can be implemented like this::
 
-    def check_auth(instance_id=None, **kw):
+    def check_auth(resource_id=None, **kw):
         # Here, get the current user from the session.
         current_user = ...
         # Next, check if the user is authorized to modify the specified
         # instance of the model.
         if not is_authorized_to_modify(current_user, instance_id):
-            raise ProcessingException(detail='Not Authorized', code=401)
+            raise ProcessingException(detail='Not Authorized', status=401)
     manager.create_api(Person, preprocessors=dict(GET_SINGLE=[check_auth]))
 
 The :exc:`ProcessingException` allows you to specify as keyword arguments to
@@ -544,13 +459,12 @@ authentication::
 
     def auth_func(*args, **kw):
         if not current_user.is_authenticated():
-            raise ProcessingException(description='Not authenticated!', code=401)
+            raise ProcessingException(detail='Not authenticated', status=401)
 
     app = Flask(__name__)
-    api_manager = APIManager(app, session=session,
-                             preprocessors=dict(POST=[auth_func]))
+    preprocessors = {'POST_RESOURCE': [auth_func]}
+    api_manager = APIManager(app, session=session, preprocessors=preprocessors)
     api_manager.create_api(User)
-
 
 Preprocessors for collections
 -----------------------------
@@ -559,26 +473,24 @@ When the server receives, for example, a request for :http:get:`/api/person`,
 Flask-Restless interprets this request as a search with no filters (that is, a
 search for all instances of ``Person`` without exception). In other words,
 :http:get:`/api/person` is roughly equivalent to
-:http:get:`/api/person?q={}`. Therefore, if you want to filter the set of
-``Person`` instances returned by such a request, you can create a preprocessor
-for a :http:method:`get` request to the collection endpoint that *appends
-filters* to the ``search_params`` keyword argument. For example::
+:http:get:`/api/person?filter[objects]=[]`. Therefore, if you want to filter
+the set of ``Person`` instances returned by such a request, you can create a
+``GET_COLLECTION`` preprocessor that *appends filters* to the ``filters``
+keyword argument. For example::
 
-    def preprocessor(search_params=None, **kw):
+    def preprocessor(filters=None, **kw):
         # This checks if the preprocessor function is being called before a
         # request that does not have search parameters.
-        if search_params is None:
+        if filters is None:
             return
         # Create the filter you wish to add; in this case, we include only
         # instances with ``id`` not equal to 1.
         filt = dict(name='id', op='neq', val=1)
-        # Check if there are any filters there already.
-        if 'filters' not in search_params:
-            search_params['filters'] = []
         # *Append* your filter to the list of filters.
-        search_params['filters'].append(filt)
+        filters.append(filt)
 
-    apimanager.create_api(Person, preprocessors=dict(GET_MANY=[preprocessor]))
+    preprocessors = {'GET_COLLECTION': [preprocessor]}
+    manager.create_api(Person, preprocessors=preprocessors)
 
 .. _customqueries:
 
@@ -630,23 +542,24 @@ If you want certain HTTP methods to require authentication, use preprocessors::
 
     from flask import Flask
     from flask.ext.restless import APIManager
-    from flask.ext.restless import NO_CHANGE
     from flask.ext.restless import ProcessingException
     from flask.ext.login import current_user
     from mymodels import User
 
     def auth_func(*args, **kwargs):
         if not current_user.is_authenticated():
-            raise ProcessingException(description='Not authenticated!', code=401)
-        return True
+            raise ProcessingException(detail='Not authenticated', status=401)
 
     app = Flask(__name__)
     api_manager = APIManager(app)
-    api_manager.create_api(User, preprocessors=dict(GET_SINGLE=[auth_func],
-                                                    GET_MANY=[auth_func]))
+    # Set `auth_func` to be a preprocessor for any type of endpoint you want to
+    # be guarded by authentication.
+    preprocessors = {'GET_RESOURCE': [auth_func], ...}
+    api_manager.create_api(User, preprocessors=preprocessors)
 
-For a more complete example using `Flask-Login
-<packages.python.org/Flask-Login/>`_, see the
+For a more complete example using `Flask-Login`_, see the
 :file:`examples/server_configurations/authentication` directory in the source
-distribution, or view it online at `GitHub
-<https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/authentication>`__.
+distribution, or `view it online`_.
+
+.. _Flask-Login: https://packages.python.org/Flask-Login
+.. _view it online: https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/authentication

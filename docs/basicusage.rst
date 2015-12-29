@@ -129,15 +129,23 @@ of ``Person.__tablename__``::
     {
       "data": {
         "id": "1",
-        "links": {
+        "type": "person",
+        "relationships": {
           "articles": {
-            "linkage": [],
-            "related": "http://localhost/api/person/1/articles",
-            "self": "http://localhost/api/person/1/links/articles"
+            "data": [],
+            "links": {
+              "related": "http://localhost/api/person/1/articles",
+              "self": "http://localhost/api/person/1/relationships/articles"
+            }
           },
-          "self": "http://localhost/api/person/1"
         },
-        "type": "person"
+        "links": {
+          "self": "http://localhost/api/person/1"
+        }
+      }
+      "meta": {},
+      "jsonapi": {
+        "version": "1.0"
       }
     }
     >>> newid = document['data']['id']
@@ -149,15 +157,23 @@ of ``Person.__tablename__``::
     {
       "data": {
         "id": "1",
-        "links": {
+        "type": "person",
+        "relationships": {
           "articles": {
-            "linkage": [],
-            "related": "http://localhost/api/person/1/articles",
-            "self": "http://localhost/api/person/1/links/articles"
+            "data": [],
+            "links": {
+              "related": "http://localhost/api/person/1/articles",
+              "self": "http://localhost/api/person/1/relationships/articles"
+            }
           },
-          "self": "http://localhost/api/person/1"
         },
-        "type": "person"
+        "links": {
+          "self": "http://localhost/api/person/1"
+        }
+      }
+      "meta": {},
+      "jsonapi": {
+        "version": "1.0"
       }
     }
 

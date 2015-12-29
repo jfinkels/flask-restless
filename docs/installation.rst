@@ -1,7 +1,7 @@
 Downloading and installing Flask-Restless
 =========================================
 
-Flask-Restless can be downloaded from the `Python Package Index`. The
+Flask-Restless can be downloaded from the `Python Package Index`_. The
 development version can be downloaded from `GitHub`_. However, it is better to
 install with ``pip`` (in a virtual environment provided by ``virtualenv``)::
 

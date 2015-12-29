@@ -34,7 +34,9 @@ To create a new resource, the request
    {
      "data": {
        "type": "person",
-       "name": "foo"
+       "attributes": {
+         "name": "foo"
+       }
      }
    }
 
@@ -48,8 +50,17 @@ yields the response
    {
      "data": {
        "id": "1",
-       "name": "foo",
-       "type": "person"
+       "type": "person",
+       "attributes": {
+         "name": "foo"
+       }
+       "links": {
+         "self": "http://example.com/api/person/bd34b544-ad39-11e5-a2aa-4cbb58b9ee34"
+       },
+       "meta": {},
+       "jsonapi": {
+         {"version": 1.0}
+       }
      }
    }
 
@@ -66,7 +77,9 @@ To create a new resource with a client-generated ID, the request
      "data": {
        "type": "person",
        "id": "bd34b544-ad39-11e5-a2aa-4cbb58b9ee34",
-       "name": "foo"
+       "attributes": {
+         "name": "foo"
+       }
      }
    }
 
@@ -80,7 +93,17 @@ yields the response
    {
      "data": {
        "id": "bd34b544-ad39-11e5-a2aa-4cbb58b9ee34",
-       "type": "person"
+       "type": "person",
+       "attributes": {
+         "name": "foo"
+       }
+       "links": {
+         "self": "http://example.com/api/person/bd34b544-ad39-11e5-a2aa-4cbb58b9ee34"
+       },
+       "meta": {},
+       "jsonapi": {
+         {"version": 1.0}
+       }
      }
    }
 
