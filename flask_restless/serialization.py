@@ -109,10 +109,24 @@ def create_relationship(model, instance, relation):
     """
     result = {}
     # Create the self and related links.
-    self_link = url_for(model, primary_key_value(instance), relation,
-                        relationship=True)
-    related_link = url_for(model, primary_key_value(instance), relation)
-    result['links'] = {'self': self_link, 'related': related_link}
+    pk_value = primary_key_value(instance)
+    self_link = url_for(model, pk_value, relation, relationship=True)
+    related_link = url_for(model, pk_value, relation)
+    result['links'] = {'self': self_link}
+    # HACK If the user has not created a GET endpoint for the related
+    # resource, then there is no "related" link to provide. However,
+    # `url_for` is not smart enough to know this, so it may return a
+    # link that interprets the `resource_id` and `relation_name`
+    # arguments as query parameters. As a workaround, we look to see if
+    # those query parameters appear in the URL and if so, we don't
+    # include the related link.
+    #
+    # TODO Check if the user has created a fetch endpoint for the
+    # related model, and if so, then add a "related" link.
+    has_related_fetch_endpoint = not ('resource_id=' in related_link and
+                                      'relation_name=' in related_link)
+    if has_related_fetch_endpoint:
+        result['links']['related'] = related_link
     # Get the related value so we can see if it is a to-many
     # relationship or a to-one relationship.
     related_value = getattr(instance, relation)

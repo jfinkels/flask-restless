@@ -423,8 +423,7 @@ class API(APIBase):
         # Provide that URL in the Location header in the response.
         headers = dict(Location=url)
         # Wrap the resulting object or list of objects under a 'data' key.
-        result = {'jsonapi': {'version': JSONAPI_VERSION}, 'meta': {},
-                  'links': {}, 'data': data}
+        result = {'jsonapi': {'version': JSONAPI_VERSION}, 'data': data}
         # Include any requested resources in a compound document.
         try:
             included = self.get_all_inclusions(instance, fields)
