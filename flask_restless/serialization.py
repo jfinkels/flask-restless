@@ -269,11 +269,19 @@ class DefaultSerializer(Serializer):
             #     only = {get_column_name(column) for column in only}
             #
             only = set(get_column_name(column) for column in only)
-            # TODO Should the 'self' link be mandatory as well?
-            only |= {'type', 'id'}
+            # TODO In Python 2.7 or later, this should be
+            #
+            #     only |= {'type', 'id'}
+            #
+            only |= set(['type', 'id'])
         if exclude is not None:
             # Convert SQLAlchemy Column objects to strings if necessary.
-            exclude = {get_column_name(column) for column in exclude}
+            #
+            # TODO In Python 2.7 or later, this should be
+            #
+            #     exclude = {get_column_name(column) for column in exclude}
+            #
+            exclude = set(get_column_name(column) for column in exclude)
         self.default_fields = only
         self.exclude = exclude
         self.additional_attributes = additional_attributes
@@ -303,7 +311,12 @@ class DefaultSerializer(Serializer):
         # of what the user requested.
         if only is not None:
             # TODO Should the 'self' link be mandatory as well?
-            only = set(only) | {'type', 'id'}
+            #
+            # TODO In Python 2.7 or later, this should be
+            #
+            #     only = set(only) | {'type', 'id'}
+            #
+            only = set(only) | set(['type', 'id'])
         model = type(instance)
         try:
             inspected_instance = inspect(model)
