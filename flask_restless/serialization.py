@@ -355,10 +355,24 @@ class DefaultSerializer(Serializer):
 
         # Create a dictionary mapping attribute name to attribute value for
         # this particular instance.
-        attributes = {column: getattr(instance, column) for column in columns}
+        #
+        # TODO In Python 2.7 and later, this should be
+        #
+        #     attributes = {column: getattr(instance, column)
+        #                   for column in columns}
+        #
+        attributes = dict((column, getattr(instance, column))
+                          for column in columns)
         # Call any functions that appear in the result.
-        attributes = {k: (v() if callable(v) else v)
-                      for k, v in attributes.items()}
+        #
+        # TODO In Python 2.7 and later, this should be
+        #
+        #
+        #     attributes = {k: (v() if callable(v) else v)
+        #                   for k, v in attributes.items()}
+        #
+        attributes = dict((k, (v() if callable(v) else v))
+                          for k, v in attributes.items())
         # Recursively serialize any object that appears in the
         # attributes. This may happen if, for example, the return value
         # of one of the callable functions is an instance of another
