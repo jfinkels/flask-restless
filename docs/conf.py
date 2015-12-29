@@ -58,10 +58,10 @@ import pkg_resources
 try:
     release = pkg_resources.get_distribution('Flask-Restless').version
 except pkg_resources.DistributionNotFound:
-    print 'To build the documentation, the distribution information of'
-    print 'Flask-Restless has to be available.  Either install the package'
-    print 'into your development environment or run "setup.py develop"'
-    print 'to setup the metadata.  A virtualenv is recommended!'
+    print('To build the documentation, the distribution information of')
+    print('Flask-Restless has to be available.  Either install the package')
+    print('into your development environment or run "setup.py develop"')
+    print('to setup the metadata.  A virtualenv is recommended!')
     sys.exit(1)
 del pkg_resources
 
@@ -255,26 +255,24 @@ man_pages = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'python': ('http://docs.python.org/', None),
-                       'flask': ('http://flask.pocoo.org/docs', None),
-                       'sqlalchemy': ('http://sqlalchemy.org/docs', None),
-                       'flasksqlalchemy':
-                           ('http://packages.python.org/Flask-SQLAlchemy',
-                            None),
-                       'flasklogin':
-                           ('https://flask-login.readthedocs.org/en/latest',
-                            None)}
+intersphinx_mapping = {
+    'python': ('http://docs.python.org/', None),
+    'flask': ('http://flask.pocoo.org/docs', None),
+    'sqlalchemy': ('http://sqlalchemy.org/docs', None),
+    'flasksqlalchemy': ('http://flask-sqlalchemy.pocoo.org', None),
+    'flasklogin': ('https://flask-login.readthedocs.org/en/latest', None)
+}
 
 # fall back if theme is not there
 try:
     __import__('flask_theme_support')
 except ImportError, e:
-    print '-' * 74
-    print 'Warning: Flask themes unavailable.  Building with default theme'
-    print 'If you want the Flask themes, run this command and build again:'
-    print
-    print '  git submodule update --init'
-    print '-' * 74
+    print('-' * 74)
+    print('Warning: Flask themes unavailable.  Building with default theme')
+    print('If you want the Flask themes, run this command and build again:')
+    print()
+    print('  git submodule update --init')
+    print('-' * 74)
 
     pygments_style = 'tango'
     html_theme = 'default'

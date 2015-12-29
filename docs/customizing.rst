@@ -91,7 +91,7 @@ Then the API will be exposed at ``/api/people`` instead of ``/api/person``.
 
 .. note::
 
-   According to the `JSON API standard`_,
+   According to the `JSON API specification`_,
 
       Note: This spec is agnostic about inflection rules, so the value of type
       can be either plural or singular. However, the same value should be used
@@ -100,7 +100,7 @@ Then the API will be exposed at ``/api/people`` instead of ``/api/person``.
    It's up to you to make sure your collection names are either all plural or
    all singular!
 
-.. _JSON API standard: http://jsonapi.org/format/#document-structure-resource-types
+.. _JSON API specification: http://jsonapi.org/format/#document-resource-object-identification
 
 .. _primarykey:
 
@@ -273,97 +273,101 @@ single resource, etc.
 
 This table states the preprocessors that apply to each type of endpoint.
 
-    ==================== ====================================
-    preprocessor name    for URLs like...
-    ==================== ====================================
-    GET_COLLECTION       /api/person
-    GET_RESOURCE         /api/person/1
-    GET_RELATION         /api/person/1/articles
-    GET_RELATED_RESOURCE /api/person/1/articles/2
+    ======================== ========================================
+    preprocessor name        applies to URLs like…
+    ======================== ========================================
+    ``GET_COLLECTION``       ``/api/person``
+    ``GET_RESOURCE``         ``/api/person/1``
+    ``GET_RELATION``         ``/api/person/1/articles``
+    ``GET_RELATED_RESOURCE`` ``/api/person/1/articles/2``
 
-    DELETE_RESOURCE      /api/person/1
+    ``DELETE_RESOURCE``      ``/api/person/1``
 
-    POST_RESOURCE        /api/person
+    ``POST_RESOURCE``        ``/api/person``
 
-    PATCH_RESOURCE       /api/person/1
+    ``PATCH_RESOURCE``       ``/api/person/1``
 
-    GET_RELATIONSHIP     /api/person/1/relationships/articles
-    DELETE_RELATIONSHIP  /api/person/1/relationships/articles
-    POST_RELATIONSHIP    /api/person/1/relationships/articles
-    PATCH_RELATIONSHIP   /api/person/1/relationships/articles
+    ``GET_RELATIONSHIP``     ``/api/person/1/relationships/articles``
+    ``DELETE_RELATIONSHIP``  ``/api/person/1/relationships/articles``
+    ``POST_RELATIONSHIP``    ``/api/person/1/relationships/articles``
+    ``PATCH_RELATIONSHIP``   ``/api/person/1/relationships/articles``
+    ======================== ========================================
 
 This table states the postprocessors that apply to each type of endpoint.
 
-    ======================== ====================================
-    postprocessor name       for URLs like...
-    ======================== ====================================
-    GET_COLLECTION           /api/person
-    GET_RESOURCE             /api/person/1
-    GET_TO_MANY_RELATION     /api/person/1/articles
-    GET_TO_ONE_RELATION      /api/articles/1/author
-    GET_RELATED_RESOURCE     /api/person/1/articles/2
+    ============================ ========================================
+    postprocessor name           applies to URLs like…
+    ============================ ========================================
+    ``GET_COLLECTION``           ``/api/person``
+    ``GET_RESOURCE``             ``/api/person/1``
+    ``GET_TO_MANY_RELATION``     ``/api/person/1/articles``
+    ``GET_TO_ONE_RELATION``      ``/api/articles/1/author``
+    ``GET_RELATED_RESOURCE``     ``/api/person/1/articles/2``
 
-    DELETE_RESOURCE          /api/person/1
+    ``DELETE_RESOURCE``          ``/api/person/1``
 
-    POST_RESOURCE            /api/person
+    ``POST_RESOURCE``            ``/api/person``
 
-    PATCH_RESOURCE           /api/person/1
+    ``PATCH_RESOURCE``           ``/api/person/1``
 
-    GET_TO_MANY_RELATIONSHIP /api/person/1/relationships/articles
-    GET_TO_ONE_RELATIONSHIP  /api/articles/1/relationships/author
-    GET_RELATIONSHIP         /api/person/1/relationships/articles
-    DELETE_RELATIONSHIP      /api/person/1/relationships/articles
-    POST_RELATIONSHIP        /api/person/1/relationships/articles
-    PATCH_RELATIONSHIP       /api/person/1/relationships/articles
+    ``GET_TO_MANY_RELATIONSHIP`` ``/api/person/1/relationships/articles``
+    ``GET_TO_ONE_RELATIONSHIP``  ``/api/articles/1/relationships/author``
+    ``GET_RELATIONSHIP``         ``/api/person/1/relationships/articles``
+    ``DELETE_RELATIONSHIP``      ``/api/person/1/relationships/articles``
+    ``POST_RELATIONSHIP``        ``/api/person/1/relationships/articles``
+    ``PATCH_RELATIONSHIP``       ``/api/person/1/relationships/articles``
+    ============================ ========================================
 
 Each type of preprocessor or postprocessor requires different
-arguments. Preprocessors:
+arguments. For preprocessors:
 
-    ==================== ====================================
-    preprocessor name    keyword arguments
-    ==================== ====================================
-    GET_COLLECTION       filters, sort, group_by, single
-    GET_RESOURCE         resource_id
-    GET_RELATION         resource_id, relation_name, filters, sort, group_by, single
-    GET_RELATED_RESOURCE resource_id, relation_name, related_resource_id
+    ======================== ===================================================================================
+    preprocessor name        keyword arguments
+    ======================== ===================================================================================
+    ``GET_COLLECTION``       ``filters``, ``sort``, ``group_by``, ``single``
+    ``GET_RESOURCE``         ``resource_id``
+    ``GET_RELATION``         ``resource_id``, ``relation_name``, ``filters``, ``sort``, ``group_by``, ``single``
+    ``GET_RELATED_RESOURCE`` ``resource_id``, ``relation_name``, ``related_resource_id``
 
-    DELETE_RESOURCE      resource_id
+    ``DELETE_RESOURCE``      ``resource_id``
 
-    POST_RESOURCE        data
+    ``POST_RESOURCE``        ``data``
 
-    PATCH_RESOURCE       resource_id, data
+    ``PATCH_RESOURCE``       ``resource_id``, ``data``
 
-    GET_RELATIONSHIP     resource_id, relation_name
-    DELETE_RELATIONSHIP  resource_id, relation_name
-    POST_RELATIONSHIP    resource_id, relation_name, data
-    PATCH_RELATIONSHIP   resource_id, relation_name, data
+    ``GET_RELATIONSHIP``     ``resource_id``, ``relation_name``
+    ``DELETE_RELATIONSHIP``  ``resource_id``, ``relation_name``
+    ``POST_RELATIONSHIP``    ``resource_id``, ``relation_name``, ``data``
+    ``PATCH_RELATIONSHIP``   ``resource_id``, ``relation_name``, ``data``
+    ======================== ===================================================================================
 
-Postprocessors:
+For postprocessors:
 
-    ======================== ====================================
-    postprocessor name       keyword arguments
-    ======================== ====================================
-    GET_COLLECTION           result, filters, sort, group_by, single
-    GET_RESOURCE             result
-    GET_TO_MANY_RELATION     result, filters, sort, group_by, single
-    GET_TO_ONE_RELATION      result
-    GET_RELATED_RESOURCE     result
+    ============================ ===========================================================
+    postprocessor name            keyword arguments
+    ============================ ===========================================================
+    ``GET_COLLECTION``           ``result``, ``filters``, ``sort``, ``group_by``, ``single``
+    ``GET_RESOURCE``             ``result``
+    ``GET_TO_MANY_RELATION``     ``result``, ``filters``, ``sort``, ``group_by``, ``single``
+    ``GET_TO_ONE_RELATION``      ``result``
+    ``GET_RELATED_RESOURCE``     ``result``
 
-    DELETE_RESOURCE          was_deleted
+    ``DELETE_RESOURCE``          ``was_deleted``
 
-    POST_RESOURCE            result
+    ``POST_RESOURCE``            ``result``
 
-    PATCH_RESOURCE           result
+    ``PATCH_RESOURCE``           ``result``
 
-    GET_TO_MANY_RELATIONSHIP result, filters, sort, group_by, single
-    GET_TO_ONE_RELATIONSHIP  result
-    DELETE_RELATIONSHIP      was_deleted
-    POST_RELATIONSHIP        None
-    PATCH_RELATIONSHIP       None
+    ``GET_TO_MANY_RELATIONSHIP`` ``result``, ``filters``, ``sort``, ``group_by``, ``single``
+    ``GET_TO_ONE_RELATIONSHIP``  ``result``
+    ``DELETE_RELATIONSHIP``      ``was_deleted``
+    ``POST_RELATIONSHIP``        none
+    ``PATCH_RELATIONSHIP``       none
+    ============================ ===========================================================
 
 How can one use these tables to create a preprocessor or postprocessor? If you
-want to create a preprocessor that will be applied on requests to
-:http:get:`/api/person`, first define a function that accepts the keyword
+want to create a preprocessor that will be applied on :http:method:`get`
+requests to ``/api/person``, first define a function that accepts the keyword
 arguments you need, and has a ``**kw`` argument for any additional keyword
 arguments (and any new arguments that may appear in future versions of
 Flask-Restless)::
@@ -383,9 +387,10 @@ request::
 
 For preprocessors for endpoints of the form ``/api/person/1``, a returned value
 will be interpreted as the resource ID for the request. For example, if a
-preprocessor for a :http:get:`/api/person/1` returns the string ``'foo'``, then
-Flask-Restless will behave as if the request were :http:get:`/api/person/foo`.
-For preprocessors for endpoints of the form ``/api/person/1/articles`` or
+preprocessor for a :http:method:`get` request to ``/api/person/1`` returns the
+string ``'foo'``, then Flask-Restless will behave as if the request were
+originally for the URL ``/api/person/foo``.  For preprocessors for endpoints of
+the form ``/api/person/1/articles`` or
 ``/api/person/1/relationships/articles``, the function can return either one
 value, in which case the resource ID will be replaced with the return value, or
 a two-tuple, in which case both the resource ID and the relationship name will
@@ -426,7 +431,7 @@ authentication function can be implemented like this::
 
 The :exc:`ProcessingException` allows you to specify as keyword arguments to
 the constructor the elements of the JSON API `error object`_. If no arguments
-are provided, the error is assumed to have status code :http:status:`400`.
+are provided, the error is assumed to have status code :http:statuscode:`400`.
 
 .. _error object: https://jsonapi.org/format/#error-objects
 
@@ -469,12 +474,13 @@ authentication::
 Preprocessors for collections
 -----------------------------
 
-When the server receives, for example, a request for :http:get:`/api/person`,
-Flask-Restless interprets this request as a search with no filters (that is, a
-search for all instances of ``Person`` without exception). In other words,
-:http:get:`/api/person` is roughly equivalent to
-:http:get:`/api/person?filter[objects]=[]`. Therefore, if you want to filter
-the set of ``Person`` instances returned by such a request, you can create a
+When the server receives, for example, a :http:method:`get` request for
+``/api/person``, Flask-Restless interprets this request as a search with no
+filters (that is, a search for all instances of ``Person`` without
+exception). In other words, a :http:method:`get` request to ``/api/person`` is
+roughly equivalent to the same request to
+``/api/person?filter[objects]=[]``. Therefore, if you want to filter the set of
+``Person`` instances returned by such a request, you can create a
 ``GET_COLLECTION`` preprocessor that *appends filters* to the ``filters``
 keyword argument. For example::
 
@@ -530,8 +536,8 @@ define a query class method this way::
             condition = (Group.groupname == 'students')
             return original_query.join(Group).filter(condition)
 
-Then requests to, for example, :http:get:`/api/person` will only reveal
-instances of ``Person`` who also are in the group named "students".
+Then :http:method:`get` requests to, for example, ``/api/person`` will only
+reveal instances of ``Person`` who also are in the group named "students".
 
 .. _authentication:
 
@@ -559,7 +565,7 @@ If you want certain HTTP methods to require authentication, use preprocessors::
 
 For a more complete example using `Flask-Login`_, see the
 :file:`examples/server_configurations/authentication` directory in the source
-distribution, or `view it online`_.
+distribution, or `view the authentication example online`_.
 
 .. _Flask-Login: https://packages.python.org/Flask-Login
-.. _view it online: https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/authentication
+.. _view the authentication example online: https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/authentication

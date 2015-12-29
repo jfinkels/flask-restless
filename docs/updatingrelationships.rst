@@ -32,7 +32,7 @@ To update a to-one relationship, the request
 
 .. sourcecode:: http
 
-   PATCH /api/articles/1/links/author HTTP/1.1
+   PATCH /api/articles/1/relationships/author HTTP/1.1
    Host: example.com
    Content-Type: application/vnd.api+json
    Accept: application/vnd.api+json
@@ -46,11 +46,13 @@ To update a to-one relationship, the request
 
 yields a :http:statuscode:`204` response.
 
-To update a to-many relationship, the request
+To update a to-many relationship (if enabled by setting
+``allow_to_many_replacement`` to ``True`` in :meth:`APIManager.create_api`),
+the request
 
 .. sourcecode:: http
 
-   PATCH /api/people/1/links/articles HTTP/1.1
+   PATCH /api/people/1/relationships/articles HTTP/1.1
    Host: example.com
    Content-Type: application/vnd.api+json
    Accept: application/vnd.api+json
@@ -74,7 +76,7 @@ To add to a to-many relationship, the request
 
 .. sourcecode:: http
 
-   POST /api/person/1/links/articles HTTP/1.1
+   POST /api/person/1/relationships/articles HTTP/1.1
    Host: example.com
    Content-Type: application/vnd.api+json
    Accept: application/vnd.api+json
@@ -118,11 +120,13 @@ To remove from a to-many relationship, the request
 
 yields a :http:statuscode:`204` response.
 
-To remove from a to-many relationship, the request
+To remove from a to-many relationship (if enabled by setting
+``allow_delete_from_to_many_relationships`` to ``True`` in
+:meth:`APIManager.create_api`), the request
 
 .. sourcecode:: http
 
-   DELETE /api/person/1/links/articles HTTP/1.1
+   DELETE /api/person/1/relationships/articles HTTP/1.1
    Host: example.com
    Content-Type: application/vnd.api+json
    Accept: application/vnd.api+json

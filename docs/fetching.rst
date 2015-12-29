@@ -297,8 +297,9 @@ Function evaluation
 
 If the ``allow_functions`` keyword argument to :meth:`APIManager.create_api` is
 set to ``True`` when creating an API for a model, then the endpoint
-:http:get:`/api/eval/person` will be made available. This endpoint responds to
-requests for evaluation of SQL functions on *all* instances the model.
+``/api/eval/person`` will be made available for :http:method:`get`
+requests. This endpoint responds to requests for evaluation of SQL functions on
+*all* instances the model.
 
 If the client specifies the ``functions`` query parameter, it must be a
 `percent-encoded`_ list of :dfn:`function objects`, as described below.
@@ -376,7 +377,78 @@ yields the response
 Inclusion of related resources
 ------------------------------
 
-TODO fill me in
+*For more information on client-side included resources, see `Inclusion of
+Related Resources`_ in the JSON API specification.*
+
+By default, no related resources will be included in a compound document on
+requests that would return data. For the client to request that the response
+includes related resources in a compound document, use the ``include`` query
+parameter. For example, to fetch a single resource and include all resources
+related to it, the request
+
+.. sourcecode:: http
+
+   GET /api/person/1?include=articles HTTP/1.1
+   Host: example.com
+   Accept: application/vnd.api+json
+
+yields the response
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+   Content-Type: application/vnd.api+json
+
+   {
+     "data": {
+       "id": "1",
+       "links": {
+         "self": "http://example.com/api/person/1"
+       },
+       "relationships": {
+         "articles": {
+           "data": [
+             {
+               "id": "1",
+               "type": "article"
+             }
+           ],
+           "links": {
+             "related": "http://example.com/api/person/1/articles",
+             "self": "http://example.com/api/person/1/relationships/articles"
+           }
+         }
+       },
+       "type": "person"
+     }
+     "included": [
+       {
+         "id": "1",
+         "links": {
+           "self": "http://example.com/api/article/1"
+         },
+         "relationships": {
+           "author": {
+             "data": {
+               "id": "1",
+               "type": "person"
+             },
+             "links": {
+               "related": "http://example.com/api/article/1/author",
+               "self": "http://example.com/api/article/1/relationships/author"
+             }
+           }
+         },
+         "type": "article"
+       }
+     ]
+   }
+
+To specify a default set of related resources to include when the client does
+not specify any `include` query parameter, use the ``includes`` keyword
+argument to the :meth:`APIManager.create_api` method.
+
+.. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
 
 .. _sparse:
 
@@ -538,8 +610,9 @@ Now the same request yields the response
 Sorting
 -------
 
-Clients can sort according to the sorting protocol described in the `Sorting`_
-section of the JSON API specification.
+Clients can sort according to the sorting protocol described in the `Sorting
+<http://jsonapi.org/format/#fetching-sorting>`__ section of the JSON API
+specification.
 
 Clients can also request grouping by using the ``group`` query parameter. For
 example, if your database has two people with name ``'foo'`` and two people
@@ -611,8 +684,6 @@ yields the response
      }
    }
 
-.. _Sorting: http://jsonapi.org/format/#fetching-sorting
-
 .. _pagination:
 
 Pagination
@@ -646,8 +717,8 @@ For example, to set each page to include only two results::
 
     apimanager.create_api(Person, page_size=2)
 
-Then the request :http:get:`/api/person?page[number]=2` would yield the
-response
+Then a :http:method:`get` request to ``/api/person?page[number]=2`` would yield
+the response
 
 .. sourcecode:: http
 

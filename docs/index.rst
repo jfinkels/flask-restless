@@ -22,7 +22,6 @@ the JSON API specification.
    basicusage
    requestformat
    customizing
-   searchformat
 
 API reference
 -------------

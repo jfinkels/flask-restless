@@ -424,11 +424,14 @@ class APIManager(object):
         wish to create a ReSTful API. Its behavior (for now) is undefined if
         called more than once.
 
-        This function returns the :class:`flask.Blueprint` object which handles
+        This function returns the :class:`flask.Blueprint` object that handles
         the endpoints for the model. The returned :class:`~flask.Blueprint` has
-        already been registered with the :class:`~flask.Flask` application
-        object specified in the constructor of this class, so you do *not* need
-        to register it yourself.
+        *not* been registered with the :class:`~flask.Flask` application
+        object specified in the constructor of this class, so you will need
+        to register it yourself to make it available on the application. If you
+        don't need access to the :class:`~flask.Blueprint` object, use
+        :meth:`create_api_blueprint` instead, which handles registration
+        automatically.
 
         `model` is the SQLAlchemy model class for which a ReSTful interface
         will be created.
@@ -438,38 +441,64 @@ class APIManager(object):
         the Flask application specified in the constructor of this class is
         used.
 
-        `methods` specify the HTTP methods which will be made available on the
-        ReSTful API for the specified model, subject to the following caveats:
+        `methods` is a list of strings specifying the HTTP methods that
+        will be made available on the ReSTful API for the specified
+        model.
 
-        * If :http:method:`get` is in this list, the API will allow fetching a
-          all instances of the model, any individual instance of the model, any
-          related instances, and particular instances of to-many relationships.
-        * If :http:method:`patch` is in this list, the API will allow updating
-          a single instance of the model per request.
-        * If :http:method:`delete` is in this list, the API will allow deletion
-          of a single instance of the model per request.
-        * If :http:method:`post` is in this list, the API will allow creating
-          one new instance of the model per request.
+        * If ``'GET'`` is in the list, :http:method:`get` requests will
+          be allowed at endpoints for collections of resources,
+          resources, to-many and to-one relations of resources, and
+          particular members of a to-many relation. Furthermore,
+          relationship information will be accessible. For more
+          information, see :ref:`fetching`.
+        * If ``'POST'`` is in the list, :http:method:`post` requests
+          will be allowed at endpoints for collections of resources. For
+          more information, see :ref:`creating`.
+        * If ``'DELETE'`` is in the list, :http:method:`delete` requests
+          will be allowed at endpoints for individual resources. For
+          more information, see :ref:`deleting`.
+        * If ``'PATCH'`` is in the list, :http:method:`patch` requests
+          will be allowed at endpoints for individual
+          resources. Replacing a to-many relationship when issuing a
+          request to update a resource can be enabled by setting
+          ``allow_to_many_replacement`` to ``True``.
+
+          Furthermore, to-one relationships can be updated at
+          the relationship endpoints under an individual resource via
+          :http:method:`patch` requests. This also allows you to add to
+          a to-many relationship via the :http:method:`post` method,
+          delete from a to-many relationship via the
+          :http:method:`delete` method (if
+          ``allow_delete_from_to_many_relationships`` is set to
+          ``True``), and replace a to-many relationship via the
+          :http:method:`patch` method (if ``allow_to_many_replacement``
+          is set to ``True``). For more information, see :ref:`updating`
+          and :ref:`updatingrelationships`.
 
         The default set of methods provides a read-only interface (that is,
         only :http:method:`get` requests are allowed).
 
-        `url_prefix` the URL prefix at which this API will be accessible.
+        `url_prefix` is the URL prefix at which this API will be
+        accessible. For example, if this is set to ``'foo'``, then this
+        method creates endpoints of the form ``/foo/<collection_name>``.
 
-        `collection_name` is the name of the collection specified by the given
-        model class to be used in the URL for the ReSTful API created. If this
-        is not specified, the lowercase name of the model will be used.
+        `collection_name` is the name of the collection specified by the
+        given model class to be used in the URL for the ReSTful API
+        created. If this is not specified, the lowercase name of the
+        model will be used. For example, if this is set to ``'foo'``,
+        then this method creates endpoints of the form ``/api/foo``,
+        ``/api/foo/<id>``, etc.
 
-        If `allow_functions` is ``True``, then requests to
-        :http:get:`/api/eval/<collection_name>` will return the result of
-        evaluating SQL functions specified in the body of the request. For
-        information on the request format, see :ref:`functionevaluation`. This
-        is ``False`` by default.
+        If `allow_functions` is ``True``, then :http:method:`get`
+        requests to ``/api/eval/<collection_name>`` will return the
+        result of evaluating SQL functions specified in the body of the
+        request. For information on the request format, see
+        :ref:`functionevaluation`. This is ``False`` by default.
 
         .. warning::
 
-           If this ``allow_functions`` is ``True``, you must not create an API
-           for a model whose name is ``'eval'``.
+           If ``allow_functions`` is ``True``, you must not create an
+           API for a model whose name is ``'eval'``.
 
         If `only` is not ``None``, it must be a list of columns and/or
         relationships of the specified `model`, given either as strings or as
@@ -479,6 +508,12 @@ class APIManager(object):
         ``type`` elements of the resource object will always be present
         regardless of the value of this argument. If `only` contains a string
         that does not name a column in `model`, it will be ignored.
+
+        If `additional_attributes` is a list of strings, these
+        attributes of the model will appear in the JSON representation
+        of an instance of the model. This is useful if your model has an
+        attribute that is not a SQLAlchemy column but you want it to be
+        exposed.
 
         If `exclude` is not ``None``, it must be a list of columns and/or
         relationships of the specified `model`, given either as strings or as
@@ -509,14 +544,17 @@ class APIManager(object):
         represents the maximum page size that a client can request. Even if a
         client specifies that greater than `max_page_size` should be returned,
         at most `max_page_size` results will be returned. For more information,
-        see :ref:`serverpagination`.
+        see :ref:`pagination`.
 
-        `serializer` and `deserializer` are custom serialization functions. The
-        former function must take a single argument representing the instance
-        of the model to serialize, and must return a dictionary representation
-        of that instance. The latter function must take a single argument
-        representing the dictionary representation of an instance of the model
-        and must return an instance of `model` that has those attributes. For
+        `serializer` and `deserializer` are custom serialization
+        functions. The former function must take a single positional
+        argument representing the instance of the model to serialize and
+        an additional keyword argument ``only`` representing the fields
+        to include in the serialized representation of the instance, and
+        must return a dictionary representation of that instance. The
+        latter function must take a single argument representing the
+        dictionary representation of an instance of the model and must
+        return an instance of `model` that has those attributes. For
         more information, see :ref:`serialization`.
 
         `preprocessors` is a dictionary mapping strings to lists of
@@ -535,14 +573,6 @@ class APIManager(object):
         value for this. If `model` has two or more primary keys, you must
         specify which one to use. For more information, see :ref:`primarykey`.
 
-        `serializer` and `deserializer` are custom serialization functions. The
-        former function must take a single argument representing the instance
-        of the model to serialize, and must return a dictionary representation
-        of that instance. The latter function must take a single argument
-        representing the dictionary representation of an instance of the model
-        and must return an instance of `model` that has those attributes. For
-        more information, see :ref:`serialization`.
-
         `includes` must be a list of strings specifying which related resources
         will be included in a compound document by default when fetching a
         resource object representation of an instance of `model`. Each element
@@ -551,21 +581,26 @@ class APIManager(object):
         :ref:`includes`.
 
         If `allow_to_many_replacement` is ``True`` and this API allows
-        :http:method:`patch` requests, the server will allow the client to
-        replace the entire collection of resources in any to-many relationship
-        of the model. This is ``False`` by default. For more information, see
-        :ref:`allowreplacement`.
+        :http:method:`patch` requests, the server will allow two types
+        of requests.  First, it allows the client to replace the entire
+        collection of resources in a to-many relationship when updating
+        an individual instance of the model. Second, it allows the
+        client to replace the entire to-many relationship when making a
+        :http:method:`patch` request to a to-many relationship endpoint.
+        This is ``False`` by default. For more information, see
+        :ref:`updating` and :ref:`updatingrelationships`.
 
-        If `allow_delete_from_to_many_relationships` is ``True`` and this API
-        allows :http:method:`patch` requests, the server will allow the client
-        to delete resources from any to-many relationship of the model. This is
-        ``False`` by default. For more information, see :ref:`allowdeletion`.
+        If `allow_delete_from_to_many_relationships` is ``True`` and
+        this API allows :http:method:`patch` requests, the server will
+        allow the client to delete resources from any to-many
+        relationship of the model. This is ``False`` by default. For
+        more information, see :ref:`updatingrelationships`.
 
         If `allow_client_generated_ids` is ``True`` and this API allows
         :http:method:`post` requests, the server will allow the client to
         specify the ID for the resource to create. JSON API recommends that
         this be a UUID. This is ``False`` by default. For more information, see
-        :ref:`clientids`.
+        :ref:`creating`.
 
         """
         # Perform some sanity checks on the provided keyword arguments.

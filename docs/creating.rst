@@ -64,7 +64,9 @@ yields the response
      }
    }
 
-To create a new resource with a client-generated ID, the request
+To create a new resource with a client-generated ID (if enabled by setting
+``allow_client_generated_ids`` to ``True`` in :meth:`APIManager.create_api`),
+the request
 
 .. sourcecode:: http
 
@@ -92,22 +94,22 @@ yields the response
 
    {
      "data": {
-       "id": "bd34b544-ad39-11e5-a2aa-4cbb58b9ee34",
-       "type": "person",
        "attributes": {
          "name": "foo"
-       }
+       },
+       "id": "bd34b544-ad39-11e5-a2aa-4cbb58b9ee34",
        "links": {
          "self": "http://example.com/api/person/bd34b544-ad39-11e5-a2aa-4cbb58b9ee34"
        },
        "meta": {},
        "jsonapi": {
          {"version": 1.0}
-       }
+       },
+       "type": "person"
      }
    }
 
-The server always responds with :http:status:`201` and a complete resource
+The server always responds with :http:statuscode:`201` and a complete resource
 object on a request with a client-generated ID.
 
 The server will respond with :http:statuscode:`400` if the request specifies a

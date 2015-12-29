@@ -29,8 +29,8 @@ specification.
 Trailing slashes in URLs
 ------------------------
 
-API endpoints do not have trailing slashes. A request to, for example,
-:http:get:`/api/person/` will result in a :http:statuscode:`404` response.
+API endpoints do not have trailing slashes. A :http:method:`get` request to,
+for example, ``/api/person/`` will result in a :http:statuscode:`404` response.
 
 .. _dateandtime:
 
