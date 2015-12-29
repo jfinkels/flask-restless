@@ -95,7 +95,7 @@ ROLLBACK_ERRORS = (DataError, IntegrityError, ProgrammingError, FlushError)
 #: The particular error message depends on the particular environment
 #: containing the SQLite backend, it seems.
 CONFLICT_INDICATORS = ('conflicts with', 'UNIQUE constraint failed',
-                       'column name is not unique')
+                       'is not unique')
 
 #: The names of pagination links that appear in both ``Link`` headers
 #: and JSON API links.
