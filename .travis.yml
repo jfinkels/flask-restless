@@ -13,6 +13,7 @@ python:
   - "pypy3"
 
 install:
+  - pip install --upgrade pip
   - pip install -r requirements.txt
   - pip install coveralls
 
