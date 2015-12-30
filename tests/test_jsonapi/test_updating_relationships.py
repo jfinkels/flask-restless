@@ -127,7 +127,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         response = self.app.patch('/api2/person/1/relationships/articles',
                                   data=dumps(data))
         assert response.status_code == 204
-        assert set(person.articles) == {article1, article2}
+        get_id = lambda a: a.id
+        assert [article1, article2] == sorted(person.articles, key=get_id)
 
     def test_to_many_not_found(self):
         """Tests that an attempt to replace a to-many relationship with a
@@ -192,7 +193,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         response = self.app.post('/api/person/1/relationships/articles',
                                  data=dumps(data))
         assert response.status_code == 204
-        assert set(person.articles) == {article1, article2}
+        get_id = lambda a: a.id
+        assert [article1, article2] == sorted(person.articles, key=get_id)
 
     def test_to_many_preexisting(self):
         """Tests for attempting to append an element that already exists in a

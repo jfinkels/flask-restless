@@ -68,7 +68,7 @@ class TestServerResponsibilities(ManagerTestBase):
         .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
 
         """
-        headers = {'Content-Type': '{}; version=1'.format(CONTENT_TYPE)}
+        headers = {'Content-Type': '{0}; version=1'.format(CONTENT_TYPE)}
         response = self.app.get('/api/person', headers=headers)
         assert response.status_code == 415
         document = loads(response.data)

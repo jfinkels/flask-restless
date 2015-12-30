@@ -653,7 +653,7 @@ class TestFetchRelation(ManagerTestBase):
         assert all(article['type'] == 'article' for article in articles)
         assert ['4', '5'] == sorted(article['id'] for article in articles)
         pagination = document['links']
-        base_url = '{}?'.format(base_url)
+        base_url = '{0}?'.format(base_url)
         assert base_url in pagination['first']
         assert 'page[number]=1' in pagination['first']
         assert base_url in pagination['last']
