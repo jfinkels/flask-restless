@@ -454,8 +454,13 @@ class DefaultSerializer(Serializer):
             return result
         # For the sake of brevity, rename this function.
         cr = create_relationship
-        result['relationships'] = {relation: cr(model, instance, relation)
-                                   for relation in relations}
+        # TODO In Python 2.7 and later, this should be
+        #
+        #
+        #     result['relationships'] = {rel: cr(model, instance, rel)
+        #                                for rel in relations}
+        result['relationships'] = dict((rel, cr(model, instance, rel))
+                                       for rel in relations)
         return result
 
 

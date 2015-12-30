@@ -330,7 +330,11 @@ def search_relationship(session, instance, relation, filters=None, sort=None,
 
     # Filter by only those related values that are related to `instance`.
     relationship = getattr(instance, relation)
-    primary_keys = {primary_key_value(inst) for inst in relationship}
+    # TODO In Python 2.7 and later, this should be
+    #
+    #     primary_keys = {primary_key_value(inst) for inst in relationship}
+    #
+    primary_keys = set(primary_key_value(inst) for inst in relationship)
     query.filter(primary_key_value(related_model) in primary_keys)
 
     return search(session, related_model, filters=filters, sort=sort,

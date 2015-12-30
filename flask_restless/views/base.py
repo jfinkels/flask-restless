@@ -251,7 +251,8 @@ def catch_processing_exceptions(func):
         try:
             return func(*args, **kw)
         except ProcessingException as exception:
-            kw = {key: getattr(exception, key) for key in ERROR_FIELDS}
+            # TODO In Python 2.7 and later, this should be a dict comprehension
+            kw = dict((key, getattr(exception, key)) for key in ERROR_FIELDS)
             # Need to change the name of the `code` key as a workaround
             # for name collisions with Werkzeug exception classes.
             kw['code'] = kw.pop('code_')
@@ -523,9 +524,10 @@ def parse_sparse_fields(type_=None):
     """
     # TODO use a regular expression to ensure field parameters are of the
     # correct format? (maybe ``fields\[[^\[\]\.]*\]``)
-    fields = {key[7:-1]: set(value.split(','))
-              for key, value in request.args.items()
-              if key.startswith('fields[') and key.endswith(']')}
+    # TODO In Python 2.7 and later, this should be a dictionary comprehension.
+    fields = dict((key[7:-1], set(value.split(',')))
+                  for key, value in request.args.items()
+                  if key.startswith('fields[') and key.endswith(']'))
     return fields.get(type_) if type_ is not None else fields
 
 
@@ -565,7 +567,8 @@ def resources_from_path(instance, path):
     # Next, do a breadth-first traversal of the resources related to
     # `instance` via the given path.
     seen = set()
-    nextlevel = {instance}
+    # TODO In Pyhon 2.7 and later, this should be a set literal.
+    nextlevel = set([instance])
     first_time = True
     while nextlevel:
         thislevel = nextlevel
