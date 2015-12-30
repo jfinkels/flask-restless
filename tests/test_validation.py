@@ -177,7 +177,7 @@ class TestSimpleValidation(ManagerTestBase):
 
         """
         person = self.Person(id=1, age=1)
-        article = self.Article(id=1, title='')
+        article = self.Article(id=1, title=u'')
         self.session.add_all([person, article])
         self.session.commit()
         data = {'data': [{'type': 'article', 'id': 1}]}
@@ -198,7 +198,7 @@ class TestSimpleValidation(ManagerTestBase):
 
         """
         person = self.Person(id=1, age=1)
-        article = self.Article(id=1, title='')
+        article = self.Article(id=1, title=u'')
         self.session.add_all([person, article])
         self.session.commit()
         self.manager.create_api(self.Person, methods=['PATCH'],
