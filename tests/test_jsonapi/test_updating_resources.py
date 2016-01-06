@@ -18,6 +18,8 @@ of the JSON API specification.
 .. _Updating Resources: http://jsonapi.org/format/#crud-updating
 
 """
+from operator import attrgetter
+
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
@@ -186,7 +188,8 @@ class TestUpdatingResources(ManagerTestBase):
         }
         response = self.app.patch('/api2/person/1', data=dumps(data))
         assert response.status_code == 204
-        assert set(person.articles) == {article1, article2}
+        articles = sorted(person.articles, key=attrgetter('id'))
+        assert [article1, article2] == articles
 
     def test_to_many_clear(self):
         """Tests that the client can clear a resource's to-many relationships.

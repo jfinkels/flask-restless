@@ -17,6 +17,8 @@ section of the JSON API specification.
 .. _Updating Relationships: http://jsonapi.org/format/#crud-updating-relationships
 
 """
+from operator import attrgetter
+
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
@@ -127,8 +129,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         response = self.app.patch('/api2/person/1/relationships/articles',
                                   data=dumps(data))
         assert response.status_code == 204
-        get_id = lambda a: a.id
-        assert [article1, article2] == sorted(person.articles, key=get_id)
+        article = sorted(person.articles, key=attrgetter('id'))
+        assert [article1, article2] == articles
 
     def test_to_many_not_found(self):
         """Tests that an attempt to replace a to-many relationship with a
@@ -193,8 +195,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         response = self.app.post('/api/person/1/relationships/articles',
                                  data=dumps(data))
         assert response.status_code == 204
-        get_id = lambda a: a.id
-        assert [article1, article2] == sorted(person.articles, key=get_id)
+        article = sorted(person.articles, key=attrgetter('id'))
+        assert [article1, article2] == articles
 
     def test_to_many_preexisting(self):
         """Tests for attempting to append an element that already exists in a
