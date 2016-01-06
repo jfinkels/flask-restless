@@ -62,9 +62,20 @@ class TestLocalAPIManager(DatabaseTestBase):
         self.Article = Article
         self.Base.metadata.create_all()
 
-    def test_init_app(self):
-        """Tests for initializing the Flask application after instantiating the
-        :class:`flask.ext.restless.APIManager` object.
+    def test_constructor_app(self):
+        """Tests for providing a :class:`~flask.Flask` application in
+        the constructor.
+
+        """
+        manager = APIManager(app=self.flaskapp, session=self.session)
+        manager.create_api(self.Person)
+        response = self.app.get('/api/person')
+        assert response.status_code == 200
+
+    def test_single_manager_init_single_app(self):
+        """Tests for calling :meth:`~APIManager.init_app` with a single
+        :class:`~flask.Flask` application after calling
+        :meth:`~APIManager.create_api`.
 
         """
         manager = APIManager(session=self.session)
@@ -73,43 +84,55 @@ class TestLocalAPIManager(DatabaseTestBase):
         response = self.app.get('/api/person')
         assert response.status_code == 200
 
-    def test_init_app_split_initialization(self):
-        manager = APIManager(session=self.session)
-        manager.create_api(self.Person)
-        manager.init_app(self.flaskapp)
-        response = self.app.get('/api/person')
-        assert response.status_code == 200
+    def test_single_manager_init_multiple_apps(self):
+        """Tests for calling :meth:`~APIManager.init_app` on multiple
+        :class:`~flask.Flask` applications after calling
+        :meth:`~APIManager.create_api`.
 
-    def test_init_multiple(self):
-        manager1 = APIManager(session=self.session)
-        manager2 = APIManager(session=self.session)
+        """
+        manager = APIManager(session=self.session)
         flaskapp1 = self.flaskapp
         flaskapp2 = Flask(__name__)
         testclient1 = self.app
         testclient2 = flaskapp2.test_client()
         force_json_contenttype(testclient2)
-        manager1.create_api(self.Person)
-        manager2.create_api(self.Computer)
-        manager1.init_app(flaskapp1)
-        manager2.init_app(flaskapp2)
+        manager.create_api(self.Person)
+        manager.init_app(flaskapp1)
+        manager.init_app(flaskapp2)
         response = testclient1.get('/api/person')
         assert response.status_code == 200
-        response = testclient1.get('/api/article')
-        assert response.status_code == 404
         response = testclient2.get('/api/person')
-        assert response.status_code == 404
-        response = testclient2.get('/api/article')
         assert response.status_code == 200
 
-    def test_creation_api_without_app_dependency(self):
-        """Tests that api can be added before app will be passed to manager."""
-        manager = APIManager(session=self.session)
-        manager.create_api(self.Person)
-        manager.init_app(self.flaskapp)
+    def test_multiple_managers_init_single_app(self):
+        """Tests for calling :meth:`~APIManager.init_app` on a single
+        :class:`~flask.Flask` application after calling
+        :meth:`~APIManager.create_api` on multiple instances of
+        :class:`APIManager`.
+
+        """
+        manager1 = APIManager(session=self.session)
+        manager2 = APIManager(session=self.session)
+
+        # First create the API, then initialize the Flask applications after.
+        manager1.create_api(self.Person)
+        manager2.create_api(self.Article)
+        manager1.init_app(self.flaskapp)
+        manager2.init_app(self.flaskapp)
+
+        # Tests that both endpoints are accessible on the Flask application.
         response = self.app.get('/api/person')
         assert response.status_code == 200
+        response = self.app.get('/api/article')
+        assert response.status_code == 200
 
-    def test_multiple_app_delayed_init(self):
+    def test_multiple_managers_init_multiple_apps(self):
+        """Tests for calling :meth:`~APIManager.init_app` on multiple
+        :class:`~flask.Flask` applications after calling
+        :meth:`~APIManager.create_api` on multiple instances of
+        :class:`APIManager`.
+
+        """
         manager1 = APIManager(session=self.session)
         manager2 = APIManager(session=self.session)
 
@@ -122,7 +145,7 @@ class TestLocalAPIManager(DatabaseTestBase):
 
         # First create the API, then initialize the Flask applications after.
         manager1.create_api(self.Person)
-        manager2.create_api(self.Computer)
+        manager2.create_api(self.Article)
         manager1.init_app(flaskapp1)
         manager2.init_app(flaskapp2)
 

@@ -158,7 +158,8 @@ sent from the server to the client) using the
 
     app = Flask(__name__)
     manager = APIManager(app)
-    blueprint = manager.create_api(Person)
+    blueprint = manager.create_api_blueprint('mypersonapi', Person)
     blueprint.after_request(add_cors_headers)
+    app.register_blueprint(blueprint)
 
 .. _Cross-Origin Resource Sharing (CORS): http://enable-cors.org

@@ -17,6 +17,12 @@ their SQLAlchemy models.
 """
 from collections import defaultdict
 from collections import namedtuple
+# In Python 3...
+try:
+    from urllib.parse import urljoin
+# In Python 2...
+except ImportError:
+    from urlparse import urljoin
 from uuid import uuid1
 
 import flask
@@ -159,9 +165,15 @@ class APIManager(object):
         model_for.register(self)
         collection_name.register(self)
 
+        #: A mapping whose keys are models for which this object has
+        #: created an API via the :meth:`create_api_blueprint` method
+        #: and whose values are the corresponding collection names for
+        #: those models.
+        self.created_apis_for = {}
+
         #: List of blueprints created by :meth:`create_api` to be registered
         #: to the app when calling :meth:`init_app`.
-        self.apis_to_create = []
+        self.blueprints = []
 
         if flask_sqlalchemy_db is not None:
             try:
@@ -170,12 +182,19 @@ class APIManager(object):
                 pass
             finally:
                 if session is None:
-                    raise ValueError('Flask-Restless requires a valid flask_sqlalchemy_db or session')
+                    msg = ('must specify either `flask_sqlalchemy_db` or'
+                           ' `session`')
+                    raise ValueError(msg)
 
-        self.restless_info = RestlessInfo(session, preprocessors or {}, postprocessors or {})
+        # pre = preprocessors or {}
+        # post = postprocessors or {}
+        # self.restless_info = RestlessInfo(session, pre, post)
+        self.pre = preprocessors or {}
+        self.post = postprocessors or {}
+        self.session = session
 
-        if self.app is not None:
-            self.init_app(self.app)
+        # if self.app is not None:
+        #     self.init_app(self.app)
 
     @staticmethod
     def api_name(collection_name):
@@ -211,11 +230,7 @@ class APIManager(object):
         """
         # Reverse the dictionary.
         #
-        # In Python 3 this should be:
-        #
-        #     models = {info.collection_name: model
-        #               for model, info in self.created_apis_for.items()}
-        #
+        # TODO In Python 3 this should be a dict comprehension.
         models = dict((info.collection_name, model)
                       for model, info in self.created_apis_for.items())
         try:
@@ -285,14 +300,16 @@ class APIManager(object):
         return self.created_apis_for[model].collection_name
 
     def init_app(self, app):
-        """Stores the specified :class:`flask.Flask` application object on
-        which API endpoints will be registered and the
-        :class:`sqlalchemy.orm.session.Session` object in which all database
-        changes will be made.
+        """Registers any created APIs on the given Flask application.
 
-        This is for use in the situation in which this class must be
-        instantiated before the :class:`~flask.Flask` application has been
-        created.
+        This function should only be called if no Flask application was
+        provided in the `app` keyword argument to the constructor of
+        this class.
+
+        When this function is invoked, any blueprint created by a
+        previous invocation of :meth:`create_api` will be registered on
+        `app` by calling the :meth:`~flask.Flask.register_blueprint`
+        method.
 
         To use this method with pure SQLAlchemy, for example::
 
@@ -304,9 +321,17 @@ class APIManager(object):
             engine = create_engine('sqlite:////tmp/mydb.sqlite')
             Session = sessionmaker(bind=engine)
             mysession = Session()
-            apimanager = APIManager(session=mysession)
 
-            # later...
+            # Here create model classes, for example User, Comment, etc.
+            ...
+
+            # Create the API manager and create the APIs.
+            apimanager = APIManager(session=mysession)
+            apimanager.create_api(User)
+            apimanager.create_api(Comment)
+
+            # Later, call `init_app` to register the blueprints for the
+            # APIs created earlier.
             app = Flask(__name__)
             apimanager.init_app(app)
 
@@ -317,27 +342,23 @@ class APIManager(object):
             from flask.ext.sqlalchemy import SQLAlchemy
 
             db = SQLALchemy(app)
+
+            # Here create model classes, for example User, Comment, etc.
+            ...
+
+            # Create the API manager and create the APIs.
             apimanager = APIManager(flask_sqlalchemy_db=db)
+            apimanager.create_api(User)
+            apimanager.create_api(Comment)
 
-            # later...
-
+            # Later, call `init_app` to register the blueprints for the
+            # APIs created earlier.
             app = Flask(__name__)
             apimanager.init_app(app)
 
         """
-
-        # Use the `extensions` dictionary on the provided Flask object to store
-        # extension-specific information.
-        if not hasattr(app, 'extensions'):
-            app.extensions = {}
-        if 'restless' in app.extensions:
-            raise ValueError('Flask-Restless has already been initialized on'
-                             ' this application: {0}'.format(app))
-
-        app.extensions['restless'] = self.restless_info
-        # Now that this application has been initialized, register all
-        # the queued blueprints
-        for blueprint in self.apis_to_create:
+        # Register any queued blueprints on the given application.
+        for blueprint in self.blueprints:
             app.register_blueprint(blueprint)
 
     def create_api_blueprint(self, name, model, methods=READONLY_METHODS,
@@ -373,6 +394,8 @@ class APIManager(object):
         don't need access to the :class:`~flask.Blueprint` object, use
         :meth:`create_api_blueprint` instead, which handles registration
         automatically.
+
+        `name` is the name of the blueprint that will be created.
 
         `model` is the SQLAlchemy model class for which a ReSTful interface
         will be created.
@@ -567,9 +590,11 @@ class APIManager(object):
         postprocessors_ = defaultdict(list)
         preprocessors_.update(preprocessors or {})
         postprocessors_.update(postprocessors or {})
-        for key, value in self.restless_info.universal_preprocessors.items():
+        # for key, value in self.restless_info.universal_preprocessors.items():
+        for key, value in self.pre.items():
             preprocessors_[key] = value + preprocessors_[key]
-        for key, value in self.restless_info.universal_postprocessors.items():
+        # for key, value in self.restless_info.universal_postprocessors.items():
+        for key, value in self.post.items():
             postprocessors_[key] = value + postprocessors_[key]
         # Create a default serializer and deserializer if none have been
         # provided.
@@ -580,14 +605,16 @@ class APIManager(object):
             #     validation_exceptions = [DeserializationException]
             # else:
             #     validation_exceptions.append(DeserializationException)
+        # session = self.restlessinfo.session
+        session = self.session
         if deserializer is None:
-            deserializer = DefaultDeserializer(restlessinfo.session, model)
+            deserializer = DefaultDeserializer(self.session, model)
         # Create the view function for the API for this model.
         #
         # Rename some variables with long names for the sake of brevity.
         atmr = allow_to_many_replacement
         acgi = allow_client_generated_ids
-        api_view = API.as_view(apiname, self.restlessinfo.session, model,
+        api_view = API.as_view(apiname, session, model,
                                # Keyword arguments for APIBase.__init__()
                                preprocessors=preprocessors_,
                                postprocessors=postprocessors_,
@@ -601,9 +628,7 @@ class APIManager(object):
                                deserializer=deserializer,
                                includes=includes,
                                allow_client_generated_ids=acgi)
-        # suffix an integer to apiname according to already existing blueprints
-        blueprintname = APIManager._next_blueprint_name(app.blueprints,
-                                                        apiname)
+
         # add the URL rules to the blueprint: the first is for methods on the
         # collection only, the second is for methods which may or may not
         # specify an instance, the third is for methods which must specify an
@@ -634,7 +659,7 @@ class APIManager(object):
         rapi_view = RelationshipAPI.as_view
         adftmr = allow_delete_from_to_many_relationships
         relationship_api_view = \
-            rapi_view(relationship_api_name, restlessinfo.session, model,
+            rapi_view(relationship_api_name, session, model,
                       # Keyword arguments for APIBase.__init__()
                       preprocessors=preprocessors_,
                       postprocessors=postprocessors_,
@@ -698,9 +723,7 @@ class APIManager(object):
         # evaluating functions on all instances of the specified model
         if allow_functions:
             eval_api_name = '{0}.eval'.format(apiname)
-            eval_api_view = FunctionAPI.as_view(eval_api_name,
-                                                self.restlessinfo.session,
-                                                model)
+            eval_api_view = FunctionAPI.as_view(eval_api_name, session, model)
             eval_endpoint = '/eval{0}'.format(collection_url)
             eval_methods = ['GET']
             blueprint.add_url_rule(eval_endpoint, methods=eval_methods,
@@ -712,25 +735,64 @@ class APIManager(object):
         return blueprint
 
     def create_api(self, *args, **kw):
-        """Creates and registers a ReSTful API blueprint on the
-        :class:`flask.Flask` application specified in the constructor of this
-        class.
+        """Creates and possibly registers a ReSTful API blueprint for
+        the given SQLAlchemy model.
 
-        The positional and keyword arguments are passed directly to the
-        :meth:`create_api_blueprint` method, so see the documentation there.
+        If a Flask application was provided in the constructor of this
+        class, the created blueprint is immediately registered on that
+        application. Otherwise, the blueprint is stored for later
+        registration when the :meth:`init_app` method is invoked. In
+        that case, the blueprint will be registered each time the
+        :meth:`init_app` method is invoked.
 
-        This is essentially a convenience method for the following code::
+        The keyword arguments for this method are exactly the same as
+        those for :meth:create_api_blueprint`, and are passed directly
+        to that method. However, unlike that method, this method accepts
+        only a single positional argument, `model`, the SQLAlchemy model
+        for which to create the API. A UUID will be automatically
+        generated for the blueprint name.
 
-            blueprint = apimanager.create_api_blueprint(*args, **kw)
-            app.register_blueprint(blueprint)
+        For example, if you only wish to create APIs on a single Flask
+        application::
+
+            app = Flask(__name__)
+            session = ...  # create the SQLAlchemy session
+            manager = APIManager(app=app, session=session)
+            manager.create_api(User)
+
+        If you want to create APIs before having access to a Flask
+        application, you can call this method before calling
+        :meth:`init_app`::
+
+            session = ...  # create the SQLAlchemy session
+            manager = APIManager(session=session)
+            manager.create_api(User)
+
+            # later...
+            app = Flask(__name__)
+            manager.init_app(app)
+
+        If you want to create an API and register it on multiple Flask
+        applications, you can call this method once and :meth:`init_app`
+        multiple times with different `app` arguments::
+
+            session = ...  # create the SQLAlchemy session
+            manager = APIManager(session=session)
+            manager.create_api(User)
+
+            # later...
+            app1 = Flask('application1')
+            app2 = Flask('application2')
+            manager.init_app(app1)
+            manager.init_app(app2)
 
         """
-
-        blueprint = self.create_api_blueprint(uuid1(), *args, **kw)
-
+        blueprint_name = str(uuid1())
+        blueprint = self.create_api_blueprint(blueprint_name, *args, **kw)
+        # Store the created blueprint
+        self.blueprints.append(blueprint)
+        # If a Flask application was provided in the constructor of this
+        # API manager, then immediately register the blueprint on that
+        # application.
         if self.app is not None:
             self.app.register_blueprint(blueprint)
-        # If no Flask application was provided in the constructor,
-        # then queue blueprint for later registration.
-        else:
-            self.apis_to_create.append(blueprint)

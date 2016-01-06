@@ -96,16 +96,18 @@ blueprint has already been registered on the :class:`~flask.Flask` application,
 so you do *not* need to register it yourself. It is provided so that you can
 examine its attributes, but if you don't need it then just ignore it::
 
-    manager.create_api(Person, methods=['GET', 'POST'])
+    methods = ['GET', 'POST']
+    manager.create_api(Person, methods=methods)
     manager.create_api(Article)
 
 If you wish to create the blueprint for the API without registering it (for
-example, if you wish to register it later in your code), use the
-:meth:`APIManager.create_api_blueprint` method instead::
+example, if you wish to register it manually later in your code), use the
+:meth:`~APIManager.create_api_blueprint` method instead. You *must* provide an
+additional positional argument, *name*, to this method::
 
-    blueprint = manager.create_api_blueprint(Person, methods=['GET', 'POST'])
+    blueprint = manager.create_api_blueprint('person', Person, methods=methods)
     # later...
-    app.register_blueprint(blueprint)
+    someapp.register_blueprint(blueprint)
 
 By default, the API for ``Person`` in the above code samples will be accessible
 at ``<base_url>/api/person``, where the ``person`` part of the URL is the value
@@ -182,74 +184,41 @@ If the primary key is a :class:`~sqlalchemy.Unicode` instead of an
 like ``http://<host>:<port>/api/person/foo`` instead of
 ``http://<host>:<port>/api/person/1``.
 
-Initializing the Flask application after creating the API manager
------------------------------------------------------------------
+Deferred API registration
+-------------------------
 
-Instead of providing the Flask application at instantiation time, you can
-initialize the Flask application after instantiating the :class:`APIManager`
-object by using the :meth:`APIManager.init_app` method. If you do this, you
-will need to provide the Flask application object using the ``app`` keyword
-argument to the :meth:`APIManager.create_api` method::
+If you only wish to create APIs on a single Flask application and have access
+to the Flask application before you create the APIs, you can provide a Flask
+application as an argument to the constructor of the :class:`APIManager` class,
+as described above. However, if you wish to create APIs on multiple Flask
+applications or if you do not have access to the Flask application at the time
+you create the APIs, you can use the :meth:`APIManager.init_app` method.
 
-    from flask import Flask
-    from flask.ext.restless import APIManager
-    from flask.ext.sqlalchemy import SQLAlchemy
+If a :class:`APIManager` object is created without a Flask application, ::
 
-    app = Flask(__name__)
-    db = SQLAlchemy(app)
-    manager = APIManager(flask_sqlalchemy_db=db)
+    manager = APIManager(session=session)
 
-    # later...
+then you can create your APIs without registering them on a particular Flask
+application::
 
-    manager.init_app(app)
-    manager.create_api(Person, app=app)
+    manager.create_api(Person)
+    manager.create_api(Article)
 
-You can also use this approach to initialize multiple Flask applications with a
-single instance of :class:`APIManager`. For example::
+Later, you can call the :meth:`~APIManager.init_app` method with any
+:class:`~flask.Flask` objects on which you would like the APIs to be
+available::
 
-    from flask import Flask
-    from flask.ext.restless import APIManager
-    from flask.ext.sqlalchemy import SQLAlchemy
-
-    # Create two Flask applications, both backed by the same database.
-    app1 = Flask(__name__)
-    app2 = Flask(__name__ + '2')
-    app1.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
-    app2.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
-    db = SQLAlchemy(app1)
-
-    # Create the Flask-SQLAlchemy models.
-    class Person(db.Model):
-        id = db.Column(db.Integer, primary_key=True)
-
-
-   class Article(db.Model):
-       id = db.Column(db.Integer, primary_key=True)
-       author_id = db.Column(db.Integer, db.ForeignKey('person.id'))
-       author = db.relationship(Person, backref=db.backref('articles'))
-
-    # Create the database tables.
-    db.create_all()
-
-    # Create the APIManager and initialize it with the different Flask objects.
-    manager = APIManager(flask_sqlalchemy_db=db)
+    app1 = Flask('app1')
+    app2 = Flask('app2')
     manager.init_app(app1)
     manager.init_app(app2)
 
-    # When creating each API, you need to specify which Flask application
-    # should be handling these requests.
-    manager.create_api(Person, app=app1)
-    manager.create_api(Article, app=app2)
+The manager creates and stores a blueprint each time
+:meth:`~APIManager.create_api` is invoked, and registers those blueprints each
+time :meth:`~APIManager.init_app` is invoked. (The name of each blueprint will
+be a :class:`uuid.UUID`.)
 
-Finally, you can also create an API *before* initializing the Flask
-application. For example::
+.. versionchanged:: 1.0.0
 
-    manager = APIManager()
-    manager.create_api(Person)
-    manager.init_app(app, session=session)
-
-.. versionchanged:: 0.16.0
-   The :meth:`APIManager.init_app` method behaved incorrectly before version
-   0.16.0. From that version on, you must provide the Flask application when
-   you call :meth:`APIManager.create_api` after having performed the delayed
-   initialization described in this section.
+   The behavior of the :meth:`~APIManager.init_app` method was strange and
+   incorrect before version 1.0.0. It is best not to use earlier versions.
