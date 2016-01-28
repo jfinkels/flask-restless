@@ -5,7 +5,17 @@ Flask-Restless
 models defined using SQLAlchemy (or Flask-SQLAlchemy). The generated APIs
 satisfy the requirements of the `JSON API`_ specification.
 
+.. warning::
+
+   This is a "beta" version, so there may be more bugs than usual. There is one
+   serious known issue with this version: updating relationships via
+   `association proxies`_ is not working correctly. If you have any insight on
+   how to fix this, please file a new issue at the `GitHub issue tracker`_.
+
 .. _JSON API: http://jsonapi.org
+.. _association proxies: https://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html
+.. _GitHub issue tracker: https://github.com/jfinkels/flask-restless/issues
+
 
 User's guide
 ------------
