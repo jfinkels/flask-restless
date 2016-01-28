@@ -129,7 +129,7 @@ class TestUpdatingRelationships(ManagerTestBase):
         response = self.app.patch('/api2/person/1/relationships/articles',
                                   data=dumps(data))
         assert response.status_code == 204
-        article = sorted(person.articles, key=attrgetter('id'))
+        articles = sorted(person.articles, key=attrgetter('id'))
         assert [article1, article2] == articles
 
     def test_to_many_not_found(self):
@@ -195,7 +195,7 @@ class TestUpdatingRelationships(ManagerTestBase):
         response = self.app.post('/api/person/1/relationships/articles',
                                  data=dumps(data))
         assert response.status_code == 204
-        article = sorted(person.articles, key=attrgetter('id'))
+        articles = sorted(person.articles, key=attrgetter('id'))
         assert [article1, article2] == articles
 
     def test_to_many_preexisting(self):
