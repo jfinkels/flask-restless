@@ -305,9 +305,7 @@ If the client specifies the ``functions`` query parameter, it must be a
 `percent-encoded`_ list of :dfn:`function objects`, as described below.
 
 A :dfn:`function object` is a JSON object. A function object must be of the
-form
-
-.. sourcecode:: json
+form ::
 
    {"name": <function_name>, "field": <field_name>}
 
@@ -730,12 +728,16 @@ the response
        {
          "id": "3",
          "type": "person",
-         // ...
+         "attributes": {
+           "name": "John"
+         }
        }
        {
          "id": "4",
          "type": "person",
-         // ...
+         "attributes": {
+           "name": "Paul"
+         }
        }
      ],
      "links": {
@@ -823,9 +825,7 @@ Filter objects
 ..............
 
 A :dfn:`filter object` is a JSON object. Filter objects are defined recursively
-as follows. A filter object may be of the form
-
-.. sourcecode:: json
+as follows. A filter object may be of the form ::
 
    {"name": <field_name>, "op": <unary_operator>}
 
@@ -837,9 +837,7 @@ operators supported by Flask-Restless. For example,
 
    {"name": "birthday", "op": "is_null"}
 
-A filter object may be of the form
-
-.. sourcecode:: json
+A filter object may be of the form ::
 
    {"name": <field_name>, "op": <binary_operator>, "val": <argument>}
 
@@ -851,9 +849,7 @@ binary operator. For example,
 
    {"name": "age", "op": "gt", "val": 23}
 
-A filter object may be of the form
-
-.. sourcecode:: json
+A filter object may be of the form ::
 
    {"name": <field_name>, "op": <binary_operator>, "field": <field_name>}
 
@@ -865,9 +861,7 @@ have a greater width than height,
 
    {"name": "width", "op": "gt", "field": "height"}
 
-A filter object may be of the form
-
-.. sourcecode:: json
+A filter object may be of the form ::
 
    {"name": <relation_name>, "op": <relation_operator>, "val": <filter_object>}
 
@@ -906,15 +900,11 @@ have an author of age at most fifty,
    }
 
 A filter object may be a conjunction ("and") or disjunction ("or") of other
-filter objects:
-
-.. sourcecode:: json
+filter objects::
 
    {"or": [<filter_object>, <filter_object>, ...]}
 
-or
-
-.. sourcecode:: json
+or ::
 
    {"and": [<filter_object>, <filter_object>, ...]}
 
@@ -925,7 +915,7 @@ length of at least ten,
 
    {
      "and": [
-       {"name": "width", "op": "gt", "field": "height},
+       {"name": "width", "op": "gt", "field": "height"},
        {"name": "length", "op": "lte", "val": 10}
      ]
    }
@@ -1148,22 +1138,22 @@ attribute greater than or equal to the value of the ``height`` attribute:
        {
          "attributes": {
            "height": 10,
-           "width": 20,
+           "width": 20
          }
          "id": "1",
          "links": {
-           "self": "http://example.com/api/box/1
+           "self": "http://example.com/api/box/1"
          },
          "type": "box"
        },
        {
          "attributes": {
            "height": 15,
-           "width": 20,
+           "width": 20
          }
          "id": "2",
          "links": {
-           "self": "http://example.com/api/box/2
+           "self": "http://example.com/api/box/2"
          },
          "type": "box"
        }
@@ -1188,7 +1178,8 @@ On request
    Accept: application/vnd.api+json
 
 the response will include only those people that have authored an article dated
-before January 1, 2010:
+before January 1, 2010 (assume in the example below that at least one of the
+article linkage objects refers to an article that has such a date):
 
 .. sourcecode:: http
 
@@ -1201,11 +1192,9 @@ before January 1, 2010:
          "id": "1",
          "links": {
            "self": "http://example.com/api/person/1"
-         }
+         },
          "relationships": {
            "articles": {
-             // We can assume at least one of these has a date that matches
-             // the filter request.
              "data": [
                {
                  "id": "1",
@@ -1220,9 +1209,9 @@ before January 1, 2010:
                "related": "http://example.com/api/person/1/articles",
                "self": "http://example.com/api/person/1/relationships/articles"
              }
-           },
-         }
-         "type": "person",
+           }
+         },
+         "type": "person"
        }
      ],
      "links": {
@@ -1242,7 +1231,8 @@ On request
    Accept: application/vnd.api+json
 
 the response will include only those articles that have an author of age at
-most fifty:
+most fifty (assume in the example below that the author linkage objects refers
+to a person that has such an age):
 
 .. sourcecode:: http
 
@@ -1258,7 +1248,6 @@ most fifty:
          },
          "relationships": {
            "author": {
-             // We can assume that this author has age at most fifty.
              "data": {
                "id": "7",
                "type": "person"
