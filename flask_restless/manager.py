@@ -154,6 +154,10 @@ class APIManager(object):
         created.
 
         """
+        if session is None and flask_sqlalchemy_db is None:
+            msg = 'must specify either `flask_sqlalchemy_db` or `session`'
+            raise ValueError(msg)
+
         self.app = app
 
         # Stash this instance so that it can be examined later by the global
@@ -175,16 +179,10 @@ class APIManager(object):
         #: to the app when calling :meth:`init_app`.
         self.blueprints = []
 
+        # If a Flask-SQLAlchemy object is provided, prefer the session
+        # from that object.
         if flask_sqlalchemy_db is not None:
-            try:
-                session = flask_sqlalchemy_db.session
-            except AttributeError:
-                pass
-            finally:
-                if session is None:
-                    msg = ('must specify either `flask_sqlalchemy_db` or'
-                           ' `session`')
-                    raise ValueError(msg)
+            session = flask_sqlalchemy_db.session
 
         # pre = preprocessors or {}
         # post = postprocessors or {}
@@ -569,8 +567,7 @@ class APIManager(object):
         """
         # Perform some sanity checks on the provided keyword arguments.
         if only is not None and exclude is not None:
-            msg = ('Cannot simultaneously specify both include columns and'
-                   ' exclude columns.')
+            msg = 'Cannot simultaneously specify both `only` and `exclude`'
             raise IllegalArgumentError(msg)
         if not hasattr(model, 'id'):
             msg = 'Provided model must have an `id` attribute'

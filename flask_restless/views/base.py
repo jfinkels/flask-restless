@@ -841,6 +841,27 @@ class Paginated(object):
         return ','.join(group_by)
 
     @staticmethod
+    def _url_without_pagination_params():
+        """Returns the request URL including all query parameters except
+        the page size and page number query parameters.
+
+        The URL is returned as a string.
+
+        """
+        # Parse pieces of the URL requested by the client.
+        base_url = request.base_url
+        query_params = request.args
+        # Set the new query_parameters to be everything except the
+        # pagination query parameters.
+        #
+        # TODO In Python 3, this should be a dict comprehension.
+        new_query = dict((k, v) for k, v in query_params.items()
+                         if k not in (PAGE_NUMBER_PARAM, PAGE_SIZE_PARAM))
+        new_query_string = '&'.join(map('='.join, new_query.items()))
+        # Join the base URL with the query parameter string.
+        return '{0}?{1}'.format(base_url, new_query_string)
+
+    @staticmethod
     def _to_url(base_url, query_params):
         """Returns the specified base URL augmented with the given query
         parameters.
@@ -854,8 +875,7 @@ class Paginated(object):
         `query_params` are appended.
 
         """
-        query_string = '&'.join('='.join((k, v))
-                                for k, v in query_params.items())
+        query_string = '&'.join(map('='.join, query_params.items()))
         scheme, netloc, path, params, query, fragment = urlparse(base_url)
         if query:
             query_string = '&'.join((query, query_string))
@@ -894,6 +914,13 @@ class Paginated(object):
         # previous page), then that link URL will not appear in this
         # list.
         link_numbers = [first, last, prev, next_]
+        # Determine the URL as it would appear without the
+        # client-requested pagination query parameters.
+        #
+        # (`base_url` is not a great name here, since
+        # `flask.Request.base_url` is the URL *without* the query
+        # parameters.)
+        base_url = Paginated._url_without_pagination_params()
         for rel, num in zip(LINK_NAMES, link_numbers):
             # If the link doesn't exist (for example, if there is no
             # previous page), then add ``None`` to the pagination links
@@ -906,7 +933,7 @@ class Paginated(object):
                 # `_to_url` method will give us the correct URL for that
                 # page.
                 query_params[PAGE_NUMBER_PARAM] = str(num)
-                url = Paginated._to_url(request.base_url, query_params)
+                url = Paginated._to_url(base_url, query_params)
                 link_string = '<{0}>; rel="{1}"'.format(url, rel)
                 self._header_links.append(link_string)
                 self._pagination_links[rel] = url

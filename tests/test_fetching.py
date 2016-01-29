@@ -248,6 +248,26 @@ class TestFetchCollection(ManagerTestBase):
         error = errors[0]
         assert 'serialize' in error['detail']
 
+    def test_pagination_with_query_parameter(self):
+        """Tests that the URLs produced for pagination links include
+        non-pagination query parameters from the original request URL.
+
+        """
+        query_string = {'foo': 'bar'}
+        base_url = '/api/person'
+        response = self.app.get(base_url, query_string=query_string)
+        assert response.status_code == 200
+        document = loads(response.data)
+        pagination = document['links']
+        print(pagination)
+        base_url = '{0}?'.format(base_url)
+        # There are no previous and next links in this case, so we only
+        # check the first and last links.
+        assert base_url in pagination['first']
+        assert 'foo=bar' in pagination['first']
+        assert base_url in pagination['last']
+        assert 'foo=bar' in pagination['last']
+
 
 class TestFetchResource(ManagerTestBase):
 

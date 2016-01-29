@@ -62,6 +62,14 @@ class TestLocalAPIManager(DatabaseTestBase):
         self.Article = Article
         self.Base.metadata.create_all()
 
+    @raises(ValueError)
+    def test_missing_session(self):
+        """Tests that setting neither a session nor a Flask-SQLAlchemy
+        object yields an error.
+
+        """
+        APIManager(app=self.flaskapp)
+
     def test_constructor_app(self):
         """Tests for providing a :class:`~flask.Flask` application in
         the constructor.
@@ -240,6 +248,7 @@ class TestAPIManager(ManagerTestBase):
         collection_name.created_managers.clear()
 
     def test_url_for(self):
+
         """Tests the global :func:`flask.ext.restless.url_for` function."""
         self.manager.create_api(self.Person, collection_name='people')
         self.manager.create_api(self.Article, collection_name='articles')
@@ -342,6 +351,14 @@ class TestAPIManager(ManagerTestBase):
 
         """
         self.manager.create_api(self.Person, exclude=['id'], methods=['POST'])
+
+    @raises(IllegalArgumentError)
+    def test_only_and_exclude(self):
+        """Tests that attempting to use both ``only`` and ``exclude``
+        keyword arguments yields an error.
+
+        """
+        self.manager.create_api(self.Person, only=['id'], exclude=['name'])
 
 
 @skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')
