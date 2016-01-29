@@ -6,15 +6,20 @@ Version 1.0.0 saw a major overhaul of Flask-Restless to make it compliant with
 JSON API, so changes from prior versions may not be relevant to more recent
 versions.
 
-Numbers following a pound sign (#) refer to `GitHub issues
-<https://github.com/jfinkels/flask-restless/issues>`_.
+Numbers following a pound sign (#) refer to `GitHub issues`_.
+
+.. _GitHub issues: https://github.com/jfinkels/flask-restless/issues
 
 Version 1.0.0-dev
 -----------------
 
 Not yet released.
 
-- #404: Major overhaul of Flask-Restless to support JSON API.
+- #404: **Major overhaul of Flask-Restless to support JSON API**.
+- Increases minimum version requirement for ``python-dateutil`` to be strictly
+  greater than 2.2 to avoid parsing bug.
+- #331, #415: documents the importance of URL encoding when using the ``like``
+  operator to filter results.
 
 Older versions
 --------------
@@ -28,16 +33,6 @@ Older versions
 
    As of version 0.6, Flask-Restless supports both pure SQLAlchemy and
    Flask-SQLAlchemy models. Before that, it supported only Elixir models.
-
-Version 0.17.1-dev
-~~~~~~~~~~~~~~~~~~
-
-Not yet released.
-
-- Increases minimum version requirement for ``python-dateutil`` to be strictly
-  greater than 2.2 to avoid parsing bug.
-- #331, #415: documents the importance of URL encoding when using the ``like``
-  operator to filter results.
 
 Version 0.17.0
 ~~~~~~~~~~~~~~
