@@ -83,12 +83,16 @@ def skip_unless(condition, reason=None):
         """
         message = 'Skipped {0}: {1}'.format(test.__name__, reason)
 
-        # If the test is actually a test class, skip each of the methods
-        # in the class as well.
+        # HACK-ish: If the test is actually a test class, override the
+        # setup method so that the only thing it does is raise
+        # `SkipTest`.  Thus whenever setup() is called, the test that
+        # would have been run is skipped.
         if isclass(test):
-            for attr, val in test.__dict__.items():
-                if callable(val) and not attr.startswith('__'):
-                    setattr(test, attr, skip(val))
+
+            def new_setup(self):
+                raise SkipTest(message)
+
+            test.setup = new_setup
             return test
 
         @functools.wraps(test)
