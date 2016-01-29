@@ -310,7 +310,7 @@ form ::
    {"name": <function_name>, "field": <field_name>}
 
 where ``<function_name>`` is the name of a SQL function as provided by
-SQLAlchemy's `` `func`_ `` object.
+SQLAlchemy's |func|_ object.
 
 For example, to get the average age of all people in the database,
 
@@ -340,7 +340,8 @@ yields the response
 
    [15.0, 60.0]
 
-.. _func: http://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.expression.func
+.. |func| replace:: ``func``
+.. _func: https://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.expression.func
 
 .. admonition:: Example
 
@@ -375,8 +376,8 @@ yields the response
 Inclusion of related resources
 ------------------------------
 
-*For more information on client-side included resources, see `Inclusion of
-Related Resources`_ in the JSON API specification.*
+*For more information on client-side included resources, see* `Inclusion of
+Related Resources`_ *in the JSON API specification.*
 
 By default, no related resources will be included in a compound document on
 requests that would return data. For the client to request that the response
@@ -453,8 +454,8 @@ argument to the :meth:`APIManager.create_api` method.
 Specifying which fields appear in responses
 -------------------------------------------
 
-*For more information on client-side sparse fieldsets, see `Sparse Fieldsets`_
-in the JSON API specification.*
+*For more information on client-side sparse fieldsets, see* `Sparse Fieldsets`_
+*in the JSON API specification.*
 
 .. warning::
 
