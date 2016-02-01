@@ -19,7 +19,10 @@ deserialization as expected by classes that follow the JSON API
 protocol.
 
 """
-import datetime
+from datetime import date
+from datetime import datetime
+from datetime import time
+from datetime import timedelta
 try:
     from urllib.parse import urljoin
 except ImportError:
@@ -356,23 +359,30 @@ class DefaultSerializer(Serializer):
         # Create a dictionary mapping attribute name to attribute value for
         # this particular instance.
         #
-        # TODO In Python 2.7 and later, this should be
-        #
-        #     attributes = {column: getattr(instance, column)
-        #                   for column in columns}
-        #
+        # TODO In Python 2.7 and later, this should be a dict comprehension.
         attributes = dict((column, getattr(instance, column))
                           for column in columns)
         # Call any functions that appear in the result.
         #
-        # TODO In Python 2.7 and later, this should be
-        #
-        #
-        #     attributes = {k: (v() if callable(v) else v)
-        #                   for k, v in attributes.items()}
-        #
+        # TODO In Python 2.7 and later, this should be a dict comprehension.
         attributes = dict((k, (v() if callable(v) else v))
                           for k, v in attributes.items())
+        # Serialize any date- or time-like objects that appear in the
+        # attributes.
+        #
+        # TODO In Flask 1.0, the default JSON encoder for the Flask
+        # application object does this automatically. Alternately, the
+        # user could have set a smart JSON encoder on the Flask
+        # application, which would cause these attributes to be
+        # converted to strings when the Response object is created (in
+        # the `jsonify` function, for example). However, we should not
+        # rely on that JSON encoder since the user could set any crazy
+        # encoder on the Flask application.
+        for key, val in attributes.items():
+            if isinstance(val, (date, datetime, time)):
+                attributes[key] = val.isoformat()
+            elif isinstance(val, timedelta):
+                attributes[key] = val.total_seconds()
         # Recursively serialize any object that appears in the
         # attributes. This may happen if, for example, the return value
         # of one of the callable functions is an instance of another
@@ -454,11 +464,7 @@ class DefaultSerializer(Serializer):
             return result
         # For the sake of brevity, rename this function.
         cr = create_relationship
-        # TODO In Python 2.7 and later, this should be
-        #
-        #
-        #     result['relationships'] = {rel: cr(model, instance, rel)
-        #                                for rel in relations}
+        # TODO In Python 2.7 and later, this should be a dict comprehension.
         result['relationships'] = dict((rel, cr(model, instance, rel))
                                        for rel in relations)
         return result

@@ -247,8 +247,6 @@ class FlaskTestBase(object):
         # absolute URLs.
         app.config['SERVER_NAME'] = 'localhost'
         app.logger.disabled = True
-        # Set the default JSON Encoder to serialize more things.
-        app.json_encoder = BetterJSONEncoder
         self.flaskapp = app
 
         # create the test client
