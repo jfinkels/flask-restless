@@ -657,8 +657,8 @@ def error(id_=None, links=None, status=None, code=None, title=None,
     # HACK We use locals() so we don't have to list every keyword argument.
     if all(kwvalue is None for kwvalue in locals().values()):
         raise ValueError('At least one of the arguments must not be None.')
-    return dict(id_=id_, links=links, status=status, code=code, title=title,
-                detail=detail, source=source, meta=meta)
+    return {'id': id_, 'links': links, 'status': status, 'code': code,
+            'title': title, 'detail': detail, 'source': source, 'meta': meta}
 
 
 def error_response(status=400, cause=None, **kw):
