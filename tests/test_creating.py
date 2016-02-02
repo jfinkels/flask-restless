@@ -286,6 +286,23 @@ class TestCreating(ManagerTestBase):
         assert response.status_code == 400
         # TODO check error message here
 
+    def test_nonexistent_relationship(self):
+        """Tests that the server rejects an attempt to create a resource
+        with a relationship that does not exist in the resource.
+
+        """
+        data = {'data':
+                    {'type': 'person',
+                     'relationships':
+                         {'bogus': 
+                              {'data': None}
+                          }
+                     }
+                }
+        response = self.app.post('/api/person', data=dumps(data))
+        assert response.status_code == 400
+        # TODO check error message here
+
     def test_hybrid_property(self):
         """Tests that an attempt to set a read-only hybrid property causes an
         error.
