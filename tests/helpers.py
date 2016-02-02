@@ -76,6 +76,7 @@ def skip_unless(condition, reason=None):
     This decorator can be applied to functions, methods, or classes.
 
     """
+
     def decorated(test):
         """Returns a decorated version of ``test``, as described in the
         wrapper defined within.
@@ -85,14 +86,14 @@ def skip_unless(condition, reason=None):
 
         # HACK-ish: If the test is actually a test class, override the
         # setup method so that the only thing it does is raise
-        # `SkipTest`.  Thus whenever setup() is called, the test that
+        # `SkipTest`. Thus whenever setup() is called, the test that
         # would have been run is skipped.
         if isclass(test):
+            if not condition:
+                def new_setup(self):
+                    raise SkipTest(message)
 
-            def new_setup(self):
-                raise SkipTest(message)
-
-            test.setup = new_setup
+                test.setup = new_setup
             return test
 
         @functools.wraps(test)
@@ -182,8 +183,8 @@ def force_json_contenttype(test_client):
             executing ``func(*args, **kw)``.
 
             """
-            #if 'content_type' not in kw:
-            #    kw['content_type'] = CONTENT_TYPE
+            # if 'content_type' not in kw:
+            #     kw['content_type'] = CONTENT_TYPE
             if 'headers' not in kw:
                 kw['headers'] = dict()
             headers = kw['headers']
