@@ -27,42 +27,45 @@
 # We expect the server to be running at 127.0.0.1:5000, the Flask default.
 HOST=127.0.0.1:5000
 
+# The JSON API mimetype must be used for Accept and Content-Type headers.
+MIMETYPE="application/vnd.api+json"
+
 echo
 echo "Making an initial GET request..."
 echo
 # curl makes GET requests by default.
-curl -H "Content-type: application/json" http://$HOST/api/person
+#
+# The Accept header is not required by the JSON API, but is good practice.
+curl -H "Accept: $MIMETYPE" http://$HOST/api/person
 
 echo
 echo
 echo "Making a POST request..."
 echo
-curl -X POST -H "Content-type: application/json" http://$HOST/api/person \
-    -d '{"name": "Jeffrey", "birth_date": "3-12-1999"}'
+curl -H "Accept: $MIMETYPE" -H "Content-Type: $MIMETYPE" \
+     -d '{"data": {"type": "person", "attributes": {"name": "Jeffrey",
+         "birth_date": "3-12-1999"}}}' \
+     http://$HOST/api/person
 
 echo
 echo
 echo "Making a GET request for the entire collection..."
 echo
-curl -H "Content-type: application/json" http://$HOST/api/person
+curl -H "Accept: $MIMETYPE" http://$HOST/api/person
 
 echo
 echo
 echo "Making a GET request for the added person..."
 echo
-curl -H "Content-type: application/json" http://$HOST/api/person/1
+curl -H "Accept: $MIMETYPE" http://$HOST/api/person/1
 echo
 
 echo
 echo
 echo "Searching for all people whose names contain a 'y'..."
 echo
-# Note: don't include spaces when specifying the parameters of the search with
-# the `d` argument. If you want spaces, encode them using URL encoding (that
-# is, use "%20" instead of " ").
-curl \
-  -G \
-  -H "Content-type: application/json" \
-  -d "q={\"filters\":[{\"name\":\"name\",\"op\":\"like\",\"val\":\"%y%\"}]}" \
-  http://$HOST/api/person
+# Note: things like brackets (and spaces) should be URL encoded when making
+# these requests.
+curl -H "Accept: $MIMETYPE" \
+     "http://$HOST/api/person?filter\[objects\]=\[\{\"name\":\"name\",\"op\":\"like\",\"val\":\"%y%\"\}\]"
 echo

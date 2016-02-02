@@ -26,8 +26,10 @@
         python -m jquery.__main__
 
     To view the example in action, direct your web browser to
-    ``http://localhost:5000``. You must have JavaScript enabled in your web
-    browser for this example to work.
+    ``http://localhost:5000``. For this example to work, you must have
+    an Internet connection (in order to access jQuery from a CDN) and
+    you must enable JavaScript in your web browser (in order to make
+    requests to the Flask application).
 
     :copyright: 2012 Jeffrey Finkelstein <jeffrey.finkelstein@gmail.com>
     :license: GNU AGPLv3+ or BSD
@@ -39,6 +41,7 @@ import os.path
 from flask import Flask, render_template
 from flask.ext.restless import APIManager
 from flask.ext.sqlalchemy import SQLAlchemy
+
 
 # Step 0: the database in this example is at './test.sqlite'.
 DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -67,10 +70,12 @@ class Person(db.Model):
 # Step 4: create the database and add some test people.
 db.create_all()
 for i in range(1, 10):
-    person = Person(name=u'person' + unicode(i))
+    name = u'person{0}'.format(i)
+    person = Person(name=name)
     db.session.add(person)
 db.session.commit()
-print Person.query.all()
+print(Person.query.all())
+
 
 # Step 5: create endpoints for the application.
 @app.route('/', methods=['GET'])
@@ -78,7 +83,7 @@ def index():
     return render_template('index.html')
 
 # Step 6: create the API endpoints.
-api_manager.create_api(Person, methods=['GET'])
+api_manager.create_api(Person, methods=['GET', 'POST'])
 
 # Step 7: run the application.
 app.run()
