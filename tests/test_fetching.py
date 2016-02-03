@@ -56,6 +56,27 @@ from .helpers import skip_unless
 from .helpers import unregister_fsa_session_signals
 
 
+def check_sole_error(response, status, strings):
+    """Asserts that the response is an errors response with a single
+    error object whose detail message contains all of the given strings.
+
+    `strings` may also be a single string object to check.
+
+    `status` is the expected status code for the sole error object in
+    the response.
+
+    """
+    if isinstance(strings, str):
+        strings = [strings]
+    assert response.status_code == status
+    document = loads(response.data)
+    errors = document['errors']
+    assert len(errors) == 1
+    error = errors[0]
+    assert error['status'] == status
+    assert all(s in error['detail'] for s in strings)
+
+
 class TestFetchCollection(ManagerTestBase):
 
     def setup(self):
@@ -259,7 +280,6 @@ class TestFetchCollection(ManagerTestBase):
         assert response.status_code == 200
         document = loads(response.data)
         pagination = document['links']
-        print(pagination)
         base_url = '{0}?'.format(base_url)
         # There are no previous and next links in this case, so we only
         # check the first and last links.
@@ -754,6 +774,17 @@ class TestFetchRelatedResource(ManagerTestBase):
         assert response.status_code == 404
         # TODO Check error message here.
 
+    def test_nonexistent_related_model(self):
+        """Tests that a request for a nonexistent related model yields
+        an error.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        response = self.app.get('/api/person/1/bogus/1')
+        check_sole_error(response, 404, ['No such relation', 'bogus'])
+
     def test_to_one_with_id(self):
         """Tests that a request to fetch a resource by its ID from a to-one
         relation yields an error.
@@ -765,8 +796,8 @@ class TestFetchRelatedResource(ManagerTestBase):
         self.session.add_all([article, person])
         self.session.commit()
         response = self.app.get('/api/article/1/author/1')
-        assert response.status_code == 404
-        # TODO Check error message here.
+        check_sole_error(response, 404, ['Cannot access', 'to-one',
+                                         'related resource'])
 
     def test_related_resource(self):
         """Tests for fetching a single resource from a to-many relation.
@@ -1306,7 +1337,33 @@ class TestProcessors(ManagerTestBase):
         assert 'article' == article['type']
         assert '1' == article['id']
 
-    def test_change_related_resource(self):
+    def test_change_related_resource_1(self):
+        """Tests for changing the primary resource ID in a preprocessor
+        for fetching a related resource.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def change_one(*args, **kw):
+            # We will change the primary resource ID only.
+            return 1
+
+        preprocessors = {'GET_RELATED_RESOURCE': [change_one]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors)
+        # Need to create an API for Article resources so that each
+        # Article has a URL.
+        self.manager.create_api(self.Article)
+        response = self.app.get('/api/person/foo/articles/1')
+        document = loads(response.data)
+        resource = document['data']
+        assert 'article' == resource['type']
+        assert '1' == resource['id']
+
+    def test_change_related_resource_2(self):
         """Tests for changing the primary resource ID and the relation
         name in a preprocessor for fetching a related resource.
 
@@ -1327,6 +1384,34 @@ class TestProcessors(ManagerTestBase):
         # Article has a URL.
         self.manager.create_api(self.Article)
         response = self.app.get('/api/person/foo/bar/1')
+        document = loads(response.data)
+        resource = document['data']
+        assert 'article' == resource['type']
+        assert '1' == resource['id']
+
+    def test_change_related_resource_3(self):
+        """Tests for changing the primary resource ID, the relation
+        name, and the related resource ID in a preprocessor for fetching
+        a related resource.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def change_three(*args, **kw):
+            # We will change the primary resource ID, the relation name,
+            # and the related resource ID.
+            return 1, 'articles', 1
+
+        preprocessors = {'GET_RELATED_RESOURCE': [change_three]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors)
+        # Need to create an API for Article resources so that each
+        # Article has a URL.
+        self.manager.create_api(self.Article)
+        response = self.app.get('/api/person/foo/bar/baz')
         document = loads(response.data)
         resource = document['data']
         assert 'article' == resource['type']

@@ -139,23 +139,24 @@ class API(APIBase):
         if primary_resource is None:
             detail = 'No instance with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
+        # Get the model of the specified relation.
+        related_model = get_related_model(self.model, relation_name)
+        # Return an error if no such relation exists.
+        if related_model is None:
+            detail = 'No such relation: {0}'.format(relation_name)
+            return error_response(404, detail=detail)
         # Return an error if the relation is a to-one relation.
         if not is_like_list(primary_resource, relation_name):
             detail = ('Cannot access a related resource by ID from a to-one'
                       ' relation')
             return error_response(404, detail=detail)
-        # Get the model of the specified relation.
-        related_model = get_related_model(self.model, relation_name)
-        # Return an error if no such relation exists.
-        if related_model is None:
-            detail = 'No such relation: {0}'.format(related_model)
-            return error_response(404, detail=detail)
         # Get the related resources.
         resources = getattr(primary_resource, relation_name)
         # Check if one of the related resources has the specified ID. (JSON API
         # expects all IDs to be strings.)
-        primary_keys = (primary_key_value(i) for i in resources)
-        if not any(str(k) == related_resource_id for k in primary_keys):
+        primary_keys = (primary_key_value(resource, as_string=True)
+                        for resource in resources)
+        if not any(k == str(related_resource_id) for k in primary_keys):
             detail = 'No related resource with ID {0}'
             detail = detail.format(related_resource_id)
             return error_response(404, detail=detail)
