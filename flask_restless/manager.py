@@ -576,7 +576,7 @@ class APIManager(object):
             msg = 'Collection name must be nonempty'
             raise IllegalArgumentError(msg)
         if collection_name is None:
-            collection_name = model.__tablename__
+            collection_name = model.__table__.name
         # convert all method names to upper case
         methods = frozenset((m.upper() for m in methods))
         # the name of the API, for use in creating the view and the blueprint
