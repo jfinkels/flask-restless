@@ -374,11 +374,12 @@ class APIManager(object):
         not register it on any :class:`flask.Flask` application.
 
         The endpoints for the API for ``model`` will be available at
-        ``<url_prefix>/<collection_name>``. If `collection_name` is ``None``,
-        the lowercase name of the provided model class will be used instead, as
-        accessed by ``model.__tablename__``. (If any black magic was performed
-        on ``model.__tablename__``, this will be reflected in the endpoint
-        URL.) For more information, see :ref:`collectionname`.
+        ``<url_prefix>/<collection_name>``. If `collection_name` is
+        ``None``, the lowercase name of the provided model class will be
+        used instead, as accessed by ``model.__table__.name``. (If any
+        black magic was performed on ``model.__table__``, this will be
+        reflected in the endpoint URL.) For more information, see
+        :ref:`collectionname`.
 
         This function must be called at most once for each model for which you
         wish to create a ReSTful API. Its behavior (for now) is undefined if
