@@ -20,6 +20,8 @@ Not yet released.
   greater than 2.2 to avoid parsing bug.
 - #331, #415: documents the importance of URL encoding when using the ``like``
   operator to filter results.
+- #449: roll back the session on any SQLAlchemy error, not just a few.
+- #474: include license files in built wheel for distribution.
 
 Older versions
 --------------
