@@ -41,10 +41,7 @@ from flask import request
 from flask.views import MethodView
 from mimerender import FlaskMimeRender
 from mimerender import register_mime
-from sqlalchemy.exc import DataError
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.exc import ProgrammingError
-from sqlalchemy.orm.exc import FlushError
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
@@ -85,9 +82,6 @@ CONTENT_TYPE = 'application/vnd.api+json'
 #: The highest version of the JSON API specification supported by
 #: Flask-Restless.
 JSONAPI_VERSION = '1.0'
-
-#: SQLAlchemy errors that, when caught, trigger a rollback of the session.
-ROLLBACK_ERRORS = (DataError, IntegrityError, ProgrammingError, FlushError)
 
 #: Strings that indicate a database conflict when appearing in an error
 #: message of an exception raised by SQLAlchemy.
@@ -413,8 +407,11 @@ def catch_integrity_errors(session):
             """
             try:
                 return func(*args, **kw)
-            # TODO should `sqlalchemy.exc.InvalidRequestError`s also be caught?
-            except ROLLBACK_ERRORS as exception:
+            # This should include: DataError, IntegrityError,
+            # ProgrammingError, FlushError, OperationalError,
+            # InalidRequestError, and any other SQLAlchemyError
+            # subclass.
+            except SQLAlchemyError as exception:
                 session.rollback()
                 # Special status code for conflicting instances: 409 Conflict
                 status = 409 if is_conflict(exception) else 400
