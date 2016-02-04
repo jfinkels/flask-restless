@@ -18,6 +18,7 @@ import functools
 from json import JSONEncoder
 import sys
 import types
+import uuid
 
 from flask import Flask
 from flask import json
@@ -30,10 +31,13 @@ else:
 from nose import SkipTest
 from sqlalchemy import create_engine
 from sqlalchemy import event
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm.session import Session as SessionBase
+from sqlalchemy.types import CHAR
+from sqlalchemy.types import TypeDecorator
 
 from flask.ext.restless import APIManager
 from flask.ext.restless import CONTENT_TYPE
@@ -207,6 +211,37 @@ def force_json_contenttype(test_client):
     # # PATCH methods need to have `application/json-patch+json` content type.
     # test_client.patch = set_content_type(test_client.patch,
     #                                      'application/json-patch+json')
+
+
+# This code is adapted from
+# http://docs.sqlalchemy.org/en/latest/core/custom_types.html#backend-agnostic-guid-type
+class GUID(TypeDecorator):
+    """Platform-independent GUID type.
+
+    Uses Postgresql's UUID type, otherwise uses CHAR(32), storing as
+    stringified hex values.
+
+    """
+    impl = CHAR
+
+    def load_dialect_impl(self, dialect):
+        descriptor = UUID() if dialect.name == 'postgresql' else CHAR(32)
+        return dialect.type_descriptor(descriptor)
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if dialect.name == 'postgresql':
+            return str(value)
+        if not isinstance(value, uuid.UUID):
+            return uuid.UUID(value).hex
+        # If we get to this point, we assume `value` is a UUID object.
+        return value.hex
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return uuid.UUID(value)
 
 
 # In versions of Flask before 1.0, datetime and time objects are not

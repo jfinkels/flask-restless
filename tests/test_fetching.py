@@ -20,6 +20,7 @@ specification.
 """
 from datetime import datetime
 from datetime import time
+from uuid import uuid1
 
 try:
     from flask.ext.sqlalchemy import SQLAlchemy
@@ -47,6 +48,7 @@ from flask.ext.restless import SerializationException
 
 from .helpers import dumps
 from .helpers import FlaskTestBase
+from .helpers import GUID
 from .helpers import loads
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
@@ -304,6 +306,7 @@ class TestFetchResource(ManagerTestBase):
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
+            uuid = Column(GUID)
             name = Column(Unicode)
             bedtime = Column(Time)
             birth_datetime = Column(DateTime)
@@ -339,6 +342,18 @@ class TestFetchResource(ManagerTestBase):
         self.manager.create_api(Comment)
         self.manager.create_api(Person)
         # self.manager.create_api(Tag)
+
+    def test_serialize_uuid(self):
+        """Tests for serializing a (non-primary key) UUID field."""
+        uuid = uuid1()
+        person = self.Person(id=1, uuid=uuid)
+        self.session.add(person)
+        self.session.commit()
+        response = self.app.get('/api/person/1')
+        assert response.status_code == 200
+        document = loads(response.data)
+        person = document['data']
+        assert person['attributes']['uuid'] == str(uuid)
 
     def test_serialize_time(self):
         """Test for getting the JSON representation of a time field."""

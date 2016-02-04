@@ -23,45 +23,12 @@ from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Unicode
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.types import CHAR
-from sqlalchemy.types import TypeDecorator
 from sqlalchemy.orm import relationship
 
 from ..helpers import dumps
+from ..helpers import GUID
 from ..helpers import loads
 from ..helpers import ManagerTestBase
-
-
-# This code is adapted from
-# http://docs.sqlalchemy.org/en/latest/core/custom_types.html#backend-agnostic-guid-type
-class GUID(TypeDecorator):
-    """Platform-independent GUID type.
-
-    Uses Postgresql's UUID type, otherwise uses CHAR(32), storing as
-    stringified hex values.
-
-    """
-    impl = CHAR
-
-    def load_dialect_impl(self, dialect):
-        descriptor = UUID() if dialect.name == 'postgresql' else CHAR(32)
-        return dialect.type_descriptor(descriptor)
-
-    def process_bind_param(self, value, dialect):
-        if value is None:
-            return None
-        if dialect.name == 'postgresql':
-            return str(value)
-        if not isinstance(value, uuid.UUID):
-            return uuid.UUID(value).hex
-        # If we get to this point, we assume `value` is a UUID object.
-        return value.hex
-
-    def process_result_value(self, value, dialect):
-        if value is None:
-            return None
-        return uuid.UUID(value)
 
 
 class TestCreatingResources(ManagerTestBase):
