@@ -295,7 +295,7 @@ def string_to_datetime(model, fieldname, value):
         if isinstance(field_type, Date):
             return value_as_datetime.date()
         if isinstance(field_type, Time):
-            return value_as_datetime.time()
+            return value_as_datetime.timetz()
         return value_as_datetime
     # If this is an Interval field, convert the integer value to a timedelta.
     if isinstance(field_type, Interval) and isinstance(value, int):
@@ -320,10 +320,7 @@ def strings_to_datetimes(model, dictionary):
     This function outputs a new dictionary; it does not modify the argument.
 
     """
-    # In Python 3, this should be
-    #     return {k: string_to_datetime(model, k, v)
-    #             for k, v in dictionary.items() if k not in ('type', 'links')}
-    #
+    # In Python 2.7+, this should be a dict comprehension.
     return dict((k, string_to_datetime(model, k, v))
                 for k, v in dictionary.items() if k not in ('type', 'links'))
 
