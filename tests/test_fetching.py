@@ -20,6 +20,7 @@ specification.
 """
 from datetime import datetime
 from datetime import time
+from operator import itemgetter
 from uuid import uuid1
 
 try:
@@ -289,6 +290,27 @@ class TestFetchCollection(ManagerTestBase):
         assert 'foo=bar' in pagination['first']
         assert base_url in pagination['last']
         assert 'foo=bar' in pagination['last']
+
+    def test_sorting_null_field(self):
+        """Tests that sorting by a nullable field causes resources with
+        a null attribute value to appear first.
+
+        """
+        person1 = self.Person(id=1)
+        person2 = self.Person(id=2, name='foo')
+        person3 = self.Person(id=3, name='bar')
+        person4 = self.Person(id=4)
+        self.session.add_all([person1, person2, person3, person4])
+        self.session.commit()
+        query_string = {'sort': 'name'}
+        response = self.app.get('/api/person', query_string=query_string)
+        assert response.status_code == 200
+        document = loads(response.data)
+        people = document['data']
+        assert len(people) == 4
+        person_ids = list(map(itemgetter('id'), people))
+        assert ['3', '2'] == person_ids[-2:]
+        assert {'1', '4'} == set(person_ids[:2])
 
 
 class TestFetchResource(ManagerTestBase):
