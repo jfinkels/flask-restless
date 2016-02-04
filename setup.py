@@ -20,9 +20,9 @@
 
     For more information, check the World Wide Web!
 
-      * `Documentation <http://readthedocs.org/docs/flask-restless>`_
-      * `PyPI listing <http://pypi.python.org/pypi/Flask-Restless>`_
-      * `Source code repository <http://github.com/jfinkels/flask-restless>`_
+      * `Documentation <https://flask-restless.readthedocs.org>`_
+      * `PyPI listing <https://pypi.python.org/pypi/Flask-Restless>`_
+      * `Source code repository <https://github.com/jfinkels/flask-restless>`_
 
 """
 import codecs
