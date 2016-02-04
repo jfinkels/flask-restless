@@ -165,6 +165,27 @@ def unregister_fsa_session_signals():
         event.remove(SessionBase, signal_name, signal)
 
 
+def check_sole_error(response, status, strings):
+    """Asserts that the response is an errors response with a single
+    error object whose detail message contains all of the given strings.
+
+    `strings` may also be a single string object to check.
+
+    `status` is the expected status code for the sole error object in
+    the response.
+
+    """
+    if isinstance(strings, str):
+        strings = [strings]
+    assert response.status_code == status
+    document = loads(response.data)
+    errors = document['errors']
+    assert len(errors) == 1
+    error = errors[0]
+    assert error['status'] == status
+    assert all(s in error['detail'] for s in strings)
+
+
 def force_json_contenttype(test_client):
     """Ensures that all requests made by the specified Flask test client
     have the correct ``Content-Type`` header.

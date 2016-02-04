@@ -267,42 +267,38 @@ class DefaultSerializer(Serializer):
         if only is not None:
             # Convert SQLAlchemy Column objects to strings if necessary.
             #
-            # TODO In Python 2.7 or later, this should be
-            #
-            #     only = {get_column_name(column) for column in only}
-            #
+            # TODO In Python 2.7 or later, this should be a set comprehension.
             only = set(get_column_name(column) for column in only)
-            # TODO In Python 2.7 or later, this should be
-            #
-            #     only |= {'type', 'id'}
-            #
+            # TODO In Python 2.7 or later, this should be a set literal.
             only |= set(['type', 'id'])
         if exclude is not None:
             # Convert SQLAlchemy Column objects to strings if necessary.
             #
-            # TODO In Python 2.7 or later, this should be
-            #
-            #     exclude = {get_column_name(column) for column in exclude}
-            #
+            # TODO In Python 2.7 or later, this should be a set comprehension.
             exclude = set(get_column_name(column) for column in exclude)
         self.default_fields = only
         self.exclude = exclude
         self.additional_attributes = additional_attributes
 
-    # TODO only=... is the client's request for which fields to include.
     def __call__(self, instance, only=None):
         """Returns a dictionary representing the fields of the specified
         instance of a SQLAlchemy model.
 
         The returned dictionary is suitable as an argument to
-        :func:`flask.jsonify`; :class:`datetime.date` and :class:`uuid.UUID`
-        objects are converted to string representations, so no special JSON
-        encoder behavior is required.
+        :func:`flask.jsonify`; datetime objects (:class:`datetime.date`,
+        :class:`datetime.time`, :class:`datetime.datetime`, and
+        :class:`datetime.timedelta`) as well as :class:`uuid.UUID`
+        objects are converted to string representations, so no special
+        JSON encoder behavior is required.
 
-        If `only` is a list, only the fields and relationships whose names
-        appear as strings in `only` will appear in the resulting
-        dictionary. The only exception is that the keys ``'id'`` and ``'type'``
-        will always appear, regardless of whether they appear in `only`.
+        If `only` is a list, only the fields and relationships whose
+        names appear as strings in `only` will appear in the resulting
+        dictionary. This filter is applied *after* the default fields
+        specified in the `only` keyword argument to the constructor of
+        this class, so only fields that appear in both `only` keyword
+        arguments will appear in the returned dictionary. The only
+        exception is that the keys ``'id'`` and ``'type'`` will always
+        appear, regardless of whether they appear in `only`.
 
         Since this function creates absolute URLs to resources linked to the
         given instance, it must be called within a `Flask request context`_.
@@ -314,11 +310,7 @@ class DefaultSerializer(Serializer):
         # of what the user requested.
         if only is not None:
             # TODO Should the 'self' link be mandatory as well?
-            #
-            # TODO In Python 2.7 or later, this should be
-            #
-            #     only = set(only) | {'type', 'id'}
-            #
+            # TODO In Python 2.7 or later, this should be a set literal.
             only = set(only) | set(['type', 'id'])
         model = type(instance)
         try:
@@ -521,7 +513,10 @@ class DefaultDeserializer(Deserializer):
         if 'relationships' in data:
             links = data.pop('relationships', {})
             for link_name, link_object in links.items():
-                # TODO raise an exception on missing 'data' key
+                if 'data' not in link_object:
+                    msg = ('missing data field in relationship linkage object'
+                           ' "{0}"').format(link_name)
+                    raise DeserializationException(msg)
                 linkage = link_object['data']
                 related_model = get_related_model(self.model, link_name)
                 # TODO check for type conflicts

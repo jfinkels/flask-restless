@@ -407,7 +407,8 @@ class API(APIBase):
             self.session.add(instance)
             self.session.commit()
         except DeserializationException as exception:
-            detail = 'Failed to deserialize object'
+            inner_detail = exception.args[0]
+            detail = 'Failed to deserialize object: {0}'.format(inner_detail)
             return error_response(400, cause=exception, detail=detail)
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)

@@ -49,6 +49,7 @@ from flask.ext.restless import SerializationException
 from flask.ext.restless import simple_serialize
 
 from .helpers import BetterJSONEncoder as JSONEncoder
+from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import loads
 from .helpers import FlaskTestBase
@@ -302,6 +303,26 @@ class TestCreating(ManagerTestBase):
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 400
         # TODO check error message here
+
+    def test_invalid_relationship(self):
+        """Tests that the server rejects an attempt to create a resource
+        with an invalid relationship linnkage object.
+
+        """
+        # In this request, the `articles` linkage object is missing the
+        # `data` element.
+        data = {'data':
+                    {'type': 'person',
+                     'relationships':
+                         {'articles':
+                              {}
+                         }
+                     }
+                }
+        response = self.app.post('/api/person', data=dumps(data))
+        assert response.status_code == 400
+        print(dumps(loads(response.data), indent=4))
+        check_sole_error(response, 400, 'missing data')
 
     def test_hybrid_property(self):
         """Tests that an attempt to set a read-only hybrid property causes an

@@ -47,6 +47,7 @@ from flask.ext.restless import ProcessingException
 from flask.ext.restless import simple_serialize
 from flask.ext.restless import SerializationException
 
+from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import FlaskTestBase
 from .helpers import GUID
@@ -57,27 +58,6 @@ from .helpers import ManagerTestBase
 from .helpers import skip
 from .helpers import skip_unless
 from .helpers import unregister_fsa_session_signals
-
-
-def check_sole_error(response, status, strings):
-    """Asserts that the response is an errors response with a single
-    error object whose detail message contains all of the given strings.
-
-    `strings` may also be a single string object to check.
-
-    `status` is the expected status code for the sole error object in
-    the response.
-
-    """
-    if isinstance(strings, str):
-        strings = [strings]
-    assert response.status_code == status
-    document = loads(response.data)
-    errors = document['errors']
-    assert len(errors) == 1
-    error = errors[0]
-    assert error['status'] == status
-    assert all(s in error['detail'] for s in strings)
 
 
 class TestFetchCollection(ManagerTestBase):
