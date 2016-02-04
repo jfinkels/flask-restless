@@ -54,13 +54,14 @@ This is a partial listing of the contents of this package.
 * `docs/` - the Sphinx documentation for Flask-Restless
 * `examples/` - example applications of Flask-Restless
 * `flask_restless/` - the Python package containing the extension
+* `MANIFEST.in` - indicates files to include when packaging Flask-Restless
 * `README.md` - this file
 * `setup.py` - Python setuptools configuration file for packaging this
   extension
 * `tests/` - unit tests for Flask-Restless
 
 The `flask_restless` directory is a Python package containing the following
-files:
+files and directory:
 
 * `helpers.py` - utility functions, mainly for performing introspection on
   SQLAlchemy objects
@@ -70,7 +71,7 @@ files:
   on requests that require a search
 * `serialization.py` - basic serialization and deserialization for SQLAlchemy
   models
-* `views.py` - the view classes that implement the JSON API interface
+* `views/` - the view classes that implement the JSON API interface
 
 ## Installing ##
 
