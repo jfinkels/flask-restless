@@ -1,7 +1,7 @@
 # serialization.py - JSON serialization for SQLAlchemy models
 #
 # Copyright 2011 Lincoln de Sousa <lincoln@comum.org>.
-# Copyright 2012, 2013, 2014, 2015 Jeffrey Finkelstein
+# Copyright 2012, 2013, 2014, 2015, 2016 Jeffrey Finkelstein
 #           <jeffrey.finkelstein@gmail.com> and contributors.
 #
 # This file is part of Flask-Restless.

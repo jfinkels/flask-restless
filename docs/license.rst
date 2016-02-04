@@ -2,8 +2,8 @@ Copyright and license
 =====================
 
 Flask-Restless is copyright 2011 Lincoln de Sousa and copyright 2012, 2013,
-2014, 2015 Jeffrey Finkelstein, and is dual-licensed under the following two
-copyright licenses:
+2014, 2015, 2016 Jeffrey Finkelstein and contributors, and is dual-licensed
+under the following two copyright licenses:
 
 * the `GNU Affero General Public License <http://fsf.org/licenses/agpl.html>`_,
   either version 3 or (at your option) any later version
