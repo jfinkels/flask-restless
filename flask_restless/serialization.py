@@ -593,6 +593,10 @@ class DefaultSerializer(Serializer):
         # Only consider those relations listed in `only`.
         if only is not None:
             relations = [r for r in relations if r in only]
+        # Exclude relations specified by the user during the instantiation of
+        # this object.
+        if self.exclude is not None:
+            relations = [r for r in relations if r not in self.exclude]
         if not relations:
             return result
         # For the sake of brevity, rename this function.
