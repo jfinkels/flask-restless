@@ -27,7 +27,6 @@ try:
     from urllib.parse import urljoin
 except ImportError:
     from urlparse import urljoin
-import uuid
 
 from flask import request
 from sqlalchemy import Column
@@ -79,8 +78,150 @@ class DeserializationException(Exception):
     """Raised when there is a problem deserializing a Python dictionary to an
     instance of a SQLAlchemy model.
 
+    Subclasses that wish to provide more detailed about the problem
+    should set the ``detail`` attribute to be a string, either as a
+    class-level attribute or as an instance attribute.
+
     """
-    pass
+
+    def __init__(self, *args, **kw):
+        super(DeserializationException, self).__init__(*args, **kw)
+
+        #: A string describing the problem in more detail.
+        #:
+        #: Subclasses must set this attribute to be a string describing
+        #: the problem that cause this exception.
+        self.detail = None
+
+    def message(self):
+        """Returns a more detailed description of the problem as a
+        string.
+
+        """
+        base = 'Failed to deserialize object'
+        if self.detail is not None:
+            return '{0}: {1}'.format(base, self.detail)
+        return base
+
+
+class ConflictingType(DeserializationException):
+    """Raised when attempting to deserialize a linkage object with an
+    unexpected ``'type'`` key.
+
+    `relation_name` is a string representing the name of the
+    relationship for which a linkage object has a conflicting type.
+
+    `expected_type` is a string representing the expected type of the
+    related resource.
+
+    `given_type` is is a string representing the given value of the
+    ``'type'`` element in the resource.
+
+    """
+
+    def __init__(self, relation_name, expected_type, given_type, *args, **kw):
+        super(ConflictingType, self).__init__(*args, **kw)
+
+        #: The name of the relationship with a conflicting type.
+        self.relation_name = relation_name
+
+        #: The expected type name for the related model.
+        self.expected_type = expected_type
+
+        #: The type name given by the client for the related model.
+        self.given_type = given_type
+
+        detail = ('expected type "{0}" but got type "{1}" in linkage object'
+                  ' for relationship "{2}"')
+        self.detail = detail.format(expected_type, given_type, relation_name)
+
+
+class UnknownField(DeserializationException):
+    """Raised when attempting to deserialize an object that references a
+    field that does not exist on the model.
+
+    `field` is the name of the unknown field as a string.
+
+    """
+
+    #: Whether the unknown field is given as a field or a relationship.
+    #:
+    #: This attribute can only take one of the two values ``'field'`` or
+    #: ``'relationship'``.
+    field_type = None
+
+    def __init__(self, field, *args, **kw):
+        super(UnknownField, self).__init__(*args, **kw)
+
+        #: The name of the unknown field, as a string.
+        self.field = field
+
+        self.detail = 'model has no {0} "{1}"'.format(self.field_type, field)
+
+
+class UnknownRelationship(UnknownField):
+    """Raised when attempting to deserialize a linkage object that
+    references a relationship that does not exist on the model.
+
+    """
+    field_type = 'relationship'
+
+
+class UnknownAttribute(UnknownField):
+    """Raised when attempting to deserialize an object that specifies a
+    field that does not exist on the model.
+
+    """
+    field_type = 'attribute'
+
+
+class MissingInformation(DeserializationException):
+    """Raised when a linkage object does not specify an element required by
+    the JSON API specification.
+
+    `relation_name` is the name of the relationship in which the linkage
+    object is missing information.
+
+    """
+
+    #: The name of the key in the dictionary that is missing.
+    #:
+    #: Subclasses must set this class attribute.
+    element = None
+
+    def __init__(self, relation_name, *args, **kw):
+        super(MissingInformation, self).__init__(*args, **kw)
+
+        #: The relationship in which a linkage object is missing information.
+        self.relation_name = relation_name
+
+        detail = ('missing "{0}" element in linkage object for relationship'
+                  ' "{1}"')
+        self.detail = detail.format(self.element, relation_name)
+
+
+class MissingData(MissingInformation):
+    """Raised when a resource does not specify a ``'data'`` element
+    where required by the JSON API specification.
+
+    """
+    element = 'data'
+
+
+class MissingID(MissingInformation):
+    """Raised when a resource does not specify an ``'id'`` element where
+    required by the JSON API specification.
+
+    """
+    element = 'id'
+
+
+class MissingType(MissingInformation):
+    """Raised when a resource does not specify a ``'type'`` element
+    where required by the JSON API specification.
+
+    """
+    element = 'type'
 
 
 def get_column_name(column):
@@ -462,6 +603,7 @@ class DefaultSerializer(Serializer):
         return result
 
 
+# TODO Create a DefaultRelationshipDeserializer!
 class DefaultRelationshipSerializer(Serializer):
     """A default implementation of a serializer for resource identifier
     objects for use in relationship objects in JSON API documents.
@@ -500,50 +642,59 @@ class DefaultDeserializer(Deserializer):
             if field == 'relationships':
                 for relation in data['relationships']:
                     if not has_field(self.model, relation):
-                        msg = ('Model does not have relationship'
-                               ' "{0}"').format(relation)
-                        raise DeserializationException(msg)
+                        raise UnknownRelationship(relation)
             elif field == 'attributes':
                 for attribute in data['attributes']:
                     if not has_field(self.model, attribute):
-                        msg = "Model does not have field '{0}'".format(field)
-                        raise DeserializationException(msg)
+                        raise UnknownAttribute(attribute)
         # Determine which related instances need to be added.
         links = {}
         if 'relationships' in data:
             links = data.pop('relationships', {})
             for link_name, link_object in links.items():
                 if 'data' not in link_object:
-                    msg = ('missing data field in relationship linkage object'
-                           ' "{0}"').format(link_name)
-                    raise DeserializationException(msg)
+                    raise MissingData(link_name)
                 linkage = link_object['data']
                 related_model = get_related_model(self.model, link_name)
-                # TODO check for type conflicts
-                #
+                expected_type = collection_name(related_model)
                 # If this is a to-many relationship, get all the instances.
                 if isinstance(linkage, list):
-                    related_instances = [get_by(self.session, related_model,
-                                                rel['id'])
-                                         for rel in linkage]
+                    related_instances = []
+                    for rel in linkage:
+                        if 'id' not in rel:
+                            raise MissingID(link_name)
+                        if 'type' not in rel:
+                            raise MissingType(link_name)
+                        type_ = rel['type']
+                        if type_ != expected_type:
+                            raise ConflictingType(link_name, expected_type,
+                                                  type_)
+                        id_ = rel['id']
+                        related_instance = get_by(self.session, related_model,
+                                                  id_)
+                        related_instances.append(related_instance)
                     links[link_name] = related_instances
                 # Otherwise, if this is a to-one relationship, just get a
                 # single instance.
                 else:
+                    if 'id' not in linkage:
+                        raise MissingID(link_name)
+                    if 'type' not in linkage:
+                        raise MissingType(link_name)
+                    type_ = linkage['type']
+                    if type_ != expected_type:
+                        raise ConflictingType(link_name, expected_type, type_)
                     id_ = linkage['id']
                     related_instance = get_by(self.session, related_model, id_)
                     links[link_name] = related_instance
-        # TODO Need to check here if any related instances are None, like we do
-        # in the put() method. We could possibly refactor the code above and
-        # the code there into a helper function...
+        # TODO Need to check here if any related instances are None,
+        # like we do in the patch() method. We could possibly refactor
+        # the code above and the code there into a helper function...
         pass
         # Move the attributes up to the top level.
         data.update(data.pop('attributes', {}))
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
-        #
-        # TODO This should be done as part of _dict_to_inst(), not done on its
-        # own here.
         data = strings_to_datetimes(self.model, data)
         # Create the new instance by keyword attributes.
         instance = self.model(**data)

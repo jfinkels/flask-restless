@@ -321,8 +321,9 @@ class TestCreating(ManagerTestBase):
                 }
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 400
-        print(dumps(loads(response.data), indent=4))
-        check_sole_error(response, 400, 'missing data')
+        keywords = ['deserialize', 'missing', '"data"', 'element',
+                    'linkage object', 'relationship', '"articles"']
+        check_sole_error(response, 400, keywords)
 
     def test_hybrid_property(self):
         """Tests that an attempt to set a read-only hybrid property causes an
@@ -601,6 +602,168 @@ class TestCreating(ManagerTestBase):
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 400
         # TODO check error message here
+
+    def test_to_one_relationship_missing_id(self):
+        """Tests that the server rejects a request to create a resource
+        with a to-one relationship when the relationship linkage object
+        is missing an ``id`` element.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        data = {
+            'data': {
+                'type': 'article',
+                'relationships': {
+                    'author': {
+                        'data': {
+                            'type': 'person'
+                        }
+                    }
+                }
+            }
+        }
+        response = self.app.post('/api/article', data=dumps(data))
+        keywords = ['deserialize', 'missing', '"id"', 'element',
+                    'linkage object', 'relationship', '"author"']
+        check_sole_error(response, 400, keywords)
+
+    def test_to_one_relationship_missing_type(self):
+        """Tests that the server rejects a request to create a resource
+        with a to-one relationship when the relationship linkage object
+        is missing a ``type`` element.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        data = {
+            'data': {
+                'type': 'article',
+                'relationships': {
+                    'author': {
+                        'data': {
+                            'id': '1'
+                        }
+                    }
+                }
+            }
+        }
+        response = self.app.post('/api/article', data=dumps(data))
+        keywords = ['deserialize', 'missing', '"type"', 'element',
+                    'linkage object', 'relationship', '"author"']
+        check_sole_error(response, 400, keywords)
+
+    def test_to_one_relationship_conflicting_type(self):
+        """Tests that the server rejects a request to create a resource
+        with a to-one relationship when the relationship linkage object
+        has a ``type`` element that conflicts with the actual type of
+        the related resource.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        data = {
+            'data': {
+                'type': 'article',
+                'relationships': {
+                    'author': {
+                        'data': {
+                            'id': '1',
+                            'type': 'article'
+                        }
+                    }
+                }
+            }
+        }
+        response = self.app.post('/api/article', data=dumps(data))
+        keywords = ['deserialize', 'expected', 'type', '"person"', '"article"',
+                    'linkage object', 'relationship', '"author"']
+        check_sole_error(response, 400, keywords)
+
+    def test_to_many_relationship_missing_id(self):
+        """Tests that the server rejects a request to create a resource
+        with a to-many relationship when any of the relationship linkage
+        objects is missing an ``id`` element.
+
+        """
+        article = self.Article(id=1)
+        self.session.add(article)
+        self.session.commit()
+        data = {
+            'data': {
+                'type': 'person',
+                'relationships': {
+                    'articles': {
+                        'data': [
+                            {'type': 'article'}
+                        ]
+                    }
+                }
+            }
+        }
+        response = self.app.post('/api/person', data=dumps(data))
+        keywords = ['deserialize', 'missing', '"id"', 'element',
+                    'linkage object', 'relationship', '"articles"']
+        check_sole_error(response, 400, keywords)
+
+    def test_to_many_relationship_missing_type(self):
+        """Tests that the server rejects a request to create a resource
+        with a to-many relationship when any of the relationship linkage
+        objects is missing a ``type`` element.
+
+        """
+        article = self.Article(id=1)
+        self.session.add(article)
+        self.session.commit()
+        data = {
+            'data': {
+                'type': 'person',
+                'relationships': {
+                    'articles': {
+                        'data': [
+                            {'id': '1'}
+                        ]
+                    }
+                }
+            }
+        }
+        response = self.app.post('/api/person', data=dumps(data))
+        keywords = ['deserialize', 'missing', '"type"', 'element',
+                    'linkage object', 'relationship', '"articles"']
+        check_sole_error(response, 400, keywords)
+
+    def test_to_many_relationship_conflicting_type(self):
+        """Tests that the server rejects a request to create a resource
+        with a to-many relationship when any of the relationship linkage
+        objects has a ``type`` element that conflicts with the actual
+        type of the related resource.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        data = {
+            'data': {
+                'type': 'person',
+                'relationships': {
+                    'articles': {
+                        'data': [
+                            {
+                                'id': '1',
+                                'type': 'person'
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+        response = self.app.post('/api/person', data=dumps(data))
+        keywords = ['deserialize', 'expected', 'type', '"article"', '"person"',
+                    'linkage object', 'relationship', '"articles"']
+        check_sole_error(response, 400, keywords)
 
 
 class TestProcessors(ManagerTestBase):

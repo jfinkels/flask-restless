@@ -27,8 +27,9 @@ from ..helpers import has_field
 from ..helpers import is_like_list
 from ..helpers import primary_key_value
 from ..helpers import strings_to_datetimes
-from ..serialization import SerializationException
+from ..serialization import ConflictingType
 from ..serialization import DeserializationException
+from ..serialization import SerializationException
 from .base import APIBase
 from .base import error
 from .base import error_response
@@ -391,6 +392,9 @@ class API(APIBase):
         data = data['data']
         # Convert the dictionary representation into an instance of the
         # model.
+        #
+        # TODO Should these three initial type and ID checks go in the
+        # deserializer?
         if 'type' not in data:
             detail = 'Must specify correct data type'
             return error_response(400, detail=detail)
@@ -407,8 +411,7 @@ class API(APIBase):
             self.session.add(instance)
             self.session.commit()
         except DeserializationException as exception:
-            inner_detail = exception.args[0]
-            detail = 'Failed to deserialize object: {0}'.format(inner_detail)
+            detail = exception.message()
             return error_response(400, cause=exception, detail=detail)
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
