@@ -16,7 +16,7 @@ db = flask.ext.sqlalchemy.SQLAlchemy(app)
 class Person(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode)
-
+    birth_date = db.Column(db.Date)
 
 class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
