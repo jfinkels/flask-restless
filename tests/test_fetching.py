@@ -562,6 +562,19 @@ class TestFetchResource(ManagerTestBase):
         assert expected_types == resource_types
         assert expected_ids == resource_ids
 
+    def test_attributes_in_url(self):
+        """Tests that a user attempting to access an attribute in the
+        URL instead of a relation yields a meaningful error response.
+
+        For more information, see issue #213.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        response = self.app.get('/api/person/1/id')
+        check_sole_error(response, 404, ['No such relation', 'id'])
+
 
 class TestFetchRelation(ManagerTestBase):
 

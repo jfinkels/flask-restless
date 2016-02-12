@@ -224,7 +224,7 @@ class API(APIBase):
         # Get the model of the specified relation.
         related_model = get_related_model(self.model, relation_name)
         if related_model is None:
-            detail = 'No such relation: {0}'.format(related_model)
+            detail = 'No such relation: {0}'.format(relation_name)
             return error_response(404, detail=detail)
         # Determine if this is a to-one or a to-many relation.
         if is_like_list(primary_resource, relation_name):
