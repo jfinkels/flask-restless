@@ -112,6 +112,40 @@ class TestCreating(ManagerTestBase):
         self.manager.create_api(Article, methods=['POST'])
         self.manager.create_api(Tag, methods=['POST'])
 
+    def test_wrong_content_type(self):
+        """Tests that if a client specifies only
+        :http:header:`Content-Type` headers with non-JSON API media
+        types, then the server responds with a :http:status:`415`.
+
+        """
+        headers = {'Content-Type': 'application/json'}
+        data = {
+            'data': {
+                'type': 'person'
+            }
+        }
+        response = self.app.post('/api/person', data=dumps(data),
+                                 headers=headers)
+        assert response.status_code == 415
+        assert self.session.query(self.Person).count() == 0
+
+    def test_wrong_accept_header(self):
+        """Tests that if a client specifies only :http:header:`Accept`
+        headers with non-JSON API media types, then the server responds
+        with a :http:status:`406`.
+
+        """
+        headers = {'Accept': 'application/json'}
+        data = {
+            'data': {
+                'type': 'person'
+            }
+        }
+        response = self.app.post('/api/person', data=dumps(data),
+                                 headers=headers)
+        assert response.status_code == 406
+        assert self.session.query(self.Person).count() == 0
+
     def test_related_resource_url_forbidden(self):
         """Tests that :http:method:`post` requests to a related resource URL
         are forbidden.

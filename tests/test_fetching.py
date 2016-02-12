@@ -42,7 +42,6 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
 from flask.ext.restless import APIManager
-from flask.ext.restless import CONTENT_TYPE
 from flask.ext.restless import ProcessingException
 from flask.ext.restless import simple_serialize
 from flask.ext.restless import SerializationException
@@ -92,6 +91,16 @@ class TestFetchCollection(ManagerTestBase):
         self.manager.create_api(Person)
         self.manager.create_api(Comment)
 
+    def test_wrong_accept_header(self):
+        """Tests that if a client specifies only :http:header:`Accept`
+        headers with non-JSON API media types, then the server responds
+        with a :http:status:`406`.
+
+        """
+        headers = {'Accept': 'application/json'}
+        response = self.app.get('/api/person', headers=headers)
+        assert response.status_code == 406
+
     def test_jsonp(self):
         """Test for a JSON-P callback on a collection of resources."""
         person1 = self.Person(id=1)
@@ -104,35 +113,6 @@ class TestFetchCollection(ManagerTestBase):
         document = loads(response.data[4:-1])
         people = document['data']
         assert ['1', '2'] == sorted(person['id'] for person in people)
-
-    def test_correct_content_type(self):
-        """Tests that the server responds with :http:status:`200` if the
-        request has the correct JSON API content type.
-
-        """
-        response = self.app.get('/api/person', content_type=CONTENT_TYPE)
-        assert response.status_code == 200
-        assert response.headers['Content-Type'] == CONTENT_TYPE
-
-    def test_no_content_type(self):
-        """Tests that the server responds with :http:status:`415` if the
-        request has no content type.
-
-        """
-        response = self.app.get('/api/person', content_type=None)
-        assert response.status_code == 415
-        assert response.headers['Content-Type'] == CONTENT_TYPE
-
-    def test_wrong_content_type(self):
-        """Tests that the server responds with :http:status:`415` if the
-        request has the wrong content type.
-
-        """
-        bad_content_types = ('application/json', 'application/javascript')
-        for content_type in bad_content_types:
-            response = self.app.get('/api/person', content_type=content_type)
-            assert response.status_code == 415
-            assert response.headers['Content-Type'] == CONTENT_TYPE
 
     def test_msie8(self):
         """Tests for compatibility with Microsoft Internet Explorer 8.

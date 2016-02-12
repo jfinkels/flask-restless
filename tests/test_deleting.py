@@ -31,7 +31,6 @@ from sqlalchemy import Unicode
 from sqlalchemy.orm import relationship
 
 from flask.ext.restless import APIManager
-from flask.ext.restless import CONTENT_TYPE
 from flask.ext.restless import ProcessingException
 
 from .helpers import dumps
@@ -72,6 +71,20 @@ class TestDeleting(ManagerTestBase):
         self.manager.create_api(Article, methods=['DELETE'])
         self.manager.create_api(Person, methods=['DELETE'])
 
+    def test_wrong_accept_header(self):
+        """Tests that if a client specifies only :http:header:`Accept`
+        headers with non-JSON API media types, then the server responds
+        with a :http:status:`406`.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        headers = {'Accept': 'application/json'}
+        response = self.app.delete('/api/person/1', headers=headers)
+        assert response.status_code == 406
+        assert self.session.query(self.Person).all() == [person]
+
     def test_related_resource_url_forbidden(self):
         """Tests that :http:method:`delete` requests to a related resource URL
         are forbidden.
@@ -87,45 +100,6 @@ class TestDeleting(ManagerTestBase):
         assert response.status_code == 405
         # TODO check error message here
         assert article.author is person
-
-    def test_correct_content_type(self):
-        """Tests that the server responds with :http:status:`201` if the
-        request has the correct JSON API content type.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        response = self.app.delete('/api/person/1', content_type=CONTENT_TYPE)
-        assert response.status_code == 204
-        assert response.headers['Content-Type'] == CONTENT_TYPE
-
-    def test_no_content_type(self):
-        """Tests that the server responds with :http:status:`415` if the
-        request has no content type.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        response = self.app.delete('/api/person/1', content_type=None)
-        assert response.status_code == 415
-        assert response.headers['Content-Type'] == CONTENT_TYPE
-
-    def test_wrong_content_type(self):
-        """Tests that the server responds with :http:status:`415` if the
-        request has the wrong content type.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-        bad_content_types = ('application/json', 'application/javascript')
-        for content_type in bad_content_types:
-            response = self.app.delete('/api/person/1',
-                                       content_type=content_type)
-            assert response.status_code == 415
-            assert response.headers['Content-Type'] == CONTENT_TYPE
 
     def test_msie8(self):
         """Tests for compatibility with Microsoft Internet Explorer 8.

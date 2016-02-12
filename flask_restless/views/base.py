@@ -266,7 +266,7 @@ def parse_accept_header(value):
     `value` is the :http:header:`Accept` header string (everything after
     the ``Accept:``) to be parsed.
 
-    Returns an iterable of ``(value, extra)`` tuples. If there were no
+    Returns an iterator over ``(value, extra)`` tuples. If there were no
     media type parameters, then ``extra`` is simply ``None``.
 
     """
@@ -287,12 +287,19 @@ def parse_accept_header(value):
         # quality is ``None`` instead of ``1`` here.
         quality = max(min(float(extra), 1), 0) if extra else None
         return name, quality
-    return (match_to_pair(match) for match in ACCEPT_RE.finditer(value))
+    return map(match_to_pair, ACCEPT_RE.finditer(value))
 
 
 def requires_json_api_accept(func):
-    """Decorator that requires requests have the ``Accept`` header
-    required by the JSON API specification.
+    """Decorator that requires :http:header:`Accept` headers with the
+    JSON API media type to have no media type parameters.
+
+    This does *not* require that all requests have an
+    :http:header:`Accept` header, just that those requests with an
+    :http:header:`Accept` header for the JSON API media type have no
+    media type parameters. However, if there are only
+    :http:header:`Accept` headers that specify non-JSON API media types,
+    this will cause a :http:status`406` response.
 
     If a request does not have the correct ``Accept`` header, a
     :http:status:`406` response is returned. An incorrect header is
@@ -320,26 +327,41 @@ def requires_json_api_accept(func):
 
         """
         header = request.headers.get('Accept')
-        header_pairs = parse_accept_header(header)
+        # If there is no Accept header, we don't need to do anything.
+        if header is None:
+            return func(*args, **kw)
+        header_pairs = list(parse_accept_header(header))
+        # If the Accept header is empty, then do nothing.
+        if len(header_pairs) == 0:
+            return func(*args, **kw)
         jsonapi_pairs = [(name, extra) for name, extra in header_pairs
                          if name.startswith(CONTENT_TYPE)]
-        if (len(jsonapi_pairs) > 0
-                and all(extra is not None for name, extra in jsonapi_pairs)):
+        # If there are Accept headers but none of them specifies the
+        # JSON API media type, respond with `406 Not Acceptable`.
+        if len(jsonapi_pairs) == 0:
+            detail = ('Accept header, if specified, must be the JSON API media'
+                      ' type: application/vnd.api+json')
+            return error_response(406, detail=detail)
+        # If there are JSON API Accept headers, but they all have media
+        # type parameters, respond with `406 Not Acceptable`.
+        if all(extra is not None for name, extra in jsonapi_pairs):
             detail = ('Accept header contained JSON API content type, but each'
                       ' instance occurred with media type parameters; at least'
                       ' one instance must appear without parameters (the part'
                       ' after the semicolon)')
             return error_response(406, detail=detail)
+        # At this point, everything is fine, so just execute the method as-is.
         return func(*args, **kw)
     return new_func
 
 
 def requires_json_api_mimetype(func):
-    """Decorator that requires requests have the ``Content-Type`` header
-    required by the JSON API specification.
+    """Decorator that requires requests *that include data* have the
+    :http:header:`Content-Type` header required by the JSON API
+    specification.
 
-    If the request does not have the correct ``Content-Type`` header, a
-    :http:status:`415` response is returned.
+    If the request does not have the correct :http:header:`Content-Type`
+    header, a :http:status:`415` response is returned.
 
     View methods can be wrapped like this::
 
@@ -354,6 +376,15 @@ def requires_json_api_mimetype(func):
         correct JSON API :http:header:`Content-Type` header.
 
         """
+        # GET and DELETE requests don't have request data in JSON API,
+        # so we can ignore those and only continue if this is a PATCH or
+        # POST request.
+        #
+        # Ideally we would be able to decorate each individual request
+        # methods directly, but it is not possible with the current
+        # design of Flask's method-based views.
+        if request.method not in ('PATCH', 'POST'):
+            return func(*args, **kw)
         header = request.headers.get('Content-Type')
         content_type, extra = parse_options_header(header)
         content_is_json = content_type.startswith(CONTENT_TYPE)

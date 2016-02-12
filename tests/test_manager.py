@@ -34,7 +34,7 @@ from flask.ext.restless import url_for
 from .helpers import DatabaseTestBase
 from .helpers import ManagerTestBase
 from .helpers import FlaskTestBase
-from .helpers import force_json_contenttype
+from .helpers import force_content_type_jsonapi
 from .helpers import skip
 from .helpers import skip_unless
 from .helpers import unregister_fsa_session_signals
@@ -103,7 +103,7 @@ class TestLocalAPIManager(DatabaseTestBase):
         flaskapp2 = Flask(__name__)
         testclient1 = self.app
         testclient2 = flaskapp2.test_client()
-        force_json_contenttype(testclient2)
+        force_content_type_jsonapi(testclient2)
         manager.create_api(self.Person)
         manager.init_app(flaskapp1)
         manager.init_app(flaskapp2)
@@ -149,7 +149,7 @@ class TestLocalAPIManager(DatabaseTestBase):
         flaskapp2 = Flask(__name__)
         testclient1 = self.app
         testclient2 = flaskapp2.test_client()
-        force_json_contenttype(testclient2)
+        force_content_type_jsonapi(testclient2)
 
         # First create the API, then initialize the Flask applications after.
         manager1.create_api(self.Person)

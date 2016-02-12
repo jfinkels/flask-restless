@@ -14,7 +14,7 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
-import functools
+from functools import wraps
 from json import JSONEncoder
 import sys
 import types
@@ -100,7 +100,7 @@ def skip_unless(condition, reason=None):
                 test.setup = new_setup
             return test
 
-        @functools.wraps(test)
+        @wraps(test)
         def inner(*args, **kw):
             """Checks that ``condition`` is ``True`` before executing
             ``test(*args, **kw)``.
@@ -186,26 +186,23 @@ def check_sole_error(response, status, strings):
     assert all(s in error['detail'] for s in strings)
 
 
-def force_json_contenttype(test_client):
+def force_content_type_jsonapi(test_client):
     """Ensures that all requests made by the specified Flask test client
-    have the correct ``Content-Type`` header.
-
-    For :http:method:`patch` requests, this means
-    ``application/json-patch+json``. For all other requests, the content
-    type is set to ``application/vnd.api+json``, unless another content
-    type is explicitly specified at the time the method is invoked.
+    that include data have the correct :http:header:`Content-Type`
+    header.
 
     """
+
     def set_content_type(func):
         """Returns a decorated version of ``func``, as described in the
         wrapper defined below.
 
         """
 
-        @functools.wraps(func)
+        @wraps(func)
         def new_func(*args, **kw):
-            """Sets the correct Accept and Content-Type headers before
-            executing ``func(*args, **kw)``.
+            """Sets the correct :http:header:`Content-Type` headers
+            before executing ``func(*args, **kw)``.
 
             """
             # if 'content_type' not in kw:
@@ -213,25 +210,14 @@ def force_json_contenttype(test_client):
             if 'headers' not in kw:
                 kw['headers'] = dict()
             headers = kw['headers']
-            is_dict = isinstance(headers, dict)
-            is_list = isinstance(headers, list)
-            if (is_dict and 'Accept' not in headers
-                    or is_list and all(x[0] != 'Accept' for x in headers)):
-                headers['Accept'] = CONTENT_TYPE
             if 'content_type' not in kw and 'Content-Type' not in headers:
                 kw['content_type'] = CONTENT_TYPE
             return func(*args, **kw)
         return new_func
 
-    # Decorate each of the test client request methods with a function
-    # that adds the correct Content-Type and Accept headers, if none are
-    # specified by the request.
-    for methodname in ('get', 'patch', 'post', 'delete'):
-        old_method = getattr(test_client, methodname)
-        setattr(test_client, methodname, set_content_type(old_method))
-    # # PATCH methods need to have `application/json-patch+json` content type.
-    # test_client.patch = set_content_type(test_client.patch,
-    #                                      'application/json-patch+json')
+    # Decorate the appropriate test client request methods.
+    test_client.patch = set_content_type(test_client.patch)
+    test_client.post = set_content_type(test_client.post)
 
 
 # This code is adapted from
@@ -309,7 +295,7 @@ class FlaskTestBase(object):
         # create the test client
         self.app = app.test_client()
 
-        force_json_contenttype(self.app)
+        force_content_type_jsonapi(self.app)
 
 
 class DatabaseTestBase(FlaskTestBase):

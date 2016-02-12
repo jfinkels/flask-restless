@@ -19,12 +19,16 @@ section of the JSON API specification.
 
 """
 from sqlalchemy import Column
+from sqlalchemy import Unicode
 from sqlalchemy import Integer
 
 from flask.ext.restless import CONTENT_TYPE
 
+from ..helpers import check_sole_error
+from ..helpers import dumps
 from ..helpers import loads
 from ..helpers import ManagerTestBase
+from ..helpers import skip
 
 
 class TestServerResponsibilities(ManagerTestBase):
@@ -41,13 +45,16 @@ class TestServerResponsibilities(ManagerTestBase):
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
 
         #self.Person = Person
         self.Base.metadata.create_all()
-        self.manager.create_api(Person)
+        self.manager.create_api(Person, methods=['GET', 'POST', 'PATCH',
+                                                 'DELETE'])
 
-    def test_response_content_type(self):
-        """"Tests that a server responds with the correct content type.
+    def test_get_content_type(self):
+        """"Tests that a response to a :http:method:`get` request has
+        the correct content type.
 
         For more information, see the `Server Responsibilities`_ section
         of the JSON API specification.
@@ -56,6 +63,51 @@ class TestServerResponsibilities(ManagerTestBase):
 
         """
         response = self.app.get('/api/person')
+        assert response.mimetype == CONTENT_TYPE
+
+    def test_post_content_type(self):
+        """"Tests that a response to a :http:method:`post` request has
+        the correct content type.
+
+        Our implementation of the JSON API specification always responds
+        to a :http:method:`post` request with a representation of the
+        created resource.
+
+        For more information, see the `Server Responsibilities`_ section
+        of the JSON API specification.
+
+        .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+
+        """
+        data = {'data': {'type': 'person'}}
+        response = self.app.post('/api/person', data=dumps(data))
+        assert response.mimetype == CONTENT_TYPE
+
+    @skip('we currently do not support updates that have side-effects')
+    def test_patch_content_type(self):
+        """"Tests that the response for a :http:method:`patch` request
+        that has side-effects has the correct content type.
+
+        For more information, see the `Server Responsibilities`_ section
+        of the JSON API specification.
+
+        .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        data = {
+            'data': {
+                'type': 'person',
+                'id': 1,
+                'attributes': {
+                    'name': 'bar'
+                }
+            }
+        }
+        # TODO Need to make a request that has side-effects.
+        response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.mimetype == CONTENT_TYPE
 
     def test_no_response_media_type_params(self):
@@ -68,13 +120,16 @@ class TestServerResponsibilities(ManagerTestBase):
         .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
 
         """
+        data = {
+            'data': {
+                'type': 'person',
+            }
+        }
         headers = {'Content-Type': '{0}; version=1'.format(CONTENT_TYPE)}
-        response = self.app.get('/api/person', headers=headers)
-        assert response.status_code == 415
-        document = loads(response.data)
-        message = document['errors'][0]['detail']
-        assert 'Content-Type' in message
-        assert 'media type parameter' in message
+        response = self.app.post('/api/person', data=dumps(data),
+                                 headers=headers)
+        check_sole_error(response, 415, ['Content-Type',
+                                         'media type parameters'])
 
     def test_no_accept_media_type_params(self):
         """"Tests that a server responds with :http:status:`406` if each

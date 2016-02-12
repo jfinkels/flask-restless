@@ -114,6 +114,54 @@ class TestUpdating(ManagerTestBase):
         self.manager.create_api(Interval, methods=['PATCH'])
         self.manager.create_api(Person, methods=['PATCH'])
 
+    def test_wrong_content_type(self):
+        """Tests that if a client specifies only :http:header:`Accept`
+        headers with non-JSON API media types, then the server responds
+        with a :http:status:`415`.
+
+        """
+        person = self.Person(id=1, name='foo')
+        self.session.add(person)
+        self.session.commit()
+        headers = {'Content-Type': 'application/json'}
+        data = {
+            'data': {
+                'type': 'person',
+                'id': 1,
+                'attributes': {
+                    'name': 'bar'
+                }
+            }
+        }
+        response = self.app.patch('/api/person/1', data=dumps(data),
+                                  headers=headers)
+        assert response.status_code == 415
+        assert person.name == 'foo'
+
+    def test_wrong_accept_header(self):
+        """Tests that if a client specifies only :http:header:`Accept`
+        headers with non-JSON API media types, then the server responds
+        with a :http:status:`406`.
+
+        """
+        person = self.Person(id=1, name='foo')
+        self.session.add(person)
+        self.session.commit()
+        headers = {'Accept': 'application/json'}
+        data = {
+            'data': {
+                'type': 'person',
+                'id': 1,
+                'attributes': {
+                    'name': 'bar'
+                }
+            }
+        }
+        response = self.app.patch('/api/person/1', data=dumps(data),
+                                 headers=headers)
+        assert response.status_code == 406
+        assert person.name == 'foo'
+
     def test_related_resource_url_forbidden(self):
         """Tests that :http:method:`patch` requests to a related resource URL
         are forbidden.
