@@ -1356,9 +1356,12 @@ class APIBase(ModelView):
             raise PaginationError(msg)
         # If the page size is 0, just return everything.
         if page_size == 0:
-            num_results = count(self.session, items)
+            # TODO This can be parallelized.
             items = [self.primary_serializer(instance, only=only)
                      for instance in items]
+            # Use `len()` here instead of doing `count(self.session,
+            # items)` because the former should be faster.
+            num_results = len(items)
             return Paginated(items, page_size=page_size,
                              num_results=num_results)
         # Determine the client's page number request. Raise an exception
