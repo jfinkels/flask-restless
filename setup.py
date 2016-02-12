@@ -9,20 +9,21 @@
 # Flask-Restless is distributed under both the GNU Affero General Public
 # License version 3 and under the 3-clause BSD license. For more
 # information, see LICENSE.AGPL and LICENSE.BSD.
-"""
-    Flask-Restless
-    ~~~~~~~~~~~~~~
+"""Flask-Restless is a `Flask`_ extension that provides simple
+generation of ReSTful APIs that satisfy the `JSON API`_ specification
+given database models defined using `SQLAlchemy`_ (or
+`Flask-SQLAlchemy`_).
 
-    Flask-Restless is a `Flask <http://flask.pocoo.org>`_ extension which
-    facilitates the creation of ReSTful JSON APIs. It is compatible with models
-    which have been defined using `SQLAlchemy <http://sqlalchemy.org>`_ or
-    `Flask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy>`_.
+For more information, seet the `documentation`_, `pypi`_, or the `source
+code`_ repository.
 
-    For more information, check the World Wide Web!
-
-      * `Documentation <https://flask-restless.readthedocs.org>`_
-      * `PyPI listing <https://pypi.python.org/pypi/Flask-Restless>`_
-      * `Source code repository <https://github.com/jfinkels/flask-restless>`_
+.. _Flask: http://flask.pocoo.org
+.. _SQLAlchemy: https://sqlalchemy.org
+.. _Flask-SQLAlchemy: https://pypi.python.org/pypi/Flask-SQLAlchemy
+.. _JSON API: http://jsonapi.org
+.. _documentation: https://flask-restless.readthedocs.org
+.. _pypi: https://pypi.python.org/pypi/Flask-Restless
+.. _source code: https://github.com/jfinkels/flask-restless
 
 """
 import codecs
