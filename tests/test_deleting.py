@@ -280,7 +280,7 @@ class TestFlaskSqlalchemy(FlaskTestBase):
         self.db.drop_all()
         unregister_fsa_session_signals()
 
-    def test_create(self):
+    def test_delete(self):
         """Tests for deleting a resource."""
         person = self.Person(id=1)
         self.session.add(person)
