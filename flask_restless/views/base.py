@@ -57,6 +57,7 @@ from ..helpers import url_for
 from ..search import ComparisonToNull
 from ..search import search
 from ..search import search_relationship
+from ..search import UnknownField
 from ..serialization import simple_serialize
 from ..serialization import simple_relationship_serialize
 from ..serialization import DefaultDeserializer
@@ -1488,6 +1489,10 @@ class APIBase(ModelView):
                                    group_by=group_by)
         except ComparisonToNull as exception:
             detail = str(exception)
+            return error_response(400, cause=exception, detail=detail)
+        except UnknownField as exception:
+            detail = 'Invalid filter object: No such field "{0}"'
+            detail = detail.format(exception.field)
             return error_response(400, cause=exception, detail=detail)
         except Exception as exception:
             detail = 'Unable to construct query'

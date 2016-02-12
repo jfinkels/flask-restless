@@ -25,6 +25,7 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
+from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import loads
 from .helpers import skip
@@ -525,6 +526,13 @@ class TestFiltering(SearchTestBase):
         response = self.search('/api/person', filters)
         assert response.status_code == 400
         # TODO check error message here
+
+    def test_bad_name(self):
+        """Tests that an invalid ``name`` element causes an error."""
+        filters = [dict(name='bogus__field', op='eq', val='whatever')]
+        response = self.search('/api/person', filters)
+        print(dumps(loads(response.data), indent=4))
+        check_sole_error(response, 400, ['No such field', 'bogus__field'])
 
     def test_search_boolean_formula(self):
         """Tests for Boolean formulas of filters in a search query."""

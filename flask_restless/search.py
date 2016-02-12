@@ -42,6 +42,18 @@ class ComparisonToNull(Exception):
     pass
 
 
+class UnknownField(Exception):
+    """Raised when the user attempts to reference a field that does not
+    exist on a model in a search.
+
+    """
+
+    def __init__(self, field):
+
+        #: The name of the unknown attribute.
+        self.field = field
+
+
 def _sub_operator(model, argument, fieldname):
     """Recursively calls :func:`create_operation` when argument is a dictionary
     of the form specified in :ref:`search`.
@@ -188,11 +200,16 @@ class Filter(object):
                   ]
              }
 
+        This method raises :exc:`UnknownField` if ``dictionary['name']``
+        does not refer to an attribute of `model`.
+
         """
         # If there are no ANDs or ORs, we are in the base case of the
         # recursion.
         if 'or' not in dictionary and 'and' not in dictionary:
             fieldname = dictionary.get('name')
+            if not hasattr(model, fieldname):
+                raise UnknownField(fieldname)
             operator = dictionary.get('op')
             otherfield = dictionary.get('field')
             argument = dictionary.get('val')
@@ -373,6 +390,9 @@ def search(session, model, filters=None, sort=None, group_by=None,
 
     When building the query, filters are applied first, then sorting, then
     grouping.
+
+    Raises :exc:`UnknownField` if one of the named fields given in one
+    of the `filters` does not exist on the `model`.
 
     Raises one of :exc:`AttributeError`, :exc:`KeyError`, or :exc:`TypeError`
     if there is a problem creating the query. See the documentation for
