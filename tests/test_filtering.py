@@ -13,6 +13,7 @@
 from datetime import date
 from datetime import datetime
 from datetime import time
+from operator import itemgetter
 
 from sqlalchemy import Column
 from sqlalchemy import Date
@@ -554,6 +555,37 @@ class TestFiltering(SearchTestBase):
         people = document['data']
         assert len(people) == 3
         assert ['1', '2', '3'] == sorted(person['id'] for person in people)
+
+    def test_dates_in_boolean_formulas(self):
+        """Tests that dates are correctly handled in recursively defined
+        boolean formula filters.
+
+        For more information, see issue #423.
+
+        """
+        person1 = self.Person(id=1, birthday=date(1990, 1, 1))
+        person2 = self.Person(id=2, birthday=date(1991, 1, 1))
+        person3 = self.Person(id=3, birthday=date(1992, 1, 1))
+        person4 = self.Person(id=4, birthday=date(1993, 1, 1))
+        self.session.add_all([person1, person2, person3, person4])
+        self.session.commit()
+        filters = [{
+            'and': [{
+                'name': 'birthday',
+                'op': '>',
+                'val': '1990-1-1'
+            },
+            {
+                'name': 'birthday',
+                'op': '<',
+                'val': '1993-1-1'
+            }]
+        }]
+        response = self.search('/api/person', filters)
+        document = loads(response.data)
+        people = document['data']
+        assert len(people) == 2
+        assert ['2', '3'] == sorted(person['id'] for person in people)
 
     @skip("I'm not certain in what situations an invalid value should cause"
           " a SQLAlchemy error")
