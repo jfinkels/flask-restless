@@ -232,6 +232,52 @@ class TestFetchCollection(ManagerTestBase):
         error = errors[0]
         assert 'serialize' in error['detail']
 
+    def test_pagination_links_empty_collection(self):
+        """Tests that pagination links work correctly for an empty
+        collection.
+
+        """
+        base_url = '/api/person'
+        response = self.app.get(base_url)
+        assert response.status_code == 200
+        document = loads(response.data)
+        pagination = document['links']
+        base_url = '{0}?'.format(base_url)
+        assert base_url in pagination['first']
+        assert 'page[number]=1' in pagination['first']
+        assert base_url in pagination['last']
+        assert 'page[number]=1' in pagination['last']
+        assert pagination['prev'] is None
+        assert pagination['next'] is None
+
+    def test_link_headers_empty_collection(self):
+        """Tests that :http:header:`Link` headers work correctly for an
+        empty collection.
+
+        """
+        base_url = '/api/person'
+        response = self.app.get(base_url)
+        assert response.status_code == 200
+        document = loads(response.data)
+        pagination = document['links']
+        base_url = '{0}?'.format(base_url)
+        # There should be exactly two, one for the first page and one
+        # for the last page; there are no previous or next pages, so
+        # there cannot be any valid Link headers for them.
+        links = response.headers['Link'].split(',')
+        assert len(links) == 2
+        # Decide which link is for the first page and which is for the last.
+        if 'first' in links[0]:
+            first, last = links
+        else:
+            last, first = links
+        assert base_url in first
+        assert 'rel="first"' in first
+        assert 'page[number]=1' in first
+        assert base_url in last
+        assert 'rel="last"' in last
+        assert 'page[number]=1' in last
+
     def test_pagination_with_query_parameter(self):
         """Tests that the URLs produced for pagination links include
         non-pagination query parameters from the original request URL.

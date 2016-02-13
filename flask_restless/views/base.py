@@ -1388,10 +1388,15 @@ class APIBase(ModelView):
         else:
             num_results = count(self.session, items)
             first = 1
+            # Handle a special case for an empty collection of items.
+            #
             # There will be no division-by-zero error here because we
             # have already checked that page size is not equal to zero
             # above.
-            last = int(math.ceil(num_results / page_size))
+            if num_results == 0:
+                last = 1
+            else:
+                last = int(math.ceil(num_results / page_size))
             prev = page_number - 1 if page_number > 1 else None
             next_ = page_number + 1 if page_number < last else None
             offset = (page_number - 1) * page_size
