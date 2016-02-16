@@ -1,3 +1,6 @@
 -r requirements.txt
 nose
 savalidation
+
+# For testing PostgreSQL specific operations...
+testing.postgresql

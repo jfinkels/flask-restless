@@ -24,6 +24,7 @@ from flask import Flask
 from flask import json
 try:
     from flask.ext import sqlalchemy as flask_sqlalchemy
+    from flask.ext.sqlalchemy import SQLAlchemy
 except ImportError:
     has_flask_sqlalchemy = False
 else:
@@ -283,9 +284,6 @@ class FlaskTestBase(object):
         app = Flask(__name__)
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://'
-        # This is to avoid a warning in earlier versions of Flask-SQLAlchemy.
-        app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
         # This is required by `manager.url_for()` in order to construct
         # absolute URLs.
         app.config['SERVER_NAME'] = 'localhost'
@@ -298,12 +296,69 @@ class FlaskTestBase(object):
         force_content_type_jsonapi(self.app)
 
 
-class DatabaseTestBase(FlaskTestBase):
+class DatabaseMixin(object):
+    """A class that accesses a database via a connection URI.
+
+    Subclasses can override the :meth:`database_uri` method to return a
+    connection URI for the desired database backend.
+
+    """
+
+    def database_uri(self):
+        """The database connection URI to use for the SQLAlchemy engine.
+
+        By default, this returns the URI for the SQLite in-memory
+        database. Subclasses that wish to use a different SQL backend
+        should override this method so that it returns the desired URI
+        string.
+
+        """
+        return 'sqlite://'
+
+
+class FlaskSQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
+    """Base class for tests that use Flask-SQLAlchemy (instead of plain
+    old SQLAlchemy).
+
+    If Flask-SQLAlchemy is not installed, the :meth:`.setup` method will
+    raise :exc:`nose.SkipTest`, so that each test method will be
+    skipped individually.
+
+    """
+
+    def setup(self):
+        super(FlaskSQLAlchemyTestBase, self).setup()
+        if not has_flask_sqlalchemy:
+            raise SkipTest('Flask-SQLAlchemy not found.')
+        self.flaskapp.config['SQLALCHEMY_DATABASE_URI'] = self.database_uri()
+        # This is to avoid a warning in earlier versions of
+        # Flask-SQLAlchemy.
+        self.flaskapp.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+        # Store some attributes for convenience and so the test methods
+        # read more like the tests for plain old SQLAlchemy.
+        self.db = SQLAlchemy(self.flaskapp)
+        self.session = self.db.session
+
+    def teardown(self):
+        """Drops all tables and unregisters Flask-SQLAlchemy session
+        signals.
+
+        """
+        self.db.drop_all()
+        unregister_fsa_session_signals()
+
+
+class SQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
     """Base class for tests that use a SQLAlchemy database.
 
-    The :meth:`setup` method does the necessary SQLAlchemy initialization, and
-    the subclasses should populate the database with models and then create the
-    database (by calling ``self.Base.metadata.create_all()``).
+    The :meth:`setup` method does the necessary SQLAlchemy
+    initialization, and the subclasses should populate the database with
+    models and then create the database (by calling
+    ``self.Base.metadata.create_all()``).
+
+    By default, this class creates a SQLite database; subclasses can
+    override the :meth:`.database_uri` method to enable configuration of
+    an alternate database backend.
 
     """
 
@@ -312,11 +367,8 @@ class DatabaseTestBase(FlaskTestBase):
         database.
 
         """
-        super(DatabaseTestBase, self).setup()
-        # initialize SQLAlchemy
-        app = self.flaskapp
-        engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'],
-                               convert_unicode=True)
+        super(SQLAlchemyTestBase, self).setup()
+        engine = create_engine(self.database_uri(), convert_unicode=True)
         self.Session = sessionmaker(autocommit=False, autoflush=False,
                                     bind=engine)
         self.session = scoped_session(self.Session)
@@ -329,16 +381,25 @@ class DatabaseTestBase(FlaskTestBase):
         self.Base.metadata.drop_all()
 
 
-class ManagerTestBase(DatabaseTestBase):
+class ManagerTestBase(SQLAlchemyTestBase):
     """Base class for tests that use a SQLAlchemy database and an
-    :class:`flask_restless.APIManager`.
+    :class:`~flask.ext.restless.APIManager`.
 
-    The :class:`flask_restless.APIManager` is accessible at ``self.manager``.
+    Nearly all test classes should subclass this class. Since we strive
+    to make Flask-Restless compliant with plain old SQLAlchemy first,
+    the default database abstraction layer used by tests in this class
+    will be SQLAlchemy. Test classes requiring Flask-SQLAlchemy must
+    instantiate their own :class:`~flask.ext.restless.APIManager`.
+
+    The :class:`~flask.ext.restless.APIManager` instance for use in
+    tests is accessible at ``self.manager``.
 
     """
 
     def setup(self):
-        """Initializes an instance of :class:`flask.ext.restless.APIManager`.
+        """Initializes an instance of
+        :class:`~flask.ext.restless.APIManager` with a SQLAlchemy
+        session.
 
         """
         super(ManagerTestBase, self).setup()

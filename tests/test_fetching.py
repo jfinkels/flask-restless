@@ -20,12 +20,6 @@ specification.
 """
 from operator import itemgetter
 
-try:
-    from flask.ext.sqlalchemy import SQLAlchemy
-except:
-    has_flask_sqlalchemy = False
-else:
-    has_flask_sqlalchemy = True
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
@@ -40,14 +34,12 @@ from flask.ext.restless import simple_serialize
 
 from .helpers import check_sole_error
 from .helpers import dumps
-from .helpers import FlaskTestBase
+from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import loads
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
 from .helpers import ManagerTestBase
 from .helpers import skip
-from .helpers import skip_unless
-from .helpers import unregister_fsa_session_signals
 
 
 class TestFetchCollection(ManagerTestBase):
@@ -1592,18 +1584,15 @@ class TestAssociationProxy(ManagerTestBase):
         assert ['bar', 'foo'] == sorted(article['attributes']['tag_names'])
 
 
-@skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')
-class TestFlaskSqlalchemy(FlaskTestBase):
-    """Tests for fetching resources defined as Flask-SQLAlchemy models instead
-    of pure SQLAlchemy models.
+class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
+    """Tests for fetching resources defined as Flask-SQLAlchemy models
+    instead of pure SQLAlchemy models.
 
     """
 
     def setup(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSqlalchemy, self).setup()
-        self.db = SQLAlchemy(self.flaskapp)
-        self.session = self.db.session
+        super(TestFlaskSQLAlchemy, self).setup()
 
         class Person(self.db.Model):
             id = self.db.Column(self.db.Integer, primary_key=True)
@@ -1612,13 +1601,6 @@ class TestFlaskSqlalchemy(FlaskTestBase):
         self.db.create_all()
         self.manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
         self.manager.create_api(self.Person)
-
-    def teardown(self):
-        """Drops all tables and unregisters Flask-SQLAlchemy session signals.
-
-        """
-        self.db.drop_all()
-        unregister_fsa_session_signals()
 
     def test_fetch_resource(self):
         """Test for fetching a resource."""

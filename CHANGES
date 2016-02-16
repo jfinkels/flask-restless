@@ -15,6 +15,7 @@ Version 1.0.0-dev
 
 Not yet released.
 
+- #255: adds support for filtering by PostgreSQL network operators.
 - #257: ensures additional attributes specified by the user actually exist on
   the model.
 - #363 (partial solution): don't use ``COUNT`` on requests that don't require

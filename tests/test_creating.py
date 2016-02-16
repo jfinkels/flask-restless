@@ -23,12 +23,6 @@ from __future__ import division
 from datetime import datetime
 
 import dateutil
-try:
-    from flask.ext.sqlalchemy import SQLAlchemy
-except ImportError:
-    has_flask_sqlalchemy = False
-else:
-    has_flask_sqlalchemy = True
 from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
@@ -52,13 +46,11 @@ from .helpers import BetterJSONEncoder as JSONEncoder
 from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import loads
-from .helpers import FlaskTestBase
+from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import ManagerTestBase
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
 from .helpers import skip
-from .helpers import skip_unless
-from .helpers import unregister_fsa_session_signals
 
 
 def raise_s_exception(instance, *args, **kw):
@@ -242,20 +234,6 @@ class TestCreating(ManagerTestBase):
         assert response.status_code == 415
         assert response.headers['Content-Type'] == CONTENT_TYPE
 
-    def test_wrong_content_type(self):
-        """Tests that the server responds with :http:status:`415` if the
-        request has the wrong content type.
-
-        """
-        data = dict(data=dict(type='person'))
-        bad_content_types = ('application/json', 'application/javascript')
-        for content_type in bad_content_types:
-            response = self.app.post('/api/person', data=dumps(data),
-                                     content_type=content_type)
-            # TODO Why are there two copies of the Content-Type header here?
-            assert response.status_code == 415
-            assert response.headers['Content-Type'] == CONTENT_TYPE
-
     def test_msie8(self):
         """Tests for compatibility with Microsoft Internet Explorer 8.
 
@@ -348,14 +326,16 @@ class TestCreating(ManagerTestBase):
         with a relationship that does not exist in the resource.
 
         """
-        data = {'data':
-                    {'type': 'person',
-                     'relationships':
-                         {'bogus': 
-                              {'data': None}
-                          }
-                     }
+        data = {
+            'data': {
+                'type': 'person',
+                'relationships': {
+                    'bogus': {
+                        'data': None
+                    }
                 }
+            }
+        }
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 400
         # TODO check error message here
@@ -367,14 +347,15 @@ class TestCreating(ManagerTestBase):
         """
         # In this request, the `articles` linkage object is missing the
         # `data` element.
-        data = {'data':
-                    {'type': 'person',
-                     'relationships':
-                         {'articles':
-                              {}
-                         }
-                     }
+        data = {
+            'data': {
+                'type': 'person',
+                'relationships':
+                {
+                    'articles': {}
                 }
+            }
+        }
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 400
         keywords = ['deserialize', 'missing', '"data"', 'element',
@@ -458,17 +439,19 @@ class TestCreating(ManagerTestBase):
         article2 = self.Article(id=2)
         self.session.add_all([article1, article2])
         self.session.commit()
-        data = {'data':
-                    {'type': 'person',
-                     'relationships':
-                         {'articles':
-                              {'data':
-                                   [{'type': 'article', 'id': '1'},
-                                    {'type': 'article', 'id': '2'}]
-                               }
-                          }
-                     }
+        data = {
+            'data': {
+                'type': 'person',
+                'relationships': {
+                    'articles': {
+                        'data': [
+                            {'type': 'article', 'id': '1'},
+                            {'type': 'article', 'id': '2'}
+                        ]
+                    }
                 }
+            }
+        }
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 201
         document = loads(response.data)
@@ -482,14 +465,16 @@ class TestCreating(ManagerTestBase):
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
-        data = {'data':
-                    {'type': 'article',
-                     'relationships':
-                         {'author':
-                              {'data': {'type': 'person', 'id': '1'}}
-                          }
-                     }
+        data = {
+            'data': {
+                'type': 'article',
+                'relationships': {
+                    'author': {
+                        'data': {'type': 'person', 'id': '1'}
+                    }
                 }
+            }
+        }
         response = self.app.post('/api/article', data=dumps(data))
         assert response.status_code == 201
         document = loads(response.data)
@@ -599,16 +584,19 @@ class TestCreating(ManagerTestBase):
         self.manager.create_api(self.Article, methods=['POST'],
                                 url_prefix='/api2')
         self.manager.create_api(self.Person, serializer=raise_s_exception)
-        data = {'data':
-                    {'type': 'article',
-                     'relationships':
-                         {'author':
-                              {'data':
-                                   {'type': 'person', 'id': 1}
-                               }
-                          }
-                     }
+        data = {
+            'data': {
+                'type': 'article',
+                'relationships': {
+                    'author': {
+                        'data': {
+                            'type': 'person',
+                            'id': 1
+                        }
+                    }
                 }
+            }
+        }
         query_string = {'include': 'author'}
         response = self.app.post('/api/article', data=dumps(data),
                                  query_string=query_string)
@@ -953,17 +941,19 @@ class TestAssociationProxy(ManagerTestBase):
         tag2 = self.Tag(id=2)
         self.session.add_all([tag1, tag2])
         self.session.commit()
-        data = {'data':
-                    {'type': 'article',
-                     'relationships':
-                         {'tags':
-                              {'data':
-                                   [{'type': 'tag', 'id': '1'},
-                                    {'type': 'tag', 'id': '2'}]
-                               }
-                          }
-                     }
+        data = {
+            'data': {
+                'type': 'article',
+                'relationships': {
+                    'tags': {
+                        'data': [
+                            {'type': 'tag', 'id': '1'},
+                            {'type': 'tag', 'id': '2'}
+                        ]
+                    }
                 }
+            }
+        }
         response = self.app.post('/api/article', data=dumps(data))
         assert response.status_code == 201
         document = loads(response.data)
@@ -999,8 +989,7 @@ class TestAssociationProxy(ManagerTestBase):
         assert False, 'Not implemented'
 
 
-@skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')
-class TestFlaskSqlalchemy(FlaskTestBase):
+class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
     """Tests for creating resources defined as Flask-SQLAlchemy models instead
     of pure SQLAlchemy models.
 
@@ -1008,8 +997,7 @@ class TestFlaskSqlalchemy(FlaskTestBase):
 
     def setup(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSqlalchemy, self).setup()
-        self.db = SQLAlchemy(self.flaskapp)
+        super(TestFlaskSQLAlchemy, self).setup()
 
         class Person(self.db.Model):
             id = self.db.Column(self.db.Integer, primary_key=True)
@@ -1018,13 +1006,6 @@ class TestFlaskSqlalchemy(FlaskTestBase):
         self.db.create_all()
         self.manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
         self.manager.create_api(self.Person, methods=['POST'])
-
-    def teardown(self):
-        """Drops all tables and unregisters Flask-SQLAlchemy session signals.
-
-        """
-        self.db.drop_all()
-        unregister_fsa_session_signals()
 
     def test_create(self):
         """Tests for creating a resource."""
