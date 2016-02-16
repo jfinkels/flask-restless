@@ -1,5 +1,5 @@
 flask>=0.10
 flask-sqlalchemy>=0.10
-sqlalchemy>=0.8
+sqlalchemy>=1.1
 python-dateutil>2.2
 mimerender>=0.5.2

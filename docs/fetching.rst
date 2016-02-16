@@ -946,10 +946,12 @@ The operators recognized by the API incude:
 * ``in``, ``not_in``
 * ``is_null``, ``is_not_null``
 * ``like``, ``ilike``
-* ``has``
-* ``any``
+* ``has``, ``any``, ``all``
 
-These correspond to the appropriate `SQLAlchemy column operators`_.
+These correspond to the appropriate `SQLAlchemy column operators`_. The ``all``
+operator only appears in SQLAlchemy version 1.1 or later, so if an earlier
+version of SQLAlchemy is installed on the server, the client will get an error
+response when attempting to use ``all``.
 
 .. warning::
 
@@ -1168,8 +1170,11 @@ attribute greater than or equal to the value of the ``height`` attribute:
      }
    }
 
-Using ``has`` and ``any``
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Filtering by properties of relationships
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``has`` for filtering by properties of a to-one relationship and ``any``
+and ``all`` for filtering by properties of a to-many relationship and ``any``.
 
 On request
 

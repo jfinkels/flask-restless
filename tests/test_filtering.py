@@ -677,18 +677,16 @@ class TestOperators(SearchTestBase):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
             name = Column(Unicode)
-            # age = Column(Integer)
-            # birthday = Column(Date)
 
-        # class Comment(self.Base):
-        #     __tablename__ = 'comment'
-        #     id = Column(Integer, primary_key=True)
-        #     content = Column(Unicode)
-        #     author_id = Column(Integer, ForeignKey('person.id'))
-        #     author = relationship('Person', backref=backref('comments'))
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            title = Column(Unicode)
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship('Person', backref=backref('articles'))
 
+        self.Article = Article
         self.Person = Person
-        # self.Comment = Comment
         self.Base.metadata.create_all()
         self.manager.create_api(Person)
         # HACK Need to create APIs for these other models because otherwise
@@ -855,6 +853,41 @@ class TestOperators(SearchTestBase):
         document = loads(response.data)
         people = document['data']
         assert ['2'] == sorted(person['id'] for person in people)
+
+    def test_all(self):
+        """Tests for the `all`` operator.
+
+        This operator can only be used if SQLAlchemy version 1.1 or
+        later is installed on the server.
+
+        """
+        person1 = self.Person(id=1)
+        person2 = self.Person(id=2)
+        article1 = self.Article(id=1, title='foo')
+        article2 = self.Article(id=2, title='foo')
+        article3 = self.Article(id=3, title='foo')
+        article4 = self.Article(id=4, title='bar')
+        person1.articles = [article1, article2]
+        person2.articles = [article3, article4]
+        instances = [person1, person2, article1, article2, article3, article4]
+        self.session.add_all(instances)
+        self.session.commit()
+        # This should select only those people with all articles having
+        # title 'foo'. In this test, that means only person 1.
+        filters = [{
+            'name': 'articles',
+            'op': 'all',
+            'val': {
+                'name': 'title',
+                'op': 'eq',
+                'val': 'foo'
+            }
+        }]
+        response = self.search('/api/person', filters)
+        document = loads(response.data)
+        print(document)
+        people = document['data']
+        assert ['1'] == sorted(person['id'] for person in people)
 
     def test_compare_equals_to_null(self):
         """Tests that an attempt to compare the value of a field to ``None``
