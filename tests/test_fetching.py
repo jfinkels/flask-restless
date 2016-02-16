@@ -809,6 +809,26 @@ class TestServerSparseFieldsets(ManagerTestBase):
         person = document['data']
         assert person['attributes']['foo'] == 'bar'
 
+    def test_additional_attributes_not_related(self):
+        """Tests that we do not try to include additional attributes when
+        requesting a related resource.
+
+        For more information, see pull request #257.
+
+        """
+        self.Article.foo = 'bar'
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([person, article])
+        self.session.commit()
+        self.manager.create_api(self.Article, additional_attributes=['foo'])
+        self.manager.create_api(self.Person)
+        response = self.app.get('/api/article/1/author')
+        document = loads(response.data)
+        person = document['data']
+        assert 'foo' not in person['attributes']
+
     def test_additional_attributes_callable(self):
         """Tests that callable attributes can be included using the
         ``additional_attributes`` keyword argument.
