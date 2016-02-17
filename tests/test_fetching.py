@@ -1245,6 +1245,27 @@ class TestServerSparseFieldsets(ManagerTestBase):
         person = document['data']
         assert 'name' not in person['attributes']
 
+    def test_exclude_relations(self):
+        """Tests for excluding relationships of a resource."""
+        article = self.Article(id=1)
+        comment = self.Comment()
+        person = self.Person()
+        article.author = person
+        comment.article = article
+        self.session.add_all([article, comment, person])
+        self.session.commit()
+        self.manager.create_api(self.Article, exclude=['comments'])
+        # Create the APIs for the other models, just so they have URLs.
+        self.manager.create_api(self.Person)
+        self.manager.create_api(self.Comment)
+        response = self.app.get('/api/article/1')
+        document = loads(response.data)
+        article = document['data']
+        assert 'comments' not in article['relationships']
+        author = article['relationships']['author']['data']
+        assert '1' == author['id']
+        assert 'person' == author['type']
+
 
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
