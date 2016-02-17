@@ -316,7 +316,8 @@ class TestFetchCollection(ManagerTestBase):
         assert len(people) == 4
         person_ids = list(map(itemgetter('id'), people))
         assert ['3', '2'] == person_ids[-2:]
-        assert {'1', '4'} == set(person_ids[:2])
+        # TODO In Python 2.7 or later, this should be a set literal.
+        assert set(['1', '4']) == set(person_ids[:2])
 
 
 class TestFetchResource(ManagerTestBase):
