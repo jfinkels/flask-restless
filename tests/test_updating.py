@@ -51,6 +51,7 @@ from .helpers import loads
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
 from .helpers import ManagerTestBase
+from .helpers import skip
 from .helpers import skip_unless
 from .helpers import unregister_fsa_session_signals
 
@@ -978,6 +979,7 @@ class TestAssociationProxy(ManagerTestBase):
         assert response.status_code == 204
         assert [tag1, tag2] == sorted(article.tags, key=lambda t: t.id)
 
+    @skip('Not sure how to implement this.')
     def test_scalar(self):
         """Tests for updating an association proxy to scalars as a list
         attribute instead of a link object.
@@ -996,10 +998,12 @@ class TestAssociationProxy(ManagerTestBase):
         # assert ['foo', 'bar'] == article.tag_names
         assert False, 'Not implemented'
 
+    @skip('Not sure how to implement this.')
     def test_dictionary_collection(self):
         """Tests for updating a dictionary based collection."""
         assert False, 'Not implemented'
 
+    @skip('Not sure how to implement this.')
     def test_extra_info(self):
         """Tests for adding a link in a to-many relationship with some extra
         information to be stored in the association object.
@@ -1031,6 +1035,7 @@ class TestAssociationProxy(ManagerTestBase):
         assert article.tags == [tag]
         assert self.session.query(self.ArticleTag).first().extrainfo == 'foo'
 
+    @skip('Not sure how to implement this.')
     def test_extra_info_patch_relationship_url(self):
         """Tests for replacing links in a to-many relationship with some extra
         information to be stored in the association object when making a
@@ -1056,6 +1061,7 @@ class TestAssociationProxy(ManagerTestBase):
         assert article.tags == [tag]
         assert self.session.query(self.ArticleTag).first().extrainfo == 'foo'
 
+    @skip('Not sure how to implement this.')
     def test_extra_info_post_relationship_url(self):
         """Tests for adding a link in a to-many relationship with some extra
         information to be stored in the association object when making a

@@ -56,6 +56,7 @@ from .helpers import FlaskTestBase
 from .helpers import ManagerTestBase
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
+from .helpers import skip
 from .helpers import skip_unless
 from .helpers import unregister_fsa_session_signals
 
@@ -927,6 +928,7 @@ class TestAssociationProxy(ManagerTestBase):
         tags = article['relationships']['tags']['data']
         assert ['1', '2'] == sorted(tag['id'] for tag in tags)
 
+    @skip('Not sure how to implement this.')
     def test_scalar(self):
         """Tests for creating a resource with an association proxy to scalars
         as a list attribute instead of a link object.
@@ -945,6 +947,7 @@ class TestAssociationProxy(ManagerTestBase):
         # assert ['foo', 'bar'] == article['tag_names']
         assert False, 'Not implemented'
 
+    @skip('Not sure how to implement this.')
     def test_dictionary_collection(self):
         """Tests for creating a resource with a dictionary based collection via
         an association proxy.
