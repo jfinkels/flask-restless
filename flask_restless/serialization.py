@@ -19,6 +19,8 @@ deserialization as expected by classes that follow the JSON API
 protocol.
 
 """
+from __future__ import division
+
 from datetime import date
 from datetime import datetime
 from datetime import time
@@ -54,6 +56,17 @@ from .helpers import url_for
 #: Names of columns which should definitely not be considered user columns to
 #: be included in a dictionary representation of a model.
 COLUMN_BLACKLIST = ('_sa_polymorphic_on', )
+
+# TODO In Python 2.7 or later, we can just use `timedelta.total_seconds()`.
+if hasattr(timedelta, 'total_seconds'):
+    def total_seconds(td):
+        return td.total_seconds()
+else:
+    # This formula comes from the Python 2.7 documentation for the
+    # `timedelta.total_seconds` method.
+    def total_seconds(td):
+        secs = td.seconds + td.days * 24 * 3600
+        return (td.microseconds + secs * 10**6) / 10**6
 
 
 class SerializationException(Exception):
@@ -515,7 +528,7 @@ class DefaultSerializer(Serializer):
             if isinstance(val, (date, datetime, time)):
                 attributes[key] = val.isoformat()
             elif isinstance(val, timedelta):
-                attributes[key] = val.total_seconds()
+                attributes[key] = total_seconds(val)
         # Recursively serialize any object that appears in the
         # attributes. This may happen if, for example, the return value
         # of one of the callable functions is an instance of another
