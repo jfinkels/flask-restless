@@ -206,6 +206,50 @@ class TestLocalAPIManager(DatabaseTestBase):
         self.app.get('/api/person')
         assert increment1 == increment2 == 3
 
+    def test_url_prefix(self):
+        """Tests for specifying a URL prefix at the manager level but
+        not when creating an API.
+
+        """
+        manager = APIManager(self.flaskapp, session=self.session,
+                             url_prefix='/foo')
+        manager.create_api(self.Person)
+        response = self.app.get('/foo/person')
+        assert response.status_code == 200
+        response = self.app.get('/api/person')
+        assert response.status_code == 404
+
+    def test_override_url_prefix(self):
+        """Tests that a call to :meth:`APIManager.create_api` can
+        override the URL prefix provided in the constructor to the
+        manager class, if the new URL starts with a slash.
+
+        """
+        manager = APIManager(self.flaskapp, session=self.session,
+                             url_prefix='/foo')
+        manager.create_api(self.Person, url_prefix='/bar')
+        response = self.app.get('/bar/person')
+        assert response.status_code == 200
+        response = self.app.get('/foo/person')
+        assert response.status_code == 404
+
+    # # This is a possible feature, but we will not support this for now.
+    # def test_append_url_prefix(self):
+    #     """Tests that a call to :meth:`APIManager.create_api` can
+    #     append to the URL prefix provided in the constructor to the
+    #     manager class, if the new URL does not start with a slash.
+
+    #     """
+    #     manager = APIManager(self.flaskapp, session=self.session,
+    #                          url_prefix='/foo')
+    #     manager.create_api(self.Person, url_prefix='bar')
+    #     response = self.app.get('/foo/bar/person')
+    #     assert response.status_code == 200
+    #     response = self.app.get('/foo/person')
+    #     assert response.status_code == 404
+    #     response = self.app.get('/bar/person')
+    #     assert response.status_code == 404
+
 
 class TestAPIManager(ManagerTestBase):
     """Unit tests for the :class:`flask_restless.manager.APIManager` class."""
@@ -248,7 +292,6 @@ class TestAPIManager(ManagerTestBase):
         collection_name.created_managers.clear()
 
     def test_url_for(self):
-
         """Tests the global :func:`flask.ext.restless.url_for` function."""
         self.manager.create_api(self.Person, collection_name='people')
         self.manager.create_api(self.Article, collection_name='articles')

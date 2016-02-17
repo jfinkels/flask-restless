@@ -48,6 +48,9 @@ WRITEONLY_METHODS = frozenset(('PATCH', 'POST', 'DELETE'))
 #: The set of all recognized HTTP methods.
 ALL_METHODS = READONLY_METHODS | WRITEONLY_METHODS
 
+#: The default URL prefix for APIs created by instance of :class:`APIManager`.
+DEFAULT_URL_PREFIX = '/api'
+
 #: A triple that stores the SQLAlchemy session and the universal pre- and post-
 #: processors to be applied to any API created for a particular Flask
 #: application.
@@ -75,19 +78,20 @@ class IllegalArgumentError(Exception):
 
 
 class APIManager(object):
-    """Provides a method for creating a public ReSTful JSON API with respect to
-    a given :class:`~flask.Flask` application object.
+    """Provides a method for creating a public ReSTful JSON API with respect
+    to a given :class:`~flask.Flask` application object.
 
-    The :class:`~flask.Flask` object can be specified in the constructor, or
-    after instantiation time by calling the :meth:`init_app` method.
+    The :class:`~flask.Flask` object can either be specified in the
+    constructor, or after instantiation time by calling the
+    :meth:`init_app` method.
 
-    `app` is the :class:`flask.Flask` object containing the user's Flask
-    application.
+    `app` is the :class:`~flask.Flask` object containing the user's
+    Flask application.
 
-    `session` is the :class:`sqlalchemy.orm.session.Session` object in which
-    changes to the database will be made.
+    `session` is the :class:`~sqlalchemy.orm.session.Session` object in
+    which changes to the database will be made.
 
-    `flask_sqlalchemy_db` is the :class:`flask.ext.sqlalchemy.SQLAlchemy`
+    `flask_sqlalchemy_db` is the :class:`~flask.ext.sqlalchemy.SQLAlchemy`
     object with which `app` has been registered and which contains the
     database models for which API endpoints will be created.
 
@@ -116,6 +120,25 @@ class APIManager(object):
         db = SQLALchemy(app)
         apimanager = APIManager(app, flask_sqlalchemy_db=db)
 
+    `url_prefix` is the URL prefix at which each API created by this
+    instance will be accessible. For example, if this is set to
+    ``'foo'``, then this method creates endpoints of the form
+    ``/foo/<collection_name>`` when :meth:`create_api` is called. If the
+    `url_prefix` is set in the :meth:`create_api`, the URL prefix set in
+    the constructor will be ignored for that endpoint.
+
+    `postprocessors` and `preprocessors` must be dictionaries as
+    described in the section :ref:`processors`. These preprocessors and
+    postprocessors will be applied to all requests to and responses from
+    APIs created using this APIManager object. The preprocessors and
+    postprocessors given in these keyword arguments will be prepended to
+    the list of processors given for each individual model when using
+    the :meth:`create_api_blueprint` method (more specifically, the
+    functions listed here will be executed before any functions
+    specified in the :meth:`create_api_blueprint` method). For more
+    information on using preprocessors and postprocessors, see
+    :ref:`processors`.
+
     """
 
     #: The format of the name of the API view for a given model.
@@ -125,35 +148,7 @@ class APIManager(object):
     APINAME_FORMAT = '{0}api'
 
     def __init__(self, app=None, session=None, flask_sqlalchemy_db=None,
-                 preprocessors=None, postprocessors=None):
-        """Stores the :class:`sqlalchemy.orm.session.Session` object in
-        which all database changes will be made.
-
-        `session` is the :class:`sqlalchemy.orm.session.Session` object in
-        which changes to the database will be made.
-
-        `flask_sqlalchemy_db` is the :class:`flask.ext.sqlalchemy.SQLAlchemy`
-        object which contains the database models for which API endpoints
-        will be created.
-
-        If `flask_sqlalchemy_db` is not ``None``, `session` will be ignored.
-
-        `postprocessors` and `preprocessors` must be dictionaries as described
-        in the section :ref:`processors`. These preprocessors and
-        postprocessors will be applied to all requests to and responses from
-        APIs created using this APIManager object. The preprocessors and
-        postprocessors given in these keyword arguments will be prepended to
-        the list of processors given for each individual model when using the
-        :meth:`create_api_blueprint` method (more specifically, the functions
-        listed here will be executed before any functions specified in the
-        :meth:`create_api_blueprint` method). For more information on using
-        preprocessors and postprocessors, see :ref:`processors`.
-
-        This is for use in the situation in which this class must be
-        instantiated before the :class:`~flask.Flask` application has been
-        created.
-
-        """
+                 preprocessors=None, postprocessors=None, url_prefix=None):
         if session is None and flask_sqlalchemy_db is None:
             msg = 'must specify either `flask_sqlalchemy_db` or `session`'
             raise ValueError(msg)
@@ -190,6 +185,12 @@ class APIManager(object):
         self.pre = preprocessors or {}
         self.post = postprocessors or {}
         self.session = session
+
+        #: The default URL prefix for APIs created by this manager.
+        #:
+        #: This can be overriden by the `url_prefix` keyword argument in the
+        #: :meth:`create_api` method.
+        self.url_prefix = url_prefix
 
         # if self.app is not None:
         #     self.init_app(self.app)
@@ -360,7 +361,7 @@ class APIManager(object):
             app.register_blueprint(blueprint)
 
     def create_api_blueprint(self, name, model, methods=READONLY_METHODS,
-                             url_prefix='/api', collection_name=None,
+                             url_prefix=None, collection_name=None,
                              allow_functions=False, only=None, exclude=None,
                              additional_attributes=None,
                              validation_exceptions=None, page_size=10,
@@ -442,8 +443,11 @@ class APIManager(object):
         only :http:method:`get` requests are allowed).
 
         `url_prefix` is the URL prefix at which this API will be
-        accessible. For example, if this is set to ``'foo'``, then this
-        method creates endpoints of the form ``/foo/<collection_name>``.
+        accessible. For example, if this is set to ``'/foo'``, then this
+        method creates endpoints of the form
+        ``/foo/<collection_name>``. If not set, the default URL prefix
+        specified in the constructor of this class will be used. If that
+        was not set either, the default ``'/api'`` will be used.
 
         `collection_name` is the name of the collection specified by the
         given model class to be used in the URL for the ReSTful API
@@ -633,7 +637,8 @@ class APIManager(object):
         # instance
         # TODO what should the second argument here be?
         # TODO should the url_prefix be specified here or in register_blueprint
-        blueprint = Blueprint(name, __name__, url_prefix=url_prefix)
+        prefix = url_prefix or self.url_prefix or DEFAULT_URL_PREFIX
+        blueprint = Blueprint(name, __name__, url_prefix=prefix)
         add_rule = blueprint.add_url_rule
 
         # The URLs that will be routed below.
