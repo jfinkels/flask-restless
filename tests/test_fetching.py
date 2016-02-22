@@ -946,6 +946,42 @@ class TestFetchRelatedResource(ManagerTestBase):
         assert response.status_code == 500
         # TODO check error message
 
+    def test_multiple_serialization_exceptions_on_included(self):
+        """Tests that multiple exceptions are caught when a custom
+        serialization method raises an exception when serializing an
+        included resource.
+
+        """
+        person1 = self.Person(id=1)
+        person2 = self.Person(id=2)
+        article1 = self.Article(id=1)
+        article2 = self.Article(id=2)
+        article1.author = person1
+        article2.author = person2
+        self.session.add_all([article1, article2, person1, person2])
+        self.session.commit()
+
+        def serializer(instance, **kw):
+            # Only raise an exception when serializing the included resources.
+            if isinstance(instance, self.Person):
+                raise SerializationException(instance)
+            return simple_serialize(instance, **kw)
+
+        self.manager.create_api(self.Article, serializer=serializer,
+                                url_prefix='/api2')
+        query_string = {'include': 'author'}
+        response = self.app.get('/api2/article', query_string=query_string)
+        assert response.status_code == 500
+        document = loads(response.data)
+        errors = document['errors']
+        assert len(errors) == 2
+        error1, error2 = errors
+        assert error1['status'] == 500
+        assert error2['status'] == 500
+        assert 'Failed to serialize resource' in error1['detail']
+        assert 'ID 1' in error1['detail'] or 'ID 1' in error2['detail']
+        assert 'ID 2' in error1['detail'] or 'ID 2' in error2['detail']
+
 
 class TestFetchRelationship(ManagerTestBase):
     """Tests for fetching from a relationship URL."""
