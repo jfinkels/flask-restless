@@ -532,6 +532,40 @@ class TestFetchResource(ManagerTestBase):
         person = document['data']
         assert person['attributes']['foo'] == 'bar'
 
+    def test_per_model_serializer_on_included(self):
+        person = self.Person(id=1)
+        article = self.Article(id=1, title='')
+        article.author = person
+        self.session.add_all([person, article])
+        self.session.commit()
+
+        def add_foo(instance, *args, **kw):
+            result = simple_serialize(instance, **kw)
+            result['attributes']['foo'] = 'foo'
+            return result
+
+        def add_bar(instance, *args, **kw):
+            result = simple_serialize(instance, **kw)
+            result['attributes']['bar'] = 'bar'
+            return result
+
+        self.manager.create_api(self.Person, serializer=add_foo,
+                                url_prefix='/api2')
+        self.manager.create_api(self.Article, serializer=add_bar,
+                                url_prefix='/api2')
+
+        query_string = {'include': 'author'}
+        response = self.app.get('/api2/article/1', query_string=query_string)
+        document = loads(response.data)
+        article = document['data']
+        assert article['attributes']['bar'] == 'bar'
+        assert 'foo' not in article['attributes']
+        included = document['included']
+        assert len(included) == 1
+        author = included[0]
+        assert author['attributes']['foo'] == 'foo'
+        assert 'bar' not in author['attributes']
+
     def test_serialization_exception(self):
         """Tests that exceptions are caught when a custom serialization method
         raises an exception.
