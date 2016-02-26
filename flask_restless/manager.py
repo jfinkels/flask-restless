@@ -773,7 +773,7 @@ class APIManager(object):
         :meth:`init_app` method is invoked.
 
         The keyword arguments for this method are exactly the same as
-        those for :meth:create_api_blueprint`, and are passed directly
+        those for :meth:`create_api_blueprint`, and are passed directly
         to that method. However, unlike that method, this method accepts
         only a single positional argument, `model`, the SQLAlchemy model
         for which to create the API. A UUID will be automatically
