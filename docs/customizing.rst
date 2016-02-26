@@ -195,10 +195,33 @@ follows::
 
 For a complete version of this example, see the
 :file:`examples/server_configurations/custom_serialization.py` module in the
-source distribution, or `view it online`_
+source distribution, or `view it online`_.
 
 .. _Marshmallow: https://marshmallow.readthedocs.org
 .. _view it online: https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/custom_serialization.py
+
+Per-model serialization
+-----------------------
+
+The correct serialization function will be used for each type of SQLAlchemy
+model for which you invoke :meth:`APIManager.create_api`. For example, if you
+create two APIs, one for ``Person`` objects and one for ``Article`` objects, ::
+
+    manager.create_api(Person, serializer=person_serializer)
+    manager.create_api(Article, serializer=article_serializer)
+
+and then make a request like
+
+.. sourcecode:: http
+
+   GET /api/article/1?include=author HTTP/1.1
+   Host: example.com
+   Accept: application/vnd.api+json
+
+then Flask-Restless will use the ``article_serializer`` function to serialize
+the primary data (that is, the top-level ``data`` element in the response
+document) and the ``person_serializer`` to serialize the included ``Person``
+resource.
 
 .. _validation:
 

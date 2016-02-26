@@ -28,6 +28,9 @@ Not yet released.
 - #449: roll back the session on any SQLAlchemy error, not just a few.
 - #436, #453: use ``__table__.name`` instead of ``__tablename__`` to infer the
   collection name for the SQLAlchemy model.
+- #440, #475: uses the serialization function provided at the time of invoking
+  :meth:`APIManager.create_api` to serialize each resource correctly, depending
+  on its type.
 - #474: include license files in built wheel for distribution.
 
 Older versions
