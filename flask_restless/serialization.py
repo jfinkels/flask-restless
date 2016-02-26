@@ -627,7 +627,6 @@ class DefaultSerializer(Serializer):
         return result
 
 
-# TODO Create a DefaultRelationshipDeserializer!
 class DefaultRelationshipSerializer(Serializer):
     """A default implementation of a serializer for resource identifier
     objects for use in relationship objects in JSON API documents.
@@ -701,16 +700,11 @@ class DefaultDeserializer(Deserializer):
                 # Otherwise, if this is a to-one relationship, just get a
                 # single instance.
                 else:
-                    if 'id' not in linkage:
-                        raise MissingID(link_name)
-                    if 'type' not in linkage:
-                        raise MissingType(link_name)
-                    type_ = linkage['type']
-                    if type_ != expected_type:
-                        raise ConflictingType(link_name, expected_type, type_)
-                    id_ = linkage['id']
-                    related_instance = get_by(self.session, related_model, id_)
-                    links[link_name] = related_instance
+                    Deserializer = DefaultRelationshipDeserializer
+                    deserialize = Deserializer(self.session, self.model,
+                                               link_name)
+                    # This function may raise deserialization exceptions.
+                    links[link_name] = deserialize(linkage)
         # TODO Need to check here if any related instances are None,
         # like we do in the patch() method. We could possibly refactor
         # the code above and the code there into a helper function...
@@ -726,6 +720,65 @@ class DefaultDeserializer(Deserializer):
         for relation_name, related_value in links.items():
             setattr(instance, relation_name, related_value)
         return instance
+
+
+class DefaultRelationshipDeserializer(Deserializer):
+    """A default implementation of a deserializer for resource
+    identifier objects for use in relationships in JSON API documents.
+
+    Each instance of this class should correspond to a particular
+    relationship of a model.
+
+    This deserializer differs from the default deserializer for
+    resources since it expects that the input dictionary `data` to
+    :meth:`__call__` contains only ``'id'`` and ``'type'`` keys.
+
+    `session` is the SQLAlchemy session in which to look for any related
+    resources.
+
+    `model` is the SQLAlchemy model class of the relationship, *not the
+    primary resource*. With the related model class, this deserializer
+    will be able to use the ID provided to the :meth:`__call__` method
+    to determine the instance of the `related_model` class which is
+    being deserialized.
+
+    `relation_name` is the name of the relationship being deserialized,
+    given as a string. This is used mainly for more helpful error
+    messages.
+
+    """
+
+    def __init__(self, session, model, relation_name=None):
+        super(DefaultRelationshipDeserializer, self).__init__(session, model)
+        #: The related model whose objects this deserializer will return
+        #: in the :meth:`__call__` method.
+        self.model = model
+
+        #: The collection name given to the related model.
+        self.type_name = collection_name(self.model)
+
+        #: The name of the relationship being deserialized, as a string.
+        self.relation_name = relation_name
+
+    def __call__(self, data):
+        """Gets the resource associated with the given resource
+        identifier object.
+
+        `data` must be a dictionary containing exactly two elements,
+        ``'type'`` and ``'id'``. In other words, it must be a dictionary
+        representation of a resource identifier object.
+
+        """
+        #### TODO Handle to-many relationships.
+        if 'id' not in data:
+            raise MissingID(self.relation_name)
+        if 'type' not in data:
+            raise MissingType(self.relation_name)
+        type_ = data['type']
+        if type_ != self.type_name:
+            raise ConflictingType(self.relation_name, self.type_name, type_)
+        id_ = data['id']
+        return get_by(self.session, self.model, id_)
 
 
 #: Provides basic, uncustomized serialization functionality as provided by
