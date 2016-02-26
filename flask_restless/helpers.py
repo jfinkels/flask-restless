@@ -447,6 +447,27 @@ class UrlFinder(KnowsAPIManagers, Singleton):
         raise ValueError(message)
 
 
+class SerializerFinder(KnowsAPIManagers, Singleton):
+    """The singleton class that backs the :func:`serializer_for` function."""
+
+    def __call__(self, model, _apimanager=None, **kw):
+        if _apimanager is not None:
+            if model not in _apimanager.created_apis_for:
+                message = ('APIManager {0} has not created an API for model '
+                           ' {1}').format(_apimanager, model)
+                raise ValueError(message)
+            return _apimanager.serializer_for(model, **kw)
+        for manager in self.created_managers:
+            try:
+                return self(model, _apimanager=manager, **kw)
+            except ValueError:
+                pass
+        message = ('Model {0} is not known to any APIManager'
+                   ' objects; maybe you have not called'
+                   ' APIManager.create_api() for this model.').format(model)
+        raise ValueError(message)
+
+
 #: Returns the URL for the specified model, similar to :func:`flask.url_for`.
 #:
 #: `model` is a SQLAlchemy model class. This should be a model on which
@@ -458,8 +479,8 @@ class UrlFinder(KnowsAPIManagers, Singleton):
 #: :class:`APIManager`. Restrict our search for endpoints exposing `model` to
 #: only endpoints created by the specified :class:`APIManager` instance.
 #:
-#: `resource_id`, `relation_name`, and `relationresource_id` allow you to get a more
-#: specific sub-resource.
+#: The `resource_id`, `relation_name`, and `relationresource_id` keyword
+#: arguments allow you to get the URL for a more specific sub-resource.
 #:
 #: For example, suppose you have a model class ``Person`` and have created the
 #: appropriate Flask application and SQLAlchemy session::
@@ -520,6 +541,36 @@ url_for = UrlFinder()
 #:     <class 'mymodels.Person'>
 #:
 collection_name = CollectionNameFinder()
+
+#: Returns the callable serializer object for the specified model, as
+#: specified by the `serializer` keyword argument to
+#: :meth:`APIManager.create_api` when it was previously invoked on the
+#: model.
+#:
+#: `model` is a SQLAlchemy model class. This should be a model on which
+#: :meth:`APIManager.create_api_blueprint` (or :meth:`APIManager.create_api`)
+#: has been invoked previously. If no API has been created for it, this
+#: function raises a `ValueError`.
+#:
+#: If `_apimanager` is not ``None``, it must be an instance of
+#: :class:`APIManager`. Restrict our search for endpoints exposing
+#: `model` to only endpoints created by the specified
+#: :class:`APIManager` instance.
+#:
+#: For example, suppose you have a model class ``Person`` and have
+#: created the appropriate Flask application and SQLAlchemy session::
+#:
+#:     >>> from mymodels import Person
+#:     >>> def my_serializer(model, *args, **kw):
+#:     ...     # return something cool here...
+#:     ...     return {}
+#:     ...
+#:     >>> manager = APIManager(app, session=session)
+#:     >>> manager.create_api(Person, serializer=my_serializer)
+#:     >>> serializer_for(Person)
+#:     <function my_serializer at 0x...>
+#:
+serializer_for = SerializerFinder()
 
 #: Returns the model corresponding to the given collection name, as specified
 #: by the ``collection_name`` keyword argument to :meth:`APIManager.create_api`

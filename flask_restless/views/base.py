@@ -53,6 +53,7 @@ from ..helpers import get_model
 from ..helpers import is_like_list
 from ..helpers import primary_key_name
 from ..helpers import primary_key_value
+from ..helpers import serializer_for
 from ..helpers import url_for
 from ..search import ComparisonToNull
 from ..search import search
@@ -734,12 +735,19 @@ def errors_response(status, errors):
     return {'errors': errors, _STATUS: status}, status
 
 
-def error_from_serialization_exception(exception):
+def error_from_serialization_exception(exception, included=False):
     """Returns an error dictionary, as returned by :func:`error`,
     representing the given instance of :exc:`SerializationException`.
 
     The ``detail`` element in the returned dictionary will be more
     detailed if :attr:`SerializationException.instance` is not ``None``.
+
+    If `included` is ``True``, this indicates that the exceptions were
+    raised by attempts to serialize resources included in a compound
+    document; this modifies the error message for the exceptions a bit
+    to indicate that the resources were included resource, not primary
+    data. If :attr:`~SerializationException.instance` is not ``None``,
+    however, that message is preferred and `included` has no effect.
 
     """
     # As long as `exception` is a `SerializationException` that has been
@@ -747,18 +755,27 @@ def error_from_serialization_exception(exception):
     # helper function calls should not cause a problem.
     type_ = collection_name(get_model(exception.instance))
     id_ = primary_key_value(exception.instance)
-    detail = 'Failed to serialize resource of type {0} and ID {1}'
-    detail = detail.format(type_, id_)
+    if exception.message is not None:
+        detail = exception.message
+    else:
+        resource = 'included resource' if included else 'resource'
+        detail = 'Failed to serialize {0} of type {1} and ID {2}'
+        detail = detail.format(resource, type_, id_)
     return error(status=500, detail=detail)
 
 
-def errors_from_serialization_exceptions(exceptions):
+def errors_from_serialization_exceptions(exceptions, included=False):
     """Returns an errors response object, as returned by
     :func:`errors_response`, representing the given list of
     :exc:`SerializationException` objects.
 
+    If `included` is ``True``, this indicates that the exceptions were
+    raised by attempts to serialize resources included in a compound
+    document; this modifies the error message for the exceptions a bit.
+
     """
-    errors = [error_from_serialization_exception(e) for e in exceptions]
+    _to_error = partial(error_from_serialization_exception, included=included)
+    errors = list(map(_to_error, exceptions))
     return errors_response(500, errors)
 
 
@@ -1114,15 +1131,6 @@ class APIBase(ModelView):
         #: A custom serialization function for linkage objects.
         self.serialize_relationship = simple_relationship_serialize
 
-        # :attr:`primary_serializer` serializes linkage objects if
-        # :meth:`use_resource_identifiers` indicates that the instance
-        # of this class fetches relationship objects. Otherwise it
-        # serializes resource objects.
-        if self.use_resource_identifiers():
-            self.primary_serializer = self.serialize_relationship
-        else:
-            self.primary_serializer = self.serialize
-
         #: A custom deserialization function for primary resources; see
         #: :ref:`serialization` for more information.
         #:
@@ -1144,6 +1152,10 @@ class APIBase(ModelView):
         #: The mapping from method name to a list of functions to apply before
         #: the main functionality of that method has been executed.
         self.preprocessors = defaultdict(list, upper(preprocessors or {}))
+
+        #: The mapping from resource type name to requested sparse
+        #: fields for resources of that type.
+        self.sparse_fields = parse_sparse_fields()
 
         # HACK: We would like to use the :attr:`API.decorators` class attribute
         # in order to decorate each view method with a decorator that catches
@@ -1208,7 +1220,57 @@ class APIBase(ModelView):
         current_app.logger.exception(str(exception))
         return errors_response(400, errors)
 
-    def get_all_inclusions(self, instance_or_instances, fields):
+    def _serialize_many(self, instances, relationship=False):
+        """Serializes a list of SQLAlchemy objects.
+
+        `instances` is a list of SQLAlchemy objects of any model class.
+
+        This function returns a list of dictionary objects, each of
+        which is the serialized version of the corresponding SQLAlchemy
+        model instance from `instances`.
+
+        If `relationship` is ``True``, resource identifier objects will
+        be returned instead of resource objects.
+
+        This function raises :exc:`MultipleExceptions` if there is a
+        problem serializing one or more of the objects in `instances`.
+
+        """
+        result = []
+        failed = []
+        for instance in instances:
+            model = get_model(instance)
+            if relationship:
+                serialize = self.serialize_relationship
+            else:
+                # Determine the serializer for this instance. If there
+                # is no serializer, use the default serializer for the
+                # current resource, even though the current model may
+                # different from the model of the current instance.
+                try:
+                    serialize = serializer_for(model)
+                except ValueError:
+                    # TODO Should we fail instead, thereby effectively
+                    # requiring that an API has been created for each
+                    # type of resource? This is mainly a design
+                    # question.
+                    serialize = self.serialize
+            # This may raise ValueError
+            _type = collection_name(model)
+            # TODO The `only` keyword argument will be ignored when
+            # serializing relationships, so we don't really need to
+            # recompute this every time.
+            only = self.sparse_fields.get(_type)
+            try:
+                serialized = serialize(instance, only=only)
+                result.append(serialized)
+            except SerializationException as exception:
+                failed.append(exception)
+        if failed:
+            raise MultipleExceptions(failed)
+        return result
+
+    def get_all_inclusions(self, instance_or_instances):
         """Returns a list of all the requested included resources
         associated with the given instance or instances of a SQLAlchemy
         model.
@@ -1221,9 +1283,6 @@ class APIBase(ModelView):
         response. The resources to include will be computed based on
         these data and the client's ``include`` query parameter.
 
-        ``fields`` is the dictionary of fields to include keyed by
-        resource type, as returned by :func:`parse_sparse_fields`.
-
         This function raises :exc:`MultipleExceptions` if any included
         resource causes a serialization exception. If this exception is
         raised, the :attr:`MultipleExceptions.exceptions` attribute
@@ -1231,31 +1290,18 @@ class APIBase(ModelView):
         that caused it.
 
         """
-        # If `instances` is actually just a single instance of a
-        # SQLAlchemy model, get the resources to include for that one
-        # instance. Otherwise, collect the resources to include for each
-        # instance in `instances`.
+        # If `instance_or_instances` is actually just a single instance
+        # of a SQLAlchemy model, get the resources to include for that
+        # one instance. Otherwise, collect the resources to include for
+        # each instance in `instances`.
         if isinstance(instance_or_instances, Query):
             to_include = set(chain(self.resources_to_include(resource)
                                    for resource in instance_or_instances))
         else:
             to_include = self.resources_to_include(instance_or_instances)
-        # Serialize each instance to include. Collect those that fail
-        # serialization and raise an exception representing the multiple
-        # serialization errors.
-        result = []
-        failed = []
-        for instance in to_include:
-            _type = collection_name(get_model(instance))
-            only = fields.get(_type)
-            try:
-                serialized = self.serialize(instance, only=only)
-                result.append(serialized)
-            except SerializationException as exception:
-                failed.append(exception)
-        if failed:
-            raise MultipleExceptions(failed)
-        return result
+        # This may raise MultipleExceptions if there are problems
+        # serializing the included resources.
+        return self._serialize_many(to_include)
 
     def _collection_parameters(self):
         """Gets filtering, sorting, grouping, and other settings from the
@@ -1319,8 +1365,7 @@ class APIBase(ModelView):
 
         return filters, sort, group_by, single
 
-    def _paginated(self, items, filters=None, sort=None, group_by=None,
-                   only=None):
+    def _paginated(self, items, filters=None, sort=None, group_by=None):
         """Returns a :class:`Paginated` object representing the
         correctly paginated list of resources to return to the client,
         based on the current request.
@@ -1333,16 +1378,13 @@ class APIBase(ModelView):
         extracted from the client's request (as by
         :meth:`_collection_parameters`) and applied to the query.
 
-        `only` must have already been parsed from the request (as by
-        :func:`parse_sparse_fields`).
-
         If `relationship` is ``True``, the resources in the query object
         will be serialized as linkage objects instead of resources
         objects.
 
         This method serializes the (correct page of) resources. As such,
-        it may raise :exc:`SerializationException` if there is a problem
-        serializing any of the resources.
+        it raises an instance of :exc:`MultipleExceptions` if there is a
+        problem serializing resources.
 
         """
         # Determine the client's page size request. Raise an exception
@@ -1355,15 +1397,14 @@ class APIBase(ModelView):
             msg = "Page size must not exceed the server's maximum: {0}"
             msg = msg.format(self.max_page_size)
             raise PaginationError(msg)
+        is_relationship = self.use_resource_identifiers()
         # If the page size is 0, just return everything.
         if page_size == 0:
-            # TODO This can be parallelized.
-            items = [self.primary_serializer(instance, only=only)
-                     for instance in items]
+            result = self._serialize_many(items, relationship=is_relationship)
             # Use `len()` here instead of doing `count(self.session,
             # items)` because the former should be faster.
-            num_results = len(items)
-            return Paginated(items, page_size=page_size,
+            num_results = len(result)
+            return Paginated(result, page_size=page_size,
                              num_results=num_results)
         # Determine the client's page number request. Raise an exception
         # if the page number is out of bounds.
@@ -1402,31 +1443,36 @@ class APIBase(ModelView):
             offset = (page_number - 1) * page_size
             # TODO Use Query.slice() instead, since it's easier to use.
             items = items.limit(page_size).offset(offset)
-        items = [self.primary_serializer(instance, only=only)
-                 for instance in items]
-        return Paginated(items, num_results=num_results, first=first,
+        # Serialize the found items. This may raise an exception if
+        # there is a problem serializing any of the objects.
+        result = self._serialize_many(items, relationship=is_relationship)
+        # Wrap the list of results in a Paginated object, which
+        # represents the result set and stores some extra information
+        # about how it was determined.
+        return Paginated(result, num_results=num_results, first=first,
                          last=last, next_=next_, prev=prev,
                          page_size=page_size, filters=filters, sort=sort,
                          group_by=group_by)
 
     def _get_resource_helper(self, resource, primary_resource=None,
                              relation_name=None, related_resource=False):
-        # Determine the fields to include for each type of object.
-        fields = parse_sparse_fields()
-
+        is_relationship = self.use_resource_identifiers()
         # The resource to serialize may be `None`, if we are fetching a
         # to-one relation that has no value. In this case, the "data"
         # for the JSON API response is just `None`.
         if resource is None:
             data = None
         else:
-            type_ = self.collection_name
-            only = fields.get(type_)
-            # Serialize the resource.
+            # HACK The _serialize_many() method expects a list as input and
+            # returns a list as output, but we only need to serialize a
+            # single resource here. Thus we provide a list of length one
+            # as input and assume a list of length one as output.
             try:
-                data = self.primary_serializer(resource, only=only)
-            except SerializationException as exception:
-                return errors_from_serialization_exceptions([exception])
+                data = self._serialize_many([resource],
+                                            relationship=is_relationship)
+            except MultipleExceptions as e:
+                return errors_from_serialization_exceptions(e.exceptions)
+            data = data[0]
         # Prepare the dictionary that will contain the JSON API response.
         result = {'jsonapi': {'version': JSONAPI_VERSION}, 'meta': {},
                   'links': {}, 'data': data}
@@ -1443,7 +1489,7 @@ class APIBase(ModelView):
         elif is_relation:
             resource_id = primary_key_value(primary_resource)
             # `self.model` should match `get_model(primary_resource)`
-            if self.use_resource_identifiers():
+            if is_relationship:
                 self_link = url_for(self.model, resource_id, relation_name,
                                     relationship=True)
                 related_link = url_for(self.model, resource_id, relation_name)
@@ -1457,21 +1503,23 @@ class APIBase(ModelView):
 
         # Include any requested resources in a compound document.
         try:
-            included = self.get_all_inclusions(resource, fields)
+            included = self.get_all_inclusions(resource)
         except MultipleExceptions as e:
             # By the way we defined `get_all_inclusions()`, we are
             # guaranteed that each of the underlying exceptions is a
             # `SerializationException`. Thus we can use
             # `errors_from_serialization_exception()`.
-            return errors_from_serialization_exceptions(e.exceptions)
+            return errors_from_serialization_exceptions(e.exceptions,
+                                                        included=True)
         if included:
             result['included'] = included
+        # HACK Need to do this here to avoid a too-long line.
+        kw = {'is_relation': is_relation,
+              'is_related_resource': is_related_resource}
         # This method could have been called on a request to fetch a
         # single resource, a to-one relation, or a member of a to-many
         # relation.
-        processor_type = self.resource_processor_type(is_relation=is_relation,
-                             is_related_resource=is_related_resource)
-        processor_type = 'GET_{0}'.format(processor_type)
+        processor_type = 'GET_{0}'.format(self.resource_processor_type(**kw))
         for postprocessor in self.postprocessors[processor_type]:
             postprocessor(result=result)
         return result, 200
@@ -1503,11 +1551,6 @@ class APIBase(ModelView):
             detail = 'Unable to construct query'
             return error_response(400, cause=exception, detail=detail)
 
-        # Determine the client's request for which fields to include for this
-        # type of object.
-        fields = parse_sparse_fields()
-        only = fields.get(self.collection_name)
-
         # Prepare the dictionary that will contain the JSON API response.
         result = {'links': {'self': url_for(self.model)},
                   'jsonapi': {'version': JSONAPI_VERSION},
@@ -1521,10 +1564,9 @@ class APIBase(ModelView):
         if not single:
             try:
                 paginated = self._paginated(search_items, filters=filters,
-                                            sort=sort, group_by=group_by,
-                                            only=only)
-            except SerializationException as exception:
-                return errors_from_serialization_exceptions([exception])
+                                            sort=sort, group_by=group_by)
+            except MultipleExceptions as e:
+                return errors_from_serialization_exceptions(e.exceptions)
             except PaginationError as exception:
                 detail = exception.args[0]
                 return error_response(400, cause=exception, detail=detail)
@@ -1545,9 +1587,14 @@ class APIBase(ModelView):
             except MultipleResultsFound as exception:
                 detail = 'Multiple results found'
                 return error_response(404, cause=exception, detail=detail)
+            only = self.sparse_fields.get(self.collection_name)
             # Wrap the resulting resource under a `data` key.
             try:
-                result['data'] = self.primary_serializer(data, only=only)
+                if self.use_resource_identifiers():
+                    serialize = self.serialize_relationship
+                else:
+                    serialize = self.serialize
+                result['data'] = serialize(data, only=only)
             except SerializationException as exception:
                 return errors_from_serialization_exceptions([exception])
             primary_key = self.primary_key or primary_key_name(data)
@@ -1565,13 +1612,14 @@ class APIBase(ModelView):
             instances = search_items
         # Include any requested resources in a compound document.
         try:
-            included = self.get_all_inclusions(instances, fields)
+            included = self.get_all_inclusions(instances)
         except MultipleExceptions as e:
             # By the way we defined `get_all_inclusions()`, we are
             # guaranteed that each of the underlying exceptions is a
             # `SerializationException`. Thus we can use
             # `errors_from_serialization_exception()`.
-            return errors_from_serialization_exceptions(e.exceptions)
+            return errors_from_serialization_exceptions(e.exceptions,
+                                                        included=True)
         if included:
             result['included'] = included
 

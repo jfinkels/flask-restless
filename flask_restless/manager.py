@@ -30,6 +30,7 @@ from flask import request
 from flask import Blueprint
 
 from .helpers import collection_name
+from .helpers import serializer_for
 from .helpers import model_for
 from .helpers import url_for
 from .serialization import DefaultSerializer
@@ -57,16 +58,21 @@ DEFAULT_URL_PREFIX = '/api'
 #:
 #: These tuples are used by :class:`APIManager` to store information about
 #: Flask applications registered using :meth:`APIManager.init_app`.
-RestlessInfo = namedtuple('RestlessInfo', ['session',
-                                           'universal_preprocessors',
-                                           'universal_postprocessors'])
+# RestlessInfo = namedtuple('RestlessInfo', ['session',
+#                                            'universal_preprocessors',
+#                                            'universal_postprocessors'])
 
 #: A tuple that stores information about a created API.
 #:
-#: The first element, `collection_name`, is the name by which a collection of
-#: instances of the model which this API exposes is known. The second element,
-#: `blueprint_name`, is the name of the blueprint that contains this API.
-APIInfo = namedtuple('APIInfo', 'collection_name blueprint_name')
+#: The elements are, in order,
+#:
+#: - `collection_name`, the name by which a collection of instances of
+#:   the model exposed by this API is known,
+#: - `blueprint_name`, the name of the blueprint that contains this API,
+#: - `serializer`, the subclass of :class:`Serializer` provided for the
+#:   model exposed by this API.
+#:
+APIInfo = namedtuple('APIInfo', 'collection_name blueprint_name serializer')
 
 
 class IllegalArgumentError(Exception):
@@ -163,6 +169,7 @@ class APIManager(object):
         url_for.register(self)
         model_for.register(self)
         collection_name.register(self)
+        serializer_for.register(self)
 
         #: A mapping whose keys are models for which this object has
         #: created an API via the :meth:`create_api_blueprint` method
@@ -298,7 +305,23 @@ class APIManager(object):
         """
         return self.created_apis_for[model].collection_name
 
+    def serializer_for(self, model):
+        """Returns the serializer for the specified model, as specified
+        by the `serializer` keyword argument to
+        :meth:`create_api_blueprint`.
+
+        `model` is a SQLAlchemy model class. This must be a model on
+        which :meth:`create_api_blueprint` has been invoked previously,
+        otherwise a :exc:`KeyError` is raised.
+
+        This method only returns URLs for endpoints created by this
+        :class:`APIManager`.
+
+        """
+        return self.created_apis_for[model].serializer
+
     def init_app(self, app):
+
         """Registers any created APIs on the given Flask application.
 
         This function should only be called if no Flask application was
@@ -734,7 +757,8 @@ class APIManager(object):
 
         # Finally, record that this APIManager instance has created an API for
         # the specified model.
-        self.created_apis_for[model] = APIInfo(collection_name, blueprint.name)
+        self.created_apis_for[model] = APIInfo(collection_name, blueprint.name,
+                                               serializer)
         return blueprint
 
     def create_api(self, *args, **kw):
