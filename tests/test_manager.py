@@ -29,6 +29,7 @@ from flask.ext.restless import APIManager
 from flask.ext.restless import collection_name
 from flask.ext.restless import IllegalArgumentError
 from flask.ext.restless import model_for
+from flask.ext.restless import serializer_for
 from flask.ext.restless import url_for
 
 from .helpers import DatabaseTestBase
@@ -290,6 +291,7 @@ class TestAPIManager(ManagerTestBase):
         model_for.created_managers.clear()
         url_for.created_managers.clear()
         collection_name.created_managers.clear()
+        serializer_for.created_managers.clear()
 
     def test_url_for(self):
         """Tests the global :func:`flask.ext.restless.url_for` function."""
@@ -330,6 +332,25 @@ class TestAPIManager(ManagerTestBase):
 
         """
         collection_name(self.Person)
+
+    def test_serializer_for(self):
+        """Tests the global :func:`flask.ext.restless.serializer_for`
+        function.
+
+        """
+        def my_function(*args, **kw):
+            pass
+
+        self.manager.create_api(self.Person, serializer=my_function)
+        assert serializer_for(self.Person) == my_function
+
+    @raises(ValueError)
+    def test_serializer_for_nonexistent(self):
+        """Tests that attempting to get the serializer for an unknown
+        model yields an error.
+
+        """
+        serializer_for(self.Person)
 
     def test_model_for(self):
         """Tests the global :func:`flask.ext.restless.model_for` function."""

@@ -61,6 +61,27 @@ from .helpers import skip_unless
 from .helpers import unregister_fsa_session_signals
 
 
+def raise_s_exception(instance, *args, **kw):
+    """Immediately raises a :exc:`SerializationException` with access to
+    the provided `instance` of a SQLAlchemy model.
+
+    This function is useful for use in tests for serialization
+    exceptions.
+
+    """
+    raise SerializationException(instance)
+
+
+def raise_d_exception(*args, **kw):
+    """Immediately raises a :exc:`DeserializationException`.
+
+    This function is useful for use in tests for deserialization
+    exceptions.
+
+    """
+    raise DeserializationException()
+
+
 class TestCreating(ManagerTestBase):
     """Tests for creating resources."""
 
@@ -567,18 +588,42 @@ class TestCreating(ManagerTestBase):
         person = document['data']
         assert person['attributes']['foo'] == 'bar'
 
+    def test_serialization_exception_included(self):
+        """Tests that exceptions are caught when trying to serialize
+        included resources.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        self.manager.create_api(self.Article, methods=['POST'],
+                                url_prefix='/api2')
+        self.manager.create_api(self.Person, serializer=raise_s_exception)
+        data = {'data':
+                    {'type': 'article',
+                     'relationships':
+                         {'author':
+                              {'data':
+                                   {'type': 'person', 'id': 1}
+                               }
+                          }
+                     }
+                }
+        query_string = {'include': 'author'}
+        response = self.app.post('/api/article', data=dumps(data),
+                                 query_string=query_string)
+        check_sole_error(response, 500, ['Failed to serialize',
+                                         'included resource', 'type', 'person',
+                                         'ID', '1'])
+
     def test_deserialization_exception(self):
         """Tests that exceptions are caught when a custom deserialization
         method raises an exception.
 
         """
-
-        def deserializer(*args, **kw):
-            raise DeserializationException
-
         self.manager.create_api(self.Person, methods=['POST'],
                                 url_prefix='/api2',
-                                deserializer=deserializer)
+                                deserializer=raise_d_exception)
         data = dict(data=dict(type='person'))
         response = self.app.post('/api2/person', data=dumps(data))
         assert response.status_code == 400
@@ -589,12 +634,9 @@ class TestCreating(ManagerTestBase):
         raises an exception.
 
         """
-
-        def serializer(instance, *args, **kw):
-            raise SerializationException(instance)
-
         self.manager.create_api(self.Person, methods=['POST'],
-                                url_prefix='/api2', serializer=serializer)
+                                url_prefix='/api2',
+                                serializer=raise_s_exception)
         data = dict(data=dict(type='person'))
         response = self.app.post('/api2/person', data=dumps(data))
         assert response.status_code == 400

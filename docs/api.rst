@@ -18,6 +18,8 @@ in Flask-Restless.
 
 .. autofunction:: model_for(collection_name, _apimanager=None)
 
+.. autofunction:: serializer_for(model, _apimanager=None)
+
 .. autofunction:: url_for(model, instid=None, relationname=None, relationinstid=None, _apimanager=None, **kw)
 
 .. autoclass:: ProcessingException

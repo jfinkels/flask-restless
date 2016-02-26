@@ -18,10 +18,7 @@ Flask-Restless meets the minimum requirements of the JSON API
 specification.
 
 """
-from datetime import datetime
-from datetime import time
 from operator import itemgetter
-from uuid import uuid1
 
 try:
     from flask.ext.sqlalchemy import SQLAlchemy
@@ -30,13 +27,9 @@ except:
 else:
     has_flask_sqlalchemy = True
 from sqlalchemy import Column
-from sqlalchemy import Date
-from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
-from sqlalchemy import Time
 from sqlalchemy import Unicode
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
@@ -44,12 +37,10 @@ from sqlalchemy.orm import relationship
 from flask.ext.restless import APIManager
 from flask.ext.restless import ProcessingException
 from flask.ext.restless import simple_serialize
-from flask.ext.restless import SerializationException
 
 from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import FlaskTestBase
-from .helpers import GUID
 from .helpers import loads
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
@@ -210,28 +201,6 @@ class TestFetchCollection(ManagerTestBase):
                             for article in articles)
         assert ['1', '2'] == author_ids
 
-    def test_serialization_exception_single(self):
-        """Tests for a serialization exception on a filtered single
-        response.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-
-        def serializer(instance, *args, **kw):
-            raise SerializationException(instance)
-
-        self.manager.create_api(self.Person, serializer=serializer,
-                                url_prefix='/api2')
-        query_string = {'filter[single]': 1}
-        response = self.app.get('/api2/person', query_string=query_string)
-        assert response.status_code == 500
-        document = loads(response.data)
-        errors = document['errors']
-        error = errors[0]
-        assert 'serialize' in error['detail']
-
     def test_pagination_links_empty_collection(self):
         """Tests that pagination links work correctly for an empty
         collection.
@@ -258,8 +227,6 @@ class TestFetchCollection(ManagerTestBase):
         base_url = '/api/person'
         response = self.app.get(base_url)
         assert response.status_code == 200
-        document = loads(response.data)
-        pagination = document['links']
         base_url = '{0}?'.format(base_url)
         # There should be exactly two, one for the first page and one
         # for the last page; there are no previous or next pages, so
@@ -325,106 +292,31 @@ class TestFetchResource(ManagerTestBase):
     def setup(self):
         super(TestFetchResource, self).setup()
 
-        class Article(self.Base):
-            __tablename__ = 'article'
-            id = Column(Integer, primary_key=True)
-            title = Column(Unicode, primary_key=True)
-            author_id = Column(Integer, ForeignKey('person.id'))
-            author = relationship('Person', backref=backref('articles'))
+        # class Article(self.Base):
+        #     __tablename__ = 'article'
+        #     id = Column(Integer, primary_key=True)
+        #     title = Column(Unicode, primary_key=True)
 
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
-            uuid = Column(GUID)
-            name = Column(Unicode)
-            bedtime = Column(Time)
-            birth_datetime = Column(DateTime)
-            birthday = Column(Date)
 
-            @hybrid_property
-            def has_early_bedtime(self):
-                if hasattr(self, 'bedtime'):
-                    if self.bedtime is None:
-                        return False
-                    nine_oclock = time(21)
-                    return self.bedtime < nine_oclock
-                return False
+        # class Tag(self.Base):
+        #     __tablename__ = 'tag'
+        #     name = Column(Unicode, primary_key=True)
 
-        class Comment(self.Base):
-            __tablename__ = 'comment'
-            id = Column(Integer, primary_key=True)
-            author_id = Column(Integer, ForeignKey('person.id'))
-            author = relationship('Person', backref=backref('comments'))
-            article_id = Column(Integer, ForeignKey('article.id'))
-            article = relationship('Article', backref=backref('comments'))
-
-        class Tag(self.Base):
-            __tablename__ = 'tag'
-            name = Column(Unicode, primary_key=True)
-
-        self.Article = Article
-        self.Comment = Comment
+        # self.Article = Article
         self.Person = Person
-        self.Tag = Tag
+        # self.Tag = Tag
         self.Base.metadata.create_all()
-        self.manager.create_api(Article)
-        self.manager.create_api(Comment)
+        # self.manager.create_api(Article)
         self.manager.create_api(Person)
         # self.manager.create_api(Tag)
 
-    def test_serialize_uuid(self):
-        """Tests for serializing a (non-primary key) UUID field."""
-        uuid = uuid1()
-        person = self.Person(id=1, uuid=uuid)
-        self.session.add(person)
-        self.session.commit()
-        response = self.app.get('/api/person/1')
-        assert response.status_code == 200
-        document = loads(response.data)
-        person = document['data']
-        assert person['attributes']['uuid'] == str(uuid)
-
-    def test_serialize_time(self):
-        """Test for getting the JSON representation of a time field."""
-        now = datetime.now().time()
-        person = self.Person(id=1, bedtime=now)
-        self.session.add(person)
-        self.session.commit()
-        response = self.app.get('/api/person/1')
-        assert response.status_code == 200
-        document = loads(response.data)
-        person = document['data']
-        assert person['attributes']['bedtime'] == now.isoformat()
-
-    def test_serialize_datetime(self):
-        """Test for getting the JSON representation of a datetime field."""
-        now = datetime.now()
-        person = self.Person(id=1, birth_datetime=now)
-        self.session.add(person)
-        self.session.commit()
-        response = self.app.get('/api/person/1')
-        assert response.status_code == 200
-        document = loads(response.data)
-        person = document['data']
-        assert person['attributes']['birth_datetime'] == now.isoformat()
-
-    def test_serialize_date(self):
-        """Test for getting the JSON representation of a date field."""
-        now = datetime.now().date()
-        person = self.Person(id=1, birthday=now)
-        self.session.add(person)
-        self.session.commit()
-        response = self.app.get('/api/person/1')
-        assert response.status_code == 200
-        document = loads(response.data)
-        person = document['data']
-        assert person['attributes']['birthday'] == now.isoformat()
-
     def test_jsonp(self):
         """Test for a JSON-P callback on a single resource request."""
-        person1 = self.Person(id=1)
-        person2 = self.Person(id=2)
-        self.session.add_all([person1, person2])
+        person = self.Person(id=1)
+        self.session.add(person)
         self.session.commit()
         response = self.app.get('/api/person/1?callback=foo')
         assert response.data.startswith(b'foo(')
@@ -483,21 +375,6 @@ class TestFetchResource(ManagerTestBase):
         assert resource['id'] == str(article.id)
         assert resource['title'] == article.title
 
-    def test_hybrid_property(self):
-        """Tests for fetching a resource with a hybrid property attribute."""
-        person1 = self.Person(id=1, bedtime=time(20))
-        person2 = self.Person(id=2, bedtime=time(22))
-        self.session.add_all([person1, person2])
-        self.session.commit()
-        response = self.app.get('/api/person/1')
-        document = loads(response.data)
-        person = document['data']
-        assert person['attributes']['has_early_bedtime']
-        response = self.app.get('/api/person/2')
-        document = loads(response.data)
-        person = document['data']
-        assert not person['attributes']['has_early_bedtime']
-
     def test_collection_name(self):
         """Tests for fetching a single resource with an alternate collection
         name.
@@ -506,108 +383,14 @@ class TestFetchResource(ManagerTestBase):
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
-        self.manager.create_api(self.Person, collection_name='people')
-        response = self.app.get('/api/people/1')
+        self.manager.create_api(self.Person, collection_name='people',
+                                url_prefix='/api2')
+        response = self.app.get('/api2/people/1')
         assert response.status_code == 200
         document = loads(response.data)
         person = document['data']
         assert person['id'] == '1'
         assert person['type'] == 'people'
-
-    def test_custom_serialization(self):
-        """Tests for a custom serialization function."""
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-
-        def serializer(instance, **kw):
-            result = simple_serialize(instance, **kw)
-            result['attributes']['foo'] = 'bar'
-            return result
-
-        self.manager.create_api(self.Person, serializer=serializer,
-                                url_prefix='/api2')
-        response = self.app.get('/api2/person/1')
-        document = loads(response.data)
-        person = document['data']
-        assert person['attributes']['foo'] == 'bar'
-
-    def test_serialization_exception(self):
-        """Tests that exceptions are caught when a custom serialization method
-        raises an exception.
-
-        """
-        person = self.Person(id=1)
-        self.session.add(person)
-        self.session.commit()
-
-        def serializer(instance, *args, **kw):
-            raise SerializationException(instance)
-
-        self.manager.create_api(self.Person, serializer=serializer,
-                                url_prefix='/api2')
-        response = self.app.get('/api2/person/1')
-        assert response.status_code == 500
-        # TODO check error message
-
-    def test_serialization_exception_on_included(self):
-        """Tests that exceptions are caught when a custom serialization method
-        raises an exception when serializing an included resource.
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1, title=u'')
-        article.author = person
-        self.session.add_all([article, person])
-        self.session.commit()
-
-        def serializer(instance, **kw):
-            # Only raise an exception when serializing the included resources.
-            if isinstance(instance, self.Article):
-                raise SerializationException(instance)
-            return simple_serialize(instance, **kw)
-
-        self.manager.create_api(self.Person, serializer=serializer,
-                                url_prefix='/api2')
-        query_string = {'include': 'articles'}
-        response = self.app.get('/api2/person/1', query_string=query_string)
-        assert response.status_code == 500
-        # TODO check error message
-
-    def test_circular_includes(self):
-        """Tests that circular includes are only included once."""
-        person1 = self.Person(id=1)
-        person2 = self.Person(id=2)
-        comment1 = self.Comment(id=1)
-        comment2 = self.Comment(id=2)
-        article1 = self.Article(id=1, title=u'')
-        article2 = self.Article(id=2, title=u'')
-        comment1.article = article1
-        comment2.article = article2
-        comment1.author = person1
-        comment2.author = person2
-        article1.author = person1
-        article2.author = person1
-        resources = [article1, article2, comment1, comment2, person1, person2]
-        self.session.add_all(resources)
-        self.session.commit()
-        # The response to this request should include person1 once (for
-        # the first 'author') and person 2 once (for the last 'author').
-        query_string = {'include': 'author.articles.comments.author'}
-        response = self.app.get('/api/comment/1', query_string=query_string)
-        document = loads(response.data)
-        included = document['included']
-        # Sort the included resources, first by type, then by ID.
-        resources = sorted(included, key=lambda x: (x['type'], x['id']))
-        resource_types = [resource['type'] for resource in resources]
-        resource_ids = [resource['id'] for resource in resources]
-        # We expect two articles, two persons, and one comment (since
-        # the other comment is the primary data in the response
-        # document).
-        expected_types = ['article', 'article', 'comment', 'person', 'person']
-        expected_ids = ['1', '2', '2', '1', '2']
-        assert expected_types == resource_types
-        assert expected_ids == resource_ids
 
     def test_attributes_in_url(self):
         """Tests that a user attempting to access an attribute in the
@@ -619,6 +402,7 @@ class TestFetchResource(ManagerTestBase):
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
+        self.manager.create_api(self.Person)
         response = self.app.get('/api/person/1/id')
         check_sole_error(response, 404, ['No such relation', 'id'])
 
@@ -662,70 +446,6 @@ class TestFetchRelation(ManagerTestBase):
         response = self.app.get('/api/person/1/bogus')
         assert response.status_code == 404
         # TODO Check error message here.
-
-    def test_serialization_exception_to_many(self):
-        """Tests that exceptions are caught when a custom serialization method
-        raises an exception on a to-one relation.
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        article.author = person
-        self.session.add_all([person, article])
-        self.session.commit()
-
-        def serializer(instance, *args, **kw):
-            raise SerializationException(instance)
-
-        self.manager.create_api(self.Person, serializer=serializer,
-                                url_prefix='/api2')
-        response = self.app.get('/api2/person/1/articles')
-        assert response.status_code == 500
-        # TODO check error message
-
-    def test_serialization_exception_to_one(self):
-        """Tests that exceptions are caught when a custom serialization method
-        raises an exception on a to-one relation.
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        article.author = person
-        self.session.add_all([person, article])
-        self.session.commit()
-
-        def serializer(instance, *args, **kw):
-            raise SerializationException(instance)
-
-        self.manager.create_api(self.Article, serializer=serializer,
-                                url_prefix='/api2')
-        response = self.app.get('/api2/article/1/author')
-        assert response.status_code == 500
-        # TODO check error message
-
-    def test_serialization_exception_on_included(self):
-        """Tests that exceptions are caught when a custom serialization method
-        raises an exception when serializing an included resource.
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        article.author = person
-        self.session.add_all([article, person])
-        self.session.commit()
-
-        def serializer(instance, **kw):
-            # Only raise an exception when serializing the included resources.
-            if isinstance(instance, self.Person):
-                raise SerializationException(instance)
-            return simple_serialize(instance, **kw)
-
-        self.manager.create_api(self.Person, serializer=serializer,
-                                url_prefix='/api2')
-        params = {'include': 'author'}
-        response = self.app.get('/api2/person/1/articles', query_string=params)
-        assert response.status_code == 500
-        # TODO check error message
 
     def test_to_many_pagination(self):
         """Tests that fetching a to-many relation obeys pagination.
@@ -900,87 +620,6 @@ class TestFetchRelatedResource(ManagerTestBase):
         response = self.app.get('/api/person/1/bogus/1')
         assert response.status_code == 404
         # TODO Check error message here.
-
-    def test_serialization_exception(self):
-        """Tests that exceptions are caught when a custom serialization method
-        raises an exception.
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        article.author = person
-        self.session.add_all([person, article])
-        self.session.commit()
-
-        def serializer(instance, *args, **kw):
-            raise SerializationException(instance)
-
-        self.manager.create_api(self.Person, serializer=serializer,
-                                url_prefix='/api2')
-        response = self.app.get('/api2/person/1/articles/1')
-        assert response.status_code == 500
-        # TODO check error message
-
-    def test_serialization_exception_on_included(self):
-        """Tests that exceptions are caught when a custom serialization method
-        raises an exception when serializing an included resource.
-
-        """
-        person = self.Person(id=1)
-        article = self.Article(id=1)
-        article.author = person
-        self.session.add_all([article, person])
-        self.session.commit()
-
-        def serializer(instance, **kw):
-            # Only raise an exception when serializing the included resources.
-            if isinstance(instance, self.Person):
-                raise SerializationException(instance)
-            return simple_serialize(instance, **kw)
-
-        self.manager.create_api(self.Person, serializer=serializer,
-                                url_prefix='/api2')
-        query_string = {'include': 'author'}
-        response = self.app.get('/api2/person/1/articles/1',
-                                query_string=query_string)
-        assert response.status_code == 500
-        # TODO check error message
-
-    def test_multiple_serialization_exceptions_on_included(self):
-        """Tests that multiple exceptions are caught when a custom
-        serialization method raises an exception when serializing an
-        included resource.
-
-        """
-        person1 = self.Person(id=1)
-        person2 = self.Person(id=2)
-        article1 = self.Article(id=1)
-        article2 = self.Article(id=2)
-        article1.author = person1
-        article2.author = person2
-        self.session.add_all([article1, article2, person1, person2])
-        self.session.commit()
-
-        def serializer(instance, **kw):
-            # Only raise an exception when serializing the included resources.
-            if isinstance(instance, self.Person):
-                raise SerializationException(instance)
-            return simple_serialize(instance, **kw)
-
-        self.manager.create_api(self.Article, serializer=serializer,
-                                url_prefix='/api2')
-        query_string = {'include': 'author'}
-        response = self.app.get('/api2/article', query_string=query_string)
-        assert response.status_code == 500
-        document = loads(response.data)
-        errors = document['errors']
-        assert len(errors) == 2
-        error1, error2 = errors
-        assert error1['status'] == 500
-        assert error2['status'] == 500
-        assert 'Failed to serialize resource' in error1['detail']
-        assert 'ID 1' in error1['detail'] or 'ID 1' in error2['detail']
-        assert 'ID 2' in error1['detail'] or 'ID 2' in error2['detail']
 
 
 class TestFetchRelationship(ManagerTestBase):
@@ -1221,18 +860,31 @@ class TestServerSparseFieldsets(ManagerTestBase):
         article.comments = [comment1, comment2]
         self.session.add_all([article, comment1, comment2])
         self.session.commit()
+
+        def add_foo(instance, *args, **kw):
+            result = simple_serialize(instance)
+            if 'attributes' not in result:
+                result['attributes'] = {}
+            result['attributes']['foo'] = 'foo'
+            return result
+
         self.manager.create_api(self.Article,
                                 additional_attributes=['first_comment'])
-        # HACK Need to create APIs for these other models because otherwise
+        # Ensure that the comment object has a custom serialization
+        # function, so we can test that it is serialized using this
+        # function in particular.
+        self.manager.create_api(self.Comment, serializer=add_foo)
+        # HACK Need to create an API for this model because otherwise
         # we're not able to create the link URLs to them.
-        self.manager.create_api(self.Comment)
         self.manager.create_api(self.Person)
+
         response = self.app.get('/api/article/1')
         document = loads(response.data)
         article = document['data']
         first_comment = article['attributes']['first_comment']
         assert first_comment['id'] == '1'
         assert first_comment['type'] == 'comment'
+        assert first_comment['attributes']['foo'] == 'foo'
 
     def test_exclude(self):
         """Test for excluding columns from a resource's representation."""

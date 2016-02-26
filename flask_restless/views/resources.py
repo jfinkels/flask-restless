@@ -27,7 +27,6 @@ from ..helpers import has_field
 from ..helpers import is_like_list
 from ..helpers import primary_key_value
 from ..helpers import strings_to_datetimes
-from ..serialization import ConflictingType
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
 from .base import APIBase
@@ -37,7 +36,6 @@ from .base import errors_from_serialization_exceptions
 from .base import errors_response
 from .base import JSONAPI_VERSION
 from .base import MultipleExceptions
-from .base import parse_sparse_fields
 from .base import SingleKeyError
 from .helpers import changes_on_update
 
@@ -415,8 +413,7 @@ class API(APIBase):
             return error_response(400, cause=exception, detail=detail)
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
-        fields = parse_sparse_fields()
-        fields_for_this = fields.get(self.collection_name)
+        fields_for_this = self.sparse_fields.get(self.collection_name)
         # Get the dictionary representation of the new instance as it
         # appears in the database.
         try:
@@ -436,13 +433,14 @@ class API(APIBase):
         result = {'jsonapi': {'version': JSONAPI_VERSION}, 'data': data}
         # Include any requested resources in a compound document.
         try:
-            included = self.get_all_inclusions(instance, fields)
+            included = self.get_all_inclusions(instance)
         except MultipleExceptions as e:
             # By the way we defined `get_all_inclusions()`, we are
             # guaranteed that each of the underlying exceptions is a
             # `SerializationException`. Thus we can use
             # `errors_from_serialization_exception()`.
-            return errors_from_serialization_exceptions(e.exceptions)
+            return errors_from_serialization_exceptions(e.exceptions,
+                                                        included=True)
         if included:
             result['included'] = included
         status = 201

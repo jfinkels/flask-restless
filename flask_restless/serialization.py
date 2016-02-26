@@ -50,6 +50,7 @@ from .helpers import has_field
 from .helpers import is_like_list
 from .helpers import primary_key_name
 from .helpers import primary_key_value
+from .helpers import serializer_for
 from .helpers import strings_to_datetimes
 from .helpers import url_for
 
@@ -73,17 +74,24 @@ class SerializationException(Exception):
     """Raised when there is a problem serializing an instance of a
     SQLAlchemy model to a dictionary representation.
 
-    ``instance`` is the (problematic) instance on which
+    `instance` is the (problematic) instance on which
     :meth:`Serializer.__call__` was invoked.
+
+    `message` is an optional string describing the problem in more
+    detail.
 
     `resource` is an optional partially-constructed serialized
     representation of ``instance``.
 
+    Each of these keyword arguments is stored in a corresponding
+    instance attribute so client code can access them.
+
     """
 
-    def __init__(self, instance, resource=None, *args, **kw):
+    def __init__(self, instance, message=None, resource=None, *args, **kw):
         super(SerializationException, self).__init__(*args, **kw)
         self.resource = resource
+        self.message = message
         self.instance = instance
 
 
@@ -533,12 +541,20 @@ class DefaultSerializer(Serializer):
         # attributes. This may happen if, for example, the return value
         # of one of the callable functions is an instance of another
         # SQLAlchemy model class.
-        for k, v in attributes.items():
+        for key, val in attributes.items():
             # This is a bit of a fragile test for whether the object
             # needs to be serialized: we simply check if the class of
             # the object is a mapped class.
-            if is_mapped_class(type(v)):
-                attributes[k] = simple_serialize(v)
+            if is_mapped_class(type(val)):
+                model_ = get_model(val)
+                try:
+                    serialize = serializer_for(model_)
+                except ValueError:
+                    # TODO Should this cause an exception, or fail
+                    # silently? See similar comments in `views/base.py`.
+                    # # raise SerializationException(instance)
+                    serialize = simple_serialize
+                attributes[key] = serialize(val)
         # Get the ID and type of the resource.
         id_ = attributes.pop('id')
         type_ = collection_name(model)
@@ -575,15 +591,6 @@ class DefaultSerializer(Serializer):
         #                 value = value()
         #             result[method] = value
 
-        # Recursively serialize values that are themselves SQLAlchemy
-        # models.
-        #
-        # TODO We really need to serialize each model using the
-        # serializer defined for that class when the user called
-        # APIManager.create_api
-        for key, value in result.items():
-            if key not in column_attrs and is_mapped_class(type(value)):
-                result[key] = simple_serialize(value)
         # If the primary key is not named "id", we'll duplicate the
         # primary key under the "id" key.
         pk_name = primary_key_name(model)
