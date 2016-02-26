@@ -439,7 +439,8 @@ class API(APIBase):
             # guaranteed that each of the underlying exceptions is a
             # `SerializationException`. Thus we can use
             # `errors_from_serialization_exception()`.
-            return errors_from_serialization_exceptions(e.exceptions)
+            return errors_from_serialization_exceptions(e.exceptions,
+                                                        included=True)
         if included:
             result['included'] = included
         status = 201
