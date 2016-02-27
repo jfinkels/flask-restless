@@ -1096,7 +1096,7 @@ class TestProcessors(ManagerTestBase):
         # Need to create an API for Article resources so that each
         # Article has a URL.
         self.manager.create_api(self.Article)
-        response = self.app.get('/api/person/1/relationships/articles')
+        self.app.get('/api/person/1/relationships/articles')
         assert data['triggered']
 
     def test_change_id_relationship(self):
