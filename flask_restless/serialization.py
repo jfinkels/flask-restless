@@ -263,6 +263,8 @@ def get_column_name(column):
     return column
 
 
+# TODO Use simple_relationship_serializer in the appropriate places in
+# this function.
 def create_relationship(model, instance, relation):
     """Creates a relationship from the given relation name.
 
