@@ -246,27 +246,13 @@ class APIManager(object):
                              ' `collection_name` keyword argument when calling'
                              ' `create_api()`.'.format(collection_name))
 
-    def url_for(self, model, _absolute_url=True, **kw):
+    def url_for(self, model, **kw):
         """Returns the URL for the specified model, similar to
         :func:`flask.url_for`.
 
         `model` is a SQLAlchemy model class. This must be a model on
         which :meth:`create_api_blueprint` has been invoked previously,
         otherwise a :exc:`KeyError` is raised.
-
-        If `_absolute_url` is ``False``, this function will return just the URL
-        path without the ``scheme`` and ``netloc`` part of the URL. If it is
-        ``True``, this function joins the relative URL to the url root for the
-        current request. This means `_absolute_url` can only be set to ``True``
-        if this function is called from within a `Flask request context`_. For
-        example::
-
-            >>> from mymodels import Person
-            >>> manager.create_api(Person)
-            >>> manager.url_for(Person, instid=3)
-            'http://example.com/api/people/3'
-            >>> manager.url_for(Person, instid=3, _absolute_url=False)
-            '/api/people/3'
 
         This method only returns URLs for endpoints created by this
         :class:`APIManager`.
@@ -286,8 +272,8 @@ class APIManager(object):
         if 'relationship' in kw and kw.pop('relationship'):
             parts.append('relationships')
         url = flask.url_for('.'.join(parts), **kw)
-        if _absolute_url:
-            url = urljoin(request.url_root, url)
+        # if _absolute_url:
+        #     url = urljoin(request.url_root, url)
         return url
 
     def collection_name(self, model):
