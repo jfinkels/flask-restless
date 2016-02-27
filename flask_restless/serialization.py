@@ -680,31 +680,10 @@ class DefaultDeserializer(Deserializer):
                 linkage = link_object['data']
                 related_model = get_related_model(self.model, link_name)
                 expected_type = collection_name(related_model)
-                # If this is a to-many relationship, get all the instances.
-                if isinstance(linkage, list):
-                    related_instances = []
-                    for rel in linkage:
-                        if 'id' not in rel:
-                            raise MissingID(link_name)
-                        if 'type' not in rel:
-                            raise MissingType(link_name)
-                        type_ = rel['type']
-                        if type_ != expected_type:
-                            raise ConflictingType(link_name, expected_type,
-                                                  type_)
-                        id_ = rel['id']
-                        related_instance = get_by(self.session, related_model,
-                                                  id_)
-                        related_instances.append(related_instance)
-                    links[link_name] = related_instances
-                # Otherwise, if this is a to-one relationship, just get a
-                # single instance.
-                else:
-                    Deserializer = DefaultRelationshipDeserializer
-                    deserialize = Deserializer(self.session, self.model,
-                                               link_name)
-                    # This function may raise deserialization exceptions.
-                    links[link_name] = deserialize(linkage)
+                # Create the deserializer for this relationship object.
+                DRD = DefaultRelationshipDeserializer
+                deserialize = DRD(self.session, related_model, link_name)
+                links[link_name] = deserialize(linkage)
         # TODO Need to check here if any related instances are None,
         # like we do in the patch() method. We could possibly refactor
         # the code above and the code there into a helper function...
@@ -765,20 +744,33 @@ class DefaultRelationshipDeserializer(Deserializer):
         identifier object.
 
         `data` must be a dictionary containing exactly two elements,
-        ``'type'`` and ``'id'``. In other words, it must be a dictionary
-        representation of a resource identifier object.
+        ``'type'`` and ``'id'``, or a list of dictionaries of that
+        form. In the former case, the `data` represents a to-one
+        relation and in the latter a to-many relation.
+
+        Returns the instance or instances of the SQLAlchemy model
+        specified in the constructor whose ID or IDs match the given
+        `data`.
+
+        May raise :exc:`MissingID`, :exc:`MissingType`, or
+        :exc:`ConflictingType`.
 
         """
-        #### TODO Handle to-many relationships.
-        if 'id' not in data:
-            raise MissingID(self.relation_name)
-        if 'type' not in data:
-            raise MissingType(self.relation_name)
-        type_ = data['type']
-        if type_ != self.type_name:
-            raise ConflictingType(self.relation_name, self.type_name, type_)
-        id_ = data['id']
-        return get_by(self.session, self.model, id_)
+        # If this is a to-one relationship, get the sole instance of the model.
+        if not isinstance(data, list):
+            if 'id' not in data:
+                raise MissingID(self.relation_name)
+            if 'type' not in data:
+                raise MissingType(self.relation_name)
+            type_ = data['type']
+            if type_ != self.type_name:
+                raise ConflictingType(self.relation_name, self.type_name,
+                                      type_)
+            id_ = data['id']
+            return get_by(self.session, self.model, id_)
+        # Otherwise, if this is a to-many relationship, recurse on each
+        # and return a list of instances.
+        return list(map(self, data))
 
 
 #: Provides basic, uncustomized serialization functionality as provided by
