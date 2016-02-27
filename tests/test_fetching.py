@@ -1343,35 +1343,18 @@ class TestDynamicRelationships(ManagerTestBase):
             __tablename__ = 'article'
             id = Column(Integer, primary_key=True)
             author_id = Column(Integer, ForeignKey('person.id'))
-            author = relationship('Person', backref=backref('articles',
-                                                            lazy='dynamic'))
+            author = relationship('Person')
 
         class Person(self.Base):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
+            articles = relationship(Article, lazy='dynamic')
 
         self.Article = Article
         self.Person = Person
         self.Base.metadata.create_all()
         self.manager.create_api(Article)
         self.manager.create_api(Person)
-
-    def test_to_one(self):
-        """Tests for fetching a resource with a dynamic link to a to-one
-        relation.
-
-        """
-        article = self.Article(id=1)
-        person = self.Person(id=1)
-        article.author = person
-        self.session.add_all([article, person])
-        self.session.commit()
-        response = self.app.get('/api/article/1')
-        document = loads(response.data)
-        article = document['data']
-        author = article['relationships']['author']['data']
-        assert author['id'] == '1'
-        assert author['type'] == 'person'
 
     def test_to_many(self):
         """Tests for fetching a resource with a dynamic link to a to-many

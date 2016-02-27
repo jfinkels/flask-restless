@@ -313,10 +313,6 @@ def create_relationship(model, instance, relation):
     if related_value is None:
         result['data'] = None
         return result
-    # If the related value is dynamically loaded, resolve the query
-    # to get the single instance in the to-one relationship.
-    if isinstance(related_value, Query):
-        related_value = related_value.one()
     # Create the resource linkage object for the to-one
     # relationship.
     related_type = collection_name(related_model)
