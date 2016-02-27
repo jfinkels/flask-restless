@@ -450,6 +450,32 @@ class TestDeleting(ManagerTestBase):
         # TODO check error message here
 
     def test_preprocessor(self):
+        """Test that a preprocessor is triggered on a request to delete
+        from a to-many relationship.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        data = {'triggered': False}
+
+        def update_data(*args, **kw):
+            data['triggered'] = True
+
+        preprocessors = {'DELETE_RELATIONSHIP': [update_data]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors,
+                                url_prefix='/api2', methods=['PATCH'],
+                                allow_delete_from_to_many_relationships=True)
+        data = {'data': [{'type': 'article', 'id': '1'}]}
+        # The preprocessor will change the resource ID and the
+        # relationship name.
+        self.app.delete('/api2/person/1/relationships/articles',
+                        data=dumps(data))
+        assert data['triggered']
+
+    def test_change_id_preprocessor(self):
         person = self.Person(id=1)
         article = self.Article(id=1)
         article.author = person
