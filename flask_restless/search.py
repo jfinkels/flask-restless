@@ -360,7 +360,7 @@ def search_relationship(session, instance, relation, filters=None, sort=None,
 
 
 def search(session, model, filters=None, sort=None, group_by=None,
-           _ignore_sort=False, _initial_query=None):
+           _initial_query=None):
     """Returns a SQLAlchemy query instance with the specified parameters.
 
     Each instance in the returned query meet the requirements specified by
@@ -379,11 +379,6 @@ def search(session, model, filters=None, sort=None, group_by=None,
     where ``direction`` is either ``'+'`` or ``'-'`` and ``fieldname`` is a
     string representing an attribute of the model or a dot-separated
     relationship path (for example, ``'owner.name'``).
-
-    If `_ignore_sort` is ``True``, no ``order_by`` method will be called on the
-    query, regardless of whether the ``sort`` argument indicates that there
-    should be an ``order_by``. (This is used internally by Flask-Restless to
-    circumvent a limitation in SQLAlchemy.)
 
     If `_initial_query` is provided, the filters, sorting, and grouping
     will be appended to this query. Otherwise, an empty query will be
@@ -413,26 +408,25 @@ def search(session, model, filters=None, sort=None, group_by=None,
 
     # Order the query. If no order field is specified, order by primary
     # key.
-    if not _ignore_sort:
-        if sort:
-            for (symbol, field_name) in sort:
-                direction_name = 'asc' if symbol == '+' else 'desc'
-                if '.' in field_name:
-                    field_name, field_name_in_relation = \
-                        field_name.split('.')
-                    relation_model = get_related_model(model, field_name)
-                    field = getattr(relation_model, field_name_in_relation)
-                    direction = getattr(field, direction_name)
-                    query = query.join(relation_model)
-                    query = query.order_by(direction())
-                else:
-                    field = getattr(model, field_name)
-                    direction = getattr(field, direction_name)
-                    query = query.order_by(direction())
-        else:
-            pks = primary_key_names(model)
-            pk_order = (getattr(model, field).asc() for field in pks)
-            query = query.order_by(*pk_order)
+    # if not _ignore_sort:
+    if sort:
+        for (symbol, field_name) in sort:
+            direction_name = 'asc' if symbol == '+' else 'desc'
+            if '.' in field_name:
+                field_name, field_name_in_relation = field_name.split('.')
+                relation_model = get_related_model(model, field_name)
+                field = getattr(relation_model, field_name_in_relation)
+                direction = getattr(field, direction_name)
+                query = query.join(relation_model)
+                query = query.order_by(direction())
+            else:
+                field = getattr(model, field_name)
+                direction = getattr(field, direction_name)
+                query = query.order_by(direction())
+    else:
+        pks = primary_key_names(model)
+        pk_order = (getattr(model, field).asc() for field in pks)
+        query = query.order_by(*pk_order)
 
     # Group the query.
     if group_by:
