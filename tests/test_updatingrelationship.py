@@ -199,6 +199,31 @@ class TestAdding(ManagerTestBase):
         # TODO check error message here
 
     def test_preprocessor(self):
+        """Test that a preprocessor is triggered on a request to add to
+        a to-many relationship.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        data = {'triggered': False}
+
+        def update_data(*args, **kw):
+            data['triggered'] = True
+
+        preprocessors = {'POST_RELATIONSHIP': [update_data]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors,
+                                url_prefix='/api2', methods=['PATCH'])
+        data = {'data': [{'type': 'article', 'id': '1'}]}
+        # The preprocessor will change the resource ID and the
+        # relationship name.
+        self.app.post('/api2/person/1/relationships/articles',
+                      data=dumps(data))
+        assert data['triggered']
+
+    def test_change_two_preprocessor(self):
         """Test for a preprocessor that changes both the primary
         resource ID and the relation name from the ones given in the
         requested URL.
