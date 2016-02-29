@@ -225,7 +225,7 @@ class Filter(object):
             subfilters = dictionary.get('or')
             return DisjunctionFilter(*[from_dict(model, filter_)
                                        for filter_ in subfilters])
-        if 'and' in dictionary:
+        else:
             subfilters = dictionary.get('and')
             return ConjunctionFilter(*[from_dict(model, filter_)
                                        for filter_ in subfilters])
