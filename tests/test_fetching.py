@@ -1127,6 +1127,30 @@ class TestProcessors(ManagerTestBase):
         assert 'article' == article['type']
         assert '1' == article['id']
 
+    def test_relation(self):
+        """Tests that a preprocessor is executed when fetching a
+        relation.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        data = {'triggered': False}
+
+        def update_data(*args, **kw):
+            data['triggered'] = True
+
+        preprocessors = {'GET_RELATION': [update_data]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors)
+        # Need to create an API for Article resources so that each
+        # Article has a URL.
+        self.manager.create_api(self.Article)
+        self.app.get('/api/person/1/articles')
+        assert data['triggered']
+
     def test_change_related_resource_1(self):
         """Tests for changing the primary resource ID in a preprocessor
         for fetching a related resource.
