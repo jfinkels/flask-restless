@@ -263,13 +263,24 @@ def get_column_name(column):
     return column
 
 
-# TODO Use simple_relationship_serializer in the appropriate places in
-# this function.
 def create_relationship(model, instance, relation):
     """Creates a relationship from the given relation name.
 
     Returns a dictionary representing a relationship as described in
     the `Relationships`_ section of the JSON API specification.
+
+    `model` is the model class of the primary resource for which a
+    relationship object is being created.
+
+    `instance` is the instance of the model for which we are considering
+    a related value.
+
+    `relation` is the name of the relation of `instance` given as a
+    string.
+
+    This function may raise :exc:`ValueError` if an API has not been
+    created for the primary model, `model`, or the model of the
+    relation.
 
     .. _Relationships: http://jsonapi.org/format/#document-resource-object-relationships
 
@@ -297,29 +308,21 @@ def create_relationship(model, instance, relation):
     # Get the related value so we can see if it is a to-many
     # relationship or a to-one relationship.
     related_value = getattr(instance, relation)
-    # If the related value is list-like, it represents a to-many
-    # relationship.
+    # There are three possibilities for the relation: it could be a
+    # to-many relationship, a null to-one relationship, or a non-null
+    # to-one relationship. We decide whether the relation is to-many by
+    # determining whether it is list-like.
     if is_like_list(instance, relation):
-        # For the sake of brevity, rename these functions.
-        cn = collection_name
-        gm = get_model
-        pkv = primary_key_value
-        # Create the resource linkage objects.
-        result['data'] = [dict(type=cn(gm(i)), id=str(pkv(i)))
-                          for i in related_value]
-        return result
-    # At this point, we know we have a to-one relationship.
-    related_model = get_related_model(model, relation)
-    # If the related value is None, that means we have an empty
-    # to-one relationship.
-    if related_value is None:
+        # We could pre-compute the "type" name for the related instances
+        # here and provide it in the `_type` keyword argument to the
+        # serialization function, but the to-many relationship could be
+        # heterogeneous.
+        result['data'] = [simple_relationship_serialize(instance)
+                          for instance in related_value]
+    elif related_value is not None:
+        result['data'] = simple_relationship_serialize(related_value)
+    else:
         result['data'] = None
-        return result
-    # Create the resource linkage object for the to-one
-    # relationship.
-    related_type = collection_name(related_model)
-    related_id = str(primary_key_value(related_value))
-    result['data'] = {'type': related_type, 'id': related_id}
     return result
 
 
