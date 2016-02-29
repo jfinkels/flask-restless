@@ -128,6 +128,16 @@ class TestFiltering(SearchTestBase):
         assert response.status_code == 400
         # TODO check error messages here
 
+    def test_bad_filter_relation(self):
+        """Tests for providing a bad filter parameter for fetching a
+        relation.
+
+        """
+        query_string = {'filter[objects]': 'bogus'}
+        response = self.app.get('/api/person/1/articles',
+                                query_string=query_string)
+        check_sole_error(response, 400, ['Unable to decode', 'filter object'])
+
     def test_bad_filter_relationship(self):
         """Test for providing a bad filter parameter for fetching
         relationship objects.
