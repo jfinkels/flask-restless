@@ -192,6 +192,26 @@ class TestProcessors(ManagerTestBase):
         self.Person = Person
         self.Base.metadata.create_all()
 
+    def test_resource(self):
+        """Tests for running a preprocessor on a request to delete a
+        single resource.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+
+        data = {'triggered': False}
+
+        def update_data(*args, **kw):
+            data['triggered'] = True
+
+        preprocessors = {'DELETE_RESOURCE': [update_data]}
+        self.manager.create_api(self.Person, methods=['DELETE'],
+                                preprocessors=preprocessors)
+        self.app.delete('/api/person/1')
+        assert data['triggered']
+
     def test_change_id(self):
         """Tests that a return value from a preprocessor overrides the ID of
         the resource to fetch as given in the request URL.

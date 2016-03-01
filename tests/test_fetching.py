@@ -1025,6 +1025,25 @@ class TestProcessors(ManagerTestBase):
         error = errors[0]
         assert 'forbidden' == error['detail']
 
+    def test_resource(self):
+        """Tests for running a preprocessor on a request to fetch a
+        single resource.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+
+        data = {'triggered': False}
+
+        def update_data(*args, **kw):
+            data['triggered'] = True
+
+        preprocessors = {'GET_RESOURCE': [update_data]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors)
+        self.app.get('/api/person/1')
+        assert data['triggered']
+
     def test_change_id(self):
         """Tests that a return value from a preprocessor overrides the ID of
         the resource to fetch as given in the request URL.
@@ -1149,6 +1168,58 @@ class TestProcessors(ManagerTestBase):
         # Article has a URL.
         self.manager.create_api(self.Article)
         self.app.get('/api/person/1/articles')
+        assert data['triggered']
+
+    def test_change_relation_2(self):
+        """Tests for changing the primary resource ID and the relation
+        name in a preprocessor for fetching a relation.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def change_two(*args, **kw):
+            # We will change the primary resource ID and the relation name.
+            return 1, 'articles'
+
+        preprocessors = {'GET_RELATION': [change_two]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors)
+        # Need to create an API for Article resources so that each
+        # Article has a URL.
+        self.manager.create_api(self.Article)
+        response = self.app.get('/api/person/foo/bar')
+        document = loads(response.data)
+        articles = document['data']
+        assert len(articles) == 1
+        article = articles[0]
+        assert 'article' == article['type']
+        assert '1' == article['id']
+
+    def test_related_resource(self):
+        """Tests that a preprocessor is executed when fetching a
+        related resource from a to-many relation.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        data = {'triggered': False}
+
+        def update_data(*args, **kw):
+            data['triggered'] = True
+
+        preprocessors = {'GET_RELATED_RESOURCE': [update_data]}
+        self.manager.create_api(self.Person, preprocessors=preprocessors)
+        # Need to create an API for Article resources so that each
+        # Article has a URL.
+        self.manager.create_api(self.Article)
+        self.app.get('/api/person/1/articles/1')
         assert data['triggered']
 
     def test_change_related_resource_1(self):
