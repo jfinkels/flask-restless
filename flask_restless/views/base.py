@@ -1214,7 +1214,7 @@ class APIBase(ModelView):
             title = 'Validation error'
             return error_response(400, cause=exception, title=title)
         if isinstance(errors, dict):
-            errors = [error(title='Validation error',
+            errors = [error(title='Validation error', status=400,
                             detail='{0}: {1}'.format(field, detail))
                       for field, detail in errors.items()]
         current_app.logger.exception(str(exception))

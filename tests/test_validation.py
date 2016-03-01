@@ -38,6 +38,7 @@ else:
     sav_version = tuple(int(n) for n in _sav.VERSION.split('.'))
     has_savalidation = True
 
+from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import loads
 from .helpers import ManagerTestBase
@@ -162,12 +163,7 @@ class TestSimpleValidation(ManagerTestBase):
                      }
                 }
         response = self.app.patch('/api/person/1', data=dumps(data))
-        assert response.status_code == 400
-        document = loads(response.data)
-        errors = document['errors']
-        error = errors[0]
-        assert 'validation' in error['title'].lower()
-        assert 'must be between' in error['detail'].lower()
+        check_sole_error(response, 400, ['age', 'Must be between'])
         # Check that the person was not updated.
         assert person.age == 1
 
