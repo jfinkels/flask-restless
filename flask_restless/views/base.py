@@ -334,6 +334,13 @@ def requires_json_api_accept(func):
             return func(*args, **kw)
         header_pairs = list(parse_accept_header(header))
         # If the Accept header is empty, then do nothing.
+        #
+        # An empty Accept header is technically allowed by RFC 2616,
+        # Section 14.1 (for more information, see
+        # http://stackoverflow.com/a/12131993/108197). Since an empty
+        # Accept header doesn't violate JSON APIs rule against having
+        # only JSON API mimetypes with media type parameters, we simply
+        # proceed as normal with the request.
         if len(header_pairs) == 0:
             return func(*args, **kw)
         jsonapi_pairs = [(name, extra) for name, extra in header_pairs

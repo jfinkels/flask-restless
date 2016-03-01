@@ -131,6 +131,39 @@ class TestServerResponsibilities(ManagerTestBase):
         check_sole_error(response, 415, ['Content-Type',
                                          'media type parameters'])
 
+    def test_empty_accept_header(self):
+        """Tests that an empty :http:header:`Accept` header, which is
+        technically legal according to :rfc:`2616#sec14.1`, is allowed,
+        since it is not explicitly forbidden by JSON API.
+
+        For more information, see the `Server Responsibilities`_ section
+        of the JSON API specification.
+
+        .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+
+        """
+        headers = {'Accept': ''}
+        response = self.app.get('/api/person', headers=headers)
+        assert response.status_code == 200
+        document = loads(response.data)
+        assert len(document['data']) == 0
+
+    def test_valid_accept_header(self):
+        """Tests that we handle requests with an :http:header:`Accept`
+        header specifying the JSON API mimetype are handled normally.
+
+        For more information, see the `Server Responsibilities`_ section
+        of the JSON API specification.
+
+        .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+
+        """
+        headers = {'Accept': CONTENT_TYPE}
+        response = self.app.get('/api/person', headers=headers)
+        assert response.status_code == 200
+        document = loads(response.data)
+        assert len(document['data']) == 0
+
     def test_no_accept_media_type_params(self):
         """"Tests that a server responds with :http:status:`406` if each
         :http:header:`Accept` header is the JSON API media type, but
@@ -144,8 +177,4 @@ class TestServerResponsibilities(ManagerTestBase):
         """
         headers = {'Accept': '{0}; q=.8, {0}; q=.9'.format(CONTENT_TYPE)}
         response = self.app.get('/api/person', headers=headers)
-        assert response.status_code == 406
-        document = loads(response.data)
-        message = document['errors'][0]['detail']
-        assert 'Accept' in message
-        assert 'media type parameter' in message
+        check_sole_error(response, 406, ['Accept', 'media type parameter'])

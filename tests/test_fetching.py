@@ -83,6 +83,7 @@ class TestFetchCollection(ManagerTestBase):
         self.manager.create_api(Comment)
 
     def test_wrong_accept_header(self):
+
         """Tests that if a client specifies only :http:header:`Accept`
         headers with non-JSON API media types, then the server responds
         with a :http:status:`406`.
