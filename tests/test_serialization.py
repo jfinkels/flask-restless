@@ -359,6 +359,25 @@ class TestFetchResource(ManagerTestBase):
         assert expected_types == resource_types
         assert expected_ids == resource_ids
 
+    def test_exception_message(self):
+        """Tests that a message specified in the
+        :exc:`~flask.ext.restless.SerializationException` constructor
+        appears in an error response.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+
+        def raise_with_msg(instance, *args, **kw):
+            raise SerializationException(instance, message='foo')
+
+        self.manager.create_api(self.Person, serializer=raise_with_msg)
+
+        response = self.app.get('/api/person/1')
+        print(response.data)
+        check_sole_error(response, 500, ['foo'])
+
 
 class TestFetchRelation(ManagerTestBase):
 
