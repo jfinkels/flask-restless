@@ -45,6 +45,7 @@ from flask.ext.restless import CONTENT_TYPE
 from flask.ext.restless import ProcessingException
 
 from .helpers import BetterJSONEncoder as JSONEncoder
+from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import FlaskTestBase
 from .helpers import loads
@@ -637,6 +638,34 @@ class TestUpdating(ManagerTestBase):
         assert response.status_code == 405
         # TODO check error message here
 
+    def test_to_many_null(self):
+        """Tests that attempting to set a to-many relationship to null
+        yields an error response.
+
+        The JSON API protocol requires that a to-many relationship can
+        only be updated (if allowed) with a list.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        self.manager.create_api(self.Person, url_prefix='/api2',
+                                methods=['PATCH'],
+                                allow_to_many_replacement=True)
+        data = {
+            'data': {
+                'type': 'person',
+                'id': '1',
+                'relationships': {
+                    'articles': {
+                        'data': None
+                    }
+                }
+            }
+        }
+        response = self.app.patch('/api2/person/1', data=dumps(data))
+        check_sole_error(response, 400, ['articles', 'data', 'empty list'])
+
     def test_missing_type(self):
         """Tests that attempting to update a resource without providing a
         resource type yields an error.
@@ -678,21 +707,20 @@ class TestUpdating(ManagerTestBase):
         resource that doesn't exist yields an error.
 
         """
-        person = self.Person(id=1)
-        self.session.add(person)
+        article = self.Article(id=1)
+        self.session.add(article)
         self.session.commit()
         data = {'data':
-                    {'type': 'person',
+                    {'type': 'article',
                      'id': '1',
                      'relationships':
-                         {'articles':
-                              {'data': {'type': 'article', 'id': '1'}}
+                         {'author':
+                              {'data': {'type': 'person', 'id': '1'}}
                           }
                      }
                 }
-        response = self.app.patch('/api/person/1', data=dumps(data))
-        assert response.status_code == 404
-        # TODO check error message here
+        response = self.app.patch('/api/article/1', data=dumps(data))
+        check_sole_error(response, 404, ['found', 'person', '1'])
 
     def test_conflicting_type_to_one_link(self):
         """Tests that an attempt to update a to-one relationship with a linkage
@@ -743,7 +771,7 @@ class TestUpdating(ManagerTestBase):
         assert response.status_code == 409
         # TODO check error message here
 
-    def test_relationship_missing_data(self):
+    def test_relationship_empty_object(self):
         """Tests for an error response on a missing ``'data'`` key in a
         relationship object.
 
@@ -761,6 +789,31 @@ class TestUpdating(ManagerTestBase):
         response = self.app.patch('/api/article/1', data=dumps(data))
         assert response.status_code == 400
         # TODO check error message here
+
+    def test_relationship_missing_object(self):
+        """Tests that a request document missing a relationship object
+        causes an error response.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+        data = {
+            'data': {
+                'id': '1',
+                'type': 'article',
+                'relationships': {
+                    'author': None
+                }
+            }
+        }
+        response = self.app.patch('/api/article/1', data=dumps(data))
+        check_sole_error(response, 400, ['missing', 'relationship object',
+                                         'author'])
+        # Check that the article was not updated to None.
+        assert article.author is person
 
 
 class TestProcessors(ManagerTestBase):

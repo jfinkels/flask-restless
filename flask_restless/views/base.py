@@ -233,6 +233,17 @@ def _is_msie8or9():
             and (8, 0) <= version(request.user_agent) < (10, 0))
 
 
+def un_camel_case(s):
+    """Inserts spaces before the capital letters in a camel case string.
+
+    """
+    # This regular expression appears on StackOverflow
+    # <http://stackoverflow.com/a/199120/108197>, and is distributed
+    # under the Creative Commons Attribution-ShareAlike 3.0 Unported
+    # license.
+    return re.sub(r'(?<=\w)([A-Z])', r' \1', s)
+
+
 def catch_processing_exceptions(func):
     """Decorator that catches :exc:`ProcessingException`s and subsequently
     returns a JSON-ified error response.
@@ -456,7 +467,9 @@ def catch_integrity_errors(session):
                 # Special status code for conflicting instances: 409 Conflict
                 status = 409 if is_conflict(exception) else 400
                 detail = str(exception)
-                return error_response(status, cause=exception, detail=detail)
+                title = un_camel_case(exception.__class__.__name__)
+                return error_response(status, cause=exception, detail=detail,
+                                      title=title)
         return wrapped
     return decorated
 

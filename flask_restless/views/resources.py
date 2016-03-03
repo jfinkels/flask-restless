@@ -448,7 +448,7 @@ class API(APIBase):
             postprocessor(result=result)
         return result, status, headers
 
-    def _update_instance(self, instance, data):
+    def _update_instance(self, instance, data, resource_id):
         """Updates the attributes and relationships of the specified instance
         according to the elements in the `data` dictionary.
 
@@ -459,12 +459,22 @@ class API(APIBase):
         described in the `Updating Resources`_ section of the JSON API
         specification.
 
+        `resource_id` is the ID of the `instance` as determined from the
+        URL, given as a string. This is passed directly from the
+        :meth:`patch` method.
+
         .. _Updating Resources: http://jsonapi.org/format/#crud-updating
 
         """
         # Update any relationships.
         links = data.pop('relationships', {})
         for linkname, link in links.items():
+            if not isinstance(link, dict):
+                detail = ('missing relationship object for "{0}" in resource'
+                          ' of type "{1}" with ID "{2}"')
+                detail = detail.format(linkname, self.collection_name,
+                                       resource_id)
+                return error_response(400, detail=detail)
             # The client is obligated by JSON API to provide linkage if
             # the `links` attribute exists.
             if 'data' not in link:
@@ -473,19 +483,23 @@ class API(APIBase):
                 return error_response(400, detail=detail)
             linkage = link['data']
             related_model = get_related_model(self.model, linkname)
-            # If the client provided "null" for this relation, remove it by
-            # setting the attribute to ``None``.
-            if linkage is None:
-                setattr(instance, linkname, None)
-                continue
             # If this is a to-many relationship, get all the related
             # resources.
-            if isinstance(linkage, list):
+            if is_like_list(instance, linkname):
                 # Replacement of a to-many relationship may have been disabled
                 # by the user.
                 if not self.allow_to_many_replacement:
-                    message = 'Not allowed to replace a to-many relationship'
-                    return error_response(403, detail=message)
+                    detail = 'Not allowed to replace a to-many relationship'
+                    return error_response(403, detail=detail)
+                # The provided data must be a list for a to-many relationship.
+                if not isinstance(linkage, list):
+                    detail = ('"data" element for the to-many relationship'
+                              ' "{0}" on the instance of "{1}" with ID "{2}"'
+                              ' must be a list; maybe you intended to provide'
+                              ' an empty list?')
+                    detail = detail.format(linkname, self.collection_name,
+                                           resource_id)
+                    return error_response(400, detail=detail)
                 # If this is left empty, the relationship will be zeroed.
                 newvalue = []
                 not_found = []
@@ -512,21 +526,26 @@ class API(APIBase):
             # Otherwise, it is a to-one relationship, so just get the single
             # related resource.
             else:
-                expected_type = collection_name(related_model)
-                type_ = linkage['type']
-                if type_ != expected_type:
-                    detail = 'Type must be {0}, not {1}'
-                    detail = detail.format(expected_type, type_)
-                    return error_response(409, detail=detail)
-                id_ = linkage['id']
-                inst = get_by(self.session, related_model, id_)
-                # If the to-one relationship resource does not exist, return an
-                # error response.
-                if inst is None:
-                    detail = 'No object of type {0} found with ID {1}'
-                    detail = detail.format(type_, id_)
-                    return error_response(404, detail=detail)
-                newvalue = inst
+                # If the client provided "null" for this relation,
+                # remove it by setting the attribute to ``None``.
+                if linkage is None:
+                    newvalue = None
+                else:
+                    expected_type = collection_name(related_model)
+                    type_ = linkage['type']
+                    if type_ != expected_type:
+                        detail = 'Type must be {0}, not {1}'
+                        detail = detail.format(expected_type, type_)
+                        return error_response(409, detail=detail)
+                    id_ = linkage['id']
+                    inst = get_by(self.session, related_model, id_)
+                    # If the to-one relationship resource does not
+                    # exist, return an error response.
+                    if inst is None:
+                        detail = 'No object of type {0} found with ID {1}'
+                        detail = detail.format(type_, id_)
+                        return error_response(404, detail=detail)
+                    newvalue = inst
             # Set the new value of the relationship.
             try:
                 # TODO Here if there are any extra attributes in
@@ -548,13 +567,11 @@ class API(APIBase):
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
         data = strings_to_datetimes(self.model, data)
-        # Try to update all instances present in the query.
-        num_modified = 0
+        # Finally, update each attribute individually.
         try:
             if data:
                 for field, value in data.items():
                     setattr(instance, field, value)
-                num_modified += 1
             self.session.commit()
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
@@ -605,7 +622,7 @@ class API(APIBase):
         if id_ != resource_id:
             message = 'ID must be {0}, not {1}'.format(resource_id, id_)
             return error_response(409, detail=message)
-        result = self._update_instance(instance, data)
+        result = self._update_instance(instance, data, resource_id)
         # If result is not None, that means there was an error updating the
         # resource.
         if result is not None:

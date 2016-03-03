@@ -95,10 +95,19 @@ class TestSimpleValidation(ManagerTestBase):
             author_id = Column(Integer, ForeignKey('person.id'))
             author = relationship('Person', backref=backref('articles'))
 
+        class Comment(self.Base):
+            __tablename__ = 'comment'
+            id = Column(Integer, primary_key=True)
+            article_id = Column(Integer, ForeignKey('article.id'),
+                                nullable=False)
+            article = relationship(Article)
+
         self.Article = Article
+        self.Comment = Comment
         self.Person = Person
         self.Base.metadata.create_all()
         self.manager.create_api(Article)
+        self.manager.create_api(Comment, methods=['PATCH'])
         self.manager.create_api(Person, methods=['POST', 'PATCH'],
                                 validation_exceptions=[CoolValidationError])
 
@@ -149,8 +158,8 @@ class TestSimpleValidation(ManagerTestBase):
         assert person.age == 2
 
     def test_update_invalid(self):
-        """Tests that an attempt to update a resource with invalid data yields
-        an error response.
+        """Tests that an attempt to update a resource with an invalid
+        attribute yields an error response.
 
         """
         person = self.Person(id=1, age=1)
@@ -166,6 +175,38 @@ class TestSimpleValidation(ManagerTestBase):
         check_sole_error(response, 400, ['age', 'Must be between'])
         # Check that the person was not updated.
         assert person.age == 1
+
+    def test_update_relationship_invalid(self):
+        """Tests that an attempt to update a resource with an invalid
+        relationship yields an error response.
+
+        """
+        article = self.Article(id=1)
+        comment = self.Comment(id=1)
+        comment.article = article
+        self.session.add_all([comment, article])
+        self.session.commit()
+        data = {
+            'data': {
+                'id': '1',
+                'type': 'comment',
+                'relationships': {
+                    'article': {
+                        'data': None
+                    }
+                }
+            }
+        }
+        response = self.app.patch('/api/comment/1', data=dumps(data))
+        assert response.status_code == 400
+        document = loads(response.data)
+        errors = document['errors']
+        assert len(errors) == 1
+        error = errors[0]
+        assert error['title'] == 'Integrity Error'
+        assert 'null' in error['detail'].lower()
+        # Check that the relationship was not updated.
+        assert comment.article == article
 
     def test_adding_to_relationship_invalid(self):
         """Tests that an attempt to add to a relationship with invalid
@@ -204,7 +245,6 @@ class TestSimpleValidation(ManagerTestBase):
         data = {'data': [{'type': 'article', 'id': 1}]}
         response = self.app.patch('/api2/person/1/relationships/articles',
                                   data=dumps(data))
-        print(response.data)
         assert response.status_code == 400
         document = loads(response.data)
         errors = document['errors']
