@@ -17,17 +17,10 @@ their SQLAlchemy models.
 """
 from collections import defaultdict
 from collections import namedtuple
-# In Python 3...
-try:
-    from urllib.parse import urljoin
-# In Python 2...
-except ImportError:
-    from urlparse import urljoin
 from uuid import uuid1
 
-import flask
-from flask import request
 from flask import Blueprint
+from flask import url_for as flask_url_for
 
 from .helpers import collection_name
 from .helpers import serializer_for
@@ -271,7 +264,7 @@ class APIManager(object):
         # '.relationships'.
         if 'relationship' in kw and kw.pop('relationship'):
             parts.append('relationships')
-        url = flask.url_for('.'.join(parts), **kw)
+        url = flask_url_for('.'.join(parts), **kw)
         # if _absolute_url:
         #     url = urljoin(request.url_root, url)
         return url
@@ -680,8 +673,8 @@ class APIManager(object):
                       allow_to_many_replacement=allow_to_many_replacement,
                       # Keyword arguments RelationshipAPI.__init__()
                       allow_delete_from_to_many_relationships=adftmr)
-        # TODO Document this rather mysterious behavior, that these non-PATCH
-        # methods are allowed on relationship URLs.
+        # When PATCH is allowed, certain non-PATCH requests are allowed
+        # on relationship URLs.
         relationship_methods = READONLY_METHODS & methods
         if 'PATCH' in methods:
             relationship_methods |= WRITEONLY_METHODS
