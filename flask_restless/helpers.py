@@ -78,6 +78,26 @@ def get_related_model(model, relationname):
     """Gets the class of the model to which `model` is related by the attribute
     whose name is `relationname`.
 
+    For example, if we have the model classes ::
+
+        class Person(Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+            articles = relationship('Article')
+
+        class Article(Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship('Person')
+
+    then
+
+        >>> get_related_model(Person, 'articles')
+        <class 'Article'>
+        >>> get_related_model(Article, 'author')
+        <class 'Person'>
+
     """
     if hasattr(model, relationname):
         # inspector = sqlalchemy_inspect(model)
@@ -379,19 +399,19 @@ class KnowsAPIManagers:
 class ModelFinder(KnowsAPIManagers, Singleton):
     """The singleton class that backs the :func:`model_for` function."""
 
-    def __call__(self, collection_name, _apimanager=None, **kw):
+    def __call__(self, resource_type, _apimanager=None, **kw):
         if _apimanager is not None:
             # This may raise ValueError.
-            return _apimanager.model_for(collection_name, **kw)
+            return _apimanager.model_for(resource_type, **kw)
         for manager in self.created_managers:
             try:
-                return self(collection_name, _apimanager=manager, **kw)
+                return self(resource_type, _apimanager=manager, **kw)
             except ValueError:
                 pass
         message = ('No model with collection name {0} is known to any'
                    ' APIManager objects; maybe you have not set the'
                    ' `collection_name` keyword argument when calling'
-                   ' `APIManager.create_api()`?').format(collection_name)
+                   ' `APIManager.create_api()`?').format(resource_type)
         raise ValueError(message)
 
 
