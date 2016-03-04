@@ -36,6 +36,7 @@ from .helpers import DatabaseTestBase
 from .helpers import ManagerTestBase
 from .helpers import FlaskTestBase
 from .helpers import force_content_type_jsonapi
+from .helpers import loads
 from .helpers import skip
 from .helpers import skip_unless
 from .helpers import unregister_fsa_session_signals
@@ -326,6 +327,24 @@ class TestAPIManager(ManagerTestBase):
             assert url2.endswith('/api/people/1')
             assert url3.endswith('/api/people/1/articles')
             assert url4.endswith('/api/people/1/articles/2')
+
+    def test_url_for_explicitly_sets_primary_key_in_links(self):
+        """Should use the primary_key explicitly set when generating links"""
+        article = self.Article(id=1, title=u'my_article')
+        self.session.add(article)
+        self.session.commit()
+        self.manager.create_api(self.Article, primary_key='title')
+
+        response = self.app.get('/api/article')
+        document = loads(response.data)
+        articles = document['data']
+        article = articles[0]
+
+        assert 'my_article' in article['links']['self']
+        assert '/1' not in article['links']['self']
+        author_links = article['relationships']['author']['links']
+        assert author_links['self'] == (
+            '/api/article/my_article/relationships/author')
 
     @raises(ValueError)
     def test_url_for_nonexistent(self):

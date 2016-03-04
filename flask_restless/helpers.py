@@ -184,22 +184,6 @@ def primary_key_names(model):
             and field.property.columns[0].primary_key]
 
 
-def primary_key_name(model_or_instance):
-    """Returns the name of the primary key of the specified model or instance
-    of a model, as a string.
-
-    If `model_or_instance` specifies multiple primary keys and ``'id'`` is one
-    of them, ``'id'`` is returned. If `model_or_instance` specifies multiple
-    primary keys and ``'id'`` is not one of them, only the name of the first
-    one in the list of primary keys is returned.
-
-    """
-    its_a_model = isinstance(model_or_instance, type)
-    model = model_or_instance if its_a_model else model_or_instance.__class__
-    pk_names = primary_key_names(model)
-    return 'id' if 'id' in pk_names else pk_names[0]
-
-
 def primary_key_value(instance, as_string=False):
     """Returns the value of the primary key field of the specified `instance`
     of a SQLAlchemy model.
@@ -211,7 +195,7 @@ def primary_key_value(instance, as_string=False):
     If `as_string` is ``True``, try to coerce the return value to a string.
 
     """
-    result = getattr(instance, primary_key_name(instance))
+    result = getattr(instance, primary_key_for(instance))
     if not as_string:
         return result
     try:
@@ -265,7 +249,7 @@ def query_by_primary_key(session, model, pk_value, primary_key=None):
     Presumably, the returned query should have at most one element.
 
     """
-    pk_name = primary_key or primary_key_name(model)
+    pk_name = primary_key or primary_key_for(model)
     query = session_query(session, model)
     return query.filter(getattr(model, pk_name) == pk_value)
 
@@ -488,6 +472,42 @@ class SerializerFinder(KnowsAPIManagers, Singleton):
         raise ValueError(message)
 
 
+class PrimaryKeyFinder(KnowsAPIManagers, Singleton):
+    """The singleton class that backs the :func:`primary_key_for` function."""
+
+    def __call__(self, instance_or_model, _apimanager=None, **kw):
+        if isinstance(instance_or_model, type):
+            model = instance_or_model
+        else:
+            model = instance_or_model.__class__
+
+        if _apimanager is not None:
+            managers_to_search = [_apimanager]
+        else:
+            managers_to_search = self.created_managers
+        for manager in managers_to_search:
+            if model in manager.created_apis_for:
+                primary_key = manager.primary_key_for(model, **kw)
+                break
+        else:
+            message = ('Model "{0}" is not known to {1}; maybe you have not'
+                       ' called APIManager.create_api() for this model?')
+            if _apimanager is not None:
+                manager_string = 'APIManager "{0}"'.format(_apimanager)
+            else:
+                manager_string = 'any APIManager objects'
+            message = message.format(model, manager_string)
+            raise ValueError(message)
+
+        # If `APIManager.create_api(model)` was called without providing
+        # a value for the `primary_key` keyword argument, then we must
+        # compute the primary key name from the model directly.
+        if primary_key is None:
+            pk_names = primary_key_names(model)
+            primary_key = 'id' if 'id' in pk_names else pk_names[0]
+        return primary_key
+
+
 #: Returns the URL for the specified model, similar to :func:`flask.url_for`.
 #:
 #: `model` is a SQLAlchemy model class. This should be a model on which
@@ -622,3 +642,39 @@ serializer_for = SerializerFinder()
 #:     <class 'mymodels.Person'>
 #:
 model_for = ModelFinder()
+
+#: Returns the primary key to be used for the given model or model instance,
+#: as specified by the ``primary_key`` keyword argument to
+#: :meth:`APIManager.create_api` when it was previously invoked on the model.
+#:
+#: `primary_key` is a string corresponding to the primary key identifier
+#: to be used by flask-restless for a model. If no primary key has been set
+#: at the flask-restless level (by using the ``primary_key`` keyword argument
+#: when calling :meth:`APIManager.create_api_blueprint`, the model's primary
+#: key will be returned. If no API has been created for the model, this
+#: function raises a `ValueError`.
+#:
+#: If `_apimanager` is not ``None``, it must be an instance of
+#: :class:`APIManager`. Restrict our search for endpoints exposing `model` to
+#: only endpoints created by the specified :class:`APIManager` instance.
+#:
+#: For example, suppose you have a model class ``Person`` and have created the
+#: appropriate Flask application and SQLAlchemy session::
+#:
+#:     >>> from mymodels import Person
+#:     >>> manager = APIManager(app, session=session)
+#:     >>> manager.create_api(Person, primary_key='name')
+#:     >>> primary_key_for(Person)
+#:     'name'
+#:     >>> my_person = Person(name="Bob")
+#:     >>> primary_key_for(my_person)
+#:     'name'
+#:
+#: This is in contrast to the typical default:
+#:
+#:     >>> manager = APIManager(app, session=session)
+#:     >>> manager.create_api(Person)
+#:     >>> primary_key_for(Person)
+#:     'id'
+#:
+primary_key_for = PrimaryKeyFinder()

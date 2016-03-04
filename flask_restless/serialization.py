@@ -47,7 +47,7 @@ from .helpers import get_related_model
 from .helpers import get_relations
 from .helpers import has_field
 from .helpers import is_like_list
-from .helpers import primary_key_name
+from .helpers import primary_key_for
 from .helpers import primary_key_value
 from .helpers import serializer_for
 from .helpers import strings_to_datetimes
@@ -614,7 +614,7 @@ class DefaultSerializer(Serializer):
 
         # If the primary key is not named "id", we'll duplicate the
         # primary key under the "id" key.
-        pk_name = primary_key_name(model)
+        pk_name = primary_key_for(model)
         if pk_name != 'id':
             result['id'] = result['attributes'][pk_name]
         # TODO Same problem as above.

@@ -38,6 +38,8 @@ Not yet released.
 - #474: include license files in built wheel for distribution.
 - #501: allows empty string for `url_prefix` keyword argument to
   :meth:`APIManager.create_api`.
+- #476: use the primary key provided at the time of invoking
+  :meth:`APIManager.create_api` to build resource urls in responses.
 
 Older versions
 --------------

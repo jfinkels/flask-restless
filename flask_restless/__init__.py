@@ -26,6 +26,7 @@ from .helpers import collection_name
 from .helpers import model_for
 from .helpers import serializer_for
 from .helpers import url_for
+from .helpers import primary_key_for
 from .manager import APIManager
 from .manager import IllegalArgumentError
 from .serialization import SerializationException
