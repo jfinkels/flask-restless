@@ -45,22 +45,23 @@ yields the response
 .. sourcecode:: http
 
    HTTP/1.1 201 Created
+   Location: http://example.com/api/person/1
    Content-Type: application/vnd.api+json
 
    {
      "data": {
-       "id": "1",
-       "type": "person",
        "attributes": {
          "name": "foo"
-       }
+       },
+       "id": "1",
+       "jsonapi": {
+         {"version": "1.0"}
+       },
        "links": {
          "self": "http://example.com/api/person/bd34b544-ad39-11e5-a2aa-4cbb58b9ee34"
        },
        "meta": {},
-       "jsonapi": {
-         {"version": 1.0}
-       }
+       "type": "person"
      }
    }
 
@@ -90,6 +91,7 @@ yields the response
 .. sourcecode:: http
 
    HTTP/1.1 201 Created
+   Location: http://example.com/api/person/bd34b544-ad39-11e5-a2aa-4cbb58b9ee34
    Content-Type: application/vnd.api+json
 
    {
@@ -103,7 +105,7 @@ yields the response
        },
        "meta": {},
        "jsonapi": {
-         {"version": 1.0}
+         {"version": "1.0"}
        },
        "type": "person"
      }
