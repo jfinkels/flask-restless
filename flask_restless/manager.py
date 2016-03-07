@@ -378,7 +378,7 @@ class APIManager(object):
                              serializer=None, deserializer=None,
                              includes=None, allow_to_many_replacement=False,
                              allow_delete_from_to_many_relationships=False,
-                             allow_client_generated_ids=False):
+                             allow_client_generated_ids=False, rate_limit=60):
         """Creates and returns a ReSTful API interface as a blueprint, but does
         not register it on any :class:`flask.Flask` application.
 
@@ -577,6 +577,11 @@ class APIManager(object):
         specify the ID for the resource to create. JSON API recommends that
         this be a UUID. This is ``False`` by default. For more information, see
         :ref:`creating`.
+
+        `rate_limit` defines the maximum number of requests that a
+        client can make within one hour before receiving a
+        :http:status:`429` response. For more information, see
+        :ref:`ratelimit`.
 
         """
         # Perform some sanity checks on the provided keyword arguments.

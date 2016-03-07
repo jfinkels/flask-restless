@@ -269,6 +269,16 @@ class TestLocalAPIManager(DatabaseTestBase):
     #     response = self.app.get('/bar/person')
     #     assert response.status_code == 404
 
+    def test_rate_limit(self):
+        # For this test, we are assuming that this whole method executes
+        # within the default window, which is one hour.
+        manager = APIManager(self.flaskapp, session=self.session, rate_limit=1)
+        manager.create_api(self.Person)
+        response = self.app.get('/api/people')
+        assert response.status_code == 200
+        response = self.app.get('/api/people')
+        check_sole_error(response, 429, ['rate limit', 'exceeded',
+                                         '127.0.0.1'])
 
 class TestAPIManager(ManagerTestBase):
     """Unit tests for the :class:`flask_restless.manager.APIManager` class."""

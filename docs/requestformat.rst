@@ -48,6 +48,79 @@ the current time (as measured at the server), use one of the special strings
 server receives one of these strings in a request, it will use the
 corresponding SQL function to set the date or time of the field in the model.
 
+.. _ratelimit
+
+Rate limiting
+-------------
+
+By default, clients can make up to sixty requests per hour, after which,
+Flask-Restless responds with :http:status:`429`. A client is identified by its
+IP address. The maximum number of requests per window can be modified by
+setting the `rate_limit` keyword argument to the :meth:`APIManage.create_api`
+method.
+
+For example, a request like ::
+
+   GET /api/person HTTP/1.1
+   Host: example.com
+   Accept: application/vnd.api+json
+
+will produce a response with headers like this::
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+   Content-Type: application/vnd.api+json
+   Rate-Limit-Limit: 60
+   Rate-Limit-Remaining: 59
+   Rate-Limit-Reset: 1457316999
+
+The :http:header:`Rate-Limit-Limit` header states the maximum number of
+requests per hour, the :http:header:`Rate-Limit-Remaining` states the number of
+requests remaining for this client within the current window, and the
+:http:header:`Rate-Limit-Reset` gives the time, in `UTC epoch seconds`_, at
+which the current rate limit window resets.
+
+In Python, you can get the :class:`~datetime.datetime` object corresponding to
+a given timestamp as follows::
+
+    >>> from datetime import datetime
+    >>> datetime.fromtimestamp(1457316999)
+    datetime.datetime(2016, 3, 6, 21, 16, 39)
+
+If the client exceeds the rate limit before the window resets, the response
+from the server will look like
+
+.. sourcecode:: http
+
+   HTTP/1.1 429 Too Many Requests
+   Content-Type: application/vnd.api+json
+   Rate-Limit-Limit: 60
+   Rate-Limit-Remaining: 0
+   Rate-Limit-Reset: 1457316999
+
+   {
+     'errors': [
+       {
+         'code': null,
+         'detail': 'API rate limit exceeded for ###.###.###.###',
+         'id': null,
+         'links': null,
+         'meta': null,
+         'source': null,
+         'status': null,
+         'title': null
+       }
+     ],
+     'jsonapi': {
+       'version': '1.0'
+     }
+   }
+
+where `###.###.###.###` will be the IP address of the client.
+
+.. _UTC epoch seconds: https://en.wikipedia.org/wiki/Unix_time
+
 .. _errors:
 
 Errors and error messages
