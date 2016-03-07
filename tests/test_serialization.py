@@ -20,6 +20,7 @@ testing code decoupled from the serialization implementation.
 """
 from datetime import datetime
 from datetime import time
+from datetime import timedelta
 from uuid import uuid1
 
 from sqlalchemy import Column
@@ -27,7 +28,9 @@ from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import Interval
 from sqlalchemy import Time
+from sqlalchemy import TypeDecorator
 from sqlalchemy import Unicode
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
@@ -53,7 +56,18 @@ def raise_exception(instance, *args, **kw):
     raise SerializationException(instance)
 
 
+class DecoratedDateTime(TypeDecorator):
+
+    impl = DateTime
+
+
+class DecoratedInterval(TypeDecorator):
+
+    impl = Interval
+
+
 class TestFetchCollection(ManagerTestBase):
+    """Tests for serializing when fetching from a collection endpoint."""
 
     def setup(self):
         super(TestFetchCollection, self).setup()
@@ -99,9 +113,13 @@ class TestFetchResource(ManagerTestBase):
             id = Column(Integer, primary_key=True)
             uuid = Column(GUID)
             name = Column(Unicode)
+
+            birthday = Column(Date)
             bedtime = Column(Time)
             birth_datetime = Column(DateTime)
-            birthday = Column(Date)
+
+            decorated_datetime = Column(DecoratedDateTime)
+            decorated_interval = Column(DecoratedInterval)
 
             @hybrid_property
             def has_early_bedtime(self):
@@ -190,6 +208,39 @@ class TestFetchResource(ManagerTestBase):
         document = loads(response.data)
         person = document['data']
         assert person['attributes']['birthday'] == now.isoformat()
+
+    def test_type_decorator_datetime(self):
+        """Tests for serializing "subtypes" of the SQLAlchemy
+        :class:`sqlalchemy.DateTime` class.
+
+        """
+        now = datetime.now()
+        person = self.Person(id=1, decorated_datetime=now)
+        self.session.add(person)
+        self.session.commit()
+        self.manager.create_api(self.Person)
+        response = self.app.get('/api/person/1')
+        assert response.status_code == 200
+        document = loads(response.data)
+        person = document['data']
+        assert person['attributes']['decorated_datetime'] == now.isoformat()
+
+    def test_type_decorator_interval(self):
+        """Tests for serializing "subtypes" of the SQLAlchemy
+        :class:`sqlalchemy.Interval` class.
+
+        """
+        # This timedelta object represents an interval of ten seconds.
+        interval = timedelta(0, 10)
+        person = self.Person(id=1, decorated_interval=interval)
+        self.session.add(person)
+        self.session.commit()
+        self.manager.create_api(self.Person)
+        response = self.app.get('/api/person/1')
+        assert response.status_code == 200
+        document = loads(response.data)
+        person = document['data']
+        assert person['attributes']['decorated_interval'] == 10
 
     def test_custom_function(self):
         """Tests for a custom serialization function."""
@@ -375,7 +426,6 @@ class TestFetchResource(ManagerTestBase):
         self.manager.create_api(self.Person, serializer=raise_with_msg)
 
         response = self.app.get('/api/person/1')
-        print(response.data)
         check_sole_error(response, 500, ['foo'])
 
 
