@@ -271,8 +271,8 @@ class TestFetchCollection(ManagerTestBase):
 
         """
         person1 = self.Person(id=1)
-        person2 = self.Person(id=2, name='foo')
-        person3 = self.Person(id=3, name='bar')
+        person2 = self.Person(id=2, name=u'foo')
+        person3 = self.Person(id=3, name=u'bar')
         person4 = self.Person(id=4)
         self.session.add_all([person1, person2, person3, person4])
         self.session.commit()

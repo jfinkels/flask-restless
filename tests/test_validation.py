@@ -335,13 +335,13 @@ class TestSAValidation(ManagerTestBase):
         error response.
 
         """
-        person = self.Person(id=1, email='example@example.com')
+        person = self.Person(id=1, email=u'example@example.com')
         self.session.add(person)
         self.session.commit()
         data = {'data':
                     {'id': '1',
                      'type': 'person',
-                     'attributes': {'email': 'foo@example.com'}
+                     'attributes': {'email': u'foo@example.com'}
                      }
                 }
         response = self.app.patch('/api/person/1', data=dumps(data))
@@ -353,7 +353,7 @@ class TestSAValidation(ManagerTestBase):
         an error response.
 
         """
-        person = self.Person(id=1, email='example@example.com')
+        person = self.Person(id=1, email=u'example@example.com')
         self.session.add(person)
         self.session.commit()
         data = {'data':

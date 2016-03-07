@@ -122,7 +122,7 @@ class TestUpdating(ManagerTestBase):
         with a :http:status:`415`.
 
         """
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         self.session.add(person)
         self.session.commit()
         headers = {'Content-Type': 'application/json'}
@@ -138,7 +138,7 @@ class TestUpdating(ManagerTestBase):
         response = self.app.patch('/api/person/1', data=dumps(data),
                                   headers=headers)
         assert response.status_code == 415
-        assert person.name == 'foo'
+        assert person.name == u'foo'
 
     def test_wrong_accept_header(self):
         """Tests that if a client specifies only :http:header:`Accept`
@@ -146,7 +146,7 @@ class TestUpdating(ManagerTestBase):
         with a :http:status:`406`.
 
         """
-        person = self.Person(id=1, name='foo')
+        person = self.Person(id=1, name=u'foo')
         self.session.add(person)
         self.session.commit()
         headers = {'Accept': 'application/json'}
@@ -162,7 +162,7 @@ class TestUpdating(ManagerTestBase):
         response = self.app.patch('/api/person/1', data=dumps(data),
                                  headers=headers)
         assert response.status_code == 406
-        assert person.name == 'foo'
+        assert person.name == u'foo'
 
     def test_related_resource_url_forbidden(self):
         """Tests that :http:method:`patch` requests to a related resource URL
@@ -331,7 +331,7 @@ class TestUpdating(ManagerTestBase):
         data = {'data':
                     {'type': 'person',
                      'id': '2',
-                     'attributes': {'name': 'foo'}
+                     'attributes': {'name': u'foo'}
                      }
                 }
         response = self.app.patch('/api/person/2', data=dumps(data))
@@ -447,7 +447,7 @@ class TestUpdating(ManagerTestBase):
                 }
         response = self.app.patch('/api/people/1', data=dumps(data))
         assert response.status_code == 204
-        assert person.name == 'foo'
+        assert person.name == u'foo'
 
     def test_different_endpoints(self):
         """Tests for updating the same resource from different endpoints."""
@@ -464,7 +464,7 @@ class TestUpdating(ManagerTestBase):
                 }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 204
-        assert person.name == 'foo'
+        assert person.name == u'foo'
         data = {'data':
                     {'type': 'person',
                      'id': '1',
@@ -682,7 +682,7 @@ class TestUpdating(ManagerTestBase):
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 400
         # TODO check error message here
-        assert person.name == 'foo'
+        assert person.name == u'foo'
 
     def test_missing_id(self):
         """Tests that attempting to update a resource without providing an ID
@@ -700,7 +700,7 @@ class TestUpdating(ManagerTestBase):
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 400
         # TODO check error message here
-        assert person.name == 'foo'
+        assert person.name == u'foo'
 
     def test_nonexistent_to_one_link(self):
         """Tests that an attempt to update a to-one relationship with a
@@ -855,7 +855,7 @@ class TestProcessors(ManagerTestBase):
                 }
         response = self.app.patch('/api/person/0', data=dumps(data))
         assert response.status_code == 204
-        assert person.name == 'foo'
+        assert person.name == u'foo'
 
     def test_single_resource_processing_exception(self):
         """Tests for a preprocessor that raises a :exc:`ProcessingException`
@@ -885,7 +885,7 @@ class TestProcessors(ManagerTestBase):
         assert len(errors) == 1
         error = errors[0]
         assert 'forbidden' == error['detail']
-        assert person.name == 'foo'
+        assert person.name == u'foo'
 
     def test_single_resource(self):
         """Tests :http:method:`patch` requests for a single resource with a
