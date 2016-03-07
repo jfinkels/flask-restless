@@ -738,21 +738,25 @@ def errors_response(status, errors):
     requirements of the JSON API specification.
 
     This function returns a two-tuple whose left element is a dictionary
-    containing the errors under the top-level key ``errors`` and whose right
-    element is `status`.
+    representing a JSON API response document and whose right element is
+    simply `status`.
 
-    The returned dictionary object also includes a key with a special name,
-    stored in the key :data:`_STATUS`, which is used to workaround an
-    incompatibility between Flask and mimerender that doesn't allow setting
-    headers on a global response object.
+    In addition to a list of the error objects under the ``'errors'``
+    key, a jsonapi object, the returned dictionary object also includes
+    under the ``'meta'`` element a key with a special name, stored in
+    the key :data:`_STATUS`, which is used to workaround an
+    incompatibility between Flask and mimerender that doesn't allow
+    setting headers on a global response object.
 
-    The keys within each error object are described in the `Errors`_ section of
-    the JSON API specification.
+    The keys within each error object are described in the `Errors`_
+    section of the JSON API specification.
 
     .. _Errors: http://jsonapi.org/format/#errors
 
     """
-    return {'errors': errors, _STATUS: status}, status
+    document = {'errors': errors, 'jsonapi': {'version': JSONAPI_VERSION},
+                'meta': {_STATUS: status}}
+    return document, status
 
 
 def error_from_serialization_exception(exception, included=False):
