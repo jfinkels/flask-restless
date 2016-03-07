@@ -18,6 +18,7 @@ their SQLAlchemy models.
 from collections import defaultdict
 from collections import namedtuple
 from uuid import uuid1
+import sys
 
 from flask import Blueprint
 from flask import url_for as flask_url_for
@@ -44,6 +45,11 @@ ALL_METHODS = READONLY_METHODS | WRITEONLY_METHODS
 
 #: The default URL prefix for APIs created by instance of :class:`APIManager`.
 DEFAULT_URL_PREFIX = '/api'
+
+if sys.version_info < (3, ):
+    STRING_TYPES = (str, unicode)
+else:
+    STRING_TYPES = (str, )
 
 #: A triple that stores the SQLAlchemy session and the universal pre- and post-
 #: processors to be applied to any API created for a particular Flask
@@ -482,7 +488,8 @@ class APIManager(object):
         attributes of the model will appear in the JSON representation
         of an instance of the model. This is useful if your model has an
         attribute that is not a SQLAlchemy column but you want it to be
-        exposed.
+        exposed. If any of the attributes does not exist on the model, a
+        :exc:`AttributeError` is raised.
 
         If `exclude` is not ``None``, it must be a list of columns and/or
         relationships of the specified `model`, given either as strings or as
@@ -600,6 +607,12 @@ class APIManager(object):
         # for key, value in self.restless_info.universal_postprocessors.items():
         for key, value in self.post.items():
             postprocessors_[key] = value + postprocessors_[key]
+        # Validate that all the additional attributes exist on the model.
+        if additional_attributes is not None:
+            for attr in additional_attributes:
+                if isinstance(attr, STRING_TYPES) and not hasattr(model, attr):
+                    msg = 'no attribute "{0}" on model {1}'.format(attr, model)
+                    raise AttributeError(msg)
         # Create a default serializer and deserializer if none have been
         # provided.
         if serializer is None:

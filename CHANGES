@@ -15,6 +15,8 @@ Version 1.0.0-dev
 
 Not yet released.
 
+- #257: ensures additional attributes specified by the user actually exist on
+  the model.
 - #363 (partial solution): don't use ``COUNT`` on requests that don't require
   pagination.
 - #404: **Major overhaul of Flask-Restless to support JSON API**.

@@ -424,6 +424,15 @@ class TestAPIManager(ManagerTestBase):
         """
         self.manager.create_api(self.Person, only=['id'], exclude=['name'])
 
+    @raises(AttributeError)
+    def test_additional_attributes_nonexistent(self):
+        """Tests that an attempt to include an additional attribute that
+        does not exist on the model raises an exception at the time of
+        API creation.
+
+        """
+        self.manager.create_api(self.Person, additional_attributes=['bogus'])
+
 
 @skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')
 class TestFSA(FlaskTestBase):
