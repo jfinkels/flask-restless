@@ -419,8 +419,8 @@ class TestInclusion(ManagerTestBase):
         self.manager.create_api(Person)
 
     def test_default_inclusion(self):
-        """Tests that by default, Flask-Restless includes no information
-        in compound documents.
+        """Tests that by default, Flask-Restless includes no included
+        resources in compound documents.
 
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
@@ -440,7 +440,10 @@ class TestInclusion(ManagerTestBase):
         person = document['data']
         articles = person['relationships']['articles']['data']
         assert ['1'] == sorted(article['id'] for article in articles)
-        assert 'included' not in document
+        # The current implementation of Flask-Restless has an empty list
+        # for `included`.
+        assert document['included'] == []
+        # assert 'included' not in document
 
     def test_set_default_inclusion(self):
         """Tests that the user can specify default compound document
@@ -765,8 +768,9 @@ class TestSparseFieldsets(ManagerTestBase):
 
         """
         article = self.Article(id=1, title=u'bar')
-        person = self.Person(id=1, name=u'foo', age=99, articles=[article])
-        self.session.add_all([person, article])
+        person = self.Person(id=1, name=u'foo', age=99)
+        article.author = person
+        self.session.add_all([article, person])
         self.session.commit()
         # Person objects should only have ID and name, while article objects
         # should only have ID.

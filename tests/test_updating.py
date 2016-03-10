@@ -33,6 +33,7 @@ from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import Time
 from sqlalchemy import Unicode
@@ -53,6 +54,7 @@ from .helpers import loads
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
 from .helpers import ManagerTestBase
+from .helpers import raise_s_exception as raise_exception
 
 
 class TestUpdating(ManagerTestBase):
@@ -106,9 +108,17 @@ class TestUpdating(ManagerTestBase):
             def radius(cls):
                 return cls.length / 2
 
+        class Tag(self.Base):
+            __tablename__ = 'tag'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+            updated_at = Column(DateTime, server_default=func.now(),
+                                onupdate=func.current_timestamp())
+
         self.Article = Article
         self.Interval = Interval
         self.Person = Person
+        self.Tag = Tag
         self.Base.metadata.create_all()
         self.manager.create_api(Article, methods=['PATCH'])
         self.manager.create_api(Interval, methods=['PATCH'])
@@ -851,6 +861,33 @@ class TestUpdating(ManagerTestBase):
                                          'author'])
         # Check that the article was not updated to None.
         assert article.author is person
+
+    def test_serialization_exception(self):
+        """Tests that serialization exceptions are caught when
+        responding with content.
+
+        A representation of the modified resource is returned to the
+        client when an update causes additional changes in the resource
+        in ways other than those specified by the client.
+
+        """
+        tag = self.Tag(id=1)
+        self.session.add(tag)
+        self.session.commit()
+        self.manager.create_api(self.Tag, methods=['PATCH'],
+                                serializer_class=raise_exception)
+        data = {
+            'data': {
+                'type': 'tag',
+                'id': '1',
+                'attributes': {
+                    'name': u'foo'
+                }
+            }
+        }
+        response = self.app.patch('/api/tag/1', data=dumps(data))
+        check_sole_error(response, 500, ['Failed to serialize', 'type', 'tag',
+                                         'ID', '1'])
 
 
 class TestProcessors(ManagerTestBase):

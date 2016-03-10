@@ -128,57 +128,90 @@ Custom serialization
 ~~~~~~~~~~~~~~~~~~~~
 
 .. versionadded:: 0.17.0
+.. versionchanged:: 1.0.0b1
+
+   Transitioned from function-based serialization to class-based serialization.
 
 Flask-Restless provides serialization and deserialization that work with the
 JSON API specification.  If you wish to have more control over the way
 instances of your models are converted to Python dictionary representations,
-you can specify a custom serialization function by providing it to
-:meth:`APIManager.create_api` via the ``serializer`` keyword argument.
-Similarly, to provide a deserialization function that converts a Python
-dictionary representation to an instance of your model, use the
-``deserializer`` keyword argument.  However, if you provide a serializer that
-fails to produce resource objects that satisfy the JSON API specification, your
-client will receive non-compliant responses!
+you can specify custom serialization by providing it to
+:meth:`APIManager.create_api` via the ``serializer_class`` keyword argument.
+Similarly, to provide a deserializer that converts a Python dictionary
+representation to an instance of your model, use the ``deserializer_class``
+keyword argument. However, if you provide a serializer that fails to produce
+resource objects that satisfy the JSON API specification, your client will
+receive non-compliant responses!
 
-Define your serialization functions like this::
+Your serializer classes must be a subclass of
+:class:`~flask.ext.restless.Serializer` and can override the
+:meth:`~flask.ext.restless.Serializer.serialize` and
+:meth:`~flask.ext.restless.Serializer.serialize_many` methods to provide custom
+serialization (however, we recommend overriding the
+:class:`~flask.ext.restless.DefaultSerializer` class, as it provides some
+useful behavior in its constructor). These methods take an instance or
+instances as input and return a dictionary representing a JSON API
+document. Each also accepts an ``only`` keyword argument, indicating the sparse
+fieldsets requested by the client. When implementing your custom serializer,
+you may wish to override the :class:`flask.ext.restless.DefaultSerializer`
+class::
 
-    def serialize(instance, only=None):
-        return {'id': ..., 'type': ..., 'attributes': ...}
+    from flask.ext.restless import DefaultSerializer
 
-``instance`` is an instance of a SQLAlchemy model and the ``only`` argument is
-a list; only the fields (that is, the attributes and relationships) whose names
-appear as strings in `only` should appear in the returned dictionary. The only
-exception is that the keys ``'id'`` and ``'type'`` must always appear,
-regardless of whether they appear in `only`. The function must return a
-dictionary representation of the resource object.
+    class MySerializer(DefaultSerializer):
 
-To help with creating custom serialization functions, Flask-Restless provides a
-:func:`simple_serialize` function, which returns the result of its basic,
-built-in serialization. Therefore, one way to customize your serialized objects
-is to do something like this::
+        def serialize(self, instance, only=None):
+            super_serialize = super(DefaultSerializer, self).serialize
+            document = super_serialize(instance, only=only)
+            # Make changes to the document here...
+            ...
+            return document
 
-    from flask.ext.restless import simple_serialize
+        def serialize_many(self, instances, only=None):
+            super_serialize = super(DefaultSerializer, self).serialize_many
+            document = super_serialize(instances, only=only)
+            # Make changes to the document here...
+            ...
+            return document
 
-    def my_serializer(instance, only=None):
-        # Get the default serialization of the instance.
-        result = simple_serialize(instance, only=only)
-        # Make your changes here.
-        result['meta']['foo'] = 'bar'
-        # Return the dictionary.
-        return result
+``instance`` is an instance of a SQLAlchemy model, ``instances`` is a list of
+instances, and the ``only`` argument is a list; only the fields (that is, the
+attributes and relationships) whose names appear as strings in `only` should
+appear in the returned dictionary. The only exception is that the keys ``'id'``
+and ``'type'`` must always appear, regardless of whether they appear in
+`only`. The function must return a dictionary representation of the resource
+object.
 
-You could also define a subclass of the :class:`DefaultSerializer` class,
-override the :meth:`DefaultSerializer.__call__` method, and provide an instance
-of that class to the `serializer` keyword argument.
+Flask-Restless also provides functional access to the default serialization,
+via the :func:`~flask.ext.restless.simple_serialize` and
+:func:`~flask.ext.restless.simple_serialize_many` functions, which return the
+result of the built-in default serialization.
 
-For deserialization, define your custom deserialization function like this::
+For deserialization, define your custom deserialization class like this::
 
-    def deserialize(document):
-        return Person(...)
+    from flask.ext.restless import DefaultDeserializer
+
+    class MyDeserializer(DefaultDeserializer):
+
+        def deserialize(self, document):
+            return Person(...)
 
 ``document`` is a dictionary representation of the *complete* incoming JSON API
-document, where the ``data`` element contains the primary resource object. The
-function must return an instance of the model that has the requested fields.
+document, where the ``data`` element contains the primary resource object or
+objects. The function must return an instance of the model that has the
+requested fields. If you override the constructor, it must take two positional
+arguments, `session` and `model`.
+
+Your code can raise a :exc:`~flask.ext.restless.SerializationException` when
+overriding the :meth:`DefaultSerializer.serialize` method, and similarly a
+:exc:`~flask.ext.restless.DeserializationException` in the
+:meth:`DefaultDeserializer.deserialize` method; Flask-Restless will
+automatically catch those exceptions and format a `JSON API error response`_.
+If you wish to collect multiple exceptions (for example, if several fields of a
+resource provided to the :meth:`deserialize` method fail validation) you can
+raise a :exc:`~flask.ext.restless.MultipleExceptions` exception, providing a
+list of other serialization or deserialization exceptions at instantiation
+time.
 
 .. note::
 
@@ -197,26 +230,42 @@ follows::
         name = fields.String()
 
         def make_object(self, data):
-            print('MAKING OBJECT FROM', data)
             return Person(**data)
 
-    person_schema = PersonSchema()
+    class PersonSerializer(DefaultSerializer):
 
-    def person_serializer(instance):
-        return person_schema.dump(instance).data
+        def serialize(self, instance, only=None):
+            person_schema = PersonSchema(only=only)
+            return person_schema.dump(instance).data
 
-    def person_deserializer(data):
-        return person_schema.load(data).data
+        def serialize_many(self, instances, only=None):
+            person_schema = PersonSchema(many=True, only=only)
+            return person_schema.dump(instances).data
+
+
+    class PersonDeserializer(DefaultDeserializer):
+
+        def deserialize(self, document):
+            person_schema = PersonSchema()
+            return person_schema.load(instance).data
+
+        # # JSON API doesn't currently allow bulk creation of resources. When
+        # # it does, either in the specification or in an extension, this is
+        # # how you would implement it.
+        # def deserialize_many(self, document):
+        #     person_schema = PersonSchema(many=True)
+        #     return person_schema.load(instance).data
 
     manager = APIManager(app, session=session)
     manager.create_api(Person, methods=['GET', 'POST'],
-                       serializer=person_serializer,
-                       deserializer=person_deserializer)
+                       serializer_class=PersonSerializer,
+                       deserializer_class=PersonDeserializer)
 
 For a complete version of this example, see the
 :file:`examples/server_configurations/custom_serialization.py` module in the
 source distribution, or `view it online`_.
 
+.. _JSON API error response: http://jsonapi.org/format/#errors
 .. _Marshmallow: https://marshmallow.readthedocs.org
 .. _view it online: https://github.com/jfinkels/flask-restless/tree/master/examples/server_configurations/custom_serialization.py
 
