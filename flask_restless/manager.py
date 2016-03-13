@@ -625,12 +625,12 @@ class APIManager(object):
         # session = self.restlessinfo.session
         session = self.session
         if deserializer is None:
-            deserializer = DefaultDeserializer(self.session, model)
+            deserializer = DefaultDeserializer(self.session, model,
+                                               allow_client_generated_ids)
         # Create the view function for the API for this model.
         #
         # Rename some variables with long names for the sake of brevity.
         atmr = allow_to_many_replacement
-        acgi = allow_client_generated_ids
         api_view = API.as_view(apiname, session, model,
                                # Keyword arguments for APIBase.__init__()
                                preprocessors=preprocessors_,
@@ -643,8 +643,7 @@ class APIManager(object):
                                max_page_size=max_page_size,
                                serializer=serializer,
                                deserializer=deserializer,
-                               includes=includes,
-                               allow_client_generated_ids=acgi)
+                               includes=includes)
 
         # add the URL rules to the blueprint: the first is for methods on the
         # collection only, the second is for methods which may or may not

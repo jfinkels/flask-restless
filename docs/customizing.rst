@@ -143,22 +143,42 @@ client will receive non-compliant responses!
 Define your serialization functions like this::
 
     def serialize(instance, only=None):
-        return {'data': ...}
+        return {'id': ..., 'type': ..., 'attributes': ...}
 
 ``instance`` is an instance of a SQLAlchemy model and the ``only`` argument is
 a list; only the fields (that is, the attributes and relationships) whose names
 appear as strings in `only` should appear in the returned dictionary. The only
 exception is that the keys ``'id'`` and ``'type'`` must always appear,
 regardless of whether they appear in `only`. The function must return a
-dictionary representation of the object.
+dictionary representation of the resource object.
 
-Define your deserialization function like this::
+To help with creating custom serialization functions, Flask-Restless provides a
+:func:`simple_serialize` function, which returns the result of its basic,
+built-in serialization. Therefore, one way to customize your serialized objects
+is to do something like this::
 
-    def deserialize(data):
+    from flask.ext.restless import simple_serialize
+
+    def my_serializer(instance, only=None):
+        # Get the default serialization of the instance.
+        result = simple_serialize(instance, only=only)
+        # Make your changes here.
+        result['meta']['foo'] = 'bar'
+        # Return the dictionary.
+        return result
+
+You could also define a subclass of the :class:`DefaultSerializer` class,
+override the :meth:`DefaultSerializer.__call__` method, and provide an instance
+of that class to the `serializer` keyword argument.
+
+For deserialization, define your custom deserialization function like this::
+
+    def deserialize(document):
         return Person(...)
 
-``data`` is a dictionary representation of an instance of the model. The
-function must return return an instance of `model` that has those attributes.
+``document`` is a dictionary representation of the *complete* incoming JSON API
+document, where the ``data`` element contains the primary resource object. The
+function must return an instance of the model that has the requested fields.
 
 .. note::
 

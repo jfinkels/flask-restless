@@ -27,6 +27,8 @@ from ..helpers import has_field
 from ..helpers import is_like_list
 from ..helpers import primary_key_value
 from ..helpers import strings_to_datetimes
+from ..serialization import ClientGeneratedIDNotAllowed
+from ..serialization import ConflictingType
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
 from .base import APIBase
@@ -49,20 +51,13 @@ class API(APIBase):
     superclass. In addition to those described below, this constructor also
     accepts all the keyword arguments of the constructor of the superclass.
 
-    `page_size`, `max_page_size`, `serializer`, `deserializer`, `includes`, and
-    `allow_client_generated_ids` are as described in
-    :meth:`APIManager.create_api`.
+    `page_size`, `max_page_size`, `serializer`, `deserializer`, and
+    `includes` are as described in :meth:`APIManager.create_api`.
 
     """
 
-    def __init__(self, session, model, allow_client_generated_ids=False, *args,
-                 **kw):
-        super(API, self).__init__(session, model, *args, **kw)
-
-        #: Whether this API allows the client to specify the ID for the
-        #: resource to create; for more information, see
-        #: :ref:`clientids`.
-        self.allow_client_generated_ids = allow_client_generated_ids
+    def __init__(self, *args, **kw):
+        super(API, self).__init__(*args, **kw)
 
         #: Whether any side-effect changes are made to the SQLAlchemy
         #: model on updates.
@@ -384,30 +379,18 @@ class API(APIBase):
         # apply any preprocessors to the POST arguments
         for preprocessor in self.preprocessors['POST_RESOURCE']:
             preprocessor(data=data)
-        if 'data' not in data:
-            detail = 'Resource must have a "data" key'
-            return error_response(400, detail=detail)
-        data = data['data']
         # Convert the dictionary representation into an instance of the
         # model.
-        #
-        # TODO Should these three initial type and ID checks go in the
-        # deserializer?
-        if 'type' not in data:
-            detail = 'Must specify correct data type'
-            return error_response(400, detail=detail)
-        if 'id' in data and not self.allow_client_generated_ids:
-            detail = 'Server does not allow client-generated IDS'
-            return error_response(403, detail=detail)
-        type_ = data.pop('type')
-        if type_ != self.collection_name:
-            message = ('Type must be {0}, not'
-                       ' {1}').format(self.collection_name, type_)
-            return error_response(409, detail=message)
         try:
             instance = self.deserialize(data)
             self.session.add(instance)
             self.session.commit()
+        except ClientGeneratedIDNotAllowed as exception:
+            detail = exception.message()
+            return error_response(403, cause=exception, detail=detail)
+        except ConflictingType as exception:
+            detail = exception.message()
+            return error_response(409, cause=exception, detail=detail)
         except DeserializationException as exception:
             detail = exception.message()
             return error_response(400, cause=exception, detail=detail)

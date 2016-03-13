@@ -1114,7 +1114,7 @@ class APIBase(ModelView):
     def __init__(self, session, model, preprocessors=None, postprocessors=None,
                  primary_key=None, serializer=None, deserializer=None,
                  validation_exceptions=None, includes=None, page_size=10,
-                 max_page_size=100, allow_to_many_replacement=None, *args,
+                 max_page_size=100, allow_to_many_replacement=False, *args,
                  **kw):
         super(APIBase, self).__init__(session, model, *args, **kw)
 
@@ -1149,8 +1149,9 @@ class APIBase(ModelView):
         #: A custom serialization function for primary resources; see
         #: :ref:`serialization` for more information.
         #:
-        #: Use our default serializer if none is specified.
-        self.serialize = serializer or simple_serialize
+        #: This should not be ``None``, unless a subclass is not going to use
+        #: serialization.
+        self.serialize = serializer
 
         #: A custom serialization function for linkage objects.
         self.serialize_relationship = simple_relationship_serialize
@@ -1158,8 +1159,9 @@ class APIBase(ModelView):
         #: A custom deserialization function for primary resources; see
         #: :ref:`serialization` for more information.
         #:
-        #: Use our default deserializer if none is specified.
-        self.deserialize = deserializer or DefaultDeserializer(session, model)
+        #: This should not be ``None``, unless a subclass is not going to use
+        #: deserialization.
+        self.deserialize = deserializer
 
         #: The tuple of exceptions that are expected to be raised during
         #: validation when creating or updating a model.

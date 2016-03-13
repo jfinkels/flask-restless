@@ -35,7 +35,6 @@ from sqlalchemy import Column
 from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.ext.hybrid import HYBRID_PROPERTY
 from sqlalchemy.inspection import inspect
-from sqlalchemy.orm.query import Query
 from werkzeug.routing import BuildError
 from werkzeug.urls import url_quote_plus
 
@@ -125,6 +124,18 @@ class DeserializationException(Exception):
         return base
 
 
+class ClientGeneratedIDNotAllowed(DeserializationException):
+    """Raised when attempting to deserialize a resource that provides
+    an ID when an ID is not allowed.
+
+    """
+
+    def __init__(self, *args, **kw):
+        super(ClientGeneratedIDNotAllowed, self).__init__(*args, **kw)
+
+        self.detail = 'Server does not allow client-generated IDS'
+
+
 class ConflictingType(DeserializationException):
     """Raised when attempting to deserialize a linkage object with an
     unexpected ``'type'`` key.
@@ -140,7 +151,8 @@ class ConflictingType(DeserializationException):
 
     """
 
-    def __init__(self, relation_name, expected_type, given_type, *args, **kw):
+    def __init__(self, expected_type, given_type, relation_name=None, *args,
+                 **kw):
         super(ConflictingType, self).__init__(*args, **kw)
 
         #: The name of the relationship with a conflicting type.
@@ -152,9 +164,14 @@ class ConflictingType(DeserializationException):
         #: The type name given by the client for the related model.
         self.given_type = given_type
 
-        detail = ('expected type "{0}" but got type "{1}" in linkage object'
-                  ' for relationship "{2}"')
-        self.detail = detail.format(expected_type, given_type, relation_name)
+        if relation_name is None:
+            detail = 'expected type "{0}" but got type "{1}"'
+            detail = detail.format(expected_type, given_type)
+        else:
+            detail = ('expected type "{0}" but got type "{1}" in linkage'
+                      ' object for relationship "{2}"')
+            detail = detail.format(expected_type, given_type, relation_name)
+        self.detail = detail
 
 
 class UnknownField(DeserializationException):
@@ -210,15 +227,20 @@ class MissingInformation(DeserializationException):
     #: Subclasses must set this class attribute.
     element = None
 
-    def __init__(self, relation_name, *args, **kw):
+    def __init__(self, relation_name=None, *args, **kw):
         super(MissingInformation, self).__init__(*args, **kw)
 
         #: The relationship in which a linkage object is missing information.
         self.relation_name = relation_name
 
-        detail = ('missing "{0}" element in linkage object for relationship'
-                  ' "{1}"')
-        self.detail = detail.format(self.element, relation_name)
+        if relation_name is None:
+            detail = 'missing "{0}" element'
+            detail.format(self.element)
+        else:
+            detail = ('missing "{0}" element in linkage object for'
+                      ' relationship "{1}"')
+            detail = detail.format(self.element, relation_name)
+        self.detail = detail
 
 
 class MissingData(MissingInformation):
@@ -364,14 +386,16 @@ class Deserializer(object):
         self.session = session
         self.model = model
 
-    def __call__(self, data):
+    def __call__(self, document):
         """Creates and returns a new instance of the SQLAlchemy model specified
         in the constructor whose attributes are given by the specified
         dictionary.
 
-        `data` must be a dictionary representation of a resource as specified
-        in the JSON API specification. For more information, see the `Resource
-        Objects`_ section of the JSON API specification.
+        `document` must be a dictionary representation of a JSON API
+        document containing a single resource as primary data, as
+        specified in the JSON API specification. For more information,
+        see the `Resource Objects`_ section of the JSON API
+        specification.
 
         **This method is not implemented in this base class; subclasses must
         override this method.**
@@ -643,19 +667,39 @@ class DefaultRelationshipSerializer(Serializer):
 class DefaultDeserializer(Deserializer):
     """A default implementation of a deserializer for SQLAlchemy models.
 
-    When called, this object returns an instance of a SQLAlchemy model with
-    fields and relations specified by the provided dictionary.
+    When called, this object returns an instance of a SQLAlchemy model
+    with fields and relations specified by the provided dictionary.
 
     """
 
-    def __call__(self, data):
-        """Creates and returns an instance of the SQLAlchemy model specified in
-        the constructor.
+    def __init__(self, session, model, allow_client_generated_ids=False, **kw):
+        super(DefaultDeserializer, self).__init__(session, model, **kw)
+
+        #: Whether to allow client generated IDs.
+        self.allow_client_generated_ids = allow_client_generated_ids
+
+    def __call__(self, document):
+        """Creates and returns an instance of the SQLAlchemy model
+        specified in the constructor.
+
+        Everything in the `document` other than the `data` element is
+        ignored.
 
         For more information, see the documentation for the
         :meth:`Deserializer.__call__` method.
 
         """
+        if 'data' not in document:
+            raise MissingData
+        data = document['data']
+        if 'type' not in data:
+            raise MissingType
+        if 'id' in data and not self.allow_client_generated_ids:
+            raise ClientGeneratedIDNotAllowed
+        type_ = data.pop('type')
+        expected_type = collection_name(self.model)
+        if type_ != expected_type:
+            raise ConflictingType(expected_type, type_)
         # Check for any request parameter naming a column which does not exist
         # on the current model.
         for field in data:

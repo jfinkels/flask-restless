@@ -569,9 +569,9 @@ class TestCreating(ManagerTestBase):
             result['attributes']['foo'] = temp.pop()
             return result
 
-        def deserializer(data, *args, **kw):
+        def deserializer(document, *args, **kw):
             # Move the attributes up to the top-level object.
-            data.update(data.pop('attributes', {}))
+            data = document['data']['attributes']
             temp.append(data.pop('foo'))
             instance = self.Person(**data)
             return instance
@@ -758,7 +758,7 @@ class TestCreating(ManagerTestBase):
         response = self.app.post('/api/article', data=dumps(data))
         keywords = ['deserialize', 'expected', 'type', '"person"', '"article"',
                     'linkage object', 'relationship', '"author"']
-        check_sole_error(response, 400, keywords)
+        check_sole_error(response, 409, keywords)
 
     def test_to_many_relationship_missing_id(self):
         """Tests that the server rejects a request to create a resource
@@ -840,7 +840,7 @@ class TestCreating(ManagerTestBase):
         response = self.app.post('/api/person', data=dumps(data))
         keywords = ['deserialize', 'expected', 'type', '"article"', '"person"',
                     'linkage object', 'relationship', '"articles"']
-        check_sole_error(response, 400, keywords)
+        check_sole_error(response, 409, keywords)
 
 
 class TestProcessors(ManagerTestBase):
