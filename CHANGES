@@ -34,6 +34,8 @@ Not yet released.
   :meth:`APIManager.create_api` to serialize each resource correctly, depending
   on its type.
 - #474: include license files in built wheel for distribution.
+- #501: allows empty string for `url_prefix` keyword argument to
+  :meth:`APIManager.create_api`.
 
 Older versions
 --------------
