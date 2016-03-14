@@ -235,7 +235,7 @@ class MissingInformation(DeserializationException):
 
         if relation_name is None:
             detail = 'missing "{0}" element'
-            detail.format(self.element)
+            detail = detail.format(self.element)
         else:
             detail = ('missing "{0}" element in linkage object for'
                       ' relationship "{1}"')
