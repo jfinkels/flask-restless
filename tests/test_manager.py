@@ -220,6 +220,19 @@ class TestLocalAPIManager(DatabaseTestBase):
         response = self.app.get('/api/person')
         assert response.status_code == 404
 
+    def test_empty_url_prefix(self):
+        """Tests for specifying an empty string as URL prefix at the manager
+        level but not when creating an API.
+
+        """
+        manager = APIManager(self.flaskapp, session=self.session,
+                             url_prefix='')
+        manager.create_api(self.Person)
+        response = self.app.get('/person')
+        assert response.status_code == 200
+        response = self.app.get('/api/person')
+        assert response.status_code == 404
+
     def test_override_url_prefix(self):
         """Tests that a call to :meth:`APIManager.create_api` can
         override the URL prefix provided in the constructor to the
@@ -229,9 +242,14 @@ class TestLocalAPIManager(DatabaseTestBase):
         manager = APIManager(self.flaskapp, session=self.session,
                              url_prefix='/foo')
         manager.create_api(self.Person, url_prefix='/bar')
+        manager.create_api(self.Article, url_prefix='')
         response = self.app.get('/bar/person')
         assert response.status_code == 200
+        response = self.app.get('/article')
+        assert response.status_code == 200
         response = self.app.get('/foo/person')
+        assert response.status_code == 404
+        response = self.app.get('/foo/article')
         assert response.status_code == 404
 
     # # This is a possible feature, but we will not support this for now.

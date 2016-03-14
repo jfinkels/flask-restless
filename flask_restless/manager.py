@@ -651,7 +651,12 @@ class APIManager(object):
         # instance
         # TODO what should the second argument here be?
         # TODO should the url_prefix be specified here or in register_blueprint
-        prefix = url_prefix or self.url_prefix or DEFAULT_URL_PREFIX
+        if url_prefix is not None:
+            prefix = url_prefix
+        elif self.url_prefix is not None:
+            prefix = self.url_prefix
+        else:
+            prefix = DEFAULT_URL_PREFIX
         blueprint = Blueprint(name, __name__, url_prefix=prefix)
         add_rule = blueprint.add_url_rule
 
