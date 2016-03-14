@@ -678,7 +678,8 @@ class TestCreating(ManagerTestBase):
         data = dict(type='person')
         response = self.app.post('/api/person', data=dumps(data))
         assert response.status_code == 400
-        # TODO check error message here
+        keywords = ['deserialize', 'missing', '"data"', 'element']
+        check_sole_error(response, 400, keywords)
 
     def test_to_one_relationship_missing_id(self):
         """Tests that the server rejects a request to create a resource
