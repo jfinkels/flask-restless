@@ -22,6 +22,7 @@ import inspect
 from sqlalchemy import and_
 from sqlalchemy import or_
 from sqlalchemy.ext.associationproxy import AssociationProxy
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 
 from .helpers import get_model
@@ -414,7 +415,7 @@ def search(session, model, filters=None, sort=None, group_by=None,
             direction_name = 'asc' if symbol == '+' else 'desc'
             if '.' in field_name:
                 field_name, field_name_in_relation = field_name.split('.')
-                relation_model = get_related_model(model, field_name)
+                relation_model = aliased(get_related_model(model, field_name))
                 field = getattr(relation_model, field_name_in_relation)
                 direction = getattr(field, direction_name)
                 query = query.join(relation_model)

@@ -28,6 +28,8 @@ Not yet released.
 - #431: adds a ``url_prefix`` keyword argument to the :class:`APIManager`
   constructor, so one can specify a URL prefix once for all created APIs.
 - #449: roll back the session on any SQLAlchemy error, not just a few.
+- #432, #462: alias relation names when sorting by multiple attributes on a
+  relationship.
 - #436, #453: use ``__table__.name`` instead of ``__tablename__`` to infer the
   collection name for the SQLAlchemy model.
 - #440, #475: uses the serialization function provided at the time of invoking

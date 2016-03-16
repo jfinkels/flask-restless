@@ -910,6 +910,32 @@ class TestSorting(ManagerTestBase):
         articles = document['data']
         assert ['2', '1', '3'] == [c['id'] for c in articles]
 
+
+    def test_sort_multiple_relationship_attributes(self):
+        """Tests that the client can sort by multiple relationship
+        attributes.
+
+        For more information, see the `Sorting`_ section of the JSON API
+        specification.
+
+        .. _Sorting: http://jsonapi.org/format/#fetching-sorting
+
+        """
+        person1 = self.Person(age=2, name=u'd')
+        person2 = self.Person(age=1, name=u'b')
+        person3 = self.Person(age=1, name=u'a')
+        person4 = self.Person(age=2, name=u'c')
+        people = [person1, person2, person3, person4]
+        articles = [self.Article(id=i, author=person)
+                    for i, person in enumerate(people, start=1)]
+        self.session.add_all(people + articles)
+        self.session.commit()
+        query_string = {'sort': 'author.age,author.name'}
+        response = self.app.get('/api/article', query_string=query_string)
+        document = loads(response.data)
+        articles = document['data']
+        assert ['3', '2', '4', '1'] == [c['id'] for c in articles]
+
     def test_sorting_relationship(self):
         """Tests for sorting relationship objects when requesting
         information from a to-many relationship endpoint.
