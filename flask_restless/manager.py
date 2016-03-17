@@ -24,8 +24,9 @@ from flask import Blueprint
 from flask import url_for as flask_url_for
 
 from .helpers import collection_name
-from .helpers import serializer_for
 from .helpers import model_for
+from .helpers import primary_key_for
+from .helpers import serializer_for
 from .helpers import url_for
 from .serialization import DefaultSerializer
 from .serialization import DefaultDeserializer
@@ -70,8 +71,10 @@ else:
 #: - `blueprint_name`, the name of the blueprint that contains this API,
 #: - `serializer`, the subclass of :class:`Serializer` provided for the
 #:   model exposed by this API.
+#: - `primary_key`, the primary key used by the model
 #:
-APIInfo = namedtuple('APIInfo', 'collection_name blueprint_name serializer')
+APIInfo = namedtuple('APIInfo', ['collection_name', 'blueprint_name', 'serializer',
+                                 'primary_key'])
 
 
 class IllegalArgumentError(Exception):
@@ -169,6 +172,7 @@ class APIManager(object):
         model_for.register(self)
         collection_name.register(self)
         serializer_for.register(self)
+        primary_key_for.register(self)
 
         #: A mapping whose keys are models for which this object has
         #: created an API via the :meth:`create_api_blueprint` method
@@ -304,6 +308,18 @@ class APIManager(object):
 
         """
         return self.created_apis_for[model].serializer
+
+    def primary_key_for(self, model):
+        """Returns the primary key for the specified model, as specified
+        by the `primary_key` keyword argument to
+        :meth:`create_api_blueprint`.
+
+        `model` is a SQLAlchemy model class. This must be a model on
+        which :meth:`create_api_blueprint` has been invoked previously,
+        otherwise a :exc:`KeyError` is raised.
+
+        """
+        return self.created_apis_for[model].primary_key
 
     def init_app(self, app):
 
@@ -754,7 +770,7 @@ class APIManager(object):
         # Finally, record that this APIManager instance has created an API for
         # the specified model.
         self.created_apis_for[model] = APIInfo(collection_name, blueprint.name,
-                                               serializer)
+                                               serializer, primary_key)
         return blueprint
 
     def create_api(self, *args, **kw):

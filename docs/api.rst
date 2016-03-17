@@ -26,6 +26,8 @@ Global helper functions
 
 .. autofunction:: serializer_for(model, _apimanager=None)
 
+.. autofunction:: primary_key_for(model, _apimanager=None)
+
 .. autofunction:: url_for(model, instid=None, relationname=None, relationinstid=None, _apimanager=None, **kw)
 
 Serialization helpers

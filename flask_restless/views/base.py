@@ -51,7 +51,7 @@ from werkzeug.exceptions import HTTPException
 from ..helpers import collection_name
 from ..helpers import get_model
 from ..helpers import is_like_list
-from ..helpers import primary_key_name
+from ..helpers import primary_key_for
 from ..helpers import primary_key_value
 from ..helpers import serializer_for
 from ..helpers import url_for
@@ -1623,7 +1623,7 @@ class APIBase(ModelView):
                 result['data'] = serialize(data, only=only)
             except SerializationException as exception:
                 return errors_from_serialization_exceptions([exception])
-            primary_key = self.primary_key or primary_key_name(data)
+            primary_key = primary_key_for(data)
             pk_value = result['data'][primary_key]
             # The URL at which a client can access the instance matching this
             # search query.
