@@ -29,7 +29,7 @@ code`_ repository.
 import codecs
 import os.path
 import re
-from setuptools import setup
+from setuptools import setup, find_packages
 
 #: A regular expression capturing the version number from Python code.
 VERSION_RE = r"^__version__ = ['\"]([^'\"]*)['\"]"
@@ -100,7 +100,7 @@ setup(
     long_description=__doc__,
     name='Flask-Restless',
     platforms='any',
-    packages=['flask_restless'],
+    packages=find_packages(),
     test_suite='nose.collector',
     tests_require=['nose'],
     url='http://github.com/jfinkels/flask-restless',
