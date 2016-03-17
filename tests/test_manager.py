@@ -11,12 +11,6 @@
 # information, see LICENSE.AGPL and LICENSE.BSD.
 """Unit tests for the :mod:`flask_restless.manager` module."""
 from flask import Flask
-try:
-    from flask.ext.sqlalchemy import SQLAlchemy
-except ImportError:
-    has_flask_sqlalchemy = False
-else:
-    has_flask_sqlalchemy = True
 from nose.tools import raises
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
@@ -32,17 +26,15 @@ from flask.ext.restless import model_for
 from flask.ext.restless import serializer_for
 from flask.ext.restless import url_for
 
-from .helpers import DatabaseTestBase
-from .helpers import ManagerTestBase
-from .helpers import FlaskTestBase
+from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import force_content_type_jsonapi
 from .helpers import loads
+from .helpers import ManagerTestBase
 from .helpers import skip
-from .helpers import skip_unless
-from .helpers import unregister_fsa_session_signals
+from .helpers import SQLAlchemyTestBase
 
 
-class TestLocalAPIManager(DatabaseTestBase):
+class TestLocalAPIManager(SQLAlchemyTestBase):
     """Provides tests for :class:`flask.ext.restless.APIManager` when the tests
     require that the instance of :class:`flask.ext.restless.APIManager` has not
     yet been instantiated.
@@ -471,8 +463,7 @@ class TestAPIManager(ManagerTestBase):
         self.manager.create_api(self.Person, additional_attributes=['bogus'])
 
 
-@skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')
-class TestFSA(FlaskTestBase):
+class TestFSA(FlaskSQLAlchemyTestBase):
     """Tests which use models defined using Flask-SQLAlchemy instead of pure
     SQLAlchemy.
 
@@ -484,18 +475,12 @@ class TestFSA(FlaskTestBase):
 
         """
         super(TestFSA, self).setup()
-        self.db = SQLAlchemy(self.flaskapp)
 
         class Person(self.db.Model):
             id = self.db.Column(self.db.Integer, primary_key=True)
 
         self.Person = Person
         self.db.create_all()
-
-    def teardown(self):
-        """Drops all tables from the temporary database."""
-        self.db.drop_all()
-        unregister_fsa_session_signals()
 
     def test_init_app(self):
         manager = APIManager(flask_sqlalchemy_db=self.db)

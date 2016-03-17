@@ -937,7 +937,8 @@ returned, clients can make requests like this:
 Operators
 .........
 
-The operators recognized by the API incude:
+Flask-Restless understands the following operators, which correspond to the
+appropriate `SQLAlchemy column operators`_.
 
 * ``==``, ``eq``, ``equals``, ``equals_to``
 * ``!=``, ``neq``, ``does_not_equal``, ``not_equal_to``
@@ -949,7 +950,8 @@ The operators recognized by the API incude:
 * ``has``
 * ``any``
 
-These correspond to the appropriate `SQLAlchemy column operators`_.
+Flask-Restless also understands the `PostgreSQL network address operators`_
+``<<``, ``<<=``, ``>>``, ``>>=``, ``<>``, and ``&&``.
 
 .. warning::
 
@@ -960,7 +962,8 @@ These correspond to the appropriate `SQLAlchemy column operators`_.
 
    .. _percent-encoded: https://en.wikipedia.org/wiki/Percent-encoding#Percent-encoding_the_percent_character
 
-.. _SQLAlchemy column operators: http://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.operators.ColumnOperators
+.. _SQLAlchemy column operators: https://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.operators.ColumnOperators
+.. _PostgreSQL network address operators: https://www.postgresql.org/docs/current/static/functions-net.html
 
 .. _single:
 

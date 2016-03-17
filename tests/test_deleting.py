@@ -18,12 +18,6 @@ Flask-Restless meets the minimum requirements of the JSON API
 specification.
 
 """
-try:
-    from flask.ext.sqlalchemy import SQLAlchemy
-except ImportError:
-    has_flask_sqlalchemy = False
-else:
-    has_flask_sqlalchemy = True
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
@@ -35,13 +29,11 @@ from flask.ext.restless import ProcessingException
 
 from .helpers import dumps
 from .helpers import loads
-from .helpers import FlaskTestBase
+from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import ManagerTestBase
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
 from .helpers import skip
-from .helpers import skip_unless
-from .helpers import unregister_fsa_session_signals
 
 
 class TestDeleting(ManagerTestBase):
@@ -274,8 +266,7 @@ class TestProcessors(ManagerTestBase):
         assert response.status_code == 204
 
 
-@skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found.')
-class TestFlaskSqlalchemy(FlaskTestBase):
+class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
     """Tests for deleting resources defined as Flask-SQLAlchemy models instead
     of pure SQLAlchemy models.
 
@@ -283,9 +274,7 @@ class TestFlaskSqlalchemy(FlaskTestBase):
 
     def setup(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSqlalchemy, self).setup()
-        self.db = SQLAlchemy(self.flaskapp)
-        self.session = self.db.session
+        super(TestFlaskSQLAlchemy, self).setup()
 
         class Person(self.db.Model):
             id = self.db.Column(self.db.Integer, primary_key=True)
@@ -294,13 +283,6 @@ class TestFlaskSqlalchemy(FlaskTestBase):
         self.db.create_all()
         self.manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
         self.manager.create_api(self.Person, methods=['DELETE'])
-
-    def teardown(self):
-        """Drops all tables and unregisters Flask-SQLAlchemy session signals.
-
-        """
-        self.db.drop_all()
-        unregister_fsa_session_signals()
 
     def test_delete(self):
         """Tests for deleting a resource."""
