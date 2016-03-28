@@ -29,8 +29,10 @@ from .helpers import url_for
 from .helpers import primary_key_for
 from .manager import APIManager
 from .manager import IllegalArgumentError
-from .serialization import SerializationException
-from .serialization import simple_serialize
 from .serialization import DeserializationException
+from .serialization import Deserializer
+from .serialization import SerializationException
+from .serialization import Serializer
+from .serialization import simple_serialize
 from .views import CONTENT_TYPE
 from .views import ProcessingException
