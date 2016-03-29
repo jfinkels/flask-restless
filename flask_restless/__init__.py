@@ -17,7 +17,7 @@ SQLAlchemy models via the JSON API protocol.
 #:
 #: This should be the same as the version specified in the :file:`setup.py`
 #: file.
-__version__ = '1.0.0-dev'
+__version__ = '1.0.0b1-dev'
 
 # The following names are available as part of the public API for
 # Flask-Restless. End users of this package can import these names by doing
