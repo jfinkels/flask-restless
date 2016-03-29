@@ -92,7 +92,7 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
     description='A Flask extension for easy ReSTful API generation',
-    download_url='http://pypi.python.org/pypi/Flask-Restless',
+    download_url='https://pypi.python.org/pypi/Flask-Restless',
     install_requires=REQUIREMENTS,
     include_package_data=True,
     keywords=['ReST', 'API', 'Flask'],
@@ -103,7 +103,7 @@ setup(
     packages=find_packages(),
     test_suite='nose.collector',
     tests_require=['nose'],
-    url='http://github.com/jfinkels/flask-restless',
+    url='https://github.com/jfinkels/flask-restless',
     version=find_version('flask_restless', '__init__.py'),
     zip_safe=False
 )
