@@ -14,7 +14,7 @@ generation of ReSTful APIs that satisfy the `JSON API`_ specification
 given database models defined using `SQLAlchemy`_ (or
 `Flask-SQLAlchemy`_).
 
-For more information, seet the `documentation`_, `pypi`_, or the `source
+For more information, see the `documentation`_, `pypi`_, or the `source
 code`_ repository.
 
 .. _Flask: http://flask.pocoo.org
