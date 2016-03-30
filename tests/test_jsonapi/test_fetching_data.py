@@ -952,7 +952,7 @@ class TestSorting(ManagerTestBase):
             to_string = unicode
         except NameError:
             to_string = str
-        articles = [self.Article(id=i, title=to_string(i)) for i in range(5)]
+        articles = [self.Article(id=i, title=to_string(i), author=person) for i in range(5)]
         self.session.add(person)
         self.session.add_all(articles)
         self.session.commit()
