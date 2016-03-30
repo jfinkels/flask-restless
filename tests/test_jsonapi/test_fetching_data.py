@@ -287,8 +287,9 @@ class TestFetchingData(ManagerTestBase):
         article = self.Article(id=1)
         comment1 = self.Comment(id=1)
         comment2 = self.Comment(id=2)
+        comment3 = self.Comment(id=3)
         article.comments = [comment1, comment2]
-        self.session.add_all([article, comment1, comment2])
+        self.session.add_all([article, comment1, comment2, comment3])
         self.session.commit()
         response = self.app.get('/api/article/1/relationships/comments')
         assert response.status_code == 200
