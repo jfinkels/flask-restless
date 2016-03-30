@@ -217,6 +217,7 @@ class TestFiltering(SearchTestBase):
         person = self.Person(id=1)
         article1 = self.Article(id=1)
         article2 = self.Article(id=2)
+        person.articles = [article1, article2]
         self.session.add_all([person, article1, article2])
         self.session.commit()
         filters = [dict(name='id', op='equals', val='1')]
