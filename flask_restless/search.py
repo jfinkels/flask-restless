@@ -360,7 +360,7 @@ def search_relationship(session, instance, relation, filters=None, sort=None,
     #     primary_keys = {primary_key_value(inst) for inst in relationship}
     #
     primary_keys = set(primary_key_value(inst) for inst in relationship)
-    query.filter(primary_key_value(related_model) in primary_keys)
+    query = query.filter(primary_key_value(related_model).in_(primary_keys))
 
     return search(session, related_model, filters=filters, sort=sort,
                   group_by=group_by, _initial_query=query)
