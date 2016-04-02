@@ -10,12 +10,12 @@ Numbers following a pound sign (#) refer to `GitHub issues`_.
 
 .. _GitHub issues: https://github.com/jfinkels/flask-restless/issues
 
-Version 1.0.0b1-dev
--------------------
+Version 1.0.0b1
+---------------
 
 *This is a beta release; these changes will appear in the 1.0.0 release.*
 
-Not yet released.
+Released on April 2, 2016.
 
 - #255: adds support for filtering by PostgreSQL network operators.
 - #257: ensures additional attributes specified by the user actually exist on
