@@ -107,14 +107,14 @@ def count(session, query):
     """Returns the count of the specified `query`.
 
     This function employs an optimization that bypasses the
-    :meth:`sqlalchemy.orm.Query.count` method, which can be very slow for large
-    queries.
+    :meth:`sqlalchemy.orm.Query.count` method, which can be very slow
+    for large queries.
 
     """
     counts = query.selectable.with_only_columns([func.count()])
     num_results = session.execute(counts.order_by(None)).scalar()
     if num_results is None or query._limit is not None:
-        return query.count()
+        return query.order_by(None).count()
     return num_results
 
 
