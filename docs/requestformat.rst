@@ -146,6 +146,15 @@ Then in your Javascript client code, write the function ``foo`` like this:
         {"url": "url2", "rel": "foo", "bar": "baz"}
       ]
 
+
+JSON API extensions
+-------------------
+
+Flask-Restless does not yet support the official JSON API extension. For
+progress on the implementation of the official extensions, see GitHub issues
+#478 and #477.
+
+
 Cross-Origin Resource Sharing (CORS)
 ------------------------------------
 
