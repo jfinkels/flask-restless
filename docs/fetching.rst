@@ -769,8 +769,6 @@ client specifies the ``filter[objects]`` query parameter, it must be a
 Quick client examples for filtering
 ...................................
 
-*TODO: need to test these clients.*
-
 The following are some quick examples of making filtered :http:method:`get`
 requests from different types of clients. More complete documentation is in
 subsequent sections. In these examples, each client will filter by instances of
@@ -782,11 +780,10 @@ Using the Python `requests`_ library::
     import json
 
     url = 'http://127.0.0.1:5000/api/person'
-    headers = {'Content-Type': 'application/vnd.api+json',
-               'Accept': 'application/vnd.api+json'}
+    headers = {'Accept': 'application/vnd.api+json'}
 
     filters = [dict(name='name', op='like', val='%y%')]
-    params = {'filter[objects]': filters}
+    params = {'filter[objects]': json.dumps(filters)}
 
     response = requests.get(url, params=params, headers=headers)
     assert response.status_code == 200
@@ -798,12 +795,12 @@ Using `jQuery`_:
 
    var filters = [{"name": "id", "op": "like", "val": "%y%"}];
    $.ajax({
-     accepts: 'application/vnd.api+json',
-     contentType: "application/vnd.api+json",
      data: {"filter[objects]": JSON.stringify(filters)},
-     dataType: "json",
-     success: function(data) { console.log(data.objects); }
-     url: 'http://127.0.0.1:5000/api/person',
+     headers: {
+       "Accept": JSONAPI_MIMETYPE
+     },
+     success: function(data) { console.log(data.objects); },
+     url: 'http://127.0.0.1:5000/api/person'
    });
 
 Using `curl`_:
@@ -812,7 +809,6 @@ Using `curl`_:
 
    curl \
      -G \
-     -H "Content-Type: application/vnd.api+json" \
      -H "Accept: application/vnd.api+json" \
      -d "filter[objects]=[{\"name\":\"name\",\"op\":\"like\",\"val\":\"%y%\"}]" \
      http://127.0.0.1:5000/api/person
