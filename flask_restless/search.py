@@ -24,6 +24,7 @@ from sqlalchemy import or_
 from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.sql import false as FALSE
 
 from .helpers import get_model
 from .helpers import get_related_model
@@ -355,11 +356,13 @@ def search_relationship(session, instance, relation, filters=None, sort=None,
 
     # Filter by only those related values that are related to `instance`.
     relationship = getattr(instance, relation)
-    # TODO In Python 2.7 and later, this should be
-    #
-    #     primary_keys = {primary_key_value(inst) for inst in relationship}
-    #
+    # TODO In Python 2.7+, this should be a set comprehension.
     primary_keys = set(primary_key_value(inst) for inst in relationship)
+    # If the relationship is empty, we can avoid a potentially expensive
+    # filtering operation by simply returning an intentionally empty
+    # query.
+    if not primary_keys:
+        return query.filter(FALSE())
     query = query.filter(primary_key_value(related_model).in_(primary_keys))
 
     return search(session, related_model, filters=filters, sort=sort,
