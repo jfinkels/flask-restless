@@ -429,7 +429,8 @@ request::
     manager.create_api(Person, preprocessors=preprocessors)
 
 For preprocessors for endpoints of the form ``/api/person/1``, a returned value
-will be interpreted as the resource ID for the request. For example, if a
+will be interpreted as the resource ID for the request. (Remember, as described
+in :ref:`idstring`, the returned ID must be a string.) For example, if a
 preprocessor for a :http:method:`get` request to ``/api/person/1`` returns the
 string ``'foo'``, then Flask-Restless will behave as if the request were
 originally for the URL ``/api/person/foo``.  For preprocessors for endpoints of

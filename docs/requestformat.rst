@@ -24,6 +24,19 @@ specification.
    updating
    updatingrelationships
 
+.. _idstring:
+
+Resource ID must be a string
+----------------------------
+
+As required by the JSON API, the ID (and type) of a resource must be a string
+in request and response documents. This does *not* mean that the primary key in
+the database must be a string, only that it will appear as a string in
+communications between the client and the server. For more information, see the
+`Identification`_ section of the JSON API specification.
+
+.. _Identification: http://jsonapi.org/format/#document-resource-object-identification
+
 .. _slashes:
 
 Trailing slashes in URLs
