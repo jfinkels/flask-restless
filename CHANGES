@@ -26,31 +26,31 @@ Version 1.0.0b1
 
 Released on April 2, 2016.
 
-- #255: adds support for filtering by PostgreSQL network operators.
-- #257: ensures additional attributes specified by the user actually exist on
+- :issue:`255`: adds support for filtering by PostgreSQL network operators.
+- :issue:`257`: ensures additional attributes specified by the user actually exist on
   the model.
-- #363 (partial solution): don't use ``COUNT`` on requests that don't require
+- :issue:`363` (partial solution): don't use ``COUNT`` on requests that don't require
   pagination.
-- #404: **Major overhaul of Flask-Restless to support JSON API**.
+- :issue:`404`: **Major overhaul of Flask-Restless to support JSON API**.
 - Increases minimum version requirement for ``python-dateutil`` to be strictly
   greater than 2.2 to avoid parsing bug.
-- #331, #415: documents the importance of URL encoding when using the ``like``
+- :issue:`331,415`: documents the importance of URL encoding when using the ``like``
   operator to filter results.
-- #376: add a ``not_like`` operator for filter objects.
-- #431: adds a ``url_prefix`` keyword argument to the :class:`APIManager`
+- :issue:`376`: add a ``not_like`` operator for filter objects.
+- :issue:`431`: adds a ``url_prefix`` keyword argument to the :class:`APIManager`
   constructor, so one can specify a URL prefix once for all created APIs.
-- #449: roll back the session on any SQLAlchemy error, not just a few.
-- #432, #462: alias relation names when sorting by multiple attributes on a
+- :issue:`449`: roll back the session on any SQLAlchemy error, not just a few.
+- :issue:`432,462`: alias relation names when sorting by multiple attributes on a
   relationship.
-- #436, #453: use ``__table__.name`` instead of ``__tablename__`` to infer the
+- :issue:`436,453`: use ``__table__.name`` instead of ``__tablename__`` to infer the
   collection name for the SQLAlchemy model.
-- #440, #475: uses the serialization function provided at the time of invoking
+- :issue:`440,475`: uses the serialization function provided at the time of invoking
   :meth:`APIManager.create_api` to serialize each resource correctly, depending
   on its type.
-- #474: include license files in built wheel for distribution.
-- #501: allows empty string for `url_prefix` keyword argument to
+- :issue:`474`: include license files in built wheel for distribution.
+- :issue:`501`: allows empty string for `url_prefix` keyword argument to
   :meth:`APIManager.create_api`.
-- #476: use the primary key provided at the time of invoking
+- :issue:`476`: use the primary key provided at the time of invoking
   :meth:`APIManager.create_api` to build resource urls in responses.
 
 Older versions
@@ -72,37 +72,37 @@ Version 0.17.0
 Released on February 17, 2015.
 
 - Corrects bug to allow delayed initialization of multiple Flask applications.
-- #167: allows custom serialization/deserialization functions.
-- #198: allows arbitrary Boolean expressions in search query filters.
-- #226: allows creating APIs before initializing the Flask application object.
-- #274: adds the :func:`url_for` function for computing URLs from models.
-- #379: improves datetime parsing in search requests.
-- #398: fixes bug where DELETE_SINGLE processors were not actually used.
-- #400: disallows excluding a primary key on a :http:method:`POST` request.
+- :issue:`167`: allows custom serialization/deserialization functions.
+- :issue:`198`: allows arbitrary Boolean expressions in search query filters.
+- :issue:`226`: allows creating APIs before initializing the Flask application object.
+- :issue:`274`: adds the :func:`url_for` function for computing URLs from models.
+- :issue:`379`: improves datetime parsing in search requests.
+- :issue:`398`: fixes bug where DELETE_SINGLE processors were not actually used.
+- :issue:`400`: disallows excluding a primary key on a :http:method:`POST` request.
 
 Version 0.16.0
 ~~~~~~~~~~~~~~
 
 Released on February 3, 2015.
 
-- #237: allows bulk delete of model instances via the ``allow_delete_many``
+- :issue:`237`: allows bulk delete of model instances via the ``allow_delete_many``
   keyword argument.
-- #313, #389: :meth:`APIManager.init_app` now can be correctly used to
+- :issue:`313,389`: :meth:`APIManager.init_app` now can be correctly used to
   initialize multiple Flask applications.
-- #327, #391: allows ordering searches by fields on related instances.
-- #353: allows search queries to specify ``group_by`` directives.
-- #365: allows preprocessors to specify return values on :http:method:`get`
+- :issue:`327,391`: allows ordering searches by fields on related instances.
+- :issue:`353`: allows search queries to specify ``group_by`` directives.
+- :issue:`365`: allows preprocessors to specify return values on :http:method:`get`
   requests.
-- #385: makes the `include_methods` keywords argument respect model properties.
+- :issue:`385`: makes the `include_methods` keywords argument respect model properties.
 
 Version 0.15.1
 ~~~~~~~~~~~~~~
 
 Released on January 2, 2015.
 
-- #367: catch :exc:`IntegrityError`, :exc:`DataError`, and
+- :issue:`367`: catch :exc:`IntegrityError`, :exc:`DataError`, and
   :exc:`ProgrammingError` exceptions in all view methods.
-- #374: import :class:`sqlalchemy.Column` from :mod:`sqlalchemy` directly,
+- :issue:`374`: import :class:`sqlalchemy.Column` from :mod:`sqlalchemy` directly,
   instead of :mod:`sqlalchemy.sql.schema`
 
 Version 0.15.0
@@ -110,12 +110,12 @@ Version 0.15.0
 
 Released on October 30, 2014.
 
-- #320: detect settable hybrid properties instead of raising an exception.
-- #350: allows exclude/include columns to be specified as SQLAlchemy column
+- :issue:`320`: detect settable hybrid properties instead of raising an exception.
+- :issue:`350`: allows exclude/include columns to be specified as SQLAlchemy column
   objects in addition to strings.
-- #356: rollback the SQLAlchemy session on a failed :http:method:`patch`
+- :issue:`356`: rollback the SQLAlchemy session on a failed :http:method:`patch`
   request.
-- #368: adds missing documentation on using custom queries (see
+- :issue:`368`: adds missing documentation on using custom queries (see
   :ref:`customqueries`)
 
 Version 0.14.2
@@ -123,7 +123,7 @@ Version 0.14.2
 
 Released on September 2, 2014.
 
-- #351, #355: fixes bug in getting related models from a model with hybrid
+- :issue:`351,355`: fixes bug in getting related models from a model with hybrid
   properties.
 
 Version 0.14.1
@@ -131,9 +131,9 @@ Version 0.14.1
 
 Released on August 26, 2014.
 
-- #210: lists some related projects in the documentation.
-- #347: adds automated build testing for PyPy 3.
-- #354: renames ``is_deleted`` to ``was_deleted`` when providing keyword
+- :issue:`210`: lists some related projects in the documentation.
+- :issue:`347`: adds automated build testing for PyPy 3.
+- :issue:`354`: renames ``is_deleted`` to ``was_deleted`` when providing keyword
   arguments to postprocessor for :http:method:`delete` method in order to match
   documentation.
 
@@ -144,26 +144,26 @@ Released on August 12, 2014.
 
 - Fixes bug where primary key specified by user was not being checked in some
   :http:method:`post` requests and some search queries.
-- #223: documents CORS example.
-- #280: don't expose raw SQL in responses on database errors.
-- #299: show error message if search query tests for ``NULL`` using comparison
+- :issue:`223`: documents CORS example.
+- :issue:`280`: don't expose raw SQL in responses on database errors.
+- :issue:`299`: show error message if search query tests for ``NULL`` using comparison
   operators.
-- #315: check for query object being ``None``.
-- #324: :http:method:`delete` should only return :http:statuscode:`204` if
+- :issue:`315`: check for query object being ``None``.
+- :issue:`324`: :http:method:`delete` should only return :http:statuscode:`204` if
   something is actuall deleted.
-- #325: support ``null`` inside ``has`` search operators.
-- #328: enable automatic testing for Python 3.4.
-- #333: enforce limit in :func:`helpers.count`.
-- #338: catch validation exceptions when attempting to update relations.
-- #339: use user-specified primary key on :http:method:`patch` requests.
-- #344: correctly encodes Unicode fields in responses.
+- :issue:`325`: support ``null`` inside ``has`` search operators.
+- :issue:`328`: enable automatic testing for Python 3.4.
+- :issue:`333`: enforce limit in :func:`helpers.count`.
+- :issue:`338`: catch validation exceptions when attempting to update relations.
+- :issue:`339`: use user-specified primary key on :http:method:`patch` requests.
+- :issue:`344`: correctly encodes Unicode fields in responses.
 
 Version 0.13.1
 ~~~~~~~~~~~~~~
 
 Released on April 21, 2014.
 
-- #304: fixes mimerender bug due to how Python 3.4 handles decorators.
+- :issue:`304`: fixes mimerender bug due to how Python 3.4 handles decorators.
 
 Version 0.13.0
 ~~~~~~~~~~~~~~
@@ -173,43 +173,43 @@ Released on April 6, 2014.
 - Allows universal preprocessors or postprocessors; see :ref:`universal`.
 - Allows specifying which primary key to use when creating endpoint URLs.
 - Requires SQLAlchemy version 0.8 or greater.
-- #17: use Flask's :attr:`flask.Request.json` to parse incoming JSON requests.
-- #29: replace custom ``jsonify_status_code`` function with built-in support
+- :issue:`17`: use Flask's :attr:`flask.Request.json` to parse incoming JSON requests.
+- :issue:`29`: replace custom ``jsonify_status_code`` function with built-in support
   for ``return jsonify(), status_code`` style return statements (new in Flask
   0.9).
-- #51: Use `mimerender <http://mimerender.readthedocs.org>`_ to render
+- :issue:`51`: Use `mimerender <http://mimerender.readthedocs.org>`_ to render
   dictionaries to JSON format.
-- #247: adds support for making :http:method:`post` requests to dictionary-like
+- :issue:`247`: adds support for making :http:method:`post` requests to dictionary-like
   association proxies.
-- #249: returns :http:statuscode:`404` if a search reveals no matching results.
-- #254: returns :http:statuscode:`404` if no related field exists for a request
+- :issue:`249`: returns :http:statuscode:`404` if a search reveals no matching results.
+- :issue:`254`: returns :http:statuscode:`404` if no related field exists for a request
   with a related field in the URL.
-- #256: makes search parameters available to postprocessors for
+- :issue:`256`: makes search parameters available to postprocessors for
   :http:method:`get` and :http:method:`patch` requests that access multiple
   resources.
-- #263: Adds Python 3.3 support; drops Python 2.5 support.
-- #267: Adds compatibility for legacy Microsoft Internet Explorer versions 8
+- :issue:`263`: Adds Python 3.3 support; drops Python 2.5 support.
+- :issue:`267`: Adds compatibility for legacy Microsoft Internet Explorer versions 8
   and 9.
-- #270: allows the ``query`` attribute on models to be a callable.
-- #282: order responses by primary key if no order is specified.
-- #284: catch ``DataError`` and ``ProgrammingError`` exceptions when bad data
+- :issue:`270`: allows the ``query`` attribute on models to be a callable.
+- :issue:`282`: order responses by primary key if no order is specified.
+- :issue:`284`: catch ``DataError`` and ``ProgrammingError`` exceptions when bad data
   are sent to the server.
-- #286: speed up paginated responses by using optimized count() function.
-- #293: allows :class:`sqlalchemy.Time` fields in JSON responses.
+- :issue:`286`: speed up paginated responses by using optimized count() function.
+- :issue:`293`: allows :class:`sqlalchemy.Time` fields in JSON responses.
 
 Version 0.12.1
 ~~~~~~~~~~~~~~
 
 Released on December 1, 2013.
 
-- #222: on :http:method:`post` and :http:method:`patch` requests, recurse into
+- :issue:`222`: on :http:method:`post` and :http:method:`patch` requests, recurse into
   nested relations to get or create instances of related models.
-- #246: adds `pysqlite <https://pypi.python.org/pypi/pysqlite>`_ to test
+- :issue:`246`: adds `pysqlite <https://pypi.python.org/pypi/pysqlite>`_ to test
   requirements.
-- #260: return a single object when making a :http:method:`get` request to a
+- :issue:`260`: return a single object when making a :http:method:`get` request to a
   relation sub-URL.
-- #264: all methods now execute postprocessors after setting headers.
-- #265: convert strings to dates in related models when making
+- :issue:`264`: all methods now execute postprocessors after setting headers.
+- :issue:`265`: convert strings to dates in related models when making
   :http:method:`post` requests.
 
 Version 0.12.0
@@ -217,16 +217,16 @@ Version 0.12.0
 
 Released on August 8, 2013.
 
-- #188: provides metadata as well as normal data in JSONP responses.
-- #193: allows :http:method:`delete` requests to related instances.
-- #215: removes Python 2.5 tests from Travis configuration.
-- #216: don't resolve Query objects until pagination function.
-- #217: adds missing indices in format string.
-- #220: fix bug when checking attributes on a hybrid property.
-- #227: allows client to request that the server use the current date and/or
-  time when setting the value of a field.
-- #228 (as well as #212, #218, #231): fixes issue due to a module removed from
-  Flask version 0.10.
+- :issue:`188`: provides metadata as well as normal data in JSONP responses.
+- :issue:`193`: allows :http:method:`delete` requests to related instances.
+- :issue:`215`: removes Python 2.5 tests from Travis configuration.
+- :issue:`216`: don't resolve Query objects until pagination function.
+- :issue:`217`: adds missing indices in format string.
+- :issue:`220`: fix bug when checking attributes on a hybrid property.
+- :issue:`227`: allows client to request that the server use the current date
+  and/or time when setting the value of a field.
+- :issue:`228` (as well as :issue:`212,218,231`): fixes issue due to a module
+  removed from Flask version 0.10.
 
 Version 0.11.0
 ~~~~~~~~~~~~~~
@@ -236,23 +236,23 @@ Released on May 18, 2013.
 - Requests that require a body but don't have ``Content-Type:
   application/json`` will cause a :http:statuscode:`415` response.
 - Responses now have ``Content-Type: application/json``.
-- #180: allow more expressive ``has`` and ``any`` searches.
-- #195: convert UUID objects to strings when converting an instance of a model
+- :issue:`180`: allow more expressive ``has`` and ``any`` searches.
+- :issue:`195`: convert UUID objects to strings when converting an instance of a model
   to a dictionary.
-- #202: allow setting hybrid properties with expressions and setters.
-- #203: adds the ``include_methods`` keyword argument to
+- :issue:`202`: allow setting hybrid properties with expressions and setters.
+- :issue:`203`: adds the ``include_methods`` keyword argument to
   :meth:`APIManager.create_api`, which allows JSON responses to include the
   result of calling arbitrary methods of instances of models.
-- #204, 205: allow parameters in ``Content-Type`` header.
+- :issue:`204`, 205: allow parameters in ``Content-Type`` header.
 
 Version 0.10.1
 ~~~~~~~~~~~~~~
 
 Released on May 8, 2013.
 
-- #115: change ``assertEqual()`` methods to ``assert`` statements in tests.
-- #184, #186: Switch to `nose <http://nose.readthedocs.org>`_ for testing.
-- #197: documents technique for adding filters in processors when there are
+- :issue:`115`: change ``assertEqual()`` methods to ``assert`` statements in tests.
+- :issue:`184,186`: Switch to `nose <http://nose.readthedocs.org>`_ for testing.
+- :issue:`197`: documents technique for adding filters in processors when there are
   none initially.
 
 Version 0.10.0
@@ -260,36 +260,36 @@ Version 0.10.0
 
 Released on April 30, 2013.
 
-- #2: adds basic :http:method:`get` access to one level of relationship depth
+- :issue:`2`: adds basic :http:method:`get` access to one level of relationship depth
   for models.
-- #113: interpret empty strings for date fields as ``None`` objects.
-- #115: use Python's built-in assert statements for testing
-- #128: allow disjunctions when filtering search queries.
-- #130: documentation and examples now more clearly show search examples.
-- #135: added support for hybrid properties.
-- #139: remove custom code for authentication in favor of user-defined pre- and
-  postprocessors (this supercedes the fix from #154).
-- #141: relax requirement for version of `python-dateutil
+- :issue:`113`: interpret empty strings for date fields as ``None`` objects.
+- :issue:`115`: use Python's built-in assert statements for testing
+- :issue:`128`: allow disjunctions when filtering search queries.
+- :issue:`130`: documentation and examples now more clearly show search examples.
+- :issue:`135`: added support for hybrid properties.
+- :issue:`139`: remove custom code for authentication in favor of user-defined pre- and
+  postprocessors (this supercedes the fix from :issue:`154`).
+- :issue:`141`: relax requirement for version of `python-dateutil
   <http://labix.org/python-dateutil>`_ to be not equal to 2.0 if using Python
   version 2.6 or 2.7.
-- #146: preprocessors now really execute before other code.
-- #148: adds support for SQLAlchemy `association proxies <http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html>`_.
-- #154 (*this fix is irrelevant due to #139*): authentication function now may
+- :issue:`146`: preprocessors now really execute before other code.
+- :issue:`148`: adds support for SQLAlchemy `association proxies <http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html>`_.
+- :issue:`154` (*this fix is irrelevant due to :issue:`139`*): authentication function now may
   raise an exception instead of just returning a Boolean.
-- #157: :http:method:`post` requests now receive a response containing all
+- :issue:`157`: :http:method:`post` requests now receive a response containing all
   fields of the created instance.
-- #162: allow pre- and postprocessors to indicate that no change has occurred.
-- #164, #172, and #173: :http:method:`patch` requests update fields on related
+- :issue:`162`: allow pre- and postprocessors to indicate that no change has occurred.
+- :issue:`164,172,173`: :http:method:`patch` requests update fields on related
   instances.
-- #165: fixed bug in automatic exposing of URLs for related instances.
-- #170: respond with correct HTTP status codes when a query for a single
+- :issue:`165`: fixed bug in automatic exposing of URLs for related instances.
+- :issue:`170`: respond with correct HTTP status codes when a query for a single
   instance results in none or multiple instances.
-- #174: allow dynamically loaded relationships for automatically exposed URLs
+- :issue:`174`: allow dynamically loaded relationships for automatically exposed URLs
   of related instances.
-- #176: get model attribute instead of column name when getting name of primary
+- :issue:`176`: get model attribute instead of column name when getting name of primary
   key.
-- #182: allow :http:method:`post` requests that set hybrid properties.
-- #152: adds some basic server-side logging for exceptions raised by views.
+- :issue:`182`: allow :http:method:`post` requests that set hybrid properties.
+- :issue:`152`: adds some basic server-side logging for exceptions raised by views.
 
 Version 0.9.3
 ~~~~~~~~~~~~~
@@ -297,23 +297,23 @@ Version 0.9.3
 Released on February 4, 2013.
 
 - Fixes incompatibility with Python 2.5 try/except syntax.
-- #116: handle requests which raise :exc:`~sqlalchemy.exc.IntegrityError`.
+- :issue:`116`: handle requests which raise :exc:`~sqlalchemy.exc.IntegrityError`.
 
 Version 0.9.2
 ~~~~~~~~~~~~~
 
 Released on February 4, 2013.
 
-- #82, #134, #136: added request pre- and postprocessors.
-- #120: adds support for JSON-P callbacks in :http:method:`get` requests.
+- :issue:`82,134,136`: added request pre- and postprocessors.
+- :issue:`120`: adds support for JSON-P callbacks in :http:method:`get` requests.
 
 Version 0.9.1
 ~~~~~~~~~~~~~
 
 Released on January 17, 2013.
 
-- #126: fix documentation build failure due to bug in a dependency.
-- #127: added "ilike" query operator.
+- :issue:`126`: fix documentation build failure due to bug in a dependency.
+- :issue:`127`: added "ilike" query operator.
 
 Version 0.9.0
 ~~~~~~~~~~~~~
@@ -326,22 +326,22 @@ Released on January 16, 2013.
 - Changes some dynamically loaded relationships used for testing and in
   examples to be many-to-one instead of the incorrect one-to-many. Versions of
   SQLAlchemy after 0.8.0b2 raise an exception when the latter is used.
-- #105: added ability to set a list of related model instances on a model.
-- #107: server responds with an error code when a :http:method:`patch` or
+- :issue:`105`: added ability to set a list of related model instances on a model.
+- :issue:`107`: server responds with an error code when a :http:method:`patch` or
   :http:method:`post` request specifies a field which does not exist on the
   model.
-- #108: dynamically loaded relationships should now be rendered correctly by
+- :issue:`108`: dynamically loaded relationships should now be rendered correctly by
   the :func:`views._to_dict` function regardless of whether they are a list or
   a single object.
-- #109: use `sphinxcontrib-issuetracker`_ to render links to GitHub issues in
+- :issue:`109`: use `sphinxcontrib-issuetracker`_ to render links to GitHub issues in
   documentation.
-- #110: enable ``results_per_page`` query parameter for clients, and added
+- :issue:`110`: enable ``results_per_page`` query parameter for clients, and added
   ``max_results_per_page`` keyword argument to :meth:`APIManager.create_api`.
-- #114: fix bug where string representations of integers were converted to
+- :issue:`114`: fix bug where string representations of integers were converted to
   integers.
-- #117: allow adding related instances on :http:method:`patch` requests for
+- :issue:`117`: allow adding related instances on :http:method:`patch` requests for
   one-to-one relationships.
-- #123: :http:method:`patch` requests to instances which do not exist result in
+- :issue:`123`: :http:method:`patch` requests to instances which do not exist result in
   a :http:statuscode:`404` response.
 
 .. _sphinxcontrib-issuetracker: https://sphinxcontrib-issuetracker.readthedocs.org/en/latest
@@ -351,9 +351,9 @@ Version 0.8.0
 
 Released on November 19, 2012.
 
-- #94: :func:`views._to_dict` should return a single object instead of a list
+- :issue:`94`: :func:`views._to_dict` should return a single object instead of a list
   when resolving dynamically loaded many-to-one relationships.
-- #104: added ``num_results`` key to paginated JSON responses.
+- :issue:`104`: added ``num_results`` key to paginated JSON responses.
 
 Version 0.7.0
 ~~~~~~~~~~~~~
@@ -363,16 +363,16 @@ Released on October 9, 2012.
 - Added working ``include`` and ``exclude`` functionality to the
   :func:`views._to_dict` function.
 - Added ``exclude_columns`` keyword argument to :meth:`APIManager.create_api`.
-- #79: attempted to access attribute of ``None`` in constructor of
+- :issue:`79`: attempted to access attribute of ``None`` in constructor of
   :class:`APIManager`.
-- #83: allow :http:method:`post` requests with one-to-one related instances.
-- #86: allow specifying include and exclude for related models.
-- #91: correctly handle :http:method:`post` requests to nullable
+- :issue:`83`: allow :http:method:`post` requests with one-to-one related instances.
+- :issue:`86`: allow specifying include and exclude for related models.
+- :issue:`91`: correctly handle :http:method:`post` requests to nullable
   :class:`~sqlalchemy.DateTime` columns.
-- #93: Added a ``total_pages`` mapping to the JSON response.
-- #98: :http:method:`get` requests to the function evaluation endpoint should
+- :issue:`93`: Added a ``total_pages`` mapping to the JSON response.
+- :issue:`98`: :http:method:`get` requests to the function evaluation endpoint should
   not have a data payload.
-- #101: ``exclude`` in :func:`views._to_dict` function now correctly excludes
+- :issue:`101`: ``exclude`` in :func:`views._to_dict` function now correctly excludes
   requested fields from the returned dictionary.
 
 Version 0.6
@@ -389,9 +389,9 @@ Released on June 20, 2012.
 - Separated API blueprint creation from registration, using
   :meth:`APIManager.create_api` and :meth:`APIManager.create_api_blueprint`.
 - Added support for pure SQLAlchemy in addition to Flask-SQLAlchemy.
-- #74: Added ``post_form_preprocessor`` keyword argument to
+- :issue:`74`: Added ``post_form_preprocessor`` keyword argument to
   :meth:`APIManager.create_api`.
-- #77: validation errors are now correctly handled on :http:method:`PATCH`
+- :issue:`77`: validation errors are now correctly handled on :http:method:`PATCH`
   requests.
 
 Version 0.5

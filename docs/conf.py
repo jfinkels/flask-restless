@@ -30,8 +30,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.intersphinx',
     'sphinxcontrib.httpdomain',
-    'sphinxcontrib.issuetracker',
-    ]
+    'sphinx_issues',
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -281,6 +281,5 @@ except ImportError, e:
     html_theme = 'default'
     html_theme_options = {}
 
-# Configuration for issuetracker extension.
-issuetracker = 'github'
-issuetracker_project = 'jfinkels/flask-restless'
+# Configuration for sphinx_issues extension.
+issues_github_path = 'jfinkels/flask-restless'
