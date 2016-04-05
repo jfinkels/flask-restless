@@ -177,10 +177,13 @@ class RelationshipAPI(APIBase):
                     related_value.append(new_value)
                 except self.validation_exceptions as exception:
                     return self._handle_validation_exception(exception)
-        self.session.commit()
+        # Flush all changes to database but do not commit the transaction
+        # so that postprocessors have the chance to roll it back
+        self.session.flush()
         # Perform any necessary postprocessing.
         for postprocessor in self.postprocessors['POST_RELATIONSHIP']:
             postprocessor()
+        self.session.commit()
         return {}, 204
 
     def patch(self, resource_id, relation_name):
@@ -299,10 +302,13 @@ class RelationshipAPI(APIBase):
                 setattr(instance, relation_name, replacement)
             except self.validation_exceptions as exception:
                 return self._handle_validation_exception(exception)
-        self.session.commit()
+        # Flush all changes to database but do not commit the transaction
+        # so that postprocessors have the chance to roll it back
+        self.session.flush()
         # Perform any necessary postprocessing.
         for postprocessor in self.postprocessors['PATCH_RELATIONSHIP']:
             postprocessor()
+        self.session.commit()
         return {}, 204
 
     def delete(self, resource_id, relation_name):
@@ -380,9 +386,12 @@ class RelationshipAPI(APIBase):
                 # missing from a to-many relation.
                 pass
         was_deleted = len(self.session.dirty) > 0
-        self.session.commit()
+        # Flush all changes to database but do not commit the transaction
+        # so that postprocessors have the chance to roll it back
+        self.session.flush()
         for postprocessor in self.postprocessors['DELETE_RELATIONSHIP']:
             postprocessor(was_deleted=was_deleted)
+        self.session.commit()
         if not was_deleted:
             detail = 'There was no instance to delete'
             return error_response(404, detail=detail)
