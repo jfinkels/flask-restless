@@ -14,6 +14,7 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from operator import itemgetter
+from unittest import skip
 
 # This import is unused but is required for testing on PyPy. CPython can
 # use psycopg2, but PyPy can only use psycopg2cffi.
@@ -38,7 +39,6 @@ from testing.postgresql import PostgresqlFactory as PGFactory
 from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import loads
-from .helpers import skip
 from .helpers import ManagerTestBase
 
 
@@ -54,7 +54,7 @@ from .helpers import ManagerTestBase
 PostgreSQL = PGFactory(cache_initialized_db=True)
 
 
-def teardown():
+def tearDown():
     """Clears the cache in the :attr:`PostgreSQL` class."""
     PostgreSQL.clear_cache()
 
@@ -98,14 +98,14 @@ class TestFiltering(SearchTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask.ext.restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestFiltering, self).setup()
+        super(TestFiltering, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -701,14 +701,14 @@ class TestFiltering(SearchTestBase):
 
 class TestOperators(SearchTestBase):
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask.ext.restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestOperators, self).setup()
+        super(TestOperators, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -929,8 +929,8 @@ class TestNetworkOperators(SearchTestBase):
 
     """
 
-    def setup(self):
-        super(TestNetworkOperators, self).setup()
+    def setUp(self):
+        super(TestNetworkOperators, self).setUp()
 
         class Network(self.Base):
             __tablename__ = 'network'
@@ -941,15 +941,15 @@ class TestNetworkOperators(SearchTestBase):
         self.Base.metadata.create_all()
         self.manager.create_api(Network)
 
-    def teardown(self):
+    def tearDown(self):
         """Closes the database and removes the temporary directory in
         which it lives.
 
         """
-        super(TestNetworkOperators, self).teardown()
+        super(TestNetworkOperators, self).tearDown()
         self.database.stop()
 
-    # We know this method will be called by `setup()` in the superclass,
+    # We know this method will be called by `setUp()` in the superclass,
     # so we can set up the temporary database here.
     def database_uri(self):
         """Creates a PostgreSQL database and returns its connection URI."""
@@ -957,7 +957,7 @@ class TestNetworkOperators(SearchTestBase):
         #:
         #: This attribute stores a
         #: :class:`~testing.postgresql.Postgresql` object, which must be
-        #: stopped in the :meth:`.teardown` method.
+        #: stopped in the :meth:`.tearDown` method.
         self.database = PostgreSQL()
 
         return self.database.url()
@@ -1096,14 +1096,14 @@ class TestNetworkOperators(SearchTestBase):
 class TestAssociationProxy(SearchTestBase):
     """Test for filtering on association proxies."""
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask.ext.restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestAssociationProxy, self).setup()
+        super(TestAssociationProxy, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'

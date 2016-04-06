@@ -18,6 +18,8 @@ Flask-Restless meets the minimum requirements of the JSON API
 specification.
 
 """
+from unittest import skip
+
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
@@ -33,20 +35,19 @@ from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import ManagerTestBase
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
-from .helpers import skip
 
 
 class TestDeleting(ManagerTestBase):
     """Tests for deleting resources."""
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestDeleting, self).setup()
+        super(TestDeleting, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -173,8 +174,8 @@ class TestDeleting(ManagerTestBase):
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setup(self):
-        super(TestProcessors, self).setup()
+    def setUp(self):
+        super(TestProcessors, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -272,9 +273,9 @@ class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSQLAlchemy, self).setup()
+        super(TestFlaskSQLAlchemy, self).setUp()
 
         class Person(self.db.Model):
             id = self.db.Column(self.db.Integer, primary_key=True)

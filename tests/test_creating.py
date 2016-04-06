@@ -21,6 +21,7 @@ specification.
 """
 from __future__ import division
 from datetime import datetime
+from unittest import skip
 
 import dateutil
 from sqlalchemy import Column
@@ -50,7 +51,6 @@ from .helpers import FlaskSQLAlchemyTestBase
 from .helpers import ManagerTestBase
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
-from .helpers import skip
 
 
 def raise_s_exception(instance, *args, **kw):
@@ -77,14 +77,14 @@ def raise_d_exception(*args, **kw):
 class TestCreating(ManagerTestBase):
     """Tests for creating resources."""
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestCreating, self).setup()
+        super(TestCreating, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -835,8 +835,8 @@ class TestCreating(ManagerTestBase):
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setup(self):
-        super(TestProcessors, self).setup()
+    def setUp(self):
+        super(TestProcessors, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -889,14 +889,14 @@ class TestAssociationProxy(ManagerTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask.ext.restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestAssociationProxy, self).setup()
+        super(TestAssociationProxy, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -995,9 +995,9 @@ class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSQLAlchemy, self).setup()
+        super(TestFlaskSQLAlchemy, self).setUp()
 
         class Person(self.db.Model):
             id = self.db.Column(self.db.Integer, primary_key=True)

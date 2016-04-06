@@ -18,6 +18,8 @@ from functools import wraps
 from json import JSONEncoder
 import sys
 import types
+from unittest import skipUnless as skip_unless
+from unittest import TestCase
 import uuid
 
 from flask import Flask
@@ -29,7 +31,6 @@ except ImportError:
     has_flask_sqlalchemy = False
 else:
     has_flask_sqlalchemy = True
-from nose import SkipTest
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.dialects.postgresql import UUID
@@ -69,60 +70,6 @@ def isclass(obj):
 
     """
     return isinstance(obj, CLASS_TYPES)
-
-
-def skip_unless(condition, reason=None):
-    """Decorator that skips `test` unless `condition` is ``True``.
-
-    This is a replacement for :func:`unittest.skipUnless` that works with
-    ``nose``. The argument ``reason`` is a string describing why the test was
-    skipped.
-
-    This decorator can be applied to functions, methods, or classes.
-
-    """
-
-    def decorated(test):
-        """Returns a decorated version of ``test``, as described in the
-        wrapper defined within.
-
-        """
-        message = 'Skipped {0}: {1}'.format(test.__name__, reason)
-
-        # HACK-ish: If the test is actually a test class, override the
-        # setup method so that the only thing it does is raise
-        # `SkipTest`. Thus whenever setup() is called, the test that
-        # would have been run is skipped.
-        if isclass(test):
-            if not condition:
-                def new_setup(self):
-                    raise SkipTest(message)
-
-                test.setup = new_setup
-            return test
-
-        @wraps(test)
-        def inner(*args, **kw):
-            """Checks that ``condition`` is ``True`` before executing
-            ``test(*args, **kw)``.
-
-            """
-            if not condition:
-                raise SkipTest(message)
-            return test(*args, **kw)
-
-        return inner
-
-    return decorated
-
-
-def skip(reason=None):
-    """Unconditionally skip a test.
-
-    This is a convenience function for ``skip_unless(False, reason)``.
-
-    """
-    return skip_unless(False, reason)
 
 
 def parse_version(version_string):
@@ -270,7 +217,7 @@ class BetterJSONEncoder(JSONEncoder):
         return super(BetterJSONEncoder, self).default(obj)
 
 
-class FlaskTestBase(object):
+class FlaskTestBase(TestCase):
     """Base class for tests which use a Flask application.
 
     The Flask test client can be accessed at ``self.app``. The Flask
@@ -278,7 +225,7 @@ class FlaskTestBase(object):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the Flask application and the APIManager."""
         # create the Flask application
         app = Flask(__name__)
@@ -316,20 +263,21 @@ class DatabaseMixin(object):
         return 'sqlite://'
 
 
+@skip_unless(has_flask_sqlalchemy, 'Flask-SQLAlchemy not found')
 class FlaskSQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
     """Base class for tests that use Flask-SQLAlchemy (instead of plain
     old SQLAlchemy).
 
-    If Flask-SQLAlchemy is not installed, the :meth:`.setup` method will
+    If Flask-SQLAlchemy is not installed, the :meth:`.setUp` method will
     raise :exc:`nose.SkipTest`, so that each test method will be
     skipped individually.
 
     """
 
-    def setup(self):
-        super(FlaskSQLAlchemyTestBase, self).setup()
-        if not has_flask_sqlalchemy:
-            raise SkipTest('Flask-SQLAlchemy not found.')
+    def setUp(self):
+        super(FlaskSQLAlchemyTestBase, self).setUp()
+        # if not has_flask_sqlalchemy:
+        #     raise SkipTest('Flask-SQLAlchemy not found.')
         self.flaskapp.config['SQLALCHEMY_DATABASE_URI'] = self.database_uri()
         # This is to avoid a warning in earlier versions of
         # Flask-SQLAlchemy.
@@ -339,7 +287,7 @@ class FlaskSQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
         self.db = SQLAlchemy(self.flaskapp)
         self.session = self.db.session
 
-    def teardown(self):
+    def tearDown(self):
         """Drops all tables and unregisters Flask-SQLAlchemy session
         signals.
 
@@ -351,7 +299,7 @@ class FlaskSQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
 class SQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
     """Base class for tests that use a SQLAlchemy database.
 
-    The :meth:`setup` method does the necessary SQLAlchemy
+    The :meth:`setUp` method does the necessary SQLAlchemy
     initialization, and the subclasses should populate the database with
     models and then create the database (by calling
     ``self.Base.metadata.create_all()``).
@@ -362,12 +310,12 @@ class SQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Initializes the components necessary for models in a SQLAlchemy
         database.
 
         """
-        super(SQLAlchemyTestBase, self).setup()
+        super(SQLAlchemyTestBase, self).setUp()
         engine = create_engine(self.database_uri(), convert_unicode=True)
         self.Session = sessionmaker(autocommit=False, autoflush=False,
                                     bind=engine)
@@ -375,7 +323,7 @@ class SQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
         self.Base = declarative_base()
         self.Base.metadata.bind = engine
 
-    def teardown(self):
+    def tearDown(self):
         """Drops all tables from the temporary database."""
         self.session.remove()
         self.Base.metadata.drop_all()
@@ -396,11 +344,11 @@ class ManagerTestBase(SQLAlchemyTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Initializes an instance of
         :class:`~flask.ext.restless.APIManager` with a SQLAlchemy
         session.
 
         """
-        super(ManagerTestBase, self).setup()
+        super(ManagerTestBase, self).setUp()
         self.manager = APIManager(self.flaskapp, session=self.session)

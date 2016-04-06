@@ -10,13 +10,14 @@
 # License version 3 and under the 3-clause BSD license. For more
 # information, see LICENSE.AGPL and LICENSE.BSD.
 """Unit tests for the JSON API Bulk extension."""
+from unittest import skip
+
 from sqlalchemy import Column
 from sqlalchemy import Integer
 
 from .helpers import dumps
 from .helpers import loads
 from .helpers import ManagerTestBase
-from .helpers import skip
 
 
 @skip('Not yet implemented')
@@ -30,8 +31,8 @@ class TestCreating(ManagerTestBase):
 
     """
 
-    def setup(self):
-        super(TestCreating, self).setup()
+    def setUp(self):
+        super(TestCreating, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -72,8 +73,8 @@ class TestUpdating(ManagerTestBase):
 
     """
 
-    def setup(self):
-        super(TestUpdating, self).setup()
+    def setUp(self):
+        super(TestUpdating, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -229,8 +230,8 @@ class TestDeleting(ManagerTestBase):
 
     """
 
-    def setup(self):
-        super(TestDeleting, self).setup()
+    def setUp(self):
+        super(TestDeleting, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'

@@ -21,13 +21,14 @@ specification.
 from __future__ import division
 
 from datetime import datetime
+from unittest import skip
+
 try:
     from flask.ext.sqlalchemy import SQLAlchemy
 except ImportError:
     has_flask_sqlalchemy = False
 else:
     has_flask_sqlalchemy = True
-
 from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
@@ -52,20 +53,19 @@ from .helpers import loads
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
 from .helpers import ManagerTestBase
-from .helpers import skip
 
 
 class TestUpdating(ManagerTestBase):
     """Tests for updating resources."""
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestUpdating, self).setup()
+        super(TestUpdating, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -856,8 +856,8 @@ class TestUpdating(ManagerTestBase):
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setup(self):
-        super(TestProcessors, self).setup()
+    def setUp(self):
+        super(TestProcessors, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -1000,14 +1000,14 @@ class TestAssociationProxy(ManagerTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask.ext.restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestAssociationProxy, self).setup()
+        super(TestAssociationProxy, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -1204,9 +1204,9 @@ class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSQLAlchemy, self).setup()
+        super(TestFlaskSQLAlchemy, self).setUp()
         # HACK During testing, we don't want the session to expire, so that we
         # can access attributes of model instances *after* a request has been
         # made (that is, after Flask-Restless does its work and commits the

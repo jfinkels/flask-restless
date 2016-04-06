@@ -31,7 +31,7 @@ class TestDeletingResources(ManagerTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
@@ -39,7 +39,7 @@ class TestDeletingResources(ManagerTestBase):
 
         """
         # create the database
-        super(TestDeletingResources, self).setup()
+        super(TestDeletingResources, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'

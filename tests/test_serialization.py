@@ -69,8 +69,8 @@ class DecoratedInterval(TypeDecorator):
 class TestFetchCollection(ManagerTestBase):
     """Tests for serializing when fetching from a collection endpoint."""
 
-    def setup(self):
-        super(TestFetchCollection, self).setup()
+    def setUp(self):
+        super(TestFetchCollection, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -99,8 +99,8 @@ class TestFetchCollection(ManagerTestBase):
 class TestFetchResource(ManagerTestBase):
     """Tests for serializing when fetching from a resource endpoint."""
 
-    def setup(self):
-        super(TestFetchResource, self).setup()
+    def setUp(self):
+        super(TestFetchResource, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -431,8 +431,8 @@ class TestFetchResource(ManagerTestBase):
 
 class TestFetchRelation(ManagerTestBase):
 
-    def setup(self):
-        super(TestFetchRelation, self).setup()
+    def setUp(self):
+        super(TestFetchRelation, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -511,8 +511,8 @@ class TestFetchRelation(ManagerTestBase):
 class TestFetchRelatedResource(ManagerTestBase):
     """Tests for serializing when fetching from a related resource endpoint."""
 
-    def setup(self):
-        super(TestFetchRelatedResource, self).setup()
+    def setUp(self):
+        super(TestFetchRelatedResource, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'

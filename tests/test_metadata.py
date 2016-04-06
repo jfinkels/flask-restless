@@ -10,6 +10,8 @@
 # License version 3 and under the 3-clause BSD license. For more
 # information, see LICENSE.AGPL and LICENSE.BSD.
 """Unit tests for metadata in server responses."""
+from unittest import skip
+
 from sqlalchemy import Column
 from sqlalchemy import Integer
 
@@ -17,19 +19,18 @@ from flask.ext.restless import CONTENT_TYPE
 
 from .helpers import loads
 from .helpers import ManagerTestBase
-from .helpers import skip
 
 
 class TestMetadata(ManagerTestBase):
     """Tests for receiving metadata in responses."""
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`.
 
         """
-        super(TestMetadata, self).setup()
+        super(TestMetadata, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'

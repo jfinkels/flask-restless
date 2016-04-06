@@ -37,14 +37,14 @@ class TestFetchingData(ManagerTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestFetchingData, self).setup()
+        super(TestFetchingData, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -387,8 +387,8 @@ class TestInclusion(ManagerTestBase):
 
     """
 
-    def setup(self):
-        super(TestInclusion, self).setup()
+    def setUp(self):
+        super(TestInclusion, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -668,8 +668,8 @@ class TestSparseFieldsets(ManagerTestBase):
 
     """
 
-    def setup(self):
-        super(TestSparseFieldsets, self).setup()
+    def setUp(self):
+        super(TestSparseFieldsets, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -795,8 +795,8 @@ class TestSorting(ManagerTestBase):
 
     """
 
-    def setup(self):
-        super(TestSorting, self).setup()
+    def setUp(self):
+        super(TestSorting, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -976,8 +976,8 @@ class TestPagination(ManagerTestBase):
 
     """
 
-    def setup(self):
-        super(TestPagination, self).setup()
+    def setUp(self):
+        super(TestPagination, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'

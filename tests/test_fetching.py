@@ -19,6 +19,7 @@ specification.
 
 """
 from operator import itemgetter
+from unittest import skip
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
@@ -39,13 +40,12 @@ from .helpers import loads
 from .helpers import MSIE8_UA
 from .helpers import MSIE9_UA
 from .helpers import ManagerTestBase
-from .helpers import skip
 
 
 class TestFetchCollection(ManagerTestBase):
 
-    def setup(self):
-        super(TestFetchCollection, self).setup()
+    def setUp(self):
+        super(TestFetchCollection, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -282,8 +282,8 @@ class TestFetchCollection(ManagerTestBase):
 
 class TestFetchResource(ManagerTestBase):
 
-    def setup(self):
-        super(TestFetchResource, self).setup()
+    def setUp(self):
+        super(TestFetchResource, self).setUp()
 
         # class Article(self.Base):
         #     __tablename__ = 'article'
@@ -402,8 +402,8 @@ class TestFetchResource(ManagerTestBase):
 
 class TestFetchRelation(ManagerTestBase):
 
-    def setup(self):
-        super(TestFetchRelation, self).setup()
+    def setUp(self):
+        super(TestFetchRelation, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -513,8 +513,8 @@ class TestFetchRelation(ManagerTestBase):
 
 class TestFetchRelatedResource(ManagerTestBase):
 
-    def setup(self):
-        super(TestFetchRelatedResource, self).setup()
+    def setUp(self):
+        super(TestFetchRelatedResource, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -618,8 +618,8 @@ class TestFetchRelatedResource(ManagerTestBase):
 class TestFetchRelationship(ManagerTestBase):
     """Tests for fetching from a relationship URL."""
 
-    def setup(self):
-        super(TestFetchRelationship, self).setup()
+    def setUp(self):
+        super(TestFetchRelationship, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -662,8 +662,8 @@ class TestFetchRelationship(ManagerTestBase):
 class TestServerSparseFieldsets(ManagerTestBase):
     """Tests for specifying default sparse fieldsets on the server."""
 
-    def setup(self):
-        super(TestServerSparseFieldsets, self).setup()
+    def setUp(self):
+        super(TestServerSparseFieldsets, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -972,14 +972,14 @@ class TestServerSparseFieldsets(ManagerTestBase):
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestProcessors, self).setup()
+        super(TestProcessors, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -1438,14 +1438,14 @@ class TestProcessors(ManagerTestBase):
 class TestDynamicRelationships(ManagerTestBase):
     """Tests for fetching resources from dynamic to-many relationships."""
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application, and
         creates the ReSTful API endpoints for the :class:`TestSupport.Person`
         and :class:`TestSupport.Article` models.
 
         """
-        super(TestDynamicRelationships, self).setup()
+        super(TestDynamicRelationships, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -1525,14 +1525,14 @@ class TestAssociationProxy(ManagerTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask.ext.restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
         """
-        super(TestAssociationProxy, self).setup()
+        super(TestAssociationProxy, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -1610,9 +1610,9 @@ class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Creates the Flask-SQLAlchemy database and models."""
-        super(TestFlaskSQLAlchemy, self).setup()
+        super(TestFlaskSQLAlchemy, self).setUp()
 
         class Person(self.db.Model):
             id = self.db.Column(self.db.Integer, primary_key=True)

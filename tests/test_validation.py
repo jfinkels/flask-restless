@@ -18,6 +18,7 @@ to test that it captures validation errors and returns them to the
 client.
 
 """
+from unittest import skipUnless as skip_unless
 import sys
 
 from sqlalchemy import Column
@@ -42,7 +43,6 @@ from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import loads
 from .helpers import ManagerTestBase
-from .helpers import skip_unless
 
 
 class CoolValidationError(Exception):
@@ -63,9 +63,9 @@ class TestSimpleValidation(ManagerTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Create APIs for the validated models."""
-        super(TestSimpleValidation, self).setup()
+        super(TestSimpleValidation, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -264,9 +264,9 @@ class TestSAValidation(ManagerTestBase):
 
     """
 
-    def setup(self):
+    def setUp(self):
         """Create APIs for the validated models."""
-        super(TestSAValidation, self).setup()
+        super(TestSAValidation, self).setUp()
 
         class Person(self.Base, _sav.ValidationMixin):
             __tablename__ = 'person'

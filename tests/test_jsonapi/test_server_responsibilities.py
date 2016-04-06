@@ -18,6 +18,8 @@ section of the JSON API specification.
 .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
 
 """
+from unittest import skip
+
 from sqlalchemy import Column
 from sqlalchemy import Unicode
 from sqlalchemy import Integer
@@ -28,7 +30,6 @@ from ..helpers import check_sole_error
 from ..helpers import dumps
 from ..helpers import loads
 from ..helpers import ManagerTestBase
-from ..helpers import skip
 
 
 class TestServerResponsibilities(ManagerTestBase):
@@ -39,8 +40,8 @@ class TestServerResponsibilities(ManagerTestBase):
 
     """
 
-    def setup(self):
-        super(TestServerResponsibilities, self).setup()
+    def setUp(self):
+        super(TestServerResponsibilities, self).setUp()
 
         class Person(self.Base):
             __tablename__ = 'person'
