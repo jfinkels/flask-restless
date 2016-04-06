@@ -165,7 +165,7 @@ class RelationshipAPI(APIBase):
             # Get the new objects to add to the relation.
             new_value = get_by(self.session, related_model, rel['id'])
             if new_value is None:
-                detail = ('No object of type {0} found with ID'
+                detail = ('No resource of type {0} found with ID'
                           ' {1}').format(type_, rel['id'])
                 return error_response(404, detail=detail)
             # Don't append a new value if it already exists in the to-many
@@ -284,14 +284,14 @@ class RelationshipAPI(APIBase):
             # If the to-one relationship resource or any of the to-many
             # relationship resources do not exist, return an error response.
             if replacement is None:
-                detail = ('No object of type {0} found'
+                detail = ('No resource of type {0} found'
                           ' with ID {1}').format(type_, id_)
                 return error_response(404, detail=detail)
             if (isinstance(replacement, list)
                 and any(value is None for value in replacement)):
                 not_found = (rel for rel, value in zip(data, replacement)
                              if value is None)
-                detail = 'No object of type {0} found with ID {1}'
+                detail = 'No resource of type {0} found with ID {1}'
                 errors = [error(detail=detail.format(rel['type'], rel['id']))
                           for rel in not_found]
                 return errors_response(404, errors)

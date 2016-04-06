@@ -502,7 +502,7 @@ class API(APIBase):
                 # If any of the requested to-many linkage objects do not exist,
                 # return an error response.
                 if not_found:
-                    detail = 'No object of type {0} found with ID {1}'
+                    detail = 'No resource of type {0} found with ID {1}'
                     errors = [error(detail=detail.format(t, i))
                               for t, i in not_found]
                     return errors_response(404, errors)
@@ -525,7 +525,7 @@ class API(APIBase):
                     # If the to-one relationship resource does not
                     # exist, return an error response.
                     if inst is None:
-                        detail = 'No object of type {0} found with ID {1}'
+                        detail = 'No resource of type {0} found with ID {1}'
                         detail = detail.format(type_, id_)
                         return error_response(404, detail=detail)
                     newvalue = inst

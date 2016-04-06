@@ -23,6 +23,7 @@ from sqlalchemy import Integer
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
+from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import ManagerTestBase
 
@@ -923,9 +924,8 @@ class TestUpdatingToOne(ManagerTestBase):
         data = dumps(data)
         response = self.app.patch('/api/article/1/relationships/author',
                                   data=data)
-        print(response.data)
-        assert response.status_code == 404
-        # TODO check error message here
+        check_sole_error(response, 404, ['No resource', 'found', 'type',
+                                         'person', 'ID', 'bogus'])
 
     def test_empty_request(self):
         """Test that attempting to delete from a relationship URL with no data
