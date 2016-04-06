@@ -100,7 +100,7 @@ setup(
     long_description=__doc__,
     name='Flask-Restless',
     platforms='any',
-    packages=find_packages(exclude=['tests', 'tests.*']),
+    packages=find_packages(),
     test_suite='nose.collector',
     tests_require=['nose'],
     url='https://github.com/jfinkels/flask-restless',
