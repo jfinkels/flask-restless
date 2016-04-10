@@ -21,7 +21,7 @@ specification.
 from __future__ import division
 
 from datetime import datetime
-from unittest import skip
+from unittest2 import skip
 
 try:
     from flask.ext.sqlalchemy import SQLAlchemy

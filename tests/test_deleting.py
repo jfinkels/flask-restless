@@ -18,7 +18,7 @@ Flask-Restless meets the minimum requirements of the JSON API
 specification.
 
 """
-from unittest import skip
+from unittest2 import skip
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey

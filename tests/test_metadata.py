@@ -10,7 +10,7 @@
 # License version 3 and under the 3-clause BSD license. For more
 # information, see LICENSE.AGPL and LICENSE.BSD.
 """Unit tests for metadata in server responses."""
-from unittest import skip
+from unittest2 import skip
 
 from sqlalchemy import Column
 from sqlalchemy import Integer

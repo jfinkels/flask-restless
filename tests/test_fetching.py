@@ -19,7 +19,7 @@ specification.
 
 """
 from operator import itemgetter
-from unittest import skip
+from unittest2 import skip
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey

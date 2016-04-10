@@ -18,8 +18,8 @@ from functools import wraps
 from json import JSONEncoder
 import sys
 import types
-from unittest import skipUnless as skip_unless
-from unittest import TestCase
+from unittest2 import skipUnless as skip_unless
+from unittest2 import TestCase
 import uuid
 
 from flask import Flask

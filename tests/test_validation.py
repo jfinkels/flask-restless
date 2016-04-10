@@ -18,7 +18,7 @@ to test that it captures validation errors and returns them to the
 client.
 
 """
-from unittest import skipUnless as skip_unless
+from unittest2 import skipUnless as skip_unless
 import sys
 
 from sqlalchemy import Column

@@ -14,7 +14,7 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from operator import itemgetter
-from unittest import skip
+from unittest2 import skip
 
 # This import is unused but is required for testing on PyPy. CPython can
 # use psycopg2, but PyPy can only use psycopg2cffi.

@@ -1,6 +1,6 @@
 -r requirements.txt
-nose
 savalidation
+unittest2
 
 # For testing PostgreSQL specific operations...
 testing.postgresql

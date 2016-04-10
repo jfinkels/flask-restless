@@ -18,7 +18,7 @@ section of the JSON API specification.
 .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
 
 """
-from unittest import skip
+from unittest2 import skip
 
 from sqlalchemy import Column
 from sqlalchemy import Unicode
