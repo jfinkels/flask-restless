@@ -5,6 +5,12 @@ Flask-Restless
 models defined using SQLAlchemy (or Flask-SQLAlchemy). The generated APIs
 satisfy the requirements of the `JSON API`_ specification.
 
+This is the documentation for version |version|. See also the the most recent
+`stable version documentation`_ and the `development version documentation`_
+
+.. _stable version documentation: https://flask-restless.readthedocs.org/en/stable/
+.. _development version documentation: https://flask-restless.readthedocs.org/en/latest
+
 .. warning::
 
    This is a "beta" version, so there may be more bugs than usual. There are
