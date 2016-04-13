@@ -266,6 +266,29 @@ class TestProcessors(ManagerTestBase):
         response = self.app.delete('/api/person/1')
         assert response.status_code == 204
 
+    def test_postprocessor_no_commit_on_error(self):
+        """Tests that an Exception in a postprocessor ensures that the session
+        is not getting commited but just flushed and will be rolled back once closed."""
+
+        def raise_error(**kw):
+            raise ProcessingException(status=500)
+
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+
+        postprocessors = dict(DELETE_RESOURCE=[raise_error])
+        self.manager.create_api(self.Person, methods=['DELETE'],
+                                postprocessors=postprocessors)
+        response = self.app.delete('/api/person/1')
+
+        assert response.status_code == 500
+        people = self.session.query(self.Person).all()
+        assert people == []
+        self.session.rollback()
+        people = self.session.query(self.Person).all()
+        assert people == [person]
+
 
 class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
     """Tests for deleting resources defined as Flask-SQLAlchemy models instead

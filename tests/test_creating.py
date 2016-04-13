@@ -41,6 +41,7 @@ from flask.ext.restless import APIManager
 from flask.ext.restless import CONTENT_TYPE
 from flask.ext.restless import DefaultDeserializer
 from flask.ext.restless import DefaultSerializer
+from flask.ext.restless import ProcessingException
 
 from .helpers import BetterJSONEncoder as JSONEncoder
 from .helpers import check_sole_error
@@ -914,6 +915,26 @@ class TestProcessors(ManagerTestBase):
         assert response.status_code == 201
         document = loads(response.data)
         assert document['foo'] == 'bar'
+
+    def test_postprocessor_no_commit_on_error(self):
+        """Tests that an Exception in a postprocessor ensures that the session
+        is not getting commited but just flushed and will be rolled back once closed."""
+
+        def raise_error(**kw):
+            raise ProcessingException(status=500)
+
+        postprocessors = dict(POST_RESOURCE=[raise_error])
+        self.manager.create_api(self.Person, methods=['POST'],
+                                postprocessors=postprocessors)
+        data = dict(data=dict(type='person'))
+        response = self.app.post('/api/person', data=dumps(data))
+
+        assert response.status_code == 500
+        person_count = self.session.query(self.Person).count()
+        assert person_count == 1
+        self.session.rollback()
+        person_count = self.session.query(self.Person).count()
+        assert person_count == 0
 
 
 class TestAssociationProxy(ManagerTestBase):

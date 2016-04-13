@@ -23,6 +23,8 @@ from sqlalchemy import Integer
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
+from flask.ext.restless import ProcessingException
+
 from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import ManagerTestBase
@@ -272,6 +274,29 @@ class TestAdding(ManagerTestBase):
         assert response.status_code == 204
         assert has_run == [True]
 
+    def test_postprocessor_no_commit_on_error(self):
+        """Tests that an Exception in a postprocessor ensures that the session
+        is not getting commited but just flushed and will be rolled back once closed."""
+
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def raise_error(**kw):
+            raise ProcessingException(status=500)
+
+        postprocessors = {'POST_RELATIONSHIP': [raise_error]}
+        self.manager.create_api(self.Person, postprocessors=postprocessors,
+                                url_prefix='/api2', methods=['PATCH'])
+        data = {'data': [{'type': 'article', 'id': '1'}]}
+        response = self.app.post('/api2/person/1/relationships/articles',
+                                 data=dumps(data))
+
+        assert response.status_code == 500
+        assert article.author == person
+        self.session.rollback()
+        assert article.author != person
 
 class TestDeleting(ManagerTestBase):
     """Tests for deleting a link from a resource's to-many relationship via the
@@ -520,6 +545,33 @@ class TestDeleting(ManagerTestBase):
                                    data=dumps(data))
         assert response.status_code == 204
         assert has_run == [True]
+
+    def test_postprocessor_no_commit_on_error(self):
+        """Tests that a postprocessor gets executing when deleting from
+        a to-many relationship.
+
+        """
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        article.author = person
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def raise_error(**kw):
+            raise ProcessingException(status=500)
+
+        postprocessors = {'DELETE_RELATIONSHIP': [raise_error]}
+        self.manager.create_api(self.Person, postprocessors=postprocessors,
+                                url_prefix='/api2', methods=['PATCH'],
+                                allow_delete_from_to_many_relationships=True)
+        data = {'data': [{'type': 'article', 'id': '1'}]}
+        response = self.app.delete('/api2/person/1/relationships/articles',
+                                   data=dumps(data))
+
+        assert response.status_code == 500
+        assert article.author != person
+        self.session.rollback()
+        assert article.author == person
 
 
 class TestUpdatingToMany(ManagerTestBase):
@@ -774,6 +826,31 @@ class TestUpdatingToMany(ManagerTestBase):
                                   data=dumps(data))
         assert response.status_code == 204
         assert has_run == [True]
+
+    def test_postprocessor_no_commit_on_error(self):
+        """Tests that an Exception in a postprocessor ensures that the session
+        is not getting commited but just flushed and will be rolled back once closed."""
+
+        person = self.Person(id=1)
+        article = self.Article(id=1)
+        self.session.add_all([article, person])
+        self.session.commit()
+
+        def raise_error(**kw):
+            raise ProcessingException(status=500)
+
+        postprocessors = {'PATCH_RELATIONSHIP': [raise_error]}
+        self.manager.create_api(self.Person, postprocessors=postprocessors,
+                                url_prefix='/api2', methods=['PATCH'],
+                                allow_to_many_replacement=True)
+        data = {'data': [{'type': 'article', 'id': '1'}]}
+        response = self.app.patch('/api2/person/1/relationships/articles',
+                                  data=dumps(data))
+
+        assert response.status_code == 500
+        assert article.author == person
+        self.session.rollback()
+        assert article.author != person
 
     def test_set_null(self):
         """Tests that an attempt to set a null value on a to-many

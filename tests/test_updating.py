@@ -1060,6 +1060,37 @@ class TestProcessors(ManagerTestBase):
         assert person.name == 'bar'
         assert temp == ['baz']
 
+    def test_postprocessor_no_commit_on_error(self):
+        """Tests that an Exception in a postprocessor ensures that the session
+        is not getting commited but just flushed and will be rolled back once closed."""
+
+        def raise_error(**kw):
+            raise ProcessingException(status=500)
+
+        person = self.Person(id=1, name=u'foo')
+        self.session.add(person)
+        self.session.commit()
+
+        postprocessors = dict(PATCH_RESOURCE=[raise_error])
+        self.manager.create_api(self.Person, methods=['PATCH'],
+                                postprocessors=postprocessors)
+
+        data = {
+            'data': {
+                'id': '1',
+                'type': 'person',
+                'attributes': {
+                    'name': u'bar'
+                }
+            }
+        }
+        response = self.app.patch('/api/person/1', data=dumps(data))
+
+        assert response.status_code == 500
+        assert person.name == u'bar'
+        self.session.rollback()
+        assert person.name == u'foo'
+
 
 class TestAssociationProxy(ManagerTestBase):
     """Tests for creating an object with a relationship using an association
