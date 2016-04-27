@@ -55,7 +55,7 @@ yields the response
        },
        "id": "1",
        "jsonapi": {
-         {"version": "1.0"}
+         "version": "1.0"
        },
        "links": {
          "self": "http://example.com/api/person/bd34b544-ad39-11e5-a2aa-4cbb58b9ee34"
@@ -105,7 +105,7 @@ yields the response
        },
        "meta": {},
        "jsonapi": {
-         {"version": "1.0"}
+         "version": "1.0"
        },
        "type": "person"
      }
