@@ -371,6 +371,15 @@ yields the response
         "data": [42]
       }
 
+The function evaluation endpoint also respects filtering query
+parameters. Specifically, filters are applied to the model *before* the
+function evaluation is performed, so you can apply a function to a subset of
+resources. See :ref:`filtering` for more information.
+
+.. versionchanged:: 1.0.0b2
+
+   Adds ability to use filters in function evaluation.
+
 .. _includes:
 
 Inclusion of related resources
