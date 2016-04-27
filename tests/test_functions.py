@@ -13,6 +13,7 @@
 from sqlalchemy import Column
 from sqlalchemy import Integer
 
+from .helpers import check_sole_error
 from .helpers import dumps
 from .helpers import loads
 from .helpers import ManagerTestBase
@@ -52,8 +53,8 @@ class TestFunctionEvaluation(ManagerTestBase):
         functions = [dict(name='sum', field='age'),
                      dict(name='avg', field='age'),
                      dict(name='count', field='id')]
-        query = dumps(functions)
-        response = self.app.get('/api/eval/person?functions={0}'.format(query))
+        query_string = {'functions': dumps(functions)}
+        response = self.app.get('/api/eval/person', query_string=query_string)
         assert response.status_code == 200
         document = loads(response.data)
         results = document['data']
@@ -65,23 +66,27 @@ class TestFunctionEvaluation(ManagerTestBase):
 
         """
         response = self.app.get('/api/eval/person')
-        assert response.status_code == 400
-        # TODO check error message
+        check_sole_error(response, 400, ['functions', 'provide',
+                                         'query parameter'])
 
     def test_empty_query(self):
         """Tests that a request to the function evaluation endpoint with an
         empty functions query yields an error response.
 
         """
-        response = self.app.get('/api/eval/person?functions=')
-        assert response.status_code == 400
+        query_string = {'functions': ''}
+        response = self.app.get('/api/eval/person', query_string=query_string)
+        check_sole_error(response, 400, ['Unable', 'decode', 'JSON',
+                                         'functions'])
 
     def test_no_functions(self):
         """Tests that if no functions are defined, an empty response is
         returned.
 
         """
-        response = self.app.get('/api/eval/person?functions=[]')
+        functions = []
+        query_string = {'functions': dumps(functions)}
+        response = self.app.get('/api/eval/person', query_string=query_string)
         assert response.status_code == 200
         document = loads(response.data)
         results = document['data']
@@ -89,32 +94,28 @@ class TestFunctionEvaluation(ManagerTestBase):
 
     def test_missing_function_name(self):
         functions = [dict(field='age')]
-        query = dumps(functions)
-        response = self.app.get('/api/eval/person?functions={0}'.format(query))
-        assert response.status_code == 400
-        # TODO check error message here
+        query_string = {'functions': dumps(functions)}
+        response = self.app.get('/api/eval/person', query_string=query_string)
+        check_sole_error(response, 400, ['Missing', 'name', 'function'])
 
     def test_missing_field_name(self):
         functions = [dict(name='sum')]
-        query = dumps(functions)
-        response = self.app.get('/api/eval/person?functions={0}'.format(query))
-        assert response.status_code == 400
-        # TODO check error message here
+        query_string = {'functions': dumps(functions)}
+        response = self.app.get('/api/eval/person', query_string=query_string)
+        check_sole_error(response, 400, ['Missing', 'field', 'function'])
 
     def test_bad_field_name(self):
         functions = [dict(name='sum', field='bogus')]
-        query = dumps(functions)
-        response = self.app.get('/api/eval/person?functions={0}'.format(query))
-        assert response.status_code == 400
-        # TODO check error message here
+        query_string = {'functions': dumps(functions)}
+        response = self.app.get('/api/eval/person', query_string=query_string)
+        check_sole_error(response, 400, ['unknown', 'field', 'bogus'])
 
     def test_bad_function_name(self):
         """Tests that an unknown function name yields an error response."""
         functions = [dict(name='bogus', field='age')]
-        query = dumps(functions)
-        response = self.app.get('/api/eval/person?functions={0}'.format(query))
-        assert response.status_code == 400
-        # TODO check error message here
+        query_string = {'functions': dumps(functions)}
+        response = self.app.get('/api/eval/person', query_string=query_string)
+        check_sole_error(response, 400, ['unknown', 'function', 'bogus'])
 
     def test_jsonp(self):
         """Test for JSON-P callbacks."""
@@ -122,8 +123,8 @@ class TestFunctionEvaluation(ManagerTestBase):
         self.session.add(person)
         self.session.commit()
         functions = [dict(name='sum', field='age')]
-        response = self.app.get('/api/eval/person?functions={0}'
-                                '&callback=foo'.format(dumps(functions)))
+        query_string = {'functions': dumps(functions), 'callback': 'foo'}
+        response = self.app.get('/api/eval/person', query_string=query_string)
         assert response.status_code == 200
         assert response.mimetype == 'application/javascript'
         assert response.data.startswith(b'foo(')
@@ -131,3 +132,28 @@ class TestFunctionEvaluation(ManagerTestBase):
         document = loads(response.data[4:-1])
         results = document['data']
         assert [10.0] == results
+
+    def test_filter_before_functions(self):
+        """Tests that filters are applied before functions are called.
+
+        """
+        person1 = self.Person(age=5)
+        person2 = self.Person(age=10)
+        person3 = self.Person(age=15)
+        person4 = self.Person(age=20)
+        self.session.add_all([person1, person2, person3, person4])
+        self.session.commit()
+        # This filter should exclude `person4`.
+        filters = [{'name': 'age', 'op': '<', 'val': 20}]
+        # Get the sum of the ages and the mean of the ages, in that order.
+        functions = [
+            {'name': 'sum', 'field': 'age'},
+            {'name': 'avg', 'field': 'age'},
+        ]
+        query_string = {'filter[objects]': dumps(filters),
+                        'functions': dumps(functions)}
+        response = self.app.get('/api/eval/person', query_string=query_string)
+        assert response.status_code == 200
+        document = loads(response.data)
+        results = document['data']
+        assert [30, 10.0] == results

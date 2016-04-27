@@ -17,7 +17,7 @@ Version 1.0.0b2-dev
 
 Not yet released.
 
-No changes yet.
+- :issue:`7`: allows filtering before function evaluation.
 
 Version 1.0.0b1
 ---------------

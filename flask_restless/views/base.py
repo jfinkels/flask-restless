@@ -59,9 +59,7 @@ from ..search import ComparisonToNull
 from ..search import search
 from ..search import search_relationship
 from ..search import UnknownField
-from ..serialization import simple_serialize
 from ..serialization import simple_relationship_serialize
-from ..serialization import DefaultDeserializer
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
 from .helpers import count
@@ -803,6 +801,71 @@ def errors_from_serialization_exceptions(exceptions, included=False):
     return errors_response(500, errors)
 
 
+def collection_parameters():
+    """Gets filtering, sorting, grouping, and other settings from the
+    request that affect the collection of resources in a response.
+
+    Returns a four-tuple of the form ``(filters, sort, group_by,
+    single)``. These can be provided to the
+    :func:`~flask_restless.search.search` function; for more
+    information, see the documentation for that function.
+
+    This function can only be invoked in a request context.
+
+    """
+    # Determine filtering options.
+    filters = json.loads(request.args.get(FILTER_PARAM, '[]'))
+    # # TODO fix this using the below
+    # filters = [strings_to_dates(self.model, f) for f in filters]
+
+    # # resolve date-strings as required by the model
+    # for param in search_params.get('filters', list()):
+    #     if 'name' in param and 'val' in param:
+    #         query_model = self.model
+    #         query_field = param['name']
+    #         if '__' in param['name']:
+    #             fieldname, relation = param['name'].split('__')
+    #             submodel = getattr(self.model, fieldname)
+    #             if isinstance(submodel, InstrumentedAttribute):
+    #                 query_model = submodel.property.mapper.class_
+    #                 query_field = relation
+    #             elif isinstance(submodel, AssociationProxy):
+    #                 # For the sake of brevity, rename this function.
+    #                 get_assoc = get_related_association_proxy_model
+    #                 query_model = get_assoc(submodel)
+    #                 query_field = relation
+    #         to_convert = {query_field: param['val']}
+    #         try:
+    #             result = strings_to_dates(query_model, to_convert)
+    #         except ValueError as exception:
+    #             current_app.logger.exception(str(exception))
+    #             return dict(message='Unable to construct query'), 400
+    #         param['val'] = result.get(query_field)
+
+    # Determine sorting options.
+    sort = request.args.get(SORT_PARAM)
+    if sort:
+        sort = [('-', value[1:]) if value.startswith('-') else ('+', value)
+                for value in sort.split(',')]
+    else:
+        sort = []
+
+    # Determine grouping options.
+    group_by = request.args.get(GROUP_PARAM)
+    if group_by:
+        group_by = group_by.split(',')
+    else:
+        group_by = []
+
+    # Determine whether the client expects a single resource response.
+    try:
+        single = bool(int(request.args.get('filter[single]', 0)))
+    except ValueError:
+        raise SingleKeyError('failed to extract Boolean from parameter')
+
+    return filters, sort, group_by, single
+
+
 #: Creates the mimerender object necessary for decorating responses with a
 #: function that automatically formats the dictionary in the appropriate format
 #: based on the ``Accept`` header.
@@ -1328,68 +1391,6 @@ class APIBase(ModelView):
         # This may raise MultipleExceptions if there are problems
         # serializing the included resources.
         return self._serialize_many(to_include)
-
-    def _collection_parameters(self):
-        """Gets filtering, sorting, grouping, and other settings from the
-        request that affect the collection of resources in a response.
-
-        Returns a four-tuple of the form ``(filters, sort, group_by,
-        single)``. These can be provided to the
-        :func:`~flask_restless.search.search` function; for more
-        information, see the documentation for that function.
-
-        """
-        # Determine filtering options.
-        filters = json.loads(request.args.get(FILTER_PARAM, '[]'))
-        # # TODO fix this using the below
-        # filters = [strings_to_dates(self.model, f) for f in filters]
-
-        # # resolve date-strings as required by the model
-        # for param in search_params.get('filters', list()):
-        #     if 'name' in param and 'val' in param:
-        #         query_model = self.model
-        #         query_field = param['name']
-        #         if '__' in param['name']:
-        #             fieldname, relation = param['name'].split('__')
-        #             submodel = getattr(self.model, fieldname)
-        #             if isinstance(submodel, InstrumentedAttribute):
-        #                 query_model = submodel.property.mapper.class_
-        #                 query_field = relation
-        #             elif isinstance(submodel, AssociationProxy):
-        #                 # For the sake of brevity, rename this function.
-        #                 get_assoc = get_related_association_proxy_model
-        #                 query_model = get_assoc(submodel)
-        #                 query_field = relation
-        #         to_convert = {query_field: param['val']}
-        #         try:
-        #             result = strings_to_dates(query_model, to_convert)
-        #         except ValueError as exception:
-        #             current_app.logger.exception(str(exception))
-        #             return dict(message='Unable to construct query'), 400
-        #         param['val'] = result.get(query_field)
-
-        # Determine sorting options.
-        sort = request.args.get(SORT_PARAM)
-        if sort:
-            sort = [('-', value[1:]) if value.startswith('-') else ('+', value)
-                    for value in sort.split(',')]
-        else:
-            sort = []
-
-        # Determine grouping options.
-        group_by = request.args.get(GROUP_PARAM)
-        if group_by:
-            group_by = group_by.split(',')
-        else:
-            group_by = []
-
-        # Determine whether the client expects a single resource response.
-        try:
-            single = bool(int(request.args.get('filter[single]', 0)))
-        except ValueError:
-            raise SingleKeyError('failed to extract Boolean from parameter')
-
-        return filters, sort, group_by, single
 
     def _paginated(self, items, filters=None, sort=None, group_by=None):
         """Returns a :class:`Paginated` object representing the

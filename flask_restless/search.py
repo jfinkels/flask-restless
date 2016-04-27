@@ -44,6 +44,22 @@ class ComparisonToNull(Exception):
     pass
 
 
+class FilterCreationError(Exception):
+    """Raised when there is a problem creating a SQLAlchemy filter object.
+
+    `message` is a string providing detailed information about the cause
+    of the problem.
+
+    """
+
+    def __init__(self, message, *args, **kw):
+        super(FilterCreationError, self).__init__(*args, **kw)
+        self._message = message
+
+    def message(self):
+        return self._message
+
+
 class UnknownField(Exception):
     """Raised when the user attempts to reference a field that does not
     exist on a model in a search.
@@ -326,9 +342,9 @@ def create_filter(model, filt):
 
     `filt` is an instance of the :class:`Filter` class.
 
-    Raises one of :exc:`AttributeError`, :exc:`KeyError`, or
-    :exc:`TypeError` if there is a problem creating the query. See the
-    documentation for :func:`create_operation` for more information.
+    Raises a :exc:`.FilterCreationError` if there is a problem creating
+    the query; see the documentation for :func:`create_operation` for
+    more information on possible causes of such an error.
 
     """
     # If the filter is not a conjunction or a disjunction, simply proceed
@@ -339,13 +355,55 @@ def create_filter(model, filt):
         # get the other field to which to compare, if it exists
         if filt.otherfield:
             val = getattr(model, filt.otherfield)
-        # for the sake of brevity...
-        return create_operation(model, fname, filt.operator, val)
+        try:
+            return create_operation(model, fname, filt.operator, val)
+        except KeyError:
+            message = 'unknown operator {0}'.format(filt.operator)
+            raise FilterCreationError(message)
+        except TypeError:
+            message = ('incorrect number of arguments provided for operation'
+                       ' {0}').format(filt.operator)
+            raise FilterCreationError(message)
+        except AttributeError:
+            if not filt.otherfield:
+                message = ('no column with name "{0}" exists on model'
+                           ' {1}').format(fname, model)
+            else:
+                message = ('no column with name either "{0}" or "{1}" exists'
+                           ' on model {1}').format(fname, val, model)
+            raise FilterCreationError(message)
     # Otherwise, if this filter is a conjunction or a disjunction, make
     # sure to apply the appropriate filter operation.
     if isinstance(filt, ConjunctionFilter):
         return and_(create_filter(model, f) for f in filt)
     return or_(create_filter(model, f) for f in filt)
+
+
+def create_filters(model, filters):
+    """Returns an iterator over SQLAlchemy filter objects, ready to be
+    provided as the positional arguments in an invocation of
+    :meth:`sqlalchemy.orm.Query.filter`.
+
+    `model` is the SQLAlchemy model on which the filters will be
+    applied.
+
+    `filters` is an iterable of dictionaries representing filter
+    objects, as described in the Flask-Restless documentation
+    (:ref:`filtering`).
+
+    This function may raise :exc:`FilterCreationError` if there is a
+    problem converting one of the filters into a SQLAlchemy object.
+
+    """
+    # `Filter.from_dictionary()` converts the dictionary representation
+    # of a filter object into an intermediate representation, an
+    # instance of :class:`.Filter` that facilitates the construction of
+    # the actual SQLAlchemy code in `create_filter` below.
+    filters = (Filter.from_dictionary(model, f) for f in filters)
+    # Each of these function calls may raise a FilterCreationError.
+    #
+    # TODO In Python 3.3+, this should be `yield from ...`.
+    return (create_filter(model, f) for f in filters)
 
 
 def search_relationship(session, instance, relation, filters=None, sort=None,
@@ -411,9 +469,9 @@ def search(session, model, filters=None, sort=None, group_by=None,
         query = session_query(session, model)
 
     # Filter the query.
-    filters = [Filter.from_dictionary(model, f) for f in filters]
+    #
     # This function call may raise an exception.
-    filters = [create_filter(model, f) for f in filters]
+    filters = create_filters(model, filters)
     query = query.filter(*filters)
 
     # Order the query. If no order field is specified, order by primary
