@@ -22,6 +22,7 @@ from sqlalchemy.orm import relationship
 
 from flask.ext.restless import APIManager
 from flask.ext.restless import collection_name
+from flask.ext.restless import DefaultSerializer
 from flask.ext.restless import IllegalArgumentError
 from flask.ext.restless import model_for
 from flask.ext.restless import serializer_for
@@ -273,6 +274,7 @@ class TestAPIManager(ManagerTestBase):
             __tablename__ = 'person'
             id = Column(Integer, primary_key=True)
             name = Column(Unicode)
+            extra = 'foo'
 
         class Article(self.Base):
             __tablename__ = 'article'
@@ -367,11 +369,12 @@ class TestAPIManager(ManagerTestBase):
         function.
 
         """
-        def my_function(*args, **kw):
+
+        class MySerializer(DefaultSerializer):
             pass
 
-        self.manager.create_api(self.Person, serializer=my_function)
-        assert serializer_for(self.Person) == my_function
+        self.manager.create_api(self.Person, serializer_class=MySerializer)
+        assert isinstance(serializer_for(self.Person), MySerializer)
 
     def test_serializer_for_nonexistent(self):
         """Tests that attempting to get the serializer for an unknown
@@ -463,6 +466,16 @@ class TestAPIManager(ManagerTestBase):
         with self.assertRaises(AttributeError):
             self.manager.create_api(self.Person,
                                     additional_attributes=['bogus'])
+
+    def test_exclude_additional_attributes(self):
+        """Tests that an attempt to exclude a field that is also
+        specified in ``additional_attributes`` causes an exception at
+        the time of API creation.
+
+        """
+        with self.assertRaises(IllegalArgumentError):
+            self.manager.create_api(self.Person, exclude=['extra'],
+                                    additional_attributes=['extra'])
 
 
 class TestFSA(FlaskSQLAlchemyTestBase):

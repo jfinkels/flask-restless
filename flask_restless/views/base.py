@@ -50,6 +50,7 @@ from werkzeug.exceptions import HTTPException
 
 from ..helpers import collection_name
 from ..helpers import get_model
+from ..helpers import get_related_model
 from ..helpers import is_like_list
 from ..helpers import primary_key_for
 from ..helpers import primary_key_value
@@ -59,8 +60,12 @@ from ..search import ComparisonToNull
 from ..search import search
 from ..search import search_relationship
 from ..search import UnknownField
-from ..serialization import simple_relationship_serialize
 from ..serialization import DeserializationException
+from ..serialization import JsonApiDocument
+from ..serialization import MultipleExceptions
+from ..serialization import simple_heterogeneous_serialize_many
+from ..serialization import simple_relationship_serialize
+from ..serialization import simple_relationship_serialize_many
 from ..serialization import SerializationException
 from .helpers import count
 from .helpers import upper_keys as upper
@@ -196,21 +201,6 @@ class ProcessingException(HTTPException):
         self.detail = detail
         self.source = source
         self.meta = meta
-
-
-class MultipleExceptions(Exception):
-    """Raised when there are multple problems in the code.
-
-    `exceptions` is a non-empty sequence of other exceptions that have
-    been raised in the code.
-
-    """
-
-    def __init__(self, exceptions, *args, **kw):
-        super(MultipleExceptions, self).__init__(*args, **kw)
-
-        #: Sequence of other exceptions that have been raised in the code.
-        self.exceptions = exceptions
 
 
 def _is_msie8or9():
@@ -752,6 +742,7 @@ def errors_response(status, errors):
     .. _Errors: http://jsonapi.org/format/#errors
 
     """
+    # TODO Use an error serializer.
     document = {'errors': errors, 'jsonapi': {'version': JSONAPI_VERSION},
                 'meta': {_STATUS: status}}
     return document, status
@@ -876,6 +867,77 @@ def collection_parameters():
 #: as a decorator.
 # TODO fill in xml renderer
 mimerender = FlaskMimeRender()(default='jsonapi', jsonapi=jsonpify)
+
+
+# TODO Subclasses for different kinds of linkers (relationship, resource
+# object, to-one relations, related resource, etc.).
+class Linker(object):
+
+    def __init__(self, model):
+        self.model = model
+
+    def _related_resource_links(self, resource, primary_resource,
+                                relation_name):
+        resource_id = primary_key_value(primary_resource)
+        related_resource_id = primary_key_value(resource)
+        self_link = url_for(self.model, resource_id, relation_name,
+                            related_resource_id)
+        links = {'self': self_link}
+        return links
+
+    def _relationship_links(self, resource_id, relation_name):
+        self_link = url_for(self.model, resource_id, relation_name,
+                            relationship=True)
+        related_link = url_for(self.model, resource_id, relation_name)
+        links = {'self': self_link, 'related': related_link}
+        return links
+
+    def _to_one_relation_links(self, resource_id, relation_name):
+        self_link = url_for(self.model, resource_id, relation_name)
+        links = {'self': self_link}
+        return links
+
+    def _primary_resource_links(self, resource_id):
+        self_link = url_for(self.model, resource_id=resource_id)
+        links = {'self': self_link}
+        return links
+
+    def _collection_links(self):
+        self_link = url_for(self.model)
+        links = {'self': self_link}
+        return links
+
+    def generate_links(self, resource, primary_resource, relation_name,
+                       is_related_resource, is_relationship):
+        if primary_resource is not None:
+            if is_related_resource:
+                return self._related_resource_links(resource, primary_resource,
+                                                    relation_name)
+            else:
+                resource_id = primary_key_value(primary_resource)
+                if is_relationship:
+                    return self._relationship_links(resource_id, relation_name)
+                else:
+                    return self._to_one_relation_links(resource_id,
+                                                       relation_name)
+        else:
+            if resource is not None:
+                resource_id = primary_key_value(resource)
+                return self._primary_resource_links(resource_id)
+            else:
+                return self._collection_links()
+
+
+class PaginationLinker(object):
+
+    def __init__(self, pagination):
+        self.pagination = pagination
+
+    def generate_links(self):
+        return self.pagination.pagination_links
+
+    def generate_header_links(self):
+        return self.pagination.header_links
 
 
 class Paginated(object):
@@ -1165,9 +1227,18 @@ class APIBase(ModelView):
 
     `primary_key` is as described in :ref:`primarykey`.
 
+    `serializer` and `deserializer` are as described in
+    :ref:`serialization`.
+
     `validation_exceptions` are as described in :ref:`validation`.
 
-    `allow_to_many_replacement` is as described in :ref:`allowreplacement`.
+    `includes` are as described in :ref:`includes`.
+
+    `page_size` and `max_page_size` are as described in
+    :ref:`pagination`.
+
+    `allow_to_many_replacement` is as described in
+    :ref:`allowreplacement`.
 
     """
 
@@ -1214,17 +1285,17 @@ class APIBase(ModelView):
         #:
         #: This should not be ``None``, unless a subclass is not going to use
         #: serialization.
-        self.serialize = serializer
+        self.serializer = serializer
 
         #: A custom serialization function for linkage objects.
-        self.serialize_relationship = simple_relationship_serialize
+        #self.serialize_relationship = simple_relationship_serialize
 
         #: A custom deserialization function for primary resources; see
         #: :ref:`serialization` for more information.
         #:
         #: This should not be ``None``, unless a subclass is not going to use
         #: deserialization.
-        self.deserialize = deserializer
+        self.deserializer = deserializer
 
         #: The tuple of exceptions that are expected to be raised during
         #: validation when creating or updating a model.
@@ -1309,56 +1380,6 @@ class APIBase(ModelView):
         current_app.logger.exception(str(exception))
         return errors_response(400, errors)
 
-    def _serialize_many(self, instances, relationship=False):
-        """Serializes a list of SQLAlchemy objects.
-
-        `instances` is a list of SQLAlchemy objects of any model class.
-
-        This function returns a list of dictionary objects, each of
-        which is the serialized version of the corresponding SQLAlchemy
-        model instance from `instances`.
-
-        If `relationship` is ``True``, resource identifier objects will
-        be returned instead of resource objects.
-
-        This function raises :exc:`MultipleExceptions` if there is a
-        problem serializing one or more of the objects in `instances`.
-
-        """
-        result = []
-        failed = []
-        for instance in instances:
-            model = get_model(instance)
-            if relationship:
-                serialize = self.serialize_relationship
-            else:
-                # Determine the serializer for this instance. If there
-                # is no serializer, use the default serializer for the
-                # current resource, even though the current model may
-                # different from the model of the current instance.
-                try:
-                    serialize = serializer_for(model)
-                except ValueError:
-                    # TODO Should we fail instead, thereby effectively
-                    # requiring that an API has been created for each
-                    # type of resource? This is mainly a design
-                    # question.
-                    serialize = self.serialize
-            # This may raise ValueError
-            _type = collection_name(model)
-            # TODO The `only` keyword argument will be ignored when
-            # serializing relationships, so we don't really need to
-            # recompute this every time.
-            only = self.sparse_fields.get(_type)
-            try:
-                serialized = serialize(instance, only=only)
-                result.append(serialized)
-            except SerializationException as exception:
-                failed.append(exception)
-        if failed:
-            raise MultipleExceptions(failed)
-        return result
-
     def get_all_inclusions(self, instance_or_instances):
         """Returns a list of all the requested included resources
         associated with the given instance or instances of a SQLAlchemy
@@ -1384,13 +1405,13 @@ class APIBase(ModelView):
         # one instance. Otherwise, collect the resources to include for
         # each instance in `instances`.
         if isinstance(instance_or_instances, Query):
-            to_include = set(chain(self.resources_to_include(resource)
-                                   for resource in instance_or_instances))
+            instances = instance_or_instances
+            to_include = set(chain(map(self.resources_to_include, instances)))
         else:
-            to_include = self.resources_to_include(instance_or_instances)
-        # This may raise MultipleExceptions if there are problems
-        # serializing the included resources.
-        return self._serialize_many(to_include)
+            instance = instance_or_instances
+            to_include = self.resources_to_include(instance)
+        only = self.sparse_fields
+        return simple_heterogeneous_serialize_many(to_include, only=only)
 
     def _paginated(self, items, filters=None, sort=None, group_by=None):
         """Returns a :class:`Paginated` object representing the
@@ -1409,9 +1430,9 @@ class APIBase(ModelView):
         will be serialized as linkage objects instead of resources
         objects.
 
-        This method serializes the (correct page of) resources. As such,
-        it raises an instance of :exc:`MultipleExceptions` if there is a
-        problem serializing resources.
+        # This method serializes the (correct page of) resources. As such,
+        # it raises an instance of :exc:`MultipleExceptions` if there is a
+        # problem serializing resources.
 
         """
         # Determine the client's page size request. Raise an exception
@@ -1424,15 +1445,26 @@ class APIBase(ModelView):
             msg = "Page size must not exceed the server's maximum: {0}"
             msg = msg.format(self.max_page_size)
             raise PaginationError(msg)
-        is_relationship = self.use_resource_identifiers()
         # If the page size is 0, just return everything.
         if page_size == 0:
-            result = self._serialize_many(items, relationship=is_relationship)
-            # Use `len()` here instead of doing `count(self.session,
-            # items)` because the former should be faster.
-            num_results = len(result)
-            return Paginated(result, page_size=page_size,
-                             num_results=num_results)
+            # # These serialization calls may raise MultipleExceptions, or
+            # # possible SerializationExceptions.
+            # if is_relationship:
+            #     result = self.relationship_serializer.serialize_many(items)
+            # else:
+            #     serialize_many = self.serializer.serialize_many
+            #     result = serialize_many(items, only=self.sparse_fields)
+
+            # TODO Ideally we would like to use the folowing code.
+            #
+            #     # Use `len()` here instead of doing `count(self.session,
+            #     # items)` because the former should be faster.
+            #     num_results = len(result['data'])
+            #
+            # but we can't get the length of the list of items until
+            # we serialize them.
+            num_results = count(self.session, items)
+            return Paginated(items, page_size=0, num_results=num_results)
         # Determine the client's page number request. Raise an exception
         # if the page number is out of bounds.
         page_number = int(request.args.get(PAGE_NUMBER_PARAM, 1))
@@ -1470,13 +1502,10 @@ class APIBase(ModelView):
             offset = (page_number - 1) * page_size
             # TODO Use Query.slice() instead, since it's easier to use.
             items = items.limit(page_size).offset(offset)
-        # Serialize the found items. This may raise an exception if
-        # there is a problem serializing any of the objects.
-        result = self._serialize_many(items, relationship=is_relationship)
         # Wrap the list of results in a Paginated object, which
         # represents the result set and stores some extra information
         # about how it was determined.
-        return Paginated(result, num_results=num_results, first=first,
+        return Paginated(items, num_results=num_results, first=first,
                          last=last, next_=next_, prev=prev,
                          page_size=page_size, filters=filters, sort=sort,
                          group_by=group_by)
@@ -1488,45 +1517,54 @@ class APIBase(ModelView):
         # to-one relation that has no value. In this case, the "data"
         # for the JSON API response is just `None`.
         if resource is None:
-            data = None
+            result = JsonApiDocument()
+        # Otherwise, we are serializing one of several possibilities.
+        #
+        # - a primary resource (as in `GET /person/1`),
+        # - a to-one relation (as in `GET /article/1/author`)
+        # - a related resource (as in `GET /person/1/articles/2`).
+        # - a to-one relationship (as in `GET /article/1/relationships/author`)
+        #
         else:
-            # HACK The _serialize_many() method expects a list as input and
-            # returns a list as output, but we only need to serialize a
-            # single resource here. Thus we provide a list of length one
-            # as input and assume a list of length one as output.
             try:
-                data = self._serialize_many([resource],
-                                            relationship=is_relationship)
-            except MultipleExceptions as e:
-                return errors_from_serialization_exceptions(e.exceptions)
-            data = data[0]
-        # Prepare the dictionary that will contain the JSON API response.
-        result = {'jsonapi': {'version': JSONAPI_VERSION}, 'meta': {},
-                  'links': {}, 'data': data}
+                # This covers the relationship object case...
+                if is_relationship:
+                    result = simple_relationship_serialize(resource)
+                # ...and this covers the resource object cases.
+                else:
+                    model = get_model(resource)
+                    # Determine the serializer for this instance. If there
+                    # is no serializer, use the default serializer for the
+                    # current resource, even though the current model may
+                    # different from the model of the current instance.
+                    try:
+                        serializer = serializer_for(model)
+                    except ValueError:
+                        # TODO Should we fail instead, thereby effectively
+                        # requiring that an API has been created for each
+                        # type of resource? This is mainly a design
+                        # question.
+                        serializer = self.serializer
+                    # This may raise ValueError
+                    _type = collection_name(model)
+                    only = self.sparse_fields.get(_type)
+                    # This may raise SerializationException
+                    result = serializer.serialize(resource, only=only)
+            except SerializationException as exception:
+                return errors_from_serialization_exceptions([exception])
+
         # Determine the top-level links.
-        is_relation = primary_resource is not None
-        is_related_resource = is_relation and related_resource
-        if is_related_resource:
-            resource_id = primary_key_value(primary_resource)
-            related_resource_id = primary_key_value(resource)
-            # `self.model` should match `get_model(primary_resource)`
-            self_link = url_for(self.model, resource_id, relation_name,
-                                related_resource_id)
-            result['links']['self'] = self_link
-        elif is_relation:
-            resource_id = primary_key_value(primary_resource)
-            # `self.model` should match `get_model(primary_resource)`
-            if is_relationship:
-                self_link = url_for(self.model, resource_id, relation_name,
-                                    relationship=True)
-                related_link = url_for(self.model, resource_id, relation_name)
-                result['links']['self'] = self_link
-                result['links']['related'] = related_link
-            else:
-                self_link = url_for(self.model, resource_id, relation_name)
-                result['links']['self'] = self_link
-        else:
-            result['links']['self'] = url_for(self.model)
+        linker = Linker(self.model)
+        links = linker.generate_links(resource, primary_resource,
+                                      relation_name, related_resource,
+                                      is_relationship)
+        result['links'] = links
+
+        # TODO Create an Includer class, like the Linker class.
+        # # Determine the top-level inclusions.
+        # includer = Includer(resource)
+        # includes = includer.generate_includes(resource)
+        # result['includes'] = includes
 
         # Include any requested resources in a compound document.
         try:
@@ -1541,11 +1579,13 @@ class APIBase(ModelView):
         if included:
             result['included'] = included
         # HACK Need to do this here to avoid a too-long line.
+        is_relation = primary_resource is not None
+        is_related_resource = is_relation and related_resource
         kw = {'is_relation': is_relation,
               'is_related_resource': is_related_resource}
         # This method could have been called on a request to fetch a
         # single resource, a to-one relation, or a member of a to-many
-        # relation.
+        # relation. We need to use the appropriate postprocessor here.
         processor_type = 'GET_{0}'.format(self.resource_processor_type(**kw))
         for postprocessor in self.postprocessors[processor_type]:
             postprocessor(result=result)
@@ -1578,11 +1618,7 @@ class APIBase(ModelView):
             detail = 'Unable to construct query'
             return error_response(400, cause=exception, detail=detail)
 
-        # Prepare the dictionary that will contain the JSON API response.
-        result = {'links': {'self': url_for(self.model)},
-                  'jsonapi': {'version': JSONAPI_VERSION},
-                  'meta': {}}
-
+        is_relationship = self.use_resource_identifiers()
         # Add the primary data (and any necessary links) to the JSON API
         # response object.
         #
@@ -1592,44 +1628,110 @@ class APIBase(ModelView):
             try:
                 paginated = self._paginated(search_items, filters=filters,
                                             sort=sort, group_by=group_by)
-            except MultipleExceptions as e:
-                return errors_from_serialization_exceptions(e.exceptions)
             except PaginationError as exception:
                 detail = exception.args[0]
                 return error_response(400, cause=exception, detail=detail)
-            # Wrap the resulting object or list of objects under a `data` key.
-            result['data'] = paginated.items
-            # Provide top-level links.
-            result['links'].update(paginated.pagination_links)
-            link_header = ','.join(paginated.header_links)
+            # Serialize the found items.
+            #
+            # We are serializing one of three possibilities.
+            #
+            # - a collection of primary resources (as in `GET /person`),
+            # - a to-many relation (as in `GET /person/1/articles`),
+            # - a to-many relationship (as in `GET /person/1/relationships/articles`)
+            #
+            items = paginated.items
+            # This covers the relationship object case...
+            if is_relationship:
+                result = simple_relationship_serialize_many(items)
+            # ...and this covers the primary resource collection and
+            # to-many relation cases.
+            else:
+                # TODO This doesn't handle the case of a
+                # heterogeneous to-many relationship, in which case
+                # each related resource could be an instance of a
+                # distinct model class.
+                if is_relation:
+                    primary_model = get_model(resource)
+                    model = get_related_model(primary_model, relation_name)
+                else:
+                    model = self.model
+                # Determine the serializer for this instance. If there
+                # is no serializer, use the default serializer for the
+                # current resource, even though the current model may
+                # different from the model of the current instance.
+                try:
+                    serializer = serializer_for(model)
+                except ValueError:
+                    # TODO Should we fail instead, thereby effectively
+                    # requiring that an API has been created for each
+                    # type of resource? This is mainly a design
+                    # question.
+                    serializer = self.serializer
+                # This may raise ValueError
+                _type = collection_name(model)
+                only = self.sparse_fields.get(_type)
+                try:
+                    result = serializer.serialize_many(items, only=only)
+                except MultipleExceptions as e:
+                    return errors_from_serialization_exceptions(e.exceptions)
+                except SerializationException as exception:
+                    return errors_from_serialization_exceptions([exception])
+
+            # Determine the top-level links.
+            linker = Linker(self.model)
+            links = linker.generate_links(resource, None, relation_name, None,
+                                          is_relationship)
+            pagination_linker = PaginationLinker(paginated)
+            pagination_links = pagination_linker.generate_links()
+            if 'links' not in result:
+                result['links'] = {}
+            result['links'].update(links)
+            result['links'].update(pagination_links)
+
+            # Create the metadata for the response, like headers and
+            # total number of found items.
+            pagination_header_links = pagination_linker.generate_header_links()
+            link_header = ','.join(pagination_header_links)
             headers = dict(Link=link_header)
             num_results = paginated.num_results
+
         # Otherwise, the result of the search should be a single resource.
         else:
             try:
-                data = search_items.one()
+                resource = search_items.one()
             except NoResultFound as exception:
                 detail = 'No result found'
                 return error_response(404, cause=exception, detail=detail)
             except MultipleResultsFound as exception:
                 detail = 'Multiple results found'
                 return error_response(404, cause=exception, detail=detail)
-            only = self.sparse_fields.get(self.collection_name)
-            # Wrap the resulting resource under a `data` key.
+            # Serialize the single resource.
             try:
-                if self.use_resource_identifiers():
-                    serialize = self.serialize_relationship
+                if is_relationship:
+                    result = simple_relationship_serialize(resource)
                 else:
-                    serialize = self.serialize
-                result['data'] = serialize(data, only=only)
+                    only = self.sparse_fields.get(self.collection_name)
+                    result = self.serializer.serialize(resource, only=only)
             except SerializationException as exception:
                 return errors_from_serialization_exceptions([exception])
-            primary_key = primary_key_for(data)
+
+            # Determine the top-level links.
+            linker = Linker(self.model)
+            # Here we determine whether we are looking at a collection,
+            # as in `GET /people`, or a to-many relation, as in `GET
+            # /people/1/comments`.
+            if resource is None:
+                links = linker.generate_links(None, None, None, None, False, False)
+            else:
+                links = linker.generate_links(resource, None, None, False, False)
+            result['links'].update(links)
+
+            # Create the metadata for the response, like headers and
+            # total number of found items.
+            primary_key = primary_key_for(resource)
             pk_value = result['data'][primary_key]
-            # The URL at which a client can access the instance matching this
-            # search query.
-            url = '{0}/{1}'.format(request.base_url, pk_value)
-            headers = dict(Location=url)
+            location = url_for(self.model, resource_id=pk_value)
+            headers = dict(Location=location)
             num_results = 1
 
         # Determine the resources to include (in a compound document).
@@ -1647,8 +1749,9 @@ class APIBase(ModelView):
             # `errors_from_serialization_exception()`.
             return errors_from_serialization_exceptions(e.exceptions,
                                                         included=True)
-        if included:
-            result['included'] = included
+        if 'included' not in result:
+            result['included'] = []
+        result['included'].extend(included)
 
         # This method could have been called on either a request to
         # fetch a collection of resources or a to-many relation.
@@ -1665,9 +1768,10 @@ class APIBase(ModelView):
         # for more information. They don't really need to be under the ``meta``
         # key, that's just for semantic consistency.
         status = 200
-        result['meta'][_HEADERS] = headers
-        result['meta'][_STATUS] = status
-        result['meta']['total'] = num_results
+        meta = {_HEADERS: headers, _STATUS: status, 'total': num_results}
+        if 'meta' not in result:
+            result['meta'] = {}
+        result['meta'].update(meta)
         return result, status, headers
 
     def resources_to_include(self, instance):

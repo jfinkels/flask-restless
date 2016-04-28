@@ -30,8 +30,8 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
 from flask.ext.restless import APIManager
+from flask.ext.restless import DefaultSerializer
 from flask.ext.restless import ProcessingException
-from flask.ext.restless import simple_serialize
 
 from .helpers import check_sole_error
 from .helpers import dumps
@@ -874,19 +874,21 @@ class TestServerSparseFieldsets(ManagerTestBase):
         self.session.add_all([article, comment1, comment2])
         self.session.commit()
 
-        def add_foo(instance, *args, **kw):
-            result = simple_serialize(instance)
-            if 'attributes' not in result:
-                result['attributes'] = {}
-            result['attributes']['foo'] = 'foo'
-            return result
+        class MySerializer(DefaultSerializer):
+
+            def serialize(self, *args, **kw):
+                result = super(MySerializer, self).serialize(*args, **kw)
+                if 'attributes' not in result['data']:
+                    result['data']['attributes'] = {}
+                result['data']['attributes']['foo'] = 'foo'
+                return result
 
         self.manager.create_api(self.Article,
                                 additional_attributes=['first_comment'])
         # Ensure that the comment object has a custom serialization
         # function, so we can test that it is serialized using this
         # function in particular.
-        self.manager.create_api(self.Comment, serializer=add_foo)
+        self.manager.create_api(self.Comment, serializer_class=MySerializer)
         # HACK Need to create an API for this model because otherwise
         # we're not able to create the link URLs to them.
         self.manager.create_api(self.Person)

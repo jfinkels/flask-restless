@@ -91,7 +91,8 @@ setup(
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
-    description='A Flask extension for easy ReSTful API generation',
+    description=('Flask extension for generating a JSON API interface for'
+                 ' SQLAlchemy models'),
     download_url='https://pypi.python.org/pypi/Flask-Restless',
     install_requires=REQUIREMENTS,
     include_package_data=True,

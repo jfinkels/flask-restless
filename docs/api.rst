@@ -30,18 +30,18 @@ Global helper functions
 
 .. autofunction:: url_for(model, instid=None, relationname=None, relationinstid=None, _apimanager=None, **kw)
 
-Serialization helpers
----------------------
+Serialization and deserialization
+---------------------------------
 
-.. autofunction:: simple_serialize(instance, only=None)
+.. autoclass:: DefaultSerializer
 
-.. autoclass:: Serializer
-
-.. autoclass:: Deserializer
+.. autoclass:: DefaultDeserializer
 
 .. autoclass:: SerializationException
 
 .. autoclass:: DeserializationException
+
+.. autoclass:: MultipleExceptions
 
 
 Pre- and postprocessor helpers

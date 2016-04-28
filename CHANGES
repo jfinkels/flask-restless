@@ -17,7 +17,10 @@ Version 1.0.0b2-dev
 
 Not yet released.
 
+- Changes serialization/deserialization to class-based implementation instead
+  of a function-based implementation.
 - :issue:`7`: allows filtering before function evaluation.
+- :issue:`49`: deserializers now expect a complete JSON API document.
 
 Version 1.0.0b1
 ---------------

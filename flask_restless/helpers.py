@@ -204,17 +204,31 @@ def primary_key_value(instance, as_string=False):
         return url_quote_plus(result.encode('utf-8'))
 
 
-def is_like_list(instance, relation):
-    """Returns ``True`` if and only if the relation of `instance` whose name is
-    `relation` is list-like.
+def is_like_list(model_or_instance, relation):
+    """Returns ``True`` if and only if the relation of the given model or
+    instance of a model whose name is `relation` is list-like.
 
-    A relation may be like a list if, for example, it is a non-lazy one-to-many
-    relation, or it is a dynamically loaded one-to-many.
+    A relation may be like a list if, for example, it is a non-lazy
+    to-many relation, or it is a dynamically loaded to-many relation.
+
+    `model_or_instance` may be either a SQLAlchemy model class or an
+    instance of such a class.
 
     """
+    if inspect.isclass(model_or_instance):
+        model = model_or_instance
+        if relation in model._sa_class_manager:
+            return model._sa_class_manager[relation].property.uselist
+        related_value = getattr(model, relation)
+        if isinstance(related_value, AssociationProxy):
+            local_prop = related_value.local_attr.prop
+            if isinstance(local_prop, RelProperty):
+                return local_prop.uselist
+        return False
+    instance = model_or_instance
     if relation in instance._sa_class_manager:
         return instance._sa_class_manager[relation].property.uselist
-    elif hasattr(instance, relation):
+    if hasattr(instance, relation):
         attr = getattr(instance._sa_instance_state.class_, relation)
         if hasattr(attr, 'property'):
             return attr.property.uselist

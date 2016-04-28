@@ -27,8 +27,6 @@ from ..helpers import has_field
 from ..helpers import is_like_list
 from ..helpers import primary_key_value
 from ..helpers import strings_to_datetimes
-from ..serialization import ClientGeneratedIDNotAllowed
-from ..serialization import ConflictingType
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
 from .base import APIBase
@@ -37,10 +35,36 @@ from .base import error
 from .base import error_response
 from .base import errors_from_serialization_exceptions
 from .base import errors_response
-from .base import JSONAPI_VERSION
 from .base import MultipleExceptions
 from .base import SingleKeyError
 from .helpers import changes_on_update
+
+
+def errors_from_deserialization_exceptions(exceptions, included=False):
+    """Returns an errors response object, as returned by
+    :func:`errors_response`, representing the given list of
+    :exc:`DeserializationException` objects.
+
+    If `included` is ``True``, this indicates that the exceptions were
+    raised by attempts to serialize resources included in a compound
+    document; this modifies the error message for the exceptions a bit.
+
+    """
+
+    def _to_error(exception):
+        detail = exception.message()
+        status = exception.status
+        return error(status=status, detail=detail)
+
+    errors = list(map(_to_error, exceptions))
+    # Workaround: if there is only one error, assign the status code of
+    # that error object to be the status code of the actual HTTP
+    # response.
+    if len(errors) == 1:
+        status = errors[0]['status']
+    else:
+        status = 400
+    return errors_response(status, errors)
 
 
 class API(APIBase):
@@ -373,38 +397,34 @@ class API(APIBase):
         """
         # try to read the parameters for the model from the body of the request
         try:
-            data = json.loads(request.get_data()) or {}
+            document = json.loads(request.get_data()) or {}
         except (BadRequest, TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode data'
             return error_response(400, cause=exception, detail=detail)
         # apply any preprocessors to the POST arguments
         for preprocessor in self.preprocessors['POST_RESOURCE']:
-            preprocessor(data=data)
+            preprocessor(data=document)
         # Convert the dictionary representation into an instance of the
         # model.
         try:
-            instance = self.deserialize(data)
+            instance = self.deserializer.deserialize(document)
             self.session.add(instance)
             self.session.commit()
-        except ClientGeneratedIDNotAllowed as exception:
-            detail = exception.message()
-            return error_response(403, cause=exception, detail=detail)
-        except ConflictingType as exception:
-            detail = exception.message()
-            return error_response(409, cause=exception, detail=detail)
+        # This also catches subclasses of `DeserializationException`,
+        # like ClientGeneratedIDNotAllowed and ConflictingType.
         except DeserializationException as exception:
-            detail = exception.message()
-            return error_response(400, cause=exception, detail=detail)
+            return errors_from_deserialization_exceptions([exception])
+        except MultipleExceptions as e:
+            return errors_from_deserialization_exceptions(e.exceptions)
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
-        fields_for_this = self.sparse_fields.get(self.collection_name)
+        only = self.sparse_fields.get(self.collection_name)
         # Get the dictionary representation of the new instance as it
         # appears in the database.
         try:
-            data = self.serialize(instance, only=fields_for_this)
+            result = self.serializer.serialize(instance, only=only)
         except SerializationException as exception:
-            detail = 'Failed to serialize object'
-            return error_response(400, cause=exception, detail=detail)
+            return errors_from_serialization_exceptions([exception])
         # Determine the value of the primary key for this instance and
         # encode URL-encode it (in case it is a Unicode string).
         primary_key = primary_key_value(instance, as_string=True)
@@ -413,8 +433,6 @@ class API(APIBase):
         url = '{0}/{1}'.format(request.base_url, primary_key)
         # Provide that URL in the Location header in the response.
         headers = dict(Location=url)
-        # Wrap the resulting object or list of objects under a 'data' key.
-        result = {'jsonapi': {'version': JSONAPI_VERSION}, 'data': data}
         # Include any requested resources in a compound document.
         try:
             included = self.get_all_inclusions(instance)
@@ -426,7 +444,7 @@ class API(APIBase):
             return errors_from_serialization_exceptions(e.exceptions,
                                                         included=True)
         if included:
-            result['included'] = included
+            result['included'].extend(included)
         status = 201
         for postprocessor in self.postprocessors['POST_RESOURCE']:
             postprocessor(result=result)
@@ -615,7 +633,11 @@ class API(APIBase):
         # updates specified by the request, we must return 200 OK and a
         # representation of the modified resource.
         if self.changes_on_update:
-            result = dict(data=self.serialize(instance))
+            only = self.sparse_fields.get(self.collection_name)
+            try:
+                result = self.serializer.serialize(instance, only=only)
+            except SerializationException as exception:
+                return errors_from_serialization_exceptions([exception])
             status = 200
         else:
             result = dict()

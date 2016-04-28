@@ -262,11 +262,14 @@ class TestUpdatingResources(ManagerTestBase):
         tag = self.Tag(id=1)
         self.session.add(tag)
         self.session.commit()
-        data = {'data':
-                {'type': 'tag',
-                 'id': '1',
-                 'attributes': {'name': u'foo'}
+        data = {
+            'data': {
+                'type': 'tag',
+                'id': '1',
+                'attributes': {
+                    'name': u'foo'
                 }
+            }
         }
         response = self.app.patch('/api/tag/1', data=dumps(data))
         assert response.status_code == 200

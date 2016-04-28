@@ -43,6 +43,10 @@ from sqlalchemy.types import TypeDecorator
 
 from flask.ext.restless import APIManager
 from flask.ext.restless import CONTENT_TYPE
+from flask.ext.restless import DefaultSerializer
+from flask.ext.restless import DefaultDeserializer
+from flask.ext.restless import DeserializationException
+from flask.ext.restless import SerializationException
 
 dumps = json.dumps
 loads = json.loads
@@ -62,6 +66,47 @@ IS_PYTHON2 = (sys.version_info[0] == 2)
 
 #: Tuple of objects representing types.
 CLASS_TYPES = (types.TypeType, types.ClassType) if IS_PYTHON2 else (type, )
+
+
+class raise_s_exception(DefaultSerializer):
+    """A serializer that unconditionally raises an exception when
+    either :meth:`.serialize` or :meth:`.serialize_many` is called.
+
+    This class is useful for tests of serialization exceptions.
+
+    """
+
+    def serialize(self, instance, *args, **kw):
+        """Immediately raises a :exc:`SerializationException` with
+        access to the provided `instance` of a SQLAlchemy model.
+
+        """
+        raise SerializationException(instance)
+
+    def serialize_many(self, instances, *args, **kw):
+        """Immediately raises a :exc:`SerializationException`.
+
+        This function requires `instances` to be non-empty.
+
+        """
+        raise SerializationException(instances[0])
+
+
+class raise_d_exception(DefaultDeserializer):
+    """A deserializer that unconditionally raises an exception when
+    either :meth:`.deserialize` or :meth:`.deserialize_many` is called.
+
+    This class is useful for tests of deserialization exceptions.
+
+    """
+
+    def deserialize(self, *args, **kw):
+        """Immediately raises a :exc:`DeserializationException`."""
+        raise DeserializationException
+
+    def deserialize_many(self, *args, **kw):
+        """Immediately raises a :exc:`DeserializationException`."""
+        raise DeserializationException
 
 
 def isclass(obj):

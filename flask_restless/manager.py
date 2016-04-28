@@ -73,8 +73,8 @@ else:
 #:   model exposed by this API.
 #: - `primary_key`, the primary key used by the model
 #:
-APIInfo = namedtuple('APIInfo', ['collection_name', 'blueprint_name', 'serializer',
-                                 'primary_key'])
+APIInfo = namedtuple('APIInfo', ['collection_name', 'blueprint_name',
+                                 'serializer', 'primary_key'])
 
 
 class IllegalArgumentError(Exception):
@@ -391,7 +391,7 @@ class APIManager(object):
                              validation_exceptions=None, page_size=10,
                              max_page_size=100, preprocessors=None,
                              postprocessors=None, primary_key=None,
-                             serializer=None, deserializer=None,
+                             serializer_class=None, deserializer_class=None,
                              includes=None, allow_to_many_replacement=False,
                              allow_delete_from_to_many_relationships=False,
                              allow_client_generated_ids=False):
@@ -538,16 +538,11 @@ class APIManager(object):
         at most `max_page_size` results will be returned. For more information,
         see :ref:`pagination`.
 
-        `serializer` and `deserializer` are custom serialization
-        functions. The former function must take a single positional
-        argument representing the instance of the model to serialize and
-        an additional keyword argument ``only`` representing the fields
-        to include in the serialized representation of the instance, and
-        must return a dictionary representation of that instance. The
-        latter function must take a single argument representing the
-        dictionary representation of an instance of the model and must
-        return an instance of `model` that has those attributes. For
-        more information, see :ref:`serialization`.
+        `serializer_class` and `deserializer_class` are custom
+        serializer and deserializer classes. The former must be a
+        subclass of :class:`Serializer` and the latter a subclass of
+        :class:`Deserializer`. For more information on using these, see
+        :ref:`serialization`.
 
         `preprocessors` is a dictionary mapping strings to lists of
         functions. Each key represents a type of endpoint (for example,
@@ -617,10 +612,8 @@ class APIManager(object):
         postprocessors_ = defaultdict(list)
         preprocessors_.update(preprocessors or {})
         postprocessors_.update(postprocessors or {})
-        # for key, value in self.restless_info.universal_preprocessors.items():
         for key, value in self.pre.items():
             preprocessors_[key] = value + preprocessors_[key]
-        # for key, value in self.restless_info.universal_postprocessors.items():
         for key, value in self.post.items():
             postprocessors_[key] = value + postprocessors_[key]
         # Validate that all the additional attributes exist on the model.
@@ -629,32 +622,34 @@ class APIManager(object):
                 if isinstance(attr, STRING_TYPES) and not hasattr(model, attr):
                     msg = 'no attribute "{0}" on model {1}'.format(attr, model)
                     raise AttributeError(msg)
+        if (additional_attributes is not None and exclude is not None and
+                any(attr in exclude for attr in additional_attributes)):
+            msg = ('Cannot exclude attributes listed in the'
+                   ' `additional_attributes` keyword argument')
+            raise IllegalArgumentError(msg)
         # Create a default serializer and deserializer if none have been
         # provided.
-        if serializer is None:
-            serializer = DefaultSerializer(only, exclude,
-                                           additional_attributes)
-            # if validation_exceptions is None:
-            #     validation_exceptions = [DeserializationException]
-            # else:
-            #     validation_exceptions.append(DeserializationException)
-        # session = self.restlessinfo.session
-        session = self.session
-        if deserializer is None:
-            deserializer = DefaultDeserializer(self.session, model,
-                                               allow_client_generated_ids)
+        if serializer_class is None:
+            serializer_class = DefaultSerializer
+        if deserializer_class is None:
+            deserializer_class = DefaultDeserializer
+        # Instantiate the serializer and deserializer.
+        attrs = additional_attributes
+        serializer = serializer_class(only=only, exclude=exclude,
+                                      additional_attributes=attrs)
+        acgi = allow_client_generated_ids
+        deserializer = deserializer_class(self.session, model,
+                                          allow_client_generated_ids=acgi)
         # Create the view function for the API for this model.
         #
         # Rename some variables with long names for the sake of brevity.
         atmr = allow_to_many_replacement
-        api_view = API.as_view(apiname, session, model,
-                               # Keyword arguments for APIBase.__init__()
+        api_view = API.as_view(apiname, self.session, model,
                                preprocessors=preprocessors_,
                                postprocessors=postprocessors_,
                                primary_key=primary_key,
                                validation_exceptions=validation_exceptions,
                                allow_to_many_replacement=atmr,
-                               # Keyword arguments for API.__init__()
                                page_size=page_size,
                                max_page_size=max_page_size,
                                serializer=serializer,
@@ -697,7 +692,7 @@ class APIManager(object):
         rapi_view = RelationshipAPI.as_view
         adftmr = allow_delete_from_to_many_relationships
         relationship_api_view = \
-            rapi_view(relationship_api_name, session, model,
+            rapi_view(relationship_api_name, self.session, model,
                       # Keyword arguments for APIBase.__init__()
                       preprocessors=preprocessors_,
                       postprocessors=postprocessors_,
@@ -761,7 +756,8 @@ class APIManager(object):
         # evaluating functions on all instances of the specified model
         if allow_functions:
             eval_api_name = '{0}.eval'.format(apiname)
-            eval_api_view = FunctionAPI.as_view(eval_api_name, session, model)
+            eval_api_view = FunctionAPI.as_view(eval_api_name, self.session,
+                                                model)
             eval_endpoint = '/eval{0}'.format(collection_url)
             eval_methods = ['GET']
             blueprint.add_url_rule(eval_endpoint, methods=eval_methods,
