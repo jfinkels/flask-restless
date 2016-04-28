@@ -482,11 +482,28 @@ class TestFSA(FlaskSQLAlchemyTestBase):
             id = self.db.Column(self.db.Integer, primary_key=True)
 
         self.Person = Person
-        self.db.create_all()
 
     def test_init_app(self):
+        self.db.create_all()
         manager = APIManager(flask_sqlalchemy_db=self.db)
         manager.create_api(self.Person)
         manager.init_app(self.flaskapp)
         response = self.app.get('/api/person')
         assert response.status_code == 200
+
+    def test_create_api_before_db_create_all(self):
+        """Tests that we can create APIs before
+        :meth:`flask.ext.sqlalchemy.SQLAlchemy.create_all` is called.
+
+        """
+        manager = APIManager(self.flaskapp, flask_sqlalchemy_db=self.db)
+        manager.create_api(self.Person)
+        self.db.create_all()
+        person = self.Person(id=1)
+        self.db.session.add(person)
+        self.db.session.commit()
+        response = self.app.get('/api/person/1')
+        assert response.status_code == 200
+        document = loads(response.data)
+        person = document['data']
+        assert '1' == person['id']
