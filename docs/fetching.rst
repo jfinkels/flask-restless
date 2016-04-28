@@ -906,14 +906,18 @@ have an author of age at most fifty,
      }
    }
 
-A filter object may be a conjunction ("and") or disjunction ("or") of other
-filter objects::
+A filter object may be a conjunction ("and"), disjunction ("or"), or negation
+("not") of other filter objects::
 
    {"or": [<filter_object>, <filter_object>, ...]}
 
 or ::
 
    {"and": [<filter_object>, <filter_object>, ...]}
+
+or ::
+
+   {"not": <filter_object>}
 
 For example, to filter by resources that have width greater than height, and
 length of at least ten,
