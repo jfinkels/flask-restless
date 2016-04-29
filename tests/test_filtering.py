@@ -569,7 +569,7 @@ class TestFiltering(SearchTestBase):
         """Tests that an invalid ``name`` element causes an error."""
         filters = [dict(name='bogus__field', op='eq', val='whatever')]
         response = self.search('/api/person', filters)
-        check_sole_error(response, 400, ['No such field', 'bogus__field'])
+        check_sole_error(response, 400, ['no such field', 'bogus__field'])
 
     def test_search_boolean_formula(self):
         """Tests for Boolean formulas of filters in a search query."""
@@ -631,8 +631,7 @@ class TestFiltering(SearchTestBase):
         """
         filters = [dict(name='age', op='>', val='should not be a string')]
         response = self.search('/api/person', filters)
-        assert response.status_code == 400
-        # TODO check the error message here
+        check_sole_error(response, 400, ['invalid', 'argument', 'value'])
 
     def test_invalid_field(self):
         """Tests for an error response on an invalid field name in a filter
@@ -641,8 +640,17 @@ class TestFiltering(SearchTestBase):
         """
         filters = [dict(name='foo', op='>', val=2)]
         response = self.search('/api/person', filters)
-        assert response.status_code == 400
-        # TODO check the error message here
+        check_sole_error(response, 400, ['no such field', 'foo'])
+
+    def test_invalid_other(self):
+        """Tests that an invalid field name for the "other" field causes
+        an error.
+
+        """
+        filters = [{'name': 'age', 'op': 'eq', 'field': 'bogus'}]
+        response = self.search('/api/person', filters)
+        print(response.data)
+        check_sole_error(response, 400, ['no column', 'bogus', 'exists'])
 
     def test_invalid_operator(self):
         """Tests for an error response on an invalid operator in a filter
@@ -651,8 +659,7 @@ class TestFiltering(SearchTestBase):
         """
         filters = [dict(name='age', op='bogus', val=2)]
         response = self.search('/api/person', filters)
-        assert response.status_code == 400
-        # TODO check the error message here
+        check_sole_error(response, 400, ['unknown', 'operator'])
 
     def test_missing_argument(self):
         """Tests that filter requests with a missing ``'val'`` causes an error
@@ -661,8 +668,8 @@ class TestFiltering(SearchTestBase):
         """
         filters = [dict(name='name', op='==')]
         response = self.search('/api/person', filters)
-        assert response.status_code == 400
-        # TODO check error message here
+        check_sole_error(response, 400, ['expected', 'argument', 'operator',
+                                         'none'])
 
     def test_missing_fieldname(self):
         """Tests that filter requests with a missing ``'name'`` causes an error
@@ -671,8 +678,7 @@ class TestFiltering(SearchTestBase):
         """
         filters = [dict(op='==', val='foo')]
         response = self.search('/api/person', filters)
-        assert response.status_code == 400
-        # TODO check error message here
+        check_sole_error(response, 400, ['missing', 'field', 'name'])
 
     def test_missing_operator(self):
         """Tests that filter requests with a missing ``'op'`` causes an error
@@ -681,8 +687,7 @@ class TestFiltering(SearchTestBase):
         """
         filters = [dict(name='age', val=3)]
         response = self.search('/api/person', filters)
-        assert response.status_code == 400
-        # TODO check error message here
+        check_sole_error(response, 400, ['missing', 'operator'])
 
     def test_to_many_relation(self):
         """Tests for filtering a to-many relation."""
@@ -907,6 +912,18 @@ class TestOperators(SearchTestBase):
         people = document['data']
         assert ['2'] == sorted(person['id'] for person in people)
 
+    def test_negation(self):
+        """Test for the ``not`` operator."""
+        person1 = self.Person(id=1)
+        person2 = self.Person(id=2)
+        self.session.add_all([person1, person2])
+        self.session.commit()
+        filters = [{'not': {'name': 'id', 'op': 'lt', 'val': 2}}]
+        response = self.search('/api/person', filters)
+        document = loads(response.data)
+        people = document['data']
+        assert ['2'] == sorted(person['id'] for person in people)
+
     def test_compare_equals_to_null(self):
         """Tests that an attempt to compare the value of a field to ``None``
         using the ``eq`` operator yields an error response, indicating that the
@@ -915,8 +932,8 @@ class TestOperators(SearchTestBase):
         """
         filters = [dict(name='name', op='eq', val=None)]
         response = self.search('/api/person', filters)
-        assert response.status_code == 400
-        # TODO check the error message here.
+        keywords = ['compare', 'value', 'NULL', 'use', 'is_null', 'operator']
+        check_sole_error(response, 400, keywords)
 
 
 class TestNetworkOperators(SearchTestBase):

@@ -56,10 +56,10 @@ from ..helpers import primary_key_for
 from ..helpers import primary_key_value
 from ..helpers import serializer_for
 from ..helpers import url_for
-from ..search import ComparisonToNull
+from ..search import FilterCreationError
+from ..search import FilterParsingError
 from ..search import search
 from ..search import search_relationship
-from ..search import UnknownField
 from ..serialization import DeserializationException
 from ..serialization import JsonApiDocument
 from ..serialization import MultipleExceptions
@@ -215,10 +215,10 @@ def _is_msie8or9():
     """
     # request.user_agent.version comes as a string, so we have to parse it
     version = lambda ua: tuple(int(d) for d in ua.version.split('.'))
-    return (request.user_agent is not None
-            and request.user_agent.version is not None
-            and request.user_agent.browser == 'msie'
-            and (8, 0) <= version(request.user_agent) < (10, 0))
+    return (request.user_agent is not None and
+            request.user_agent.version is not None and
+            request.user_agent.browser == 'msie' and
+            (8, 0) <= version(request.user_agent) < (10, 0))
 
 
 def un_camel_case(s):
@@ -1607,12 +1607,8 @@ class APIBase(ModelView):
         try:
             search_items = search_(filters=filters, sort=sort,
                                    group_by=group_by)
-        except ComparisonToNull as exception:
-            detail = str(exception)
-            return error_response(400, cause=exception, detail=detail)
-        except UnknownField as exception:
-            detail = 'Invalid filter object: No such field "{0}"'
-            detail = detail.format(exception.field)
+        except (FilterParsingError, FilterCreationError) as exception:
+            detail = 'invalid filter object: {0}'.format(str(exception))
             return error_response(400, cause=exception, detail=detail)
         except Exception as exception:
             detail = 'Unable to construct query'

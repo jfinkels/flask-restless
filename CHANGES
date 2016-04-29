@@ -21,6 +21,7 @@ Not yet released.
   of a function-based implementation.
 - :issue:`7`: allows filtering before function evaluation.
 - :issue:`49`: deserializers now expect a complete JSON API document.
+- :issue:`481,488`: added negation (``not``) operator for search.
 
 Version 1.0.0b1
 ---------------

@@ -22,6 +22,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.sql import func
 
 from ..search import create_filters
+from ..search import FilterParsingError
 from ..search import FilterCreationError
 from .base import collection_parameters
 from .base import error_response
@@ -139,8 +140,8 @@ class FunctionAPI(ModelView):
         # Create the filtered query according to the parameters.
         try:
             filters = create_filters(self.model, filters)
-        except FilterCreationError as exception:
-            detail = exception.message()
+        except (FilterParsingError, FilterCreationError) as exception:
+            detail = 'invalid filter object: {0}'.format(str(exception))
             return error_response(400, cause=exception, detail=detail)
 
         # Apply the filters to the query.

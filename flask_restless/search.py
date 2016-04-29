@@ -16,10 +16,18 @@ given set of filters, sorting rules, etc. The
 :func:`search_relationship` function creates a query restricted to a
 relationship on a particular instance of a SQLAlchemy model.
 
+The :func:`create_filters` function is a finer-grained tool: it allows
+you to create the SQLAlchemy expressions without executing them.
+
+The :exc:`FilterParsingError` and :exc:`FilterCreationError` exceptions
+are the exceptions that may be raised by the func:`search` and
+:func:`create_filters` functions.
+
 """
 import inspect
 
 from sqlalchemy import and_
+from sqlalchemy import not_
 from sqlalchemy import or_
 from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.orm import aliased
@@ -35,41 +43,24 @@ from .helpers import session_query
 from .helpers import string_to_datetime
 
 
-class ComparisonToNull(Exception):
-    """Raised when a client attempts to use a filter object that compares a
-    resource's attribute to ``NULL`` using the ``==`` operator instead of using
-    ``is_null``.
+#: Special symbol that represents the absence of a `val` element in a
+#: dictionary representing a filter object.
+NO_ARGUMENT = object()
 
-    """
-    pass
+
+class OperatorCreationError(Exception):
+    """Raised when there is a problem creating an operator expression."""
 
 
 class FilterCreationError(Exception):
-    """Raised when there is a problem creating a SQLAlchemy filter object.
-
-    `message` is a string providing detailed information about the cause
-    of the problem.
-
-    """
-
-    def __init__(self, message, *args, **kw):
-        super(FilterCreationError, self).__init__(*args, **kw)
-        self._message = message
-
-    def message(self):
-        return self._message
+    """Raised when there is a problem creating a SQLAlchemy filter object."""
 
 
-class UnknownField(Exception):
-    """Raised when the user attempts to reference a field that does not
-    exist on a model in a search.
+class FilterParsingError(Exception):
+    """Raised if there is a problem parsing a filter object from a
+    dictionary into an instance of the :class:`.Filter` class.
 
     """
-
-    def __init__(self, field):
-
-        #: The name of the unknown attribute.
-        self.field = field
 
 
 def _sub_operator(model, argument, fieldname):
@@ -229,17 +220,41 @@ class Filter(object):
         does not refer to an attribute of `model`.
 
         """
-        # If there are no ANDs or ORs, we are in the base case of the
-        # recursion.
-        if 'or' not in dictionary and 'and' not in dictionary:
+        # If there are no ANDs, ORs, and NOTs, we are in the base case
+        # of the recursion.
+        has_or = 'or' in dictionary
+        has_and = 'and' in dictionary
+        has_not = 'not' in dictionary
+        if not (has_or or has_and or has_not):
+            if 'name' not in dictionary:
+                raise FilterParsingError('missing field name')
             fieldname = dictionary.get('name')
             if not hasattr(model, fieldname):
-                raise UnknownField(fieldname)
+                message = 'no such field "{0}"'
+                message = message.format(fieldname)
+                raise FilterParsingError(message)
             operator = dictionary.get('op')
+            # Although we check whether `fieldname` exists on the model
+            # above, we don't do a similar check here, since the other
+            # `field` may not be present while the filter object may
+            # still be valid (for example, if the filter object is
+            #
+            #     {'name': 'age', 'op': 'is_not_null'}
+            #
+            # The check for the existence of `otherfield` on the model
+            # is done when converting the Filter object to a SQLAlchemy
+            # expression.
             otherfield = dictionary.get('field')
-            argument = dictionary.get('val')
-            # Need to deal with the special case of converting dates.
-            argument = string_to_datetime(model, fieldname, argument)
+            # We need to be able to distinguish the case of an argument
+            # of value ``None`` and the absence of an argument. The
+            # `NO_ARGUMENT` constant is a sentinel value that signals
+            # the absence of the `val` key in the dicionary.
+            if 'val' in dictionary:
+                argument = dictionary.get('val')
+                # Need to deal with the special case of converting dates.
+                argument = string_to_datetime(model, fieldname, argument)
+            else:
+                argument = NO_ARGUMENT
             return Filter(fieldname, operator, argument, otherfield)
         # For the sake of brevity, rename this method.
         from_dict = Filter.from_dictionary
@@ -249,10 +264,24 @@ class Filter(object):
             subfilters = dictionary.get('or')
             return DisjunctionFilter(*[from_dict(model, filter_)
                                        for filter_ in subfilters])
-        else:
+        if 'and' in dictionary:
             subfilters = dictionary.get('and')
             return ConjunctionFilter(*[from_dict(model, filter_)
                                        for filter_ in subfilters])
+        # At this point, the only remaining possibility is for 'not'.
+        subfilter = dictionary.get('not')
+        return NegationFilter(from_dict(model, subfilter))
+
+
+class NegationFilter(Filter):
+    """A negation of another filter.
+
+    `subfilter` is the :class:`.Filter` object being negated.
+
+    """
+
+    def __init__(self, subfilter):
+        self.subfilter = subfilter
 
 
 class JunctionFilter(Filter):
@@ -299,7 +328,7 @@ def create_operation(model, fieldname, operator, argument):
     searched.
 
     `fieldname` is the name of the field of `model` to which the operation
-    will be applied as part of the search.
+    will be applied as part of the search. It must not be None.
 
     `operation` is a string representating the operation which will be
      executed between the field and the argument received. For example,
@@ -310,30 +339,42 @@ def create_operation(model, fieldname, operator, argument):
     This function raises the following errors:
     * :exc:`KeyError` if the `operator` is unknown (that is, not in
       :data:`OPERATORS`)
-    * :exc:`TypeError` if an incorrect number of arguments are provided for
-      the operation (for example, if `operation` is `'=='` but no
-      `argument` is provided)
-    * :exc:`AttributeError` if no column with name `fieldname` or
-      `relation` exists on `model`
+    * :exc:`OperatorCreationError` if an argument was expected but none
+      was provided (as indicated by the presence of a
+      :attr:`NO_ARGUMENT` object as the value for `argument`).
+    * :exc:`OperatorCreationError` if ``None`` is provided as the value
+      for `argument` but a non-null value was expected for the operator.
 
     """
+    if operator is None:
+        raise OperatorCreationError('missing operator')
     # raises KeyError if operator not in OPERATORS
     opfunc = OPERATORS[operator]
     # In Python 3.0 or later, this should be `inspect.getfullargspec`
     # because `inspect.getargspec` is deprecated.
     numargs = len(inspect.getargspec(opfunc).args)
+    # The calling code must verify that `fieldname` is None, so we do
+    # not need to check it here.
     # raises AttributeError if `fieldname` does not exist
     field = getattr(model, fieldname)
-    # each of these will raise a TypeError if the wrong number of argments
-    # is supplied to `opfunc`.
+    # When the `opfunc` is called in each of the cases below, a
+    # TypeError will be raised if the wrong number of arguments is
+    # supplied to `opfunc`.
+    #
+    # For operators with a single argument...
     if numargs == 1:
         return opfunc(field)
+    # For operators with two or more arguments...
     if argument is None:
-        msg = ('To compare a value to NULL, use the is_null/is_not_null '
-               'operators.')
-        raise ComparisonToNull(msg)
+        message = ('To compare a value to NULL, use the unary'
+                   ' is_null/is_not_null operators.')
+        raise OperatorCreationError(message)
     if numargs == 2:
+        if argument is NO_ARGUMENT:
+            msg = 'expected an argument for this operator but none was given'
+            raise OperatorCreationError(msg)
         return opfunc(field, argument)
+    # For operators with three arguments...
     return opfunc(field, argument, fieldname)
 
 
@@ -342,6 +383,12 @@ def create_filter(model, filt):
 
     `filt` is an instance of the :class:`Filter` class.
 
+    In the provided :class:`Filter` object, the :attr:`Filter.fieldname`
+    attribute must be a string representing a field that actually exists
+    on the `model`. However, the :attr:`Filter.otherfield` may be None,
+    or a string naming a field that doesn't actually exist on the model,
+    in which case an exception will be raised.
+
     Raises a :exc:`.FilterCreationError` if there is a problem creating
     the query; see the documentation for :func:`create_operation` for
     more information on possible causes of such an error.
@@ -349,34 +396,33 @@ def create_filter(model, filt):
     """
     # If the filter is not a conjunction or a disjunction, simply proceed
     # as normal.
-    if not isinstance(filt, JunctionFilter):
+    is_junction = isinstance(filt, JunctionFilter)
+    is_negation = isinstance(filt, NegationFilter)
+    if not is_junction and not is_negation:
         fname = filt.fieldname
         val = filt.argument
         # get the other field to which to compare, if it exists
         if filt.otherfield:
+            if not hasattr(model, filt.otherfield):
+                message = 'no column with name "{0}" exists on model {1}'
+                message = message.format(filt.otherfield, model)
+                raise FilterCreationError(message)
             val = getattr(model, filt.otherfield)
         try:
             return create_operation(model, fname, filt.operator, val)
         except KeyError:
             message = 'unknown operator {0}'.format(filt.operator)
             raise FilterCreationError(message)
-        except TypeError:
-            message = ('incorrect number of arguments provided for operation'
-                       ' {0}').format(filt.operator)
-            raise FilterCreationError(message)
-        except AttributeError:
-            if not filt.otherfield:
-                message = ('no column with name "{0}" exists on model'
-                           ' {1}').format(fname, model)
-            else:
-                message = ('no column with name either "{0}" or "{1}" exists'
-                           ' on model {1}').format(fname, val, model)
-            raise FilterCreationError(message)
-    # Otherwise, if this filter is a conjunction or a disjunction, make
-    # sure to apply the appropriate filter operation.
+        except OperatorCreationError as exception:
+            raise FilterCreationError(str(exception))
+    # Otherwise, if this filter is a conjunction, disjunction, or
+    # negation, make sure to apply the appropriate filter operation.
     if isinstance(filt, ConjunctionFilter):
         return and_(create_filter(model, f) for f in filt)
-    return or_(create_filter(model, f) for f in filt)
+    if isinstance(filt, DisjunctionFilter):
+        return or_(create_filter(model, f) for f in filt)
+    # The only remaining possibility is for `filt` to be a `NegationFilter`.
+    return not_(create_filter(model, filt.subfilter))
 
 
 def create_filters(model, filters):
@@ -391,15 +437,18 @@ def create_filters(model, filters):
     objects, as described in the Flask-Restless documentation
     (:ref:`filtering`).
 
-    This function may raise :exc:`FilterCreationError` if there is a
-    problem converting one of the filters into a SQLAlchemy object.
+    This function may raise :exc:`FilterParsingError` if there is a
+    problem converting a dictionary filter into an intermediate
+    representation and :exc:`FilterCreationError` if there is a problem
+    converting the intermediate representation into a SQLAlchemy
+    expression.
 
     """
     # `Filter.from_dictionary()` converts the dictionary representation
     # of a filter object into an intermediate representation, an
     # instance of :class:`.Filter` that facilitates the construction of
     # the actual SQLAlchemy code in `create_filter` below.
-    filters = (Filter.from_dictionary(model, f) for f in filters)
+    filters = [Filter.from_dictionary(model, f) for f in filters]
     # Each of these function calls may raise a FilterCreationError.
     #
     # TODO In Python 3.3+, this should be `yield from ...`.
@@ -455,12 +504,6 @@ def search(session, model, filters=None, sort=None, group_by=None,
     When building the query, filters are applied first, then sorting, then
     grouping.
 
-    Raises :exc:`UnknownField` if one of the named fields given in one
-    of the `filters` does not exist on the `model`.
-
-    Raises one of :exc:`AttributeError`, :exc:`KeyError`, or :exc:`TypeError`
-    if there is a problem creating the query. See the documentation for
-    :func:`create_operation` for more information.
 
     """
     if _initial_query is not None:
