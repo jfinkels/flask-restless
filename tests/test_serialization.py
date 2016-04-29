@@ -152,7 +152,6 @@ class TestFetchCollection(ManagerTestBase):
         document = loads(response.data)
         assert response.status_code == 500
         errors = document['errors']
-        print(errors)
         assert len(errors) == 2
         error1, error2 = errors
         detail1 = error1['detail']
