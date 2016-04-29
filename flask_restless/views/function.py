@@ -39,7 +39,7 @@ def create_function_query(session, model, functions):
     `model` is the SQLAlchemy model class on which the specified
     functions will be evaluated.
 
-    ``functions`` is a list of dictionaries of the form::
+    ``functions`` is a non-empty list of dictionaries of the form::
 
         {'name': 'avg', 'field': 'amount'}
 
@@ -55,10 +55,7 @@ def create_function_query(session, model, functions):
     not exist.
 
     """
-    if not model or not functions:
-        return []
     processed = []
-    # funcnames = []
     for function in functions:
         if 'name' not in function:
             raise KeyError('Missing `name` key in function object')
@@ -75,8 +72,6 @@ def create_function_query(session, model, functions):
         except AttributeError as exception:
             exception.field = fieldname
             raise exception
-        # Store the functions that will be executed in the database.
-        # funcnames.append('{0}__{1}'.format(funcname, fieldname))
         processed.append(funcobj(field))
     return session.query(*processed)
 
