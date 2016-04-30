@@ -157,3 +157,38 @@ class TestFunctionEvaluation(ManagerTestBase):
         document = loads(response.data)
         results = document['data']
         assert [30, 10.0] == results
+
+    def test_bad_filter_json(self):
+        """Tests for invalid JSON in the ``filter[objects]`` query parameter.
+
+        """
+        functions = [{'name': 'sum', 'field': 'age'}]
+        query_string = {'filter[objects]': 'bogus',
+                        'functions': dumps(functions)}
+        response = self.app.get('/api/eval/person', query_string=query_string)
+        check_sole_error(response, 400, ['Unable', 'decode', 'filter objects'])
+
+    def test_invalid_filter_object(self):
+        """Tests that providing an incorrectly formatted argument to
+        ``filter[objects]`` yields an error response.
+
+        """
+        functions = [{'name': 'sum', 'field': 'age'}]
+        filters = [{'name': 'bogus', 'op': 'eq', 'val': 'foo'}]
+        query_string = {'filter[objects]': dumps(filters),
+                        'functions': dumps(functions)}
+        response = self.app.get('/api/eval/person', query_string=query_string)
+        check_sole_error(response, 400, ['invalid', 'filter', 'object',
+                                         'bogus'])
+
+    def test_bad_single(self):
+        """Tests that providing an incorrectly formatted argument to
+        ``filter[single]`` yields an error response.
+
+        """
+        functions = [{'name': 'sum', 'field': 'age'}]
+        query_string = {'filter[single]': 'bogus',
+                        'functions': dumps(functions)}
+        response = self.app.get('/api/eval/person', query_string=query_string)
+        check_sole_error(response, 400, ['Invalid', 'format', 'single',
+                                         'query parameter'])
