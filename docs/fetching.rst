@@ -974,6 +974,38 @@ Flask-Restless also understands the `PostgreSQL network address operators`_
 .. _SQLAlchemy column operators: https://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.operators.ColumnOperators
 .. _PostgreSQL network address operators: https://www.postgresql.org/docs/current/static/functions-net.html
 
+Simpler filtering
+.................
+
+Flask-Restless also supports a simpler form of filtering as described in the
+`JSON API filtering recommendation`_. For filtering by the foreign key of a
+to-one relationship, use a request of the form
+
+.. sourcecode:: http
+
+   GET /api/comments?filter[post]=1,2&filter[author]=12 HTTP/1.1
+   Host: example.com
+   Accept: application/vnd.api+json
+
+Flask-Restless will automatically determine the correct query corresponding to
+the given to-one relationships.
+
+You can also filter by attribute:
+
+.. sourcecode:: http
+
+   GET /api/person?filter[age]=21 HTTP/1.1
+   Host: example.com
+   Accept: application/vnd.api+json
+
+.. admonition:: Implementation note
+
+   Each of these simple filters is converted to the more complex filter object
+   representation as described in the preceding sections and appended to the
+   list of filter objects computed from the request query parameters.
+
+.. _JSON API filtering recommendation: http://jsonapi.org/recommendations/#filtering
+
 .. _single:
 
 Requiring singleton collections

@@ -24,7 +24,6 @@ from sqlalchemy.sql import func
 from ..search import create_filters
 from ..search import FilterParsingError
 from ..search import FilterCreationError
-from .base import collection_parameters
 from .base import error_response
 from .base import ModelView
 from .base import SingleKeyError
@@ -124,7 +123,7 @@ class FunctionAPI(ModelView):
 
         # Get the filtering, sorting, and grouping parameters.
         try:
-            filters, sort, group_by, single = collection_parameters()
+            filters, sort, group_by, single = self.collection_parameters()
         except (TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode filter objects as JSON list'
             return error_response(400, cause=exception, detail=detail)

@@ -52,6 +52,7 @@ from ..helpers import collection_name
 from ..helpers import get_model
 from ..helpers import get_related_model
 from ..helpers import is_like_list
+from ..helpers import is_relationship
 from ..helpers import primary_key_for
 from ..helpers import primary_key_value
 from ..helpers import serializer_for
@@ -103,6 +104,10 @@ LINK_NAMES = ('first', 'last', 'prev', 'next')
 #: The query parameter key that identifies filter objects in a
 #: :http:method:`get` request.
 FILTER_PARAM = 'filter[objects]'
+
+#: The query parameter key that indicates whether to expect a single
+#: resource in the response.
+SINGLE_PARAM = 'filter[single]'
 
 #: The query parameter key that identifies sort fields in a :http:method:`get`
 #: request.
@@ -792,71 +797,6 @@ def errors_from_serialization_exceptions(exceptions, included=False):
     return errors_response(500, errors)
 
 
-def collection_parameters():
-    """Gets filtering, sorting, grouping, and other settings from the
-    request that affect the collection of resources in a response.
-
-    Returns a four-tuple of the form ``(filters, sort, group_by,
-    single)``. These can be provided to the
-    :func:`~flask_restless.search.search` function; for more
-    information, see the documentation for that function.
-
-    This function can only be invoked in a request context.
-
-    """
-    # Determine filtering options.
-    filters = json.loads(request.args.get(FILTER_PARAM, '[]'))
-    # # TODO fix this using the below
-    # filters = [strings_to_dates(self.model, f) for f in filters]
-
-    # # resolve date-strings as required by the model
-    # for param in search_params.get('filters', list()):
-    #     if 'name' in param and 'val' in param:
-    #         query_model = self.model
-    #         query_field = param['name']
-    #         if '__' in param['name']:
-    #             fieldname, relation = param['name'].split('__')
-    #             submodel = getattr(self.model, fieldname)
-    #             if isinstance(submodel, InstrumentedAttribute):
-    #                 query_model = submodel.property.mapper.class_
-    #                 query_field = relation
-    #             elif isinstance(submodel, AssociationProxy):
-    #                 # For the sake of brevity, rename this function.
-    #                 get_assoc = get_related_association_proxy_model
-    #                 query_model = get_assoc(submodel)
-    #                 query_field = relation
-    #         to_convert = {query_field: param['val']}
-    #         try:
-    #             result = strings_to_dates(query_model, to_convert)
-    #         except ValueError as exception:
-    #             current_app.logger.exception(str(exception))
-    #             return dict(message='Unable to construct query'), 400
-    #         param['val'] = result.get(query_field)
-
-    # Determine sorting options.
-    sort = request.args.get(SORT_PARAM)
-    if sort:
-        sort = [('-', value[1:]) if value.startswith('-') else ('+', value)
-                for value in sort.split(',')]
-    else:
-        sort = []
-
-    # Determine grouping options.
-    group_by = request.args.get(GROUP_PARAM)
-    if group_by:
-        group_by = group_by.split(',')
-    else:
-        group_by = []
-
-    # Determine whether the client expects a single resource response.
-    try:
-        single = bool(int(request.args.get('filter[single]', 0)))
-    except ValueError:
-        raise SingleKeyError('failed to extract Boolean from parameter')
-
-    return filters, sort, group_by, single
-
-
 #: Creates the mimerender object necessary for decorating responses with a
 #: function that automatically formats the dictionary in the appropriate format
 #: based on the ``Accept`` header.
@@ -1215,6 +1155,122 @@ class ModelView(MethodView):
         self.session = session
         self.model = model
 
+    def collection_parameters(self, resource_id=None, relation_name=None):
+        """Gets filtering, sorting, grouping, and other settings from
+        the request that affect the collection of resources in a
+        response.
+
+        Returns a four-tuple of the form ``(filters, sort, group_by,
+        single)``. These can be provided to the
+        :func:`~flask_restless.search.search` function; for more
+        information, see the documentation for that function.
+
+        This function can only be invoked in a request context.
+
+        """
+        # Determine filtering options.
+        #
+        # `filters` stores the filter objects, which are retrieved from the
+        # query parameter at :data:`FILTER_PARAM`. We also support simple
+        # filtering, but we need to search the entire list of query
+        # parameters for everything of the form 'filter[...]' and convert
+        # each value found into a filter object.
+        filters = json.loads(request.args.get(FILTER_PARAM, '[]'))
+        for key, value in request.args.items():
+            # Skip keys that are not filters and are not filter[objects]
+            # and filter[single] request parameters.
+            #
+            # TODO Document that field names cannot be 'objects' or 'single'.
+            if not key.startswith('filter'):
+                continue
+            if key in (FILTER_PARAM, SINGLE_PARAM):
+                continue
+            # Get the field on which to filter and the values to match.
+            field = key[7:-1]
+            values = value.split(',')
+            # Determine whether this is a request of the form `GET
+            # /comments` or `GET /article/1/comments`.
+            if resource_id is not None and relation_name is not None:
+                primary_model = get_related_model(self.model, relation_name)
+            else:
+                primary_model = self.model
+            # If the field is a relationship, use the `has` operator
+            # with the `in` operator to select only those instances of
+            # the primary model that have related instances matching the
+            # given foreign keys. Otherwise, the field is an attribute,
+            # so we use the `in` operator directly.
+            if is_relationship(primary_model, field):
+                related_model = get_related_model(primary_model, field)
+                field_name = primary_key_for(related_model)
+                new_filter = {
+                    'name': field,
+                    'op': 'has',
+                    'val': {
+                        'name': field_name,
+                        'op': 'in',
+                        'val': values
+                    }
+                }
+            else:
+                new_filter = {
+                    'name': field,
+                    'op': 'in',
+                    'val': values
+                }
+            # TODO This creates a problem where the computed link URLs
+            # have the additional filter object as a `filter[objects]`
+            # param.
+            filters.append(new_filter)
+        # # TODO fix this using the below
+        # filters = [strings_to_dates(self.model, f) for f in filters]
+
+        # # resolve date-strings as required by the model
+        # for param in search_params.get('filters', list()):
+        #     if 'name' in param and 'val' in param:
+        #         query_model = self.model
+        #         query_field = param['name']
+        #         if '__' in param['name']:
+        #             fieldname, relation = param['name'].split('__')
+        #             submodel = getattr(self.model, fieldname)
+        #             if isinstance(submodel, InstrumentedAttribute):
+        #                 query_model = submodel.property.mapper.class_
+        #                 query_field = relation
+        #             elif isinstance(submodel, AssociationProxy):
+        #                 # For the sake of brevity, rename this function.
+        #                 get_assoc = get_related_association_proxy_model
+        #                 query_model = get_assoc(submodel)
+        #                 query_field = relation
+        #         to_convert = {query_field: param['val']}
+        #         try:
+        #             result = strings_to_dates(query_model, to_convert)
+        #         except ValueError as exception:
+        #             current_app.logger.exception(str(exception))
+        #             return dict(message='Unable to construct query'), 400
+        #         param['val'] = result.get(query_field)
+
+        # Determine sorting options.
+        sort = request.args.get(SORT_PARAM)
+        if sort:
+            sort = [('-', value[1:]) if value.startswith('-') else ('+', value)
+                    for value in sort.split(',')]
+        else:
+            sort = []
+
+        # Determine grouping options.
+        group_by = request.args.get(GROUP_PARAM)
+        if group_by:
+            group_by = group_by.split(',')
+        else:
+            group_by = []
+
+        # Determine whether the client expects a single resource response.
+        try:
+            single = bool(int(request.args.get(SINGLE_PARAM, 0)))
+        except ValueError:
+            raise SingleKeyError('failed to extract Boolean from parameter')
+
+        return filters, sort, group_by, single
+
 
 class APIBase(ModelView):
     """Base class for view classes that provide fetch, create, update, and
@@ -1424,7 +1480,7 @@ class APIBase(ModelView):
 
         `filters`, `sort`, and `group_by` must have already been
         extracted from the client's request (as by
-        :meth:`_collection_parameters`) and applied to the query.
+        :meth:`collection_parameters`) and applied to the query.
 
         If `relationship` is ``True``, the resources in the query object
         will be serialized as linkage objects instead of resources
