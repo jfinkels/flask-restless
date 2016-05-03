@@ -45,6 +45,7 @@ the JSON API specification.
 
 .. toctree::
    :maxdepth: 2
+   :titlesonly:
 
    installation
    quickstart

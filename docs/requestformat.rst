@@ -1,7 +1,3 @@
-.. currentmodule:: flask.ext.restless
-
-.. _requestformat:
-
 Requests and responses
 ======================
 
@@ -87,7 +83,7 @@ JSONP callbacks
 Flask-Restless responds to JavaScript clients that request JSONP responses. Add
 a ``callback=myfunc`` query parameter to the request URL on any request that
 yields a response that contains content (including endpoints for function
-evaluation; see :ref:`functionevaluation`) to have the JSON data of the
+evaluation; see :doc:`functionevaluation`) to have the JSON data of the
 response wrapped in the Javascript function ``myfunc``. This can be used to
 circumvent some cross domain scripting security issues.
 
