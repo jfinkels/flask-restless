@@ -67,13 +67,10 @@ specification, and most other server errors yield a
 :http:statuscode:`400`. Errors are included in the ``errors`` element in the
 top-level JSON document in the response body.
 
-If a request triggers certain types of errors, the SQLAlchemy session will be
-rolled back. Currently these errors are
-
-* :exc:`~sqlalchemy.exc.DataError`,
-* :exc:`~sqlalchemy.exc.IntegrityError`,
-* :exc:`~sqlalchemy.exc.ProgrammingError`,
-* :exc:`~sqlalchemy.orm.exc.FlushError`.
+If a request triggers a :exc:`sqlalchemy.exc.SQLAlchemyError` (or any subclass
+of that exception, including :exc:`~sqlalchemy.exc.DataError`,
+:exc:`~sqlalchemy.exc.IntegrityError`, :exc:`~sqlalchemy.exc.ProgrammingError`,
+etc.), the session will be rolled back
 
 .. _jsonp:
 
