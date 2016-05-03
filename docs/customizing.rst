@@ -218,7 +218,7 @@ time.
    If you wish to write your own serialization functions, we **strongly
    suggest** using a Python object serialization library instead of writing
    your own serialization functions. This is also likely a better approach than
-   specifying which columns to include or exclude (:ref:`includes`) or
+   specifying which columns to include or exclude (:doc:`includes`) or
    preprocessors and postprocessors (:ref:`processors`).
 
 For example, if you create schema for your database models using
@@ -503,8 +503,8 @@ view functions and ultimately returned to the client.
 .. note::
 
    For more information about the ``filters`` and ``single`` keyword arguments,
-   see :ref:`filtering`. For more information about ``sort`` and ``group_by``
-   keyword arguments, see :ref:`sorting`.
+   see :doc:`filtering`. For more information about ``sort`` and ``group_by``
+   keyword arguments, see :doc:`sorting`.
 
 In order to halt the preprocessing or postprocessing and return an error
 response directly to the client, your preprocessor or postprocessor functions

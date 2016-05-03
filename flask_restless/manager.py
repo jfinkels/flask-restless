@@ -438,13 +438,13 @@ class APIManager(object):
           resources, to-many and to-one relations of resources, and
           particular members of a to-many relation. Furthermore,
           relationship information will be accessible. For more
-          information, see :ref:`fetching`.
+          information, see :doc:`fetching`.
         * If ``'POST'`` is in the list, :http:method:`post` requests
           will be allowed at endpoints for collections of resources. For
-          more information, see :ref:`creating`.
+          more information, see :doc:`creating`.
         * If ``'DELETE'`` is in the list, :http:method:`delete` requests
           will be allowed at endpoints for individual resources. For
-          more information, see :ref:`deleting`.
+          more information, see :doc:`deleting`.
         * If ``'PATCH'`` is in the list, :http:method:`patch` requests
           will be allowed at endpoints for individual
           resources. Replacing a to-many relationship when issuing a
@@ -460,8 +460,8 @@ class APIManager(object):
           ``allow_delete_from_to_many_relationships`` is set to
           ``True``), and replace a to-many relationship via the
           :http:method:`patch` method (if ``allow_to_many_replacement``
-          is set to ``True``). For more information, see :ref:`updating`
-          and :ref:`updatingrelationships`.
+          is set to ``True``). For more information, see :doc:`updating`
+          and :doc:`updatingrelationships`.
 
         The default set of methods provides a read-only interface (that is,
         only :http:method:`get` requests are allowed).
@@ -484,7 +484,7 @@ class APIManager(object):
         requests to ``/api/eval/<collection_name>`` will return the
         result of evaluating SQL functions specified in the body of the
         request. For information on the request format, see
-        :ref:`functionevaluation`. This is ``False`` by default.
+        :doc:`functionevaluation`. This is ``False`` by default.
 
         .. warning::
 
@@ -520,7 +520,7 @@ class APIManager(object):
         be specified; if both are not ``None``, then this function will raise a
         :exc:`IllegalArgumentError`.
 
-        See :ref:`sparse` for more information on specifying which fields will
+        See :doc:`sparse` for more information on specifying which fields will
         be included in the resource object representation.
 
         `validation_exceptions` is the tuple of possible exceptions raised by
@@ -536,7 +536,7 @@ class APIManager(object):
         represents the maximum page size that a client can request. Even if a
         client specifies that greater than `max_page_size` should be returned,
         at most `max_page_size` results will be returned. For more information,
-        see :ref:`pagination`.
+        see :doc:`pagination`.
 
         `serializer_class` and `deserializer_class` are custom
         serializer and deserializer classes. The former must be a
@@ -565,7 +565,7 @@ class APIManager(object):
         resource object representation of an instance of `model`. Each element
         of `includes` is the name of a field of `model` (that is, either an
         attribute or a relationship). For more information, see
-        :ref:`includes`.
+        :doc:`includes`.
 
         If `allow_to_many_replacement` is ``True`` and this API allows
         :http:method:`patch` requests, the server will allow two types
@@ -575,19 +575,19 @@ class APIManager(object):
         client to replace the entire to-many relationship when making a
         :http:method:`patch` request to a to-many relationship endpoint.
         This is ``False`` by default. For more information, see
-        :ref:`updating` and :ref:`updatingrelationships`.
+        :doc:`updating` and :doc:`updatingrelationships`.
 
         If `allow_delete_from_to_many_relationships` is ``True`` and
         this API allows :http:method:`patch` requests, the server will
         allow the client to delete resources from any to-many
         relationship of the model. This is ``False`` by default. For
-        more information, see :ref:`updatingrelationships`.
+        more information, see :doc:`updatingrelationships`.
 
         If `allow_client_generated_ids` is ``True`` and this API allows
         :http:method:`post` requests, the server will allow the client to
         specify the ID for the resource to create. JSON API recommends that
         this be a UUID. This is ``False`` by default. For more information, see
-        :ref:`creating`.
+        :doc:`creating`.
 
         """
         # Perform some sanity checks on the provided keyword arguments.
