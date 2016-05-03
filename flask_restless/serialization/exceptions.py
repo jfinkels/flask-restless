@@ -63,7 +63,7 @@ class DeserializationException(Exception):
 
     `status` is an integer representing the HTTP status code that
     corresponds to this error. If not specified, it is set to 400,
-    representing :http:status:`400`.
+    representing :http:statuscode:`400`.
 
     `detail` is a string describing the problem in more detail. If
     provided, this will be incorporated in the return value of
