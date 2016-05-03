@@ -8,33 +8,19 @@ satisfy the requirements of the `JSON API`_ specification.
 This is the documentation for version |version|. See also the the most recent
 `stable version documentation`_ and the `development version documentation`_
 
-.. _stable version documentation: https://flask-restless.readthedocs.org/en/stable/
-.. _development version documentation: https://flask-restless.readthedocs.org/en/latest
-
 .. warning::
 
-   This is a "beta" version, so there may be more bugs than usual. There are
-   two fairly serious known issues with this version.
+   This is a "beta" version, so there may be more bugs than usual. There is one
+   fairly serious known issue with this version. Updating relationships via
+   `association proxies`_ is not working correctly. We cannot support
+   many-to-many relationships until this is resolved. If you have any insight
+   on how to fix this, please comment on GitHub issue :issue:`480`.
 
-   First, updating relationships via `association proxies`_ is not working
-   correctly. We cannot support many-to-many relationships until this is
-   resolved. If you have any insight on how to fix this, please comment on
-   GitHub issue #480.
+   .. _association proxies: https://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html
 
-   Second, we would like to make it easy to support serialization via third
-   party serialization libraries such as `Marshmallow`_. In order to do this
-   correctly, we need to separate serialization and deserialization into two
-   parts each: (de)serializing a single resource and (de)serializing many
-   resources from a JSON API document. I have not quite finished this yet. You
-   can see the `updated Marshmallow example`_ on GitHub, but it will not work
-   until the serialization code is updated. If you have any comments, please
-   file a new issue on GitHub.
-
+.. _stable version documentation: https://flask-restless.readthedocs.org/en/stable/
+.. _development version documentation: https://flask-restless.readthedocs.org/en/latest
 .. _JSON API: http://jsonapi.org
-.. _association proxies: https://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html
-.. _Marshmallow: https://marshmallow.readthedocs.org/
-.. _updated Marshmallow example: https://github.com/jfinkels/flask-restless/compare/marshmallow-example
-
 
 User's guide
 ------------
