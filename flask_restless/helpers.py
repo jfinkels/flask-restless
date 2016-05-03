@@ -158,7 +158,9 @@ def has_field(model, fieldname):
     descriptors = sqlalchemy_inspect(model).all_orm_descriptors._data
     if fieldname in descriptors and hasattr(descriptors[fieldname], 'fset'):
         return descriptors[fieldname].fset is not None
-    return hasattr(model, fieldname)
+    # At this point, we simply check if the model has the given
+    # attribute and it is not callable.
+    return hasattr(model, fieldname) and not callable(getattr(model, fieldname))
 
 
 def is_relationship(model, fieldname):

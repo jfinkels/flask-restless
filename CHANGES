@@ -21,6 +21,7 @@ Not yet released.
   of a function-based implementation.
 - :issue:`7`: allows filtering before function evaluation.
 - :issue:`49`: deserializers now expect a complete JSON API document.
+- :issue:`253`: don't assign to callable attributes of models.
 - :issue:`481,488`: added negation (``not``) operator for search.
 - :issue:`492`: support JSON API recommended "simple" filtering.
 

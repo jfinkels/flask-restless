@@ -83,6 +83,9 @@ class TestUpdating(ManagerTestBase):
             date_created = Column(Date)
             birth_datetime = Column(DateTime)
 
+            def foo(self):
+                return u'foo'
+
         # This example comes from the SQLAlchemy documentation.
         #
         # The SQLAlchemy documentation is licensed under the MIT license.
@@ -888,6 +891,33 @@ class TestUpdating(ManagerTestBase):
         response = self.app.patch('/api/tag/1', data=dumps(data))
         check_sole_error(response, 500, ['Failed to serialize', 'type', 'tag',
                                          'ID', '1'])
+
+    def test_dont_assign_to_method(self):
+        """Tests that if a certain method is to be included in a
+        resource, that method is not assigned to when updating the
+        resource.
+
+        For more information, see issue #253.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        self.manager.create_api(self.Person, additional_attributes=['foo'],
+                                url_prefix='/api2', methods=['PATCH'])
+        data = {
+            'data': {
+                'type': 'person',
+                'id': '1',
+                'attributes': {
+                    'foo': u'bar'
+                }
+            }
+        }
+        response = self.app.patch('/api2/person/1', data=dumps(data))
+        check_sole_error(response, 400, ['does not have', 'field', 'foo'])
+        assert person.foo != u'bar'
+        assert person.foo() == u'foo'
 
 
 class TestProcessors(ManagerTestBase):
