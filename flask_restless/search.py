@@ -452,7 +452,7 @@ def create_filters(model, filters):
     # Each of these function calls may raise a FilterCreationError.
     #
     # TODO In Python 3.3+, this should be `yield from ...`.
-    return (create_filter(model, f) for f in filters)
+    return [create_filter(model, f) for f in filters]
 
 
 def search_relationship(session, instance, relation, filters=None, sort=None,

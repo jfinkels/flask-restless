@@ -13,7 +13,6 @@
 from datetime import date
 from datetime import datetime
 from datetime import time
-from operator import itemgetter
 from unittest2 import skip
 
 # This import is unused but is required for testing on PyPy. CPython can
@@ -605,18 +604,22 @@ class TestFiltering(SearchTestBase):
         person4 = self.Person(id=4, birthday=date(1993, 1, 1))
         self.session.add_all([person1, person2, person3, person4])
         self.session.commit()
-        filters = [{
-            'and': [{
-                'name': 'birthday',
-                'op': '>',
-                'val': '1990-1-1'
-            },
+        filters = [
             {
-                'name': 'birthday',
-                'op': '<',
-                'val': '1993-1-1'
-            }]
-        }]
+                'and': [
+                    {
+                        'name': 'birthday',
+                        'op': '>',
+                        'val': '1990-1-1'
+                    },
+                    {
+                        'name': 'birthday',
+                        'op': '<',
+                        'val': '1993-1-1'
+                    }
+                ]
+            }
+        ]
         response = self.search('/api/person', filters)
         document = loads(response.data)
         people = document['data']
@@ -649,7 +652,6 @@ class TestFiltering(SearchTestBase):
         """
         filters = [{'name': 'age', 'op': 'eq', 'field': 'bogus'}]
         response = self.search('/api/person', filters)
-        print(response.data)
         check_sole_error(response, 400, ['no column', 'bogus', 'exists'])
 
     def test_invalid_operator(self):
@@ -704,7 +706,193 @@ class TestFiltering(SearchTestBase):
         assert ['3', '4'] == sorted(article['id'] for article in articles)
 
 
+class TestSimpleFiltering(ManagerTestBase):
+    """Unit tests for "simple" filter query parameters.
+
+    These are filters of the form
+
+    .. sourcecode:: http
+
+       GET /comments?filter[post]=1,2&filter[author]=12 HTTP/1.1
+
+    """
+
+    def setUp(self):
+        super(TestSimpleFiltering, self).setUp()
+
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+
+        class Person(self.Base):
+            __tablename__ = 'person'
+            id = Column(Integer, primary_key=True)
+            age = Column(Integer)
+
+        class Tag(self.Base):
+            __tablename__ = 'tag'
+            name = Column(Unicode, primary_key=True)
+            id = Column(Integer)
+
+        class Comment(self.Base):
+            __tablename__ = 'comment'
+            id = Column(Integer, primary_key=True)
+            article_id = Column(Integer, ForeignKey('article.id'))
+            article = relationship(Article, backref=backref('comments'))
+            author_id = Column(Integer, ForeignKey('person.id'))
+            author = relationship(Person)
+            tag_name = Column(Unicode, ForeignKey('tag.name'))
+            tag = relationship(Tag)
+
+        self.Article = Article
+        self.Comment = Comment
+        self.Person = Person
+        self.Tag = Tag
+        self.Base.metadata.create_all()
+        self.manager.create_api(Comment)
+        # HACK Need to create APIs for these other models because otherwise
+        # we're not able to create the link URLs to them.
+        self.manager.create_api(Article)
+        self.manager.create_api(Person)
+        self.manager.create_api(Tag)
+
+    def test_single_foreign_key(self):
+        """Tests for filtering resources by relationship foreign key."""
+        for i in range(1, 3):
+            comment = self.Comment(id=i)
+            article = self.Article(id=i)
+            comment.article = article
+            self.session.add_all([article, comment])
+        self.session.commit()
+        query_string = {'filter[article]': 1}
+        response = self.app.get('/api/comment', query_string=query_string)
+        document = loads(response.data)
+        comments = document['data']
+        assert ['1'] == sorted(comment['id'] for comment in comments)
+
+    def test_multiple_foreign_keys(self):
+        """Tests for filtering resources by those having a relationship
+        foreign key in a given set of keys.
+
+        """
+        for i in range(1, 4):
+            comment = self.Comment(id=i)
+            article = self.Article(id=i)
+            comment.article = article
+            self.session.add_all([article, comment])
+        self.session.commit()
+        query_string = {'filter[article]': ','.join(['1', '2'])}
+        response = self.app.get('/api/comment', query_string=query_string)
+        document = loads(response.data)
+        comments = document['data']
+        assert ['1', '2'] == sorted(comment['id'] for comment in comments)
+
+    def test_multiple_relationships(self):
+        for i in range(1, 4):
+            comment = self.Comment(id=i)
+            article = self.Article(id=i)
+            person = self.Person(id=i)
+            comment.article = article
+            comment.author = person
+            self.session.add_all([article, comment, person])
+        self.session.commit()
+        query_string = {'filter[article]': ','.join(['1', '2']),
+                        'filter[author]': 2}
+        response = self.app.get('/api/comment', query_string=query_string)
+        document = loads(response.data)
+        comments = document['data']
+        assert ['2'] == sorted(comment['id'] for comment in comments)
+
+    def test_primary_key_string(self):
+        comment1 = self.Comment(id=1)
+        comment2 = self.Comment(id=2)
+        tag1 = self.Tag(name=u'foo')
+        tag2 = self.Tag(name=u'bar')
+        comment1.tag = tag1
+        comment2.tag = tag2
+        self.session.add_all([comment1, comment2, tag1, tag2])
+        self.session.commit()
+        query_string = {'filter[tag]': u'foo'}
+        response = self.app.get('/api/comment', query_string=query_string)
+        document = loads(response.data)
+        comments = document['data']
+        assert ['1'] == sorted(comment['id'] for comment in comments)
+
+    def test_custom_primary_key(self):
+        comment1 = self.Comment(id=1)
+        comment2 = self.Comment(id=2)
+        tag1 = self.Tag(id=1, name=u'foo')
+        tag2 = self.Tag(id=2, name=u'bar')
+        comment1.tag = tag1
+        comment2.tag = tag2
+        self.session.add_all([comment1, comment2, tag1, tag2])
+        self.session.commit()
+        # TODO This won't work, since the other API for Tag still exists.
+        self.manager.create_api(self.Tag, primary_key='id')
+        query_string = {'filter[tag]': 1}
+        response = self.app.get('/api/comment', query_string=query_string)
+        document = loads(response.data)
+        comments = document['data']
+        assert ['1'] == sorted(comment['id'] for comment in comments)
+
+    def test_field_name(self):
+        """Tests for filtering by field name."""
+        person1 = self.Person(id=1, age=10)
+        person2 = self.Person(id=2, age=20)
+        person3 = self.Person(id=3, age=10)
+        self.session.add_all([person1, person2, person3])
+        self.session.commit()
+        query_string = {'filter[age]': 10}
+        response = self.app.get('/api/person', query_string=query_string)
+        document = loads(response.data)
+        people = document['data']
+        assert ['1', '3'] == sorted(person['id'] for person in people)
+
+    def test_simple_and_complex(self):
+        """Tests for requests that employ both simple filtering and
+        (complex) filter objects.
+
+        """
+        person1 = self.Person(id=1, age=10)
+        person2 = self.Person(id=2, age=20)
+        person3 = self.Person(id=3, age=10)
+        self.session.add_all([person1, person2, person3])
+        self.session.commit()
+        filters = [{'name': 'id', 'op': '<', 'val': 3}]
+        query_string = {
+            'filter[age]': 10,
+            'filter[objects]': dumps(filters)
+        }
+        response = self.app.get('/api/person', query_string=query_string)
+        document = loads(response.data)
+        people = document['data']
+        assert ['1'] == sorted(person['id'] for person in people)
+
+    def test_to_many_filter_by_relation(self):
+        """Tests for simple filtering on a to-many relation endpoint."""
+        article = self.Article(id=1)
+        self.session.add(article)
+        for i in range(1, 3):
+            comment = self.Comment(id=i)
+            tag = self.Tag(name=str(i))
+            comment.article = article
+            comment.tag = tag
+            self.session.add_all([comment, tag])
+        self.session.commit()
+        # There are two comments on article 1, each with a distinct
+        # tag. Let's choose the sole comment on the article with tag
+        # '1'.
+        query_string = {'filter[tag]': '1'}
+        response = self.app.get('/api/article/1/comments',
+                                query_string=query_string)
+        document = loads(response.data)
+        comments = document['data']
+        assert ['1'] == sorted(comment['id'] for comment in comments)
+
+
 class TestOperators(SearchTestBase):
+    """Tests for each SQLAlchemy operator supported by Flask-Restless."""
+
 
     def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the

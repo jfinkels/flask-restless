@@ -161,6 +161,22 @@ def has_field(model, fieldname):
     return hasattr(model, fieldname)
 
 
+def is_relationship(model, fieldname):
+    """Decides whether a field is a relationship (as opposed to a
+    field).
+
+    `model` is a SQLAlchemy model.
+
+    `fieldname` is a string naming a field of the given model. This
+    function returns True if and only if the field is a relationship.
+
+    This function may raise :exc:`sqlalchemy.exc.NoInspectionAvailable`.
+
+    """
+    inspected_model = sqlalchemy_inspect(model)
+    return fieldname in inspected_model.relationships
+
+
 def get_field_type(model, fieldname):
     """Helper which returns the SQLAlchemy type of the field."""
     field = getattr(model, fieldname)
@@ -188,9 +204,9 @@ def primary_key_value(instance, as_string=False):
     """Returns the value of the primary key field of the specified `instance`
     of a SQLAlchemy model.
 
-    This is a convenience function for::
+    This essentially a convenience function for::
 
-        getattr(instance, primary_key_name(instance))
+        getattr(instance, primary_key_for(instance))
 
     If `as_string` is ``True``, try to coerce the return value to a string.
 

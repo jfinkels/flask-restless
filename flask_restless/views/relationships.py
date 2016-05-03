@@ -25,7 +25,6 @@ from ..helpers import get_by
 from ..helpers import get_related_model
 from ..helpers import is_like_list
 from .base import APIBase
-from .base import collection_parameters
 from .base import error
 from .base import error_response
 from .base import errors_response
@@ -95,7 +94,9 @@ class RelationshipAPI(APIBase):
             return error_response(404, detail=detail)
         if is_like_list(primary_resource, relation_name):
             try:
-                filters, sort, group_by, single = collection_parameters()
+                filters, sort, group_by, single = \
+                    self.collection_parameters(resource_id=resource_id,
+                                               relation_name=relation_name)
             except (TypeError, ValueError, OverflowError) as exception:
                 detail = 'Unable to decode filter objects as JSON list'
                 return error_response(400, cause=exception, detail=detail)

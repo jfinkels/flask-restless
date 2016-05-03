@@ -30,7 +30,6 @@ from ..helpers import strings_to_datetimes
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
 from .base import APIBase
-from .base import collection_parameters
 from .base import error
 from .base import error_response
 from .base import errors_from_serialization_exceptions
@@ -207,7 +206,9 @@ class API(APIBase):
 
         """
         try:
-            filters, sort, group_by, single = collection_parameters()
+            filters, sort, group_by, single = \
+                self.collection_parameters(resource_id=resource_id,
+                                           relation_name=relation_name)
         except (TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode filter objects as JSON list'
             return error_response(400, cause=exception, detail=detail)
@@ -310,7 +311,7 @@ class API(APIBase):
 
         """
         try:
-            filters, sort, group_by, single = collection_parameters()
+            filters, sort, group_by, single = self.collection_parameters()
         except (TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode filter objects as JSON list'
             return error_response(400, cause=exception, detail=detail)
