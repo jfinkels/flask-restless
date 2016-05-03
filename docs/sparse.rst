@@ -10,7 +10,7 @@ Specifying which fields appear in responses
    objects as described in this section is simplistic; a better way to specify
    which fields are included in your responses is to use a Python object
    serialization library and specify custom serialization and deserialization
-   functions as described in :ref:`serialization`.
+   functions as described in :doc:`serialization`.
 
 By default, all fields of your model will be exposed by the API. A client can
 request that only certain fields appear in the resource object in a response to

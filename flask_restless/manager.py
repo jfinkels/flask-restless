@@ -136,7 +136,7 @@ class APIManager(object):
     the constructor will be ignored for that endpoint.
 
     `postprocessors` and `preprocessors` must be dictionaries as
-    described in the section :ref:`processors`. These preprocessors and
+    described in the section :doc:`processors`. These preprocessors and
     postprocessors will be applied to all requests to and responses from
     APIs created using this APIManager object. The preprocessors and
     postprocessors given in these keyword arguments will be prepended to
@@ -145,7 +145,7 @@ class APIManager(object):
     functions listed here will be executed before any functions
     specified in the :meth:`create_api_blueprint` method). For more
     information on using preprocessors and postprocessors, see
-    :ref:`processors`.
+    :doc:`processors`.
 
     """
 
@@ -542,7 +542,7 @@ class APIManager(object):
         serializer and deserializer classes. The former must be a
         subclass of :class:`Serializer` and the latter a subclass of
         :class:`Deserializer`. For more information on using these, see
-        :ref:`serialization`.
+        :doc:`serialization`.
 
         `preprocessors` is a dictionary mapping strings to lists of
         functions. Each key represents a type of endpoint (for example,
@@ -552,7 +552,7 @@ class APIManager(object):
         functions will be called in the order given here. The `postprocessors`
         keyword argument is essentially the same, except the given functions
         are called after all other code. For more information on preprocessors
-        and postprocessors, see :ref:`processors`.
+        and postprocessors, see :doc:`processors`.
 
         `primary_key` is a string specifying the name of the column of `model`
         to use as the primary key for the purposes of creating URLs. If the

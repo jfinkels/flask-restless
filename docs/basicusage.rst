@@ -87,7 +87,7 @@ You can specify which HTTP methods are available for each API endpoint. In this
 example, the client can fetch and create people, but only fetch articles (the
 default if no methods are specified). There are many options for customizing
 the endpoints created at this step; for more information, see
-:ref:`customizing`.
+:doc:`customizing`.
 
 Due to the design of Flask, these APIs must be created before your application
 handles any requests. The return value of :meth:`APIManager.create_api` is the
