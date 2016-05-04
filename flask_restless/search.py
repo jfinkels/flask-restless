@@ -29,14 +29,12 @@ import inspect
 from sqlalchemy import and_
 from sqlalchemy import not_
 from sqlalchemy import or_
-from sqlalchemy.ext.associationproxy import AssociationProxy
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.sql import false as FALSE
 
 from .helpers import get_model
 from .helpers import get_related_model
-from .helpers import get_related_association_proxy_model
+from .helpers import get_related_model_from_attribute
 from .helpers import primary_key_names
 from .helpers import primary_key_value
 from .helpers import session_query
@@ -63,24 +61,23 @@ class FilterParsingError(Exception):
     """
 
 
-def _sub_operator(model, argument, fieldname):
+def _sub_operator(attribute, argument, fieldname):
     """Recursively calls :func:`create_operation` when argument is a dictionary
     of the form specified in :ref:`search`.
 
     This function is for use with the ``has`` and ``any`` search operations.
 
     """
-    if isinstance(model, InstrumentedAttribute):
-        submodel = model.property.mapper.class_
-    elif isinstance(model, AssociationProxy):
-        submodel = get_related_association_proxy_model(model)
-    else:
-        # TODO what to do here?
-        pass
-    fieldname = argument['name']
-    operator = argument['op']
-    argument = argument.get('val')
-    return create_operation(submodel, fieldname, operator, argument)
+    # Get the actual user-defined SQLAlchemy model class, since
+    # `attribute` is either an InstrumentedAttribute or an
+    # AssociationProxy. Then get the model of the relation with name
+    # `fieldname`.
+    related_model = get_related_model_from_attribute(attribute)
+    new_fieldname = argument['name']
+    new_operator = argument['op']
+    new_argument = argument.get('val')
+    return create_operation(related_model, new_fieldname, new_operator,
+                            new_argument)
 
 
 #: The mapping from operator name (as accepted by the search method) to a
