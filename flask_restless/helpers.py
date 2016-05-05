@@ -9,7 +9,18 @@
 # Flask-Restless is distributed under both the GNU Affero General Public
 # License version 3 and under the 3-clause BSD license. For more
 # information, see LICENSE.AGPL and LICENSE.BSD.
-"""Helper functions for Flask-Restless."""
+"""Helper functions for Flask-Restless.
+
+Many of the functions in this module use the `SQLAlchemy inspection
+API`_. As a rule, however, these functions do not catch
+:exc:`sqlalchemy.exc.NoInspectionAvailable` exceptions; the
+responsibility is on the calling function to ensure that functions that
+expect, for example, a SQLAlchemy model actually receive a SQLAlchemy
+model.
+
+.. _SQLAlchemy inspection API: https://docs.sqlalchemy.org/en/latest/core/inspection.html
+
+"""
 import datetime
 import inspect
 
@@ -20,25 +31,11 @@ from sqlalchemy import Interval
 from sqlalchemy import Time
 from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.ext.associationproxy import AssociationProxy
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import ColumnProperty
-from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import RelationshipProperty as RelProperty
-from sqlalchemy.orm.attributes import InstrumentedAttribute
-from sqlalchemy.orm.attributes import QueryableAttribute
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import ColumnElement
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from werkzeug.urls import url_quote_plus
-
-#: Names of attributes which should definitely not be considered relations when
-#: dynamically computing a list of relations of a SQLAlchemy model.
-RELATION_BLACKLIST = ('query', 'query_class', '_sa_class_manager',
-                      '_decl_class_registry')
-
-#: Types which should be considered columns of a model when iterating over all
-#: attributes of a model class.
-COLUMN_TYPES = (InstrumentedAttribute, hybrid_property)
 
 #: Strings which, when received by the server as the value of a date or time
 #: field, indicate that the server should use the current time when setting the
@@ -68,10 +65,52 @@ def session_query(session, model):
 
 
 def get_relations(model):
-    """Returns a list of relation names of `model` (as a list of strings)."""
-    return [k for k in dir(model)
-            if not (k.startswith('__') or k in RELATION_BLACKLIST)
-            and get_related_model(model, k)]
+    """Returns a list of relation names of `model` (as a list of strings).
+
+    For a relationship via an association proxy, this function shows
+    only the remote attribute, not the intermediate relationship. For
+    example, if there is a table for ``Article`` and ``Tag`` and a table
+    associating the two via a many-to-many relationship, ::
+
+        >>> from sqlalchemy.ext.declarative import declarative_base
+        >>>
+        >>> Base = declarative_base()
+        >>> class Article(Base):
+        ...     __tablename__ = 'article'
+        ...     id = Column(Integer, primary_key=True)
+        ...     tags = association_proxy('articletags', 'tag')
+        ...
+        >>> class ArticleTag(Base):
+        ...     __tablename__ = 'articletag'
+        ...     article_id = Column(Integer, ForeignKey('article.id'),
+        ...                         primary_key=True)
+        ...     article = relationship(Article, backref=backref('articletags'))
+        ...     tag_id = Column(Integer, ForeignKey('tag.id'),
+        ...                     primary_key=True)
+        ...     tag = relationship('Tag')
+        ...
+        >>> class Tag(Base):
+        ...     __tablename__ = 'tag'
+        ...     id = Column(Integer, primary_key=True)
+        ...     name = Column(Unicode)
+        ...
+        >>> get_relations(Article)
+        ['tags']
+
+    """
+    mapper = sqlalchemy_inspect(model)
+    # If we didn't have to deal with association proxies, we could just
+    # do `return list(mapper.relationships)`, but we want to replace all
+    # association attributes with the actual remote attributes, as the
+    # user would expect. Therefore, we get a dictionary mapping
+    # relationship name to association proxy local attribute name, then
+    # replace the key with the value wherever such a key appears in the
+    # list of relationships.
+    alldescriptors = mapper.all_orm_descriptors.items()
+    # TODO In Python 2.7+, this should be a dict comprehension.
+    association_proxies = dict((v.local_attr.key, k) for k, v in alldescriptors
+                               if isinstance(v, AssociationProxy))
+    return [association_proxies.get(r, r) for r in mapper.relationships.keys()]
 
 
 def get_related_model(model, relationname):
@@ -91,40 +130,40 @@ def get_related_model(model, relationname):
             author_id = Column(Integer, ForeignKey('person.id'))
             author = relationship('Person')
 
-    then
+    then ::
 
         >>> get_related_model(Person, 'articles')
         <class 'Article'>
         >>> get_related_model(Article, 'author')
         <class 'Person'>
 
-    """
-    if hasattr(model, relationname):
-        # inspector = sqlalchemy_inspect(model)
-        # attributes = inspector.attrs
-        # if relationname in attributes:
-        #     state = attributes[relationname]
-        attr = getattr(model, relationname)
-        if hasattr(attr, 'property') \
-                and isinstance(attr.property, RelProperty):
-            return attr.property.mapper.class_
-        if isinstance(attr, AssociationProxy):
-            return get_related_association_proxy_model(attr)
-    return None
-
-
-def get_related_association_proxy_model(attr):
-    """Returns the model class specified by the given SQLAlchemy relation
-    attribute, or ``None`` if no such class can be inferred.
-
-    `attr` must be a relation attribute corresponding to an association proxy.
+    This function also "sees through" association proxies and returns
+    the model of the proxied remote relation.
 
     """
-    prop = attr.remote_attr.property
-    for attribute in ('mapper', 'parent'):
-        if hasattr(prop, attribute):
-            return getattr(prop, attribute).class_
-    return None
+    mapper = sqlalchemy_inspect(model)
+    attribute = mapper.all_orm_descriptors[relationname]
+    # HACK This is required for Python 3.3 only. I'm guessing it lazily
+    # loads the attribute or something like that.
+    hasattr(model, relationname)
+    return get_related_model_from_attribute(attribute)
+
+
+def get_related_model_from_attribute(attribute):
+    """Gets the class of the model related to the given attribute via
+    the given name.
+
+    `attribute` may be an
+    :class:`~sqlalchemy.orm.attributes.InstrumentedAttribute` or an
+    :class:`~sqlalchemy.ext.associationproxy.AssociationProxy`, for
+    example ``Article.comments`` or ``Comment.tags``. This function
+    "sees through" association proxies to return the model of the
+    proxied remote relation.
+
+    """
+    if isinstance(attribute, AssociationProxy):
+        return attribute.remote_attr.mapper.class_
+    return attribute.property.mapper.class_
 
 
 def foreign_key_columns(model):
@@ -132,14 +171,8 @@ def foreign_key_columns(model):
     foreign keys for relationships in the specified model class.
 
     """
-    try:
-        inspector = sqlalchemy_inspect(model)
-    except NoInspectionAvailable:
-        # Well, the inspection of a model class returns a mapper anyway, so
-        # let's just assume the inspection would have returned the mapper.
-        inspector = class_mapper(model)
-    all_columns = inspector.columns
-    return [c for c in all_columns if c.foreign_keys]
+    mapper = sqlalchemy_inspect(model)
+    return [c for c in mapper.columns if c.foreign_keys]
 
 
 def foreign_keys(model):
@@ -155,12 +188,22 @@ def has_field(model, fieldname):
     settable hybrid property for this field name.
 
     """
-    descriptors = sqlalchemy_inspect(model).all_orm_descriptors._data
-    if fieldname in descriptors and hasattr(descriptors[fieldname], 'fset'):
-        return descriptors[fieldname].fset is not None
-    # At this point, we simply check if the model has the given
-    # attribute and it is not callable.
-    return hasattr(model, fieldname) and not callable(getattr(model, fieldname))
+    mapper = sqlalchemy_inspect(model)
+    # Get all descriptors, which include columns, relationships, and
+    # other things like association proxies and hybrid properties.
+    descriptors = mapper.all_orm_descriptors
+    if fieldname not in descriptors:
+        return False
+    field = descriptors[fieldname]
+    # First, we check whether `fieldname` specifies a settable hybrid
+    # property. This is a bit flimsy: we check whether the `fset`
+    # attribute has been set on the `hybrid_property` instance. The
+    # `fset` instance attribute is only set if the user defined a hybrid
+    # property setter.
+    if hasattr(field, 'fset'):
+        return field.fset is not None
+    # At this point, we simply check that the attribute is not callable.
+    return not callable(getattr(model, fieldname))
 
 
 def is_relationship(model, fieldname):
@@ -172,15 +215,21 @@ def is_relationship(model, fieldname):
     `fieldname` is a string naming a field of the given model. This
     function returns True if and only if the field is a relationship.
 
-    This function may raise :exc:`sqlalchemy.exc.NoInspectionAvailable`.
+    This function currently does *not* return `True` for association
+    proxies.
 
     """
-    inspected_model = sqlalchemy_inspect(model)
-    return fieldname in inspected_model.relationships
+    mapper = sqlalchemy_inspect(model)
+    return fieldname in mapper.relationships
 
 
 def get_field_type(model, fieldname):
-    """Helper which returns the SQLAlchemy type of the field."""
+    """Returns the SQLAlchemy type of the field.
+
+    This works for plain columns and association proxies. If `fieldname`
+    specifies a hybrid property, this function returns `None`.
+
+    """
     field = getattr(model, fieldname)
     if isinstance(field, ColumnElement):
         return field.type
@@ -195,11 +244,13 @@ def get_field_type(model, fieldname):
 
 
 def primary_key_names(model):
-    """Returns all the primary keys for a model."""
-    return [key for key, field in inspect.getmembers(model)
-            if isinstance(field, QueryableAttribute)
-            and isinstance(field.property, ColumnProperty)
-            and field.property.columns[0].primary_key]
+    """Returns a list of all the primary keys for a model.
+
+    The returned list contains the name of each primary key as a string.
+
+    """
+    mapper = sqlalchemy_inspect(model)
+    return [column.name for column in mapper.primary_key]
 
 
 def primary_key_value(instance, as_string=False):
@@ -222,40 +273,30 @@ def primary_key_value(instance, as_string=False):
         return url_quote_plus(result.encode('utf-8'))
 
 
-def is_like_list(model_or_instance, relation):
-    """Returns ``True`` if and only if the relation of the given model or
-    instance of a model whose name is `relation` is list-like.
+def is_like_list(model_or_instance, relationname):
+    """Decides whether a relation of a SQLAlchemy model is list-like.
 
-    A relation may be like a list if, for example, it is a non-lazy
-    to-many relation, or it is a dynamically loaded to-many relation.
+    A relation may be like a list if it behaves like a to-many relation
+    (either lazy or eager)
 
     `model_or_instance` may be either a SQLAlchemy model class or an
     instance of such a class.
 
+    `relationname` is a string naming a relationship of the given
+    model or instance.
+
     """
-    if inspect.isclass(model_or_instance):
+    # Use Python's built-in inspect module to decide whether the
+    # argument is a model or an instance of a model.
+    if not inspect.isclass(model_or_instance):
+        model = get_model(model_or_instance)
+    else:
         model = model_or_instance
-        if relation in model._sa_class_manager:
-            return model._sa_class_manager[relation].property.uselist
-        related_value = getattr(model, relation)
-        if isinstance(related_value, AssociationProxy):
-            local_prop = related_value.local_attr.prop
-            if isinstance(local_prop, RelProperty):
-                return local_prop.uselist
-        return False
-    instance = model_or_instance
-    if relation in instance._sa_class_manager:
-        return instance._sa_class_manager[relation].property.uselist
-    if hasattr(instance, relation):
-        attr = getattr(instance._sa_instance_state.class_, relation)
-        if hasattr(attr, 'property'):
-            return attr.property.uselist
-    related_value = getattr(type(instance), relation, None)
-    if isinstance(related_value, AssociationProxy):
-        local_prop = related_value.local_attr.prop
-        if isinstance(local_prop, RelProperty):
-            return local_prop.uselist
-    return False
+    mapper = sqlalchemy_inspect(model)
+    relation = mapper.all_orm_descriptors[relationname]
+    if isinstance(relation, AssociationProxy):
+        relation = relation.local_attr
+    return relation.property.uselist
 
 
 def is_mapped_class(cls):
@@ -563,14 +604,16 @@ class PrimaryKeyFinder(KnowsAPIManagers, Singleton):
 #:     'http://example.com/api/people/3'
 #:     >>> url_for(Person, resource_id=3, relation_name=computers)
 #:     'http://example.com/api/people/3/computers'
-#:     >>> url_for(Person, resource_id=3, relation_name=computers, related_resource_id=9)
+#:     >>> url_for(Person, resource_id=3, relation_name=computers,
+#:     ...         related_resource_id=9)
 #:     'http://example.com/api/people/3/computers/9'
 #:
 #: If a `resource_id` and a `relation_name` are provided, and you wish
 #: to determine the relationship endpoint URL instead of the related
 #: resource URL, set the `relationship` keyword argument to ``True``::
 #:
-#:     >>> url_for(Person, resource_id=3, relation_name=computers, relationshi=True)
+#:     >>> url_for(Person, resource_id=3, relation_name=computers,
+#:     ...         relationship=True)
 #:     'http://example.com/api/people/3/relatonships/computers'
 #:
 #: The remaining keyword arguments, `kw`, are passed directly on to

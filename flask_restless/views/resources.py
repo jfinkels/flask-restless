@@ -25,6 +25,7 @@ from ..helpers import get_by
 from ..helpers import get_related_model
 from ..helpers import has_field
 from ..helpers import is_like_list
+from ..helpers import is_relationship
 from ..helpers import primary_key_value
 from ..helpers import strings_to_datetimes
 from ..serialization import DeserializationException
@@ -157,10 +158,9 @@ class API(APIBase):
         if primary_resource is None:
             detail = 'No instance with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
-        # Get the model of the specified relation.
-        related_model = get_related_model(self.model, relation_name)
-        # Return an error if no such relation exists.
-        if related_model is None:
+        # Return an error if the specified relation does not exist on
+        # the model.
+        if not is_relationship(self.model, relation_name):
             detail = 'No such relation: {0}'.format(relation_name)
             return error_response(404, detail=detail)
         # Return an error if the relation is a to-one relation.
@@ -179,6 +179,7 @@ class API(APIBase):
             detail = detail.format(related_resource_id)
             return error_response(404, detail=detail)
         # Get the related resource by its ID.
+        related_model = get_related_model(self.model, relation_name)
         resource = get_by(self.session, related_model, related_resource_id)
         return self._get_resource_helper(resource,
                                          primary_resource=primary_resource,
@@ -240,11 +241,12 @@ class API(APIBase):
         if primary_resource is None:
             detail = 'No resource with ID {0}'.format(resource_id)
             return error_response(404, detail=detail)
-        # Get the model of the specified relation.
-        related_model = get_related_model(self.model, relation_name)
-        if related_model is None:
+        # Return an error if the specified relation does not exist on
+        # the model.
+        if not is_relationship(self.model, relation_name):
             detail = 'No such relation: {0}'.format(relation_name)
             return error_response(404, detail=detail)
+        # Get the model of the specified relation.
         # Determine if this is a to-one or a to-many relation.
         if is_like_list(primary_resource, relation_name):
             return self._get_collection_helper(resource=primary_resource,
