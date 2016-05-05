@@ -21,6 +21,7 @@ testing code decoupled from the serialization implementation.
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from uuid import UUID
 from uuid import uuid1
 
 from sqlalchemy import Column
@@ -205,6 +206,10 @@ class TestFetchResource(ManagerTestBase):
             decorated_datetime = Column(DecoratedDateTime)
             decorated_interval = Column(DecoratedInterval)
 
+            # These class attributes are *not* columns, just hard-coded values.
+            uuid_attribute = UUID(hex='f' * 32)
+            datetime_attribute = datetime(1, 1, 1)
+
             @hybrid_property
             def has_early_bedtime(self):
                 if not hasattr(self, 'bedtime') or self.bedtime is None:
@@ -254,6 +259,22 @@ class TestFetchResource(ManagerTestBase):
         person = document['data']
         assert person['attributes']['uuid'] == str(uuid)
 
+    def test_uuid_as_additional_attribute(self):
+        """Tests that a UUID is serialized as a string when it is an
+        attribute of the model but *not* a SQLAlchemy column.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        self.manager.create_api(self.Person,
+                                additional_attributes=['uuid_attribute'])
+        response = self.app.get('/api/person/1')
+        document = loads(response.data)
+        person = document['data']
+        attributes = person['attributes']
+        assert attributes['uuid_attribute'] == str(self.Person.uuid_attribute)
+
     def test_time(self):
         """Test for getting the JSON representation of a time field."""
         now = datetime.now().time()
@@ -279,6 +300,23 @@ class TestFetchResource(ManagerTestBase):
         document = loads(response.data)
         person = document['data']
         assert person['attributes']['birth_datetime'] == now.isoformat()
+
+    def test_datetime_as_additional_attribute(self):
+        """Tests that a datetime is serialized as a string when it is an
+        attribute of the model but *not* a SQLAlchemy column.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        self.manager.create_api(self.Person,
+                                additional_attributes=['datetime_attribute'])
+        response = self.app.get('/api/person/1')
+        document = loads(response.data)
+        person = document['data']
+        attributes = person['attributes']
+        expected = self.Person.datetime_attribute
+        assert attributes['datetime_attribute'] == expected.isoformat()
 
     def test_date(self):
         """Test for getting the JSON representation of a date field."""
