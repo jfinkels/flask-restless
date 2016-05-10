@@ -109,6 +109,7 @@ class TestFiltering(SearchTestBase):
         class Article(self.Base):
             __tablename__ = 'article'
             id = Column(Integer, primary_key=True)
+            publishtime = Column(DateTime)
             author_id = Column(Integer, ForeignKey('person.id'))
             author = relationship('Person', backref=backref('articles'))
 
@@ -333,6 +334,43 @@ class TestFiltering(SearchTestBase):
         people = document['data']
         assert ['1', '3'] == sorted(person['id'] for person in people)
 
+    def test_any_with_boolean(self):
+        """Tests for nesting a Boolean formula under an ``any`` filter.
+
+        """
+        person1 = self.Person(id=1)
+        person2 = self.Person(id=2)
+        article1 = self.Article(id=1, publishtime=datetime(1900, 1, 1))
+        article2 = self.Article(id=2, publishtime=datetime(2000, 1, 1))
+        article1.author = person1
+        article2.author = person2
+        self.session.add_all([person1, person2, article1, article2])
+        self.session.commit()
+        # Filter by only those people that have articles published after
+        # 1-1-1950 and before 1-1-2050.
+        filters = [{
+            'name': 'articles',
+            'op': 'any',
+            'val': {
+                'and': [
+                    {
+                        'name': 'publishtime',
+                        'op': '>',
+                        'val': '1950-1-1'
+                    },
+                    {
+                        'name': 'publishtime',
+                        'op': '<',
+                        'val': '2050-1-1'
+                    }
+                ]
+            }
+        }]
+        response = self.search('/api/person', filters)
+        document = loads(response.data)
+        people = document['data']
+        assert ['2'] == [person['id'] for person in people]
+
     def test_has_in_to_one(self):
         """Test for filtering using the ``has`` operator with a sub-filter
         object on a to-one relationship.
@@ -354,6 +392,43 @@ class TestFiltering(SearchTestBase):
         document = loads(response.data)
         comments = document['data']
         assert ['2', '3'] == sorted(comment['id'] for comment in comments)
+
+    def test_has_with_boolean(self):
+        """Tests for nesting a Boolean formula under a ``has`` filter.
+
+        """
+        person1 = self.Person(id=1, bedtime=time(2))
+        person2 = self.Person(id=2, bedtime=time(4))
+        article1 = self.Article(id=1)
+        article2 = self.Article(id=2)
+        article1.author = person1
+        article2.author = person2
+        self.session.add_all([person1, person2, article1, article2])
+        self.session.commit()
+        # Filter by only those articles with an author that has a
+        # bedtime greater than 1:00 and less than 3:00.
+        filters = [{
+            'name': 'author',
+            'op': 'has',
+            'val': {
+                'and': [
+                    {
+                        'name': 'bedtime',
+                        'op': '>',
+                        'val': '1:00'
+                    },
+                    {
+                        'name': 'bedtime',
+                        'op': '<',
+                        'val': '3:00'
+                    }
+                ]
+            }
+        }]
+        response = self.search('/api/article', filters)
+        document = loads(response.data)
+        articles = document['data']
+        assert ['1'] == [article['id'] for article in articles]
 
     def test_has_with_has(self):
         """Tests for nesting a ``has`` filter beneath another ``has`` filter.
