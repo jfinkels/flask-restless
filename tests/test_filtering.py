@@ -652,7 +652,7 @@ class TestFiltering(SearchTestBase):
         """
         filters = [{'name': 'age', 'op': 'eq', 'field': 'bogus'}]
         response = self.search('/api/person', filters)
-        check_sole_error(response, 400, ['no column', 'bogus', 'exists'])
+        check_sole_error(response, 400, ['no such field', 'bogus'])
 
     def test_invalid_operator(self):
         """Tests for an error response on an invalid operator in a filter
@@ -661,7 +661,7 @@ class TestFiltering(SearchTestBase):
         """
         filters = [dict(name='age', op='bogus', val=2)]
         response = self.search('/api/person', filters)
-        check_sole_error(response, 400, ['unknown', 'operator'])
+        check_sole_error(response, 400, ['unknown', 'operator', 'bogus'])
 
     def test_missing_argument(self):
         """Tests that filter requests with a missing ``'val'`` causes an error

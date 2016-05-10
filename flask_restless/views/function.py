@@ -131,15 +131,14 @@ class FunctionAPI(ModelView):
             detail = 'Invalid format for filter[single] query parameter'
             return error_response(400, cause=exception, detail=detail)
 
-        # Create the filtered query according to the parameters.
         try:
+            # Create the filtered query according to the parameters.
             filters = create_filters(self.model, filters)
+            # Apply the filters to the query.
+            query = query.filter(*filters)
         except (FilterParsingError, FilterCreationError) as exception:
             detail = 'invalid filter object: {0}'.format(str(exception))
             return error_response(400, cause=exception, detail=detail)
-
-        # Apply the filters to the query.
-        query = query.filter(*filters)
 
         # Evaluate all the functions at once and get a list of results.
         try:
