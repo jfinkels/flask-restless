@@ -130,7 +130,7 @@ def search(session, model, filters=None, sort=None, group_by=None,
         for field_name in group_by:
             if '.' in field_name:
                 field_name, field_name_in_relation = field_name.split('.')
-                relation_model = get_related_model(model, field_name)
+                relation_model = aliased(get_related_model(model, field_name))
                 field = getattr(relation_model, field_name_in_relation)
                 query = query.join(relation_model)
                 query = query.group_by(field)
