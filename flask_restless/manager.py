@@ -20,6 +20,7 @@ from collections import namedtuple
 from uuid import uuid1
 import sys
 
+from sqlalchemy.inspection import inspect
 from flask import Blueprint
 from flask import url_for as flask_url_for
 
@@ -601,7 +602,15 @@ class APIManager(object):
             msg = 'Collection name must be nonempty'
             raise IllegalArgumentError(msg)
         if collection_name is None:
-            collection_name = model.__table__.name
+            # If the model is polymorphic in a single table inheritance
+            # scenario, this should *not* be the tablename, but perhaps
+            # the polymorphic identity?
+            mapper = inspect(model)
+            if mapper.polymorphic_identity is not None:
+                collection_name = mapper.polymorphic_identity
+            else:
+                collection_name = model.__table__.name
+
         # convert all method names to upper case
         methods = frozenset((m.upper() for m in methods))
         # the name of the API, for use in creating the view and the blueprint

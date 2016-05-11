@@ -42,11 +42,16 @@ from sqlalchemy.types import CHAR
 from sqlalchemy.types import TypeDecorator
 
 from flask.ext.restless import APIManager
+from flask.ext.restless import collection_name
 from flask.ext.restless import CONTENT_TYPE
 from flask.ext.restless import DefaultSerializer
 from flask.ext.restless import DefaultDeserializer
 from flask.ext.restless import DeserializationException
+from flask.ext.restless import model_for
+from flask.ext.restless import primary_key_for
 from flask.ext.restless import SerializationException
+from flask.ext.restless import serializer_for
+from flask.ext.restless import url_for
 
 dumps = json.dumps
 loads = json.loads
@@ -66,6 +71,10 @@ IS_PYTHON2 = (sys.version_info[0] == 2)
 
 #: Tuple of objects representing types.
 CLASS_TYPES = (types.TypeType, types.ClassType) if IS_PYTHON2 else (type, )
+
+#: Global helper functions used by Flask-Restless
+GLOBAL_FUNCS = [model_for, url_for, collection_name, serializer_for,
+                primary_key_for]
 
 
 class raise_s_exception(DefaultSerializer):
@@ -397,3 +406,15 @@ class ManagerTestBase(SQLAlchemyTestBase):
         """
         super(ManagerTestBase, self).setUp()
         self.manager = APIManager(self.flaskapp, session=self.session)
+
+    # HACK If we don't include this, there seems to be an issue with the
+    # globally known APIManager objects not being cleared after every test.
+    def tearDown(self):
+        """Clear the :class:`~flask.ext.restless.APIManager` objects
+        known by the global helper functions :data:`model_for`,
+        :data:`url_for`, etc.
+
+        """
+        super(ManagerTestBase, self).tearDown()
+        for func in GLOBAL_FUNCS:
+            func.created_managers.clear()

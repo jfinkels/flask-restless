@@ -292,20 +292,6 @@ class TestAPIManager(ManagerTestBase):
         self.Tag = Tag
         self.Base.metadata.create_all()
 
-    # HACK If we don't include this, there seems to be an issue with the
-    # globally known APIManager objects not being cleared after every test.
-    def tearDown(self):
-        """Clear the :class:`flask.ext.restless.APIManager` objects known by
-        the global functions :data:`model_for`, :data:`url_for`, and
-        :data:`collection_name`.
-
-        """
-        super(TestAPIManager, self).tearDown()
-        model_for.created_managers.clear()
-        url_for.created_managers.clear()
-        collection_name.created_managers.clear()
-        serializer_for.created_managers.clear()
-
     def test_url_for(self):
         """Tests the global :func:`flask.ext.restless.url_for` function."""
         self.manager.create_api(self.Person, collection_name='people')

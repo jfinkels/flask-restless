@@ -36,6 +36,7 @@ from ..helpers import get_related_model
 from ..helpers import get_by
 from ..helpers import has_field
 from ..helpers import is_like_list
+from ..helpers import model_for
 from ..helpers import strings_to_datetimes
 
 
@@ -129,8 +130,20 @@ class DefaultDeserializer(Deserializer):
             raise MissingType
         if 'id' in data and not self.allow_client_generated_ids:
             raise ClientGeneratedIDNotAllowed
+        # Determine the model from the type name that the the user is
+        # requesting. If no model is known with the given type, raise an
+        # exception.
         type_ = data.pop('type')
         expected_type = collection_name(self.model)
+        try:
+            model = model_for(type_)
+        except ValueError:
+            raise ConflictingType(expected_type, type_)
+        # If we wanted to allow deserializing a subclass of the model,
+        # we could use:
+        #
+        #     if not issubclass(model, self.model) and type != expected_type:
+        #
         if type_ != expected_type:
             raise ConflictingType(expected_type, type_)
         # Check for any request parameter naming a column which does not exist
@@ -138,22 +151,22 @@ class DefaultDeserializer(Deserializer):
         for field in data:
             if field == 'relationships':
                 for relation in data['relationships']:
-                    if not has_field(self.model, relation):
+                    if not has_field(model, relation):
                         raise UnknownRelationship(relation)
             elif field == 'attributes':
                 for attribute in data['attributes']:
-                    if not has_field(self.model, attribute):
+                    if not has_field(model, attribute):
                         raise UnknownAttribute(attribute)
         # Determine which related instances need to be added.
         links = {}
         if 'relationships' in data:
             links = data.pop('relationships', {})
             for link_name, link_object in links.items():
-                related_model = get_related_model(self.model, link_name)
+                related_model = get_related_model(model, link_name)
                 DRD = DefaultRelationshipDeserializer
                 deserializer = DRD(self.session, related_model, link_name)
                 # Create the deserializer for this relationship object.
-                if is_like_list(self.model, link_name):
+                if is_like_list(model, link_name):
                     deserialize = deserializer.deserialize_many
                 else:
                     deserialize = deserializer.deserialize
@@ -168,9 +181,9 @@ class DefaultDeserializer(Deserializer):
         data.update(data.pop('attributes', {}))
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
-        data = strings_to_datetimes(self.model, data)
+        data = strings_to_datetimes(model, data)
         # Create the new instance by keyword attributes.
-        instance = self.model(**data)
+        instance = model(**data)
         # Set each relation specified in the links.
         for relation_name, related_value in links.items():
             setattr(instance, relation_name, related_value)
