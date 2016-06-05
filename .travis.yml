@@ -10,7 +10,8 @@ python:
   - "3.4"
   - "3.5"
   - "pypy"
-  - "pypy3"
+  # PyPy3 currently supports Python 3.2, which Flask does not support.
+  # - "pypy3"
 
 addons:
   # HACK Need to update the installed version of PostgreSQL, because it doesn't
