@@ -164,7 +164,7 @@ sent from the server to the client) using the
 :meth:`flask.Blueprint.after_request` method::
 
     from flask import Flask
-    from flask.ext.restless import APIManager
+    from flask_restless import APIManager
 
     def add_cors_headers(response):
         response.headers['Access-Control-Allow-Origin'] = 'example.com'

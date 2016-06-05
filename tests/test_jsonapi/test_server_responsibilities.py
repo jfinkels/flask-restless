@@ -24,7 +24,7 @@ from sqlalchemy import Column
 from sqlalchemy import Unicode
 from sqlalchemy import Integer
 
-from flask.ext.restless import CONTENT_TYPE
+from flask_restless import CONTENT_TYPE
 
 from ..helpers import check_sole_error
 from ..helpers import dumps

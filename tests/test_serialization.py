@@ -37,9 +37,9 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask.ext.restless import DefaultSerializer
-from flask.ext.restless import MultipleExceptions
-from flask.ext.restless import SerializationException
+from flask_restless import DefaultSerializer
+from flask_restless import MultipleExceptions
+from flask_restless import SerializationException
 
 from .helpers import check_sole_error
 from .helpers import GUID
@@ -539,7 +539,7 @@ class TestFetchResource(ManagerTestBase):
 
     def test_exception_message(self):
         """Tests that a message specified in the
-        :exc:`~flask.ext.restless.SerializationException` constructor
+        :exc:`~flask_restless.SerializationException` constructor
         appears in an error response.
 
         """

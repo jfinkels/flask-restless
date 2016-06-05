@@ -50,10 +50,10 @@ make requests using any web client.
 
 """
 from flask import Flask
-from flask.ext.restless import APIManager
-from flask.ext.restless import DefaultSerializer
-from flask.ext.restless import DefaultDeserializer
-from flask.ext.sqlalchemy import SQLAlchemy
+from flask_restless import APIManager
+from flask_restless import DefaultSerializer
+from flask_restless import DefaultDeserializer
+from flask_sqlalchemy import SQLAlchemy
 from marshmallow import post_load
 from marshmallow_jsonapi import fields
 from marshmallow_jsonapi import Schema

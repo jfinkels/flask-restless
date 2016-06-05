@@ -1,7 +1,7 @@
 API
 ===
 
-.. module:: flask.ext.restless
+.. module:: flask_restless
 
 This part of the documentation documents all the public classes and functions
 in Flask-Restless.

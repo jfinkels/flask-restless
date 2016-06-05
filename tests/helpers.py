@@ -26,7 +26,7 @@ from flask import Flask
 from flask import json
 try:
     from flask.ext import sqlalchemy as flask_sqlalchemy
-    from flask.ext.sqlalchemy import SQLAlchemy
+    from flask_sqlalchemy import SQLAlchemy
 except ImportError:
     has_flask_sqlalchemy = False
 else:
@@ -41,17 +41,17 @@ from sqlalchemy.orm.session import Session as SessionBase
 from sqlalchemy.types import CHAR
 from sqlalchemy.types import TypeDecorator
 
-from flask.ext.restless import APIManager
-from flask.ext.restless import collection_name
-from flask.ext.restless import CONTENT_TYPE
-from flask.ext.restless import DefaultSerializer
-from flask.ext.restless import DefaultDeserializer
-from flask.ext.restless import DeserializationException
-from flask.ext.restless import model_for
-from flask.ext.restless import primary_key_for
-from flask.ext.restless import SerializationException
-from flask.ext.restless import serializer_for
-from flask.ext.restless import url_for
+from flask_restless import APIManager
+from flask_restless import collection_name
+from flask_restless import CONTENT_TYPE
+from flask_restless import DefaultSerializer
+from flask_restless import DefaultDeserializer
+from flask_restless import DeserializationException
+from flask_restless import model_for
+from flask_restless import primary_key_for
+from flask_restless import SerializationException
+from flask_restless import serializer_for
+from flask_restless import url_for
 
 dumps = json.dumps
 loads = json.loads
@@ -385,22 +385,22 @@ class SQLAlchemyTestBase(FlaskTestBase, DatabaseMixin):
 
 class ManagerTestBase(SQLAlchemyTestBase):
     """Base class for tests that use a SQLAlchemy database and an
-    :class:`~flask.ext.restless.APIManager`.
+    :class:`~flask_restless.APIManager`.
 
     Nearly all test classes should subclass this class. Since we strive
     to make Flask-Restless compliant with plain old SQLAlchemy first,
     the default database abstraction layer used by tests in this class
     will be SQLAlchemy. Test classes requiring Flask-SQLAlchemy must
-    instantiate their own :class:`~flask.ext.restless.APIManager`.
+    instantiate their own :class:`~flask_restless.APIManager`.
 
-    The :class:`~flask.ext.restless.APIManager` instance for use in
+    The :class:`~flask_restless.APIManager` instance for use in
     tests is accessible at ``self.manager``.
 
     """
 
     def setUp(self):
         """Initializes an instance of
-        :class:`~flask.ext.restless.APIManager` with a SQLAlchemy
+        :class:`~flask_restless.APIManager` with a SQLAlchemy
         session.
 
         """
@@ -410,7 +410,7 @@ class ManagerTestBase(SQLAlchemyTestBase):
     # HACK If we don't include this, there seems to be an issue with the
     # globally known APIManager objects not being cleared after every test.
     def tearDown(self):
-        """Clear the :class:`~flask.ext.restless.APIManager` objects
+        """Clear the :class:`~flask_restless.APIManager` objects
         known by the global helper functions :data:`model_for`,
         :data:`url_for`, etc.
 

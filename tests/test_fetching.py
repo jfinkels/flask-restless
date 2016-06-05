@@ -30,9 +30,9 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask.ext.restless import APIManager
-from flask.ext.restless import DefaultSerializer
-from flask.ext.restless import ProcessingException
+from flask_restless import APIManager
+from flask_restless import DefaultSerializer
+from flask_restless import ProcessingException
 
 from .helpers import check_sole_error
 from .helpers import dumps
@@ -1552,7 +1552,7 @@ class TestAssociationProxy(ManagerTestBase):
 
     def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
-        :class:`~flask.ext.restless.manager.APIManager` for that application,
+        :class:`~flask_restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 

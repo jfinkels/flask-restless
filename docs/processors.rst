@@ -201,9 +201,9 @@ This may be used, for example, if all :http:method:`post` requests require
 authentication::
 
     from flask import Flask
-    from flask.ext.restless import APIManager
-    from flask.ext.restless import ProcessingException
-    from flask.ext.login import current_user
+    from flask_restless import APIManager
+    from flask_restless import ProcessingException
+    from flask_login import current_user
     from mymodels import User
     from mymodels import session
 
@@ -262,9 +262,9 @@ Requiring authentication for some methods
 If you want certain HTTP methods to require authentication, use preprocessors::
 
     from flask import Flask
-    from flask.ext.restless import APIManager
-    from flask.ext.restless import ProcessingException
-    from flask.ext.login import current_user
+    from flask_restless import APIManager
+    from flask_restless import ProcessingException
+    from flask_login import current_user
     from mymodels import User
 
     def auth_func(*args, **kwargs):

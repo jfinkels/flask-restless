@@ -21,7 +21,7 @@ __version__ = '1.0.0b2-dev'
 
 # The following names are available as part of the public API for
 # Flask-Restless. End users of this package can import these names by doing
-# ``from flask.ext.restless import APIManager``, for example.
+# ``from flask_restless import APIManager``, for example.
 from .helpers import collection_name
 from .helpers import model_for
 from .helpers import serializer_for
