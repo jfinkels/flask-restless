@@ -244,10 +244,10 @@ class GUID(TypeDecorator):
         return uuid.UUID(value)
 
 
-# In versions of Flask before 1.0, datetime and time objects are not
+# In versions of Flask before 0.11, datetime and time objects are not
 # serializable by default so we need to create a custom JSON encoder class.
 #
-# TODO When Flask 1.0 is required, remove this.
+# TODO When Flask 0.11 is required, remove this.
 class BetterJSONEncoder(JSONEncoder):
     """Extends the default JSON encoder to serialize objects from the
     :mod:`datetime` module.

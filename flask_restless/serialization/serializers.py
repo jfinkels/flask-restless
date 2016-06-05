@@ -315,7 +315,7 @@ class DefaultSerializer(Serializer):
         # Serialize any date- or time-like objects that appear in the
         # attributes.
         #
-        # TODO In Flask 1.0, the default JSON encoder for the Flask
+        # TODO In Flask 0.11, the default JSON encoder for the Flask
         # application object does this automatically. Alternately, the
         # user could have set a smart JSON encoder on the Flask
         # application, which would cause these attributes to be
