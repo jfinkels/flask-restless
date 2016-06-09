@@ -267,8 +267,10 @@ class TestProcessors(ManagerTestBase):
         assert response.status_code == 204
 
     def test_postprocessor_no_commit_on_error(self):
-        """Tests that an Exception in a postprocessor ensures that the session
-        is not getting commited but just flushed and will be rolled back once closed."""
+        """Tests that a processing exception causes the session to be
+        flushed but not committed.
+
+        """
 
         def raise_error(**kw):
             raise ProcessingException(status=500)

@@ -275,8 +275,10 @@ class TestAdding(ManagerTestBase):
         assert has_run == [True]
 
     def test_postprocessor_no_commit_on_error(self):
-        """Tests that an Exception in a postprocessor ensures that the session
-        is not getting commited but just flushed and will be rolled back once closed."""
+        """Tests that a processing exception causes the session to be
+        flushed but not committed.
+
+        """
 
         person = self.Person(id=1)
         article = self.Article(id=1)
@@ -294,9 +296,9 @@ class TestAdding(ManagerTestBase):
                                  data=dumps(data))
 
         assert response.status_code == 500
-        assert article.author == person
+        assert article.author is person
         self.session.rollback()
-        assert article.author != person
+        assert article.author is not person
 
 class TestDeleting(ManagerTestBase):
     """Tests for deleting a link from a resource's to-many relationship via the
@@ -547,8 +549,8 @@ class TestDeleting(ManagerTestBase):
         assert has_run == [True]
 
     def test_postprocessor_no_commit_on_error(self):
-        """Tests that a postprocessor gets executing when deleting from
-        a to-many relationship.
+        """Tests that a processing exception causes the session to be
+        flushed but not committed.
 
         """
         person = self.Person(id=1)
@@ -569,9 +571,9 @@ class TestDeleting(ManagerTestBase):
                                    data=dumps(data))
 
         assert response.status_code == 500
-        assert article.author != person
+        assert article.author is not person
         self.session.rollback()
-        assert article.author == person
+        assert article.author is person
 
 
 class TestUpdatingToMany(ManagerTestBase):
@@ -828,9 +830,10 @@ class TestUpdatingToMany(ManagerTestBase):
         assert has_run == [True]
 
     def test_postprocessor_no_commit_on_error(self):
-        """Tests that an Exception in a postprocessor ensures that the session
-        is not getting commited but just flushed and will be rolled back once closed."""
+        """Tests that a postprocessor gets executing when deleting from
+        a to-many relationship.
 
+        """
         person = self.Person(id=1)
         article = self.Article(id=1)
         self.session.add_all([article, person])
@@ -848,9 +851,9 @@ class TestUpdatingToMany(ManagerTestBase):
                                   data=dumps(data))
 
         assert response.status_code == 500
-        assert article.author == person
+        assert article.author is person
         self.session.rollback()
-        assert article.author != person
+        assert article.author is not person
 
     def test_set_null(self):
         """Tests that an attempt to set a null value on a to-many

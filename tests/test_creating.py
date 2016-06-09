@@ -917,8 +917,10 @@ class TestProcessors(ManagerTestBase):
         assert document['foo'] == 'bar'
 
     def test_postprocessor_no_commit_on_error(self):
-        """Tests that an Exception in a postprocessor ensures that the session
-        is not getting commited but just flushed and will be rolled back once closed."""
+        """Tests that a processing exception causes the session to be
+        flushed but not committed.
+
+        """
 
         def raise_error(**kw):
             raise ProcessingException(status=500)
@@ -928,7 +930,6 @@ class TestProcessors(ManagerTestBase):
                                 postprocessors=postprocessors)
         data = dict(data=dict(type='person'))
         response = self.app.post('/api/person', data=dumps(data))
-
         assert response.status_code == 500
         person_count = self.session.query(self.Person).count()
         assert person_count == 1
