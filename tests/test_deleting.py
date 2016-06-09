@@ -26,8 +26,8 @@ from sqlalchemy import Integer
 from sqlalchemy import Unicode
 from sqlalchemy.orm import relationship
 
-from flask.ext.restless import APIManager
-from flask.ext.restless import ProcessingException
+from flask_restless import APIManager
+from flask_restless import ProcessingException
 
 from .helpers import dumps
 from .helpers import loads

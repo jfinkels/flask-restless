@@ -100,7 +100,7 @@ class APIManager(object):
     `session` is the :class:`~sqlalchemy.orm.session.Session` object in
     which changes to the database will be made.
 
-    `flask_sqlalchemy_db` is the :class:`~flask.ext.sqlalchemy.SQLAlchemy`
+    `flask_sqlalchemy_db` is the :class:`~flask_sqlalchemy.SQLAlchemy`
     object with which `app` has been registered and which contains the
     database models for which API endpoints will be created.
 
@@ -109,7 +109,7 @@ class APIManager(object):
     For example, to use this class with models defined in pure SQLAlchemy::
 
         from flask import Flask
-        from flask.ext.restless import APIManager
+        from flask_restless import APIManager
         from sqlalchemy import create_engine
         from sqlalchemy.orm.session import sessionmaker
 
@@ -122,8 +122,8 @@ class APIManager(object):
     and with models defined with Flask-SQLAlchemy::
 
         from flask import Flask
-        from flask.ext.restless import APIManager
-        from flask.ext.sqlalchemy import SQLAlchemy
+        from flask_restless import APIManager
+        from flask_sqlalchemy import SQLAlchemy
 
         app = Flask(__name__)
         db = SQLALchemy(app)
@@ -338,7 +338,7 @@ class APIManager(object):
         To use this method with pure SQLAlchemy, for example::
 
             from flask import Flask
-            from flask.ext.restless import APIManager
+            from flask_restless import APIManager
             from sqlalchemy import create_engine
             from sqlalchemy.orm.session import sessionmaker
 
@@ -362,8 +362,8 @@ class APIManager(object):
         and with models defined with Flask-SQLAlchemy::
 
             from flask import Flask
-            from flask.ext.restless import APIManager
-            from flask.ext.sqlalchemy import SQLAlchemy
+            from flask_restless import APIManager
+            from flask_sqlalchemy import SQLAlchemy
 
             db = SQLALchemy(app)
 

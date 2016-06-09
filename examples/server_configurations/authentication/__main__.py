@@ -41,10 +41,10 @@ import os
 import os.path
 
 from flask import Flask, render_template, redirect, url_for
-from flask.ext.login import current_user, login_user, LoginManager, UserMixin
-from flask.ext.restless import APIManager, ProcessingException, NO_CHANGE
-from flask.ext.sqlalchemy import SQLAlchemy
-from flask.ext.wtf import PasswordField, SubmitField, TextField, Form
+from flask_login import current_user, login_user, LoginManager, UserMixin
+from flask_restless import APIManager, ProcessingException, NO_CHANGE
+from flask_sqlalchemy import SQLAlchemy
+from flask_wtf import PasswordField, SubmitField, TextField, Form
 
 # Step 0: the database in this example is at './test.sqlite'.
 DATABASE = os.path.join(os.path.dirname(os.path.abspath(__file__)),

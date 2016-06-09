@@ -15,7 +15,7 @@ from unittest2 import skip
 from sqlalchemy import Column
 from sqlalchemy import Integer
 
-from flask.ext.restless import CONTENT_TYPE
+from flask_restless import CONTENT_TYPE
 
 from .helpers import loads
 from .helpers import ManagerTestBase

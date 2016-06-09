@@ -15,7 +15,7 @@ have a primary key column named ``id`` of type
 .. sourcecode:: python
 
    from flask import Flask
-   from flask.ext.sqlalchemy import SQLAlchemy
+   from flask_sqlalchemy import SQLAlchemy
 
    app = Flask(__name__)
    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
@@ -66,7 +66,7 @@ If you are using pure SQLAlchemy::
 Second, instantiate an :class:`APIManager` object with the
 :class:`~flask.Flask` and :class:`~flask_sqlalchemy.SQLAlchemy` objects::
 
-    from flask.ext.restless import APIManager
+    from flask_restless import APIManager
 
     manager = APIManager(app, flask_sqlalchemy_db=db)
 

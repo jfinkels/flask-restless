@@ -18,19 +18,19 @@ resource objects that satisfy the JSON API specification, your client will
 receive non-compliant responses!
 
 Your serializer classes must be a subclass of
-:class:`~flask.ext.restless.Serializer` and can override the
-:meth:`~flask.ext.restless.Serializer.serialize` and
-:meth:`~flask.ext.restless.Serializer.serialize_many` methods to provide custom
+:class:`~flask_restless.Serializer` and can override the
+:meth:`~flask_restless.Serializer.serialize` and
+:meth:`~flask_restless.Serializer.serialize_many` methods to provide custom
 serialization (however, we recommend overriding the
-:class:`~flask.ext.restless.DefaultSerializer` class, as it provides some
+:class:`~flask_restless.DefaultSerializer` class, as it provides some
 useful behavior in its constructor). These methods take an instance or
 instances as input and return a dictionary representing a JSON API
 document. Each also accepts an ``only`` keyword argument, indicating the sparse
 fieldsets requested by the client. When implementing your custom serializer,
-you may wish to override the :class:`flask.ext.restless.DefaultSerializer`
+you may wish to override the :class:`flask_restless.DefaultSerializer`
 class::
 
-    from flask.ext.restless import DefaultSerializer
+    from flask_restless import DefaultSerializer
 
     class MySerializer(DefaultSerializer):
 
@@ -57,13 +57,13 @@ and ``'type'`` must always appear, regardless of whether they appear in
 object.
 
 Flask-Restless also provides functional access to the default serialization,
-via the :func:`~flask.ext.restless.simple_serialize` and
-:func:`~flask.ext.restless.simple_serialize_many` functions, which return the
+via the :func:`~flask_restless.simple_serialize` and
+:func:`~flask_restless.simple_serialize_many` functions, which return the
 result of the built-in default serialization.
 
 For deserialization, define your custom deserialization class like this::
 
-    from flask.ext.restless import DefaultDeserializer
+    from flask_restless import DefaultDeserializer
 
     class MyDeserializer(DefaultDeserializer):
 
@@ -76,14 +76,14 @@ objects. The function must return an instance of the model that has the
 requested fields. If you override the constructor, it must take two positional
 arguments, `session` and `model`.
 
-Your code can raise a :exc:`~flask.ext.restless.SerializationException` when
+Your code can raise a :exc:`~flask_restless.SerializationException` when
 overriding the :meth:`DefaultSerializer.serialize` method, and similarly a
-:exc:`~flask.ext.restless.DeserializationException` in the
+:exc:`~flask_restless.DeserializationException` in the
 :meth:`DefaultDeserializer.deserialize` method; Flask-Restless will
 automatically catch those exceptions and format a `JSON API error response`_.
 If you wish to collect multiple exceptions (for example, if several fields of a
 resource provided to the :meth:`deserialize` method fail validation) you can
-raise a :exc:`~flask.ext.restless.MultipleExceptions` exception, providing a
+raise a :exc:`~flask_restless.MultipleExceptions` exception, providing a
 list of other serialization or deserialization exceptions at instantiation
 time.
 

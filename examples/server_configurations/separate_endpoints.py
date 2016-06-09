@@ -14,21 +14,21 @@
 
 """
 import flask
-import flask.ext.sqlalchemy
-import flask.ext.restless
+import flask_sqlalchemy
+import flask_restless
 
 # Create the Flask application and the Flask-SQLAlchemy object.
 app = flask.Flask(__name__)
 app.config['DEBUG'] = True
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
-db = flask.ext.sqlalchemy.SQLAlchemy(app)
+db = flask_sqlalchemy.SQLAlchemy(app)
 
 # Create your Flask-SQLALchemy models as usual but with the following two
 # (reasonable) restrictions:
 #   1. They must have a primary key column of type sqlalchemy.Integer or
 #      type sqlalchemy.Unicode.
 #   2. They must have an __init__ method which accepts keyword arguments for
-#      all columns (the constructor in flask.ext.sqlalchemy.SQLAlchemy.Model
+#      all columns (the constructor in flask_sqlalchemy.SQLAlchemy.Model
 #      supplies such a method, so you don't need to declare a new one).
 class Person(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -50,7 +50,7 @@ class Computer(db.Model):
 db.create_all()
 
 # Create the Flask-Restless API manager.
-manager = flask.ext.restless.APIManager(app, flask_sqlalchemy_db=db)
+manager = flask_restless.APIManager(app, flask_sqlalchemy_db=db)
 
 # Create API endpoints, each at a different URL and with different allowed HTTP
 # methods, but which all affect the Person model.

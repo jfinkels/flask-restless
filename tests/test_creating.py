@@ -37,11 +37,11 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
-from flask.ext.restless import APIManager
-from flask.ext.restless import CONTENT_TYPE
-from flask.ext.restless import DefaultDeserializer
-from flask.ext.restless import DefaultSerializer
-from flask.ext.restless import ProcessingException
+from flask_restless import APIManager
+from flask_restless import CONTENT_TYPE
+from flask_restless import DefaultDeserializer
+from flask_restless import DefaultSerializer
+from flask_restless import ProcessingException
 
 from .helpers import BetterJSONEncoder as JSONEncoder
 from .helpers import check_sole_error
@@ -946,7 +946,7 @@ class TestAssociationProxy(ManagerTestBase):
 
     def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
-        :class:`~flask.ext.restless.manager.APIManager` for that application,
+        :class:`~flask_restless.manager.APIManager` for that application,
         and creates the ReSTful API endpoints for the models used in the test
         methods.
 
