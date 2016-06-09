@@ -435,7 +435,7 @@ Released on March 29, 2012.
 - Added `allow_functions` keyword argument to
   :meth:`~flask_restless.APIManager.create_api`.
 - Fixed bug where we weren't allowing PUT requests in
-  :meth:`~flask.ext.restless.manager.APIManager.create_api`.
+  :meth:`~flask_restless.manager.APIManager.create_api`.
 - Added ``collection_name`` keyword argument to
   :meth:`~flask_restless.APIManager.create_api` to allow user provided names in
   URLs.

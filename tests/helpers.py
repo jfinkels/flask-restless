@@ -25,7 +25,7 @@ import uuid
 from flask import Flask
 from flask import json
 try:
-    from flask.ext import sqlalchemy as flask_sqlalchemy
+    import flask_sqlalchemy
     from flask_sqlalchemy import SQLAlchemy
 except ImportError:
     has_flask_sqlalchemy = False
