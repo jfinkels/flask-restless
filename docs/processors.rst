@@ -243,6 +243,17 @@ keyword argument. For example::
     preprocessors = {'GET_COLLECTION': [preprocessor]}
     manager.create_api(Person, preprocessors=preprocessors)
 
+
+When does the session get committed?
+------------------------------------
+
+For requests to create a resource, update a resource, or delete a resource, the
+session is flushed *before* the postprocessor is executed and committed
+*after*. Therefore, if a postprocessor raises a :exc:`.ProcessingException`,
+then the session has *not* been committed, so your code can then decide to, for
+example, roll back the session or commit it.
+
+
 .. _authentication:
 
 Requiring authentication for some methods
