@@ -949,7 +949,7 @@ class TestSimpleFiltering(ManagerTestBase):
         self.session.add(article)
         for i in range(1, 3):
             comment = self.Comment(id=i)
-            tag = self.Tag(name=str(i))
+            tag = self.Tag(name=u'{0}'.format(i))
             comment.article = article
             comment.tag = tag
             self.session.add_all([comment, tag])
