@@ -1,6 +1,8 @@
 # Use Travis's container-based infrastructure.
 sudo: false
 
+cache: pip
+
 language: python
 
 python:
