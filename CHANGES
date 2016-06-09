@@ -23,11 +23,12 @@ Not yet released.
 - :issue:`7`: allows filtering before function evaluation.
 - :issue:`49`: deserializers now expect a complete JSON API document.
 - :issue:`200`: be smarter about determining the ``collection_name`` for
-  polymorphic tables.
+  polymorphic models defined with single-table inheritance.
 - :issue:`253`: don't assign to callable attributes of models.
 - :issue:`481,488`: added negation (``not``) operator for search.
 - :issue:`492`: support JSON API recommended "simple" filtering.
 - :issue:`508`: flush the session before postprocessors, and commit after.
+- :issue:`536`: adds support for single-table inheritance.
 
 Version 1.0.0b1
 ---------------
