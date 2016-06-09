@@ -28,6 +28,7 @@ from sqlalchemy import Integer
 from sqlalchemy import Unicode
 from sqlalchemy.orm import relationship
 
+from ..helpers import check_sole_error
 from ..helpers import dumps
 from ..helpers import loads
 from ..helpers import ManagerTestBase
@@ -357,10 +358,15 @@ class TestUpdatingResources(ManagerTestBase):
         person = self.Person(id=1)
         self.session.add(person)
         self.session.commit()
-        data = dict(data=dict(type='bogus', id='1'))
+        data = {
+            'data': {
+                'type': 'bogus',
+                'id': '1'
+            }
+        }
         response = self.app.patch('/api/person/1', data=dumps(data))
-        assert response.status_code == 409
-        # TODO test for error details
+        check_sole_error(response, 409, ['expected', 'type', 'person',
+                                         'bogus'])
 
     def test_conflicting_id(self):
         """Tests that an attempt to update a resource with the wrong ID causes

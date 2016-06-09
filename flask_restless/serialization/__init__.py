@@ -16,7 +16,6 @@ from .exceptions import MultipleExceptions
 from .exceptions import SerializationException
 from .serializers import DefaultSerializer
 from .serializers import JsonApiDocument
-from .serializers import simple_heterogeneous_serialize_many
 from .serializers import simple_serialize
 from .serializers import simple_serialize_many
 from .serializers import simple_relationship_serialize

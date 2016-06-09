@@ -38,6 +38,7 @@ the JSON API specification.
    basicusage
    requestformat
    customizing
+   databasesetup
 
 API reference
 -------------

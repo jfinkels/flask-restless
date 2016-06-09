@@ -22,6 +22,7 @@ from werkzeug.exceptions import BadRequest
 
 from ..helpers import collection_name
 from ..helpers import get_by
+from ..helpers import get_model
 from ..helpers import get_related_model
 from ..helpers import has_field
 from ..helpers import is_like_list
@@ -154,9 +155,19 @@ class API(APIBase):
         # Get the resource with the specified ID.
         primary_resource = get_by(self.session, self.model, resource_id,
                                   self.primary_key)
-        # Return an error if there is no resource with the specified ID.
-        if primary_resource is None:
-            detail = 'No instance with ID {0}'.format(resource_id)
+        # We check here whether there actually is an instance of the
+        # correct type and ID.
+        #
+        # The first condition is True exactly when there is no row in
+        # the table with the given primary key value. The second is True
+        # in the special case when the resource exists but is a subclass
+        # of the actual model for this API; this may happen if the model
+        # is a polymorphic subclass of another class using a single
+        # inheritance table.
+        found_model = get_model(primary_resource)
+        if primary_resource is None or found_model is not self.model:
+            detail = 'no resource of type {0} with ID {1}'
+            detail = detail.format(collection_name(self.model), resource_id)
             return error_response(404, detail=detail)
         # Return an error if the specified relation does not exist on
         # the model.
@@ -238,8 +249,19 @@ class API(APIBase):
         # Get the resource with the specified ID.
         primary_resource = get_by(self.session, self.model, resource_id,
                                   self.primary_key)
-        if primary_resource is None:
-            detail = 'No resource with ID {0}'.format(resource_id)
+        # We check here whether there actually is an instance of the
+        # correct type and ID.
+        #
+        # The first condition is True exactly when there is no row in
+        # the table with the given primary key value. The second is True
+        # in the special case when the resource exists but is a subclass
+        # of the actual model for this API; this may happen if the model
+        # is a polymorphic subclass of another class using a single
+        # inheritance table.
+        found_model = get_model(primary_resource)
+        if primary_resource is None or found_model is not self.model:
+            detail = 'no resource of type {0} with ID {1}'
+            detail = detail.format(collection_name(self.model), resource_id)
             return error_response(404, detail=detail)
         # Return an error if the specified relation does not exist on
         # the model.
@@ -289,8 +311,18 @@ class API(APIBase):
         # Get the resource with the specified ID.
         resource = get_by(self.session, self.model, resource_id,
                           self.primary_key)
-        if resource is None:
-            detail = 'No resource with ID {0}'.format(resource_id)
+        # We check here whether there actually is an instance of the
+        # correct type and ID.
+        #
+        # The first condition is True exactly when there is no row in
+        # the table with the given primary key value. The second is True
+        # in the special case when the resource exists but is a subclass
+        # of the actual model for this API; this may happen if the model
+        # is a polymorphic subclass of another class using a single
+        # inheritance table.
+        if resource is None or get_model(resource) is not self.model:
+            detail = 'no resource of type {0} with ID {1}'
+            detail = detail.format(collection_name(self.model), resource_id)
             return error_response(404, detail=detail)
         return self._get_resource_helper(resource)
 
@@ -378,8 +410,19 @@ class API(APIBase):
         was_deleted = False
         instance = get_by(self.session, self.model, resource_id,
                           self.primary_key)
-        if instance is None:
-            detail = 'No resource found with ID {0}'.format(resource_id)
+        found_model = get_model(instance)
+        # If no instance of the model exists with the specified instance ID,
+        # return a 404 response.
+        #
+        # The first condition is True exactly when there is no row in
+        # the table with the given primary key value. The second is True
+        # in the special case when the resource exists but is a subclass
+        # of the actual model for this API; this may happen if the model
+        # is a polymorphic subclass of another class using a single
+        # inheritance table.
+        if instance is None or found_model is not self.model:
+            detail = 'No resource found with type {0} and ID {1}'
+            detail = detail.format(collection_name(self.model), resource_id)
             return error_response(404, detail=detail)
         self.session.delete(instance)
         was_deleted = len(self.session.deleted) > 0
@@ -612,26 +655,36 @@ class API(APIBase):
         # Get the instance on which to set the new attributes.
         instance = get_by(self.session, self.model, resource_id,
                           self.primary_key)
+        found_model = get_model(instance)
         # If no instance of the model exists with the specified instance ID,
         # return a 404 response.
-        if instance is None:
-            detail = 'No instance with ID {0} in model {1}'.format(resource_id,
-                                                                   self.model)
+        #
+        # The first condition is True exactly when there is no row in
+        # the table with the given primary key value. The second is True
+        # in the special case when the resource exists but is a subclass
+        # of the actual model for this API; this may happen if the model
+        # is a polymorphic subclass of another class using a single
+        # inheritance table.
+        if instance is None or found_model is not self.model:
+            detail = 'No resource found with type {0} and ID {1}'
+            detail = detail.format(collection_name(self.model), resource_id)
             return error_response(404, detail=detail)
         # Unwrap the data from the collection name key.
         data = data.pop('data', {})
         if 'type' not in data:
-            message = 'Must specify correct data type'
-            return error_response(400, detail=message)
+            detail = 'Missing "type" element'
+            return error_response(400, detail=detail)
         if 'id' not in data:
-            message = 'Must specify resource ID'
-            return error_response(400, detail=message)
+            detail = 'Missing resource ID'
+            return error_response(400, detail=detail)
         type_ = data.pop('type')
         id_ = data.pop('id')
+        # Check that the requested type matches the expected collection
+        # name for this model.
         if type_ != self.collection_name:
-            message = ('Type must be {0}, not'
-                       ' {1}').format(self.collection_name, type_)
-            return error_response(409, detail=message)
+            detail = 'expected type {0}, not {1}'
+            detail = detail.format(self.collection_name, type_)
+            return error_response(409, detail=detail)
         if id_ != resource_id:
             message = 'ID must be {0}, not {1}'.format(resource_id, id_)
             return error_response(409, detail=message)

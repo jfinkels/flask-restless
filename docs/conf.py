@@ -261,7 +261,7 @@ man_pages = [
 intersphinx_mapping = {
     'python': ('http://docs.python.org/', None),
     'flask': ('http://flask.pocoo.org/docs', None),
-    'sqlalchemy': ('http://sqlalchemy.org/docs', None),
+    'sqlalchemy': ('http://docs.sqlalchemy.org/en/latest', None),
     'flasksqlalchemy': ('http://flask-sqlalchemy.pocoo.org', None),
     'flasklogin': ('https://flask-login.readthedocs.org/en/latest', None)
 }

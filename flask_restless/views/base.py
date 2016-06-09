@@ -64,7 +64,7 @@ from ..search import search_relationship
 from ..serialization import DeserializationException
 from ..serialization import JsonApiDocument
 from ..serialization import MultipleExceptions
-from ..serialization import simple_heterogeneous_serialize_many
+from ..serialization import simple_serialize_many
 from ..serialization import simple_relationship_serialize
 from ..serialization import simple_relationship_serialize_many
 from ..serialization import SerializationException
@@ -1467,7 +1467,11 @@ class APIBase(ModelView):
             instance = instance_or_instances
             to_include = self.resources_to_include(instance)
         only = self.sparse_fields
-        return simple_heterogeneous_serialize_many(to_include, only=only)
+        # HACK We only need the primary data from the JSON API document,
+        # not the metadata (so really the serializer is doing more work
+        # than it needs to here).
+        result = simple_serialize_many(to_include, only=only)
+        return result['data']
 
     def _paginated(self, items, filters=None, sort=None, group_by=None):
         """Returns a :class:`Paginated` object representing the
@@ -1698,32 +1702,9 @@ class APIBase(ModelView):
             # ...and this covers the primary resource collection and
             # to-many relation cases.
             else:
-                # TODO This doesn't handle the case of a
-                # heterogeneous to-many relationship, in which case
-                # each related resource could be an instance of a
-                # distinct model class.
-                if is_relation:
-                    primary_model = get_model(resource)
-                    model = get_related_model(primary_model, relation_name)
-                else:
-                    model = self.model
-                # Determine the serializer for this instance. If there
-                # is no serializer, use the default serializer for the
-                # current resource, even though the current model may
-                # different from the model of the current instance.
+                only = self.sparse_fields
                 try:
-                    serializer = serializer_for(model)
-                except ValueError:
-                    # TODO Should we fail instead, thereby effectively
-                    # requiring that an API has been created for each
-                    # type of resource? This is mainly a design
-                    # question.
-                    serializer = self.serializer
-                # This may raise ValueError
-                _type = collection_name(model)
-                only = self.sparse_fields.get(_type)
-                try:
-                    result = serializer.serialize_many(items, only=only)
+                    result = self.serializer.serialize_many(items, only=only)
                 except MultipleExceptions as e:
                     return errors_from_serialization_exceptions(e.exceptions)
                 except SerializationException as exception:

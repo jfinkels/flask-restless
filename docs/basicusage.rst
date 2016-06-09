@@ -1,7 +1,3 @@
-.. currentmodule:: flask.ext.restless
-
-.. _basicusage:
-
 Creating API endpoints
 ======================
 
@@ -10,10 +6,11 @@ SQLAlchemy or Flask-SQLALchemy. The basic setup in either case is nearly the
 same.
 
 If you have defined your models with Flask-SQLAlchemy, first, create your
-:class:`~flask.Flask` object, :class:`~flask.ext.sqlalchemy.SQLAlchemy` object,
-and model classes as usual but with one additional restriction: each model must
-have a primary key column named ``id`` of type :class:`sqlalchemy.Integer` or
-type :class:`sqlalchemy.Unicode`.
+:class:`~flask.Flask` object, :class:`~flask_sqlalchemy.SQLAlchemy` object, and
+model classes as usual but with one additional restriction: each model must
+have a primary key column named ``id`` of type
+:class:`~sqlalchemy.sql.sqltypes.Integer` or type
+:class:`~sqlalchemy.sql.sqltypes.Unicode`.
 
 .. sourcecode:: python
 
@@ -67,7 +64,7 @@ If you are using pure SQLAlchemy::
    Base.metadata.create_all()
 
 Second, instantiate an :class:`APIManager` object with the
-:class:`~flask.Flask` and :class:`~flask.ext.sqlalchemy.SQLAlchemy` objects::
+:class:`~flask.Flask` and :class:`~flask_sqlalchemy.SQLAlchemy` objects::
 
     from flask.ext.restless import APIManager
 
