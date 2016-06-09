@@ -143,9 +143,10 @@ Then in your Javascript client code, write the function ``foo`` like this:
 JSON API extensions
 -------------------
 
-Flask-Restless does not yet support the official JSON API extension. For
-progress on the implementation of the official extensions, see GitHub issues
-#478 and #477.
+Flask-Restless does not yet support the in-development `JSON API extension
+system`_.
+
+.. _JSON API extension system: http://jsonapi.org/extensions/
 
 
 Cross-Origin Resource Sharing (CORS)
