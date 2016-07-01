@@ -297,9 +297,12 @@ class DefaultSerializer(Serializer):
         # Exclude column names that are blacklisted.
         columns = (c for c in columns
                    if not c.startswith('__') and c not in COLUMN_BLACKLIST)
-        # Exclude column names that are foreign keys.
+        # Exclude column names that are foreign keys (unless the foreign
+        # key is the primary key for the model; this can happen in the
+        # joined table inheritance database configuration).
         foreign_key_columns = foreign_keys(model)
-        columns = (c for c in columns if c not in foreign_key_columns)
+        columns = (c for c in columns if c not in foreign_key_columns or
+                   c == primary_key_for(model))
 
         # Create a dictionary mapping attribute name to attribute value for
         # this particular instance.
