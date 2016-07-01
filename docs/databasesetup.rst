@@ -74,14 +74,14 @@ relationship in the resource object.
 Polymorphic models
 ------------------
 
-Flask-Restless automatically handles polymorphic models. For single-table
-inheritance, we have made some design choices we believe are reasonable.
-Requests to create, update, or delete a resource must specify a ``type`` that
-matches the collection name of the endpoint. This means you cannot request to
-create a resource of the subclass type at the endpoint for the superclass type,
-for example. On the other hand, requests to fetch a collection of objects that
-have a subclass will yield a response that includes all resources of the
-superclass and all resources of any subclass.
+Flask-Restless automatically handles polymorphic models defined using either
+single table or joined table inheritance. We have made some design choices we
+believe are reasonable. Requests to create, update, or delete a resource must
+specify a ``type`` that matches the collection name of the endpoint. This means
+you cannot request to create a resource of the subclass type at the endpoint
+for the superclass type, for example. On the other hand, requests to fetch a
+collection of objects that have a subclass will yield a response that includes
+all resources of the superclass and all resources of any subclass.
 
 For example, consider a setup where there are employees and some employees are
 managers::

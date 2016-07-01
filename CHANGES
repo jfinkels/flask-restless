@@ -29,6 +29,7 @@ Not yet released.
 - :issue:`492`: support JSON API recommended "simple" filtering.
 - :issue:`508`: flush the session before postprocessors, and commit after.
 - :issue:`536`: adds support for single-table inheritance.
+- :issue:`546`: adds support for joined table inheritance.
 
 Version 1.0.0b1
 ---------------

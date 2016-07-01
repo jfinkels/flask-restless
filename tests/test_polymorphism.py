@@ -12,9 +12,10 @@
 """Unit tests for interacting with polymorphic models.
 
 The tests in this module use models defined using `single table
-inheritance`_.
+inheritance`_ and `joined table inheritance`_.
 
 .. _single table inheritance: http://docs.sqlalchemy.org/en/latest/orm/inheritance.html#single-table-inheritance
+.. _joined table inheritance: http://docs.sqlalchemy.org/en/latest/orm/inheritance.html#joined-table-inheritance
 
 """
 from operator import itemgetter
@@ -22,6 +23,7 @@ from operator import itemgetter
 from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import Enum
+from sqlalchemy import ForeignKey
 from sqlalchemy import Unicode
 
 from flask_restless import DefaultSerializer
@@ -32,15 +34,12 @@ from .helpers import loads
 from .helpers import ManagerTestBase
 
 
-class PolymorphismTestBase(ManagerTestBase):
-    """Base class for tests of APIs created for polymorphic models
-    defined using single table inheritance.
-
-    """
+class SingleTableInheritanceSetupMixin(object):
+    """Mixin for setting up single table inheritance in test cases."""
 
     def setUp(self):
         """Creates polymorphic models using single table inheritance."""
-        super(PolymorphismTestBase, self).setUp()
+        super(SingleTableInheritanceSetupMixin, self).setUp()
 
         class Employee(self.Base):
             __tablename__ = 'employee'
@@ -64,11 +63,42 @@ class PolymorphismTestBase(ManagerTestBase):
         self.Base.metadata.create_all()
 
 
-class FetchingTestBase(PolymorphismTestBase):
+class JoinedTableInheritanceSetupMixin(object):
+    """Mixin for setting up joined table inheritance in test cases."""
+
+    def setUp(self):
+        """Creates polymorphic models using joined table inheritance."""
+        super(JoinedTableInheritanceSetupMixin, self).setUp()
+
+        class Employee(self.Base):
+            __tablename__ = 'employee'
+            id = Column(Integer, primary_key=True)
+            type = Column(Enum('employee', 'manager'), nullable=False)
+            name = Column(Unicode)
+            __mapper_args__ = {
+                'polymorphic_on': type,
+                'polymorphic_identity': 'employee'
+            }
+
+        # This model inherits directly from the `Employee` class, so
+        # there is only one table being used.
+        class Manager(Employee):
+            __tablename__ = 'manager'
+            id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+            __mapper_args__ = {
+                'polymorphic_identity': 'manager'
+            }
+
+        self.Employee = Employee
+        self.Manager = Manager
+        self.Base.metadata.create_all()
+
+
+class FetchingTestMixinBase(object):
     """Base class for test cases for fetching resources."""
 
     def setUp(self):
-        super(FetchingTestBase, self).setUp()
+        super(FetchingTestMixinBase, self).setUp()
 
         # Create the APIs for the Employee and Manager.
         self.apimanager = self.manager
@@ -83,7 +113,7 @@ class FetchingTestBase(PolymorphismTestBase):
         self.session.commit()
 
 
-class TestFetchCollection(FetchingTestBase):
+class FetchCollectionTestMixin(FetchingTestMixinBase):
     """Tests for fetching a collection of resources defined using single
     table inheritance.
 
@@ -155,7 +185,7 @@ class TestFetchCollection(FetchingTestBase):
         assert employees[1]['attributes']['baz'] == 'xyzzy'
 
 
-class TestFetchResource(FetchingTestBase):
+class FetchResourceTestMixin(FetchingTestMixinBase):
     """Tests for fetching a single resource defined using single table
     inheritance.
 
@@ -202,14 +232,14 @@ class TestFetchResource(FetchingTestBase):
         assert response.status_code == 404
 
 
-class TestCreating(PolymorphismTestBase):
+class CreatingTestMixin(object):
     """Tests for APIs created for polymorphic models defined using
     single table inheritance.
 
     """
 
     def setUp(self):
-        super(TestCreating, self).setUp()
+        super(CreatingTestMixin, self).setUp()
         self.manager.create_api(self.Employee, methods=['POST'])
         self.manager.create_api(self.Manager, methods=['POST'])
 
@@ -278,11 +308,11 @@ class TestCreating(PolymorphismTestBase):
                                          'type', 'manager', 'employee'])
 
 
-class TestDeleting(PolymorphismTestBase):
+class DeletingTestMixin(object):
     """Tests for deleting resources."""
 
     def setUp(self):
-        super(TestDeleting, self).setUp()
+        super(DeletingTestMixin, self).setUp()
 
         # Create the APIs for the Employee and Manager.
         self.manager.create_api(self.Employee, methods=['DELETE'])
@@ -339,11 +369,11 @@ class TestDeleting(PolymorphismTestBase):
         assert self.session.query(self.Employee).all() == self.all_employees
 
 
-class TestUpdating(PolymorphismTestBase):
+class UpdatingTestMixin(object):
     """Tests for updating resources."""
 
     def setUp(self):
-        super(TestUpdating, self).setUp()
+        super(UpdatingTestMixin, self).setUp()
 
         # Create the APIs for the Employee and Manager.
         self.manager.create_api(self.Employee, methods=['PATCH'])
@@ -433,3 +463,69 @@ class TestUpdating(PolymorphismTestBase):
         response = self.app.patch('/api/manager/1', data=dumps(data))
         check_sole_error(response, 404, ['No resource found', 'type',
                                          'manager', 'ID', '1'])
+
+
+class TestFetchCollectionSingle(FetchCollectionTestMixin,
+                                SingleTableInheritanceSetupMixin,
+                                ManagerTestBase):
+    """Tests for fetching a collection of resources defined using single
+    table inheritance.
+
+    """
+
+
+class TestFetchCollectionJoined(FetchCollectionTestMixin,
+                                JoinedTableInheritanceSetupMixin,
+                                ManagerTestBase):
+    """Tests for fetching a collection of resources defined using joined
+    table inheritance.
+
+    """
+
+
+class TestFetchResourceSingle(FetchResourceTestMixin,
+                              SingleTableInheritanceSetupMixin,
+                              ManagerTestBase):
+    """Tests for fetching a single resource defined using single table
+    inheritance.
+
+    """
+
+
+class TestFetchResourceJoined(FetchResourceTestMixin,
+                              JoinedTableInheritanceSetupMixin,
+                              ManagerTestBase):
+    """Tests for fetching a single resource defined using joined table
+    inheritance.
+
+    """
+
+
+class TestCreatingSingle(CreatingTestMixin, SingleTableInheritanceSetupMixin,
+                         ManagerTestBase):
+    """Tests for creating a resource defined using single table inheritance."""
+
+
+class TestCreatingJoined(CreatingTestMixin, JoinedTableInheritanceSetupMixin,
+                         ManagerTestBase):
+    """Tests for creating a resource defined using joined table inheritance."""
+
+
+class TestDeletingSingle(DeletingTestMixin, SingleTableInheritanceSetupMixin,
+                         ManagerTestBase):
+    """Tests for deleting a resource defined using single table inheritance."""
+
+
+class TestDeletingJoined(DeletingTestMixin, JoinedTableInheritanceSetupMixin,
+                         ManagerTestBase):
+    """Tests for deleting a resource defined using joined table inheritance."""
+
+
+class TestUpdatingSingle(UpdatingTestMixin, SingleTableInheritanceSetupMixin,
+                         ManagerTestBase):
+    """Tests for updating a resource defined using single table inheritance."""
+
+
+class TestUpdatingJoined(UpdatingTestMixin, JoinedTableInheritanceSetupMixin,
+                         ManagerTestBase):
+    """Tests for updating a resource defined using joined table inheritance."""
