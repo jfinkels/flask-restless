@@ -109,33 +109,32 @@ For information on how to use this extension, build the documentation here or
 
 ## Testing ##
 
-Running the unit tests requires the [nosetests][10] library. This requirement
-is also listed in the `requirements-test.txt` file.
+If your Python interpreter is `cpython`, run:
 
-Using `pip` is probably the easiest way to install this:
+    pip install -r requirements-test-cpython.txt
 
-    pip install -r requirements-test.txt
+Otherwise, if your Python interpreter is `pypy`, run:
+
+    pip install -r requirements-test-pypy.txt
 
 To run the tests:
 
-    nosetests
-
-[10]: https://nose.readthedocs.org/
+    python setup.py test
 
 ## Building documentation ##
 
 Flask-Restless requires the following program and supporting library to build
 the documentation:
 
-* [Sphinx][11]
-* [sphinxcontrib-httpdomain][12], version 1.1.7 or greater
+* [Sphinx][10]
+* [sphinxcontrib-httpdomain][11], version 1.1.7 or greater
 
 These requirements are also listed in the `requirements-doc.txt` file. Using
 `pip` is probably the easiest way to install these:
 
     pip install -r requirements-doc.txt
 
-The documentation is written for Sphinx in [reStructuredText][13] files in the
+The documentation is written for Sphinx in [reStructuredText][12] files in the
 `docs/` directory. Documentation for each class and function is provided in the
 docstring in the code.
 
@@ -151,19 +150,19 @@ Now to build the documentation, run the command
 in the top-level directory. The output can be viewed in a web browser by
 opening `build/sphinx/html/index.html`.
 
-[11]: http://sphinx.pocoo.org/
-[12]: https://packages.python.org/sphinxcontrib-httpdomain/
-[13]: https://docutils.sourceforge.net/rst.html
+[10]: http://sphinx.pocoo.org/
+[11]: https://packages.python.org/sphinxcontrib-httpdomain/
+[12]: https://docutils.sourceforge.net/rst.html
 
 ## Contributing ##
 
-Please report any issues on the [GitHub Issue Tracker][14].
+Please report any issues on the [GitHub Issue Tracker][13].
 
 To suggest a change to the code or documentation, please create a new pull
 request on GitHub. Contributed code must come with an appropriate unit
-test. Please ensure that your code follows [PEP8][15], by running, for example,
-[flake8][16] before submitting a pull request. Also, please squash multiple
-commits into a single commit in your pull request by [rebasing][17] onto the
+test. Please ensure that your code follows [PEP8][14], by running, for example,
+[flake8][15] before submitting a pull request. Also, please squash multiple
+commits into a single commit in your pull request by [rebasing][16] onto the
 master branch.
 
 By contributing to this project, you are agreeing to license your code
@@ -172,24 +171,24 @@ contributions under both the GNU Affero General Public License, either version
 contributions under the Creative Commons Attribution-ShareAlike License version
 4.0, as described in the copyright license section above.
 
-[14]: http://github.com/jfinkels/flask-restless/issues
-[15]: https://www.python.org/dev/peps/pep-0008/
-[16]: http://flake8.readthedocs.org/en/latest/
-[17]: https://help.github.com/articles/about-git-rebase/
+[13]: http://github.com/jfinkels/flask-restless/issues
+[14]: https://www.python.org/dev/peps/pep-0008/
+[15]: http://flake8.readthedocs.org/en/latest/
+[16]: https://help.github.com/articles/about-git-rebase/
 
 ## Artwork ##
 
 The `artwork/flask-restless-small.svg` and
 `docs/_static/flask-restless-small.png` are licensed under the [Creative
-Commons Attribute-ShareAlike 4.0 license][18]. The original image is a scan of
+Commons Attribute-ShareAlike 4.0 license][17]. The original image is a scan of
 a (now public domain) illustration by Arthur Hopkins in a serial edition of
 "The Return of the Native" by Thomas Hardy published in October 1878.
 
 The `artwork/flask-restless.svg` and `docs/_static/flask-restless.png` are
-licensed under the [Flask Artwork License][19].
+licensed under the [Flask Artwork License][18].
 
-[18]: https://creativecommons.org/licenses/by-sa/4.0
-[19]: http://flask.pocoo.org/docs/license/#flask-artwork-license
+[17]: https://creativecommons.org/licenses/by-sa/4.0
+[18]: http://flask.pocoo.org/docs/license/#flask-artwork-license
 
 ## Contact ##
 
