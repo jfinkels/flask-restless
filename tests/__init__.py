@@ -23,3 +23,11 @@ Run the full test suite from the command-line using ``nosetests`` (or
 ``python setup.py test``).
 
 """
+import sys
+import warnings
+
+# Convert Python warnings into errors on tests, but only if Python
+# version 2.7 or greater; on Python 2.6, unittest2 gives a
+# RuntimeWarning when trying to skip a test.
+if sys.version_info >= (2, 7):
+    warnings.simplefilter('error')
