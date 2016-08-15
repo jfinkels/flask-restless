@@ -663,23 +663,13 @@ def extract_error_messages(exception):
     # Check for our own built-in validation error.
     if isinstance(exception, DeserializationException):
         return exception.args[0]
-    # 'errors' comes from sqlalchemy_elixir_validations
+    # Try some common names error message attributes.
     if hasattr(exception, 'errors'):
         return exception.errors
-    # 'message' comes from savalidation
     if hasattr(exception, 'message'):
-        # TODO this works only if there is one validation error
-        try:
-            left, right = str(exception).rsplit(':', 1)
-            left_bracket = left.rindex('[')
-            right_bracket = right.rindex(']')
-        except ValueError as exc:
-            current_app.logger.exception(str(exc))
-            # could not parse the string; we're not trying too hard here...
-            return None
-        msg = right[:right_bracket].strip(' "')
-        fieldname = left[left_bracket + 1:].strip()
-        return {fieldname: msg}
+        return exception.message
+    if hasattr(exception, '__str__'):
+        return str(exception)
     return None
 
 
