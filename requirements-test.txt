@@ -1,5 +1,4 @@
 -r requirements.txt
-savalidation
 unittest2
 
 # For testing PostgreSQL specific operations...
