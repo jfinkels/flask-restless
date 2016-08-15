@@ -28,7 +28,7 @@ from ..helpers import has_field
 from ..helpers import is_like_list
 from ..helpers import is_relationship
 from ..helpers import primary_key_value
-from ..helpers import strings_to_datetimes
+from ..helpers import string_to_datetime
 from ..serialization import DeserializationException
 from ..serialization import SerializationException
 from .base import APIBase
@@ -620,7 +620,8 @@ class API(APIBase):
                 return error_response(400, detail=detail)
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
-        data = strings_to_datetimes(self.model, data)
+        data = dict((k, string_to_datetime(self.model, k, v))
+                    for k, v in data.items())
         # Finally, update each attribute individually.
         try:
             if data:

@@ -74,6 +74,7 @@ class TestUpdating(ManagerTestBase):
             id = Column(Integer, primary_key=True)
             author = relationship('Person', backref=backref('articles'))
             author_id = Column(Integer, ForeignKey('person.id'))
+            type = Column(Unicode)
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -918,6 +919,28 @@ class TestUpdating(ManagerTestBase):
         check_sole_error(response, 400, ['does not have', 'field', 'foo'])
         assert person.foo != u'bar'
         assert person.foo() == u'foo'
+
+    def test_special_field_names(self):
+        """Test that an attribute can have the name "type".
+
+        For more information, see issue #559.
+
+        """
+        article = self.Article(id=1, type=u'foo')
+        self.session.add(article)
+        self.session.commit()
+        data = {
+            'data': {
+                'type': 'article',
+                'id': '1',
+                'attributes': {
+                    'type': u'bar'
+                }
+            }
+        }
+        response = self.app.patch('/api/article/1', data=dumps(data))
+        assert response.status_code == 204
+        assert article.type == u'bar'
 
 
 class TestProcessors(ManagerTestBase):

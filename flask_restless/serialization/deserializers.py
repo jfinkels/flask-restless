@@ -37,7 +37,7 @@ from ..helpers import get_by
 from ..helpers import has_field
 from ..helpers import is_like_list
 from ..helpers import model_for
-from ..helpers import strings_to_datetimes
+from ..helpers import string_to_datetime as to_datetime
 
 
 class Deserializer(object):
@@ -181,7 +181,7 @@ class DefaultDeserializer(Deserializer):
         data.update(data.pop('attributes', {}))
         # Special case: if there are any dates, convert the string form of the
         # date into an instance of the Python ``datetime`` object.
-        data = strings_to_datetimes(model, data)
+        data = dict((k, to_datetime(model, k, v)) for k, v in data.items())
         # Create the new instance by keyword attributes.
         instance = model(**data)
         # Set each relation specified in the links.

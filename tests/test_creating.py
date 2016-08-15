@@ -73,6 +73,7 @@ class TestCreating(ManagerTestBase):
             date_created = Column(Date)
             author_id = Column(Integer, ForeignKey('person.id'))
             author = relationship('Person')
+            type = Column(Unicode)
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -864,6 +865,27 @@ class TestCreating(ManagerTestBase):
         keywords = ['deserialize', 'expected', 'type', '"article"', '"person"',
                     'linkage object', 'relationship', '"articles"']
         check_sole_error(response, 409, keywords)
+
+    def test_special_field_names(self):
+        """Test that an attribute can have the name "type".
+
+        For more information, see issue #559.
+
+        """
+        data = {
+            'data': {
+                'type': 'article',
+                'attributes': {
+                    'type': u'fluff'
+                }
+            }
+        }
+        response = self.app.post('/api/article', data=dumps(data))
+        assert response.status_code == 201
+        document = loads(response.data)
+        article = document['data']
+        assert article['type'] == 'article'
+        assert article['attributes']['type'] == u'fluff'
 
 
 class TestProcessors(ManagerTestBase):
