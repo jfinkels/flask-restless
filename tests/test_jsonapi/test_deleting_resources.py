@@ -72,7 +72,8 @@ class TestDeletingResources(ManagerTestBase):
         For more information, see the `404 Not Found`_ section of the JSON API
         specification.
 
-        .. _404 Not Found: http://jsonapi.org/format/#crud-deleting-responses-404
+        .. _404 Not Found:
+           http://jsonapi.org/format/#crud-deleting-responses-404
 
         """
         response = self.app.delete('/api/person/1')

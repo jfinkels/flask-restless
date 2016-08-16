@@ -218,12 +218,12 @@ def _is_msie8or9():
        our best guess based on the information provided.
 
     """
+    if request.user_agent is None or request.user_agent.browser != 'msie' \
+       or request.user_agent.version is None:
+        return False
     # request.user_agent.version comes as a string, so we have to parse it
-    version = lambda ua: tuple(int(d) for d in ua.version.split('.'))
-    return (request.user_agent is not None and
-            request.user_agent.version is not None and
-            request.user_agent.browser == 'msie' and
-            (8, 0) <= version(request.user_agent) < (10, 0))
+    version = tuple(map(int, request.user_agent.version.split('.')))
+    return (8, 0) <= version < (10, 0)
 
 
 def un_camel_case(s):
@@ -323,7 +323,8 @@ def requires_json_api_accept(func):
         def get(self, *args, **kw):
             return '...'
 
-    .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+    .. _Server Responsibilities:
+       http://jsonapi.org/format/#content-negotiation-servers
 
     """
     @wraps(func)
@@ -916,17 +917,17 @@ class Paginated(object):
         >>> for rel, url in paginated.pagination_links.items():
         ...     print(rel, url)
         ...
-        first http://example.com/api/person?page[size]=3&page[number]=1
-        last http://example.com/api/person?page[size]=3&page[number]=4
-        prev http://example.com/api/person?page[size]=3&page[number]=1
-        next http://example.com/api/person?page[size]=3&page[number]=3
+        first http://localhost/api/person?page[size]=3&page[number]=1
+        last http://localhost/api/person?page[size]=3&page[number]=4
+        prev http://localhost/api/person?page[size]=3&page[number]=1
+        next http://localhost/api/person?page[size]=3&page[number]=3
         >>> for link in paginated.header_links:
         ...     print(link)
         ...
-        <http://example.com/api/person?page[size]=3&page[number]=1>; rel="first"
-        <http://example.com/api/person?page[size]=3&page[number]=4>; rel="last"
-        <http://example.com/api/person?page[size]=3&page[number]=1>; rel="prev"
-        <http://example.com/api/person?page[size]=3&page[number]=3>; rel="next"
+        <http://localhost/api/person?page[size]=3&page[number]=1>; rel="first"
+        <http://localhost/api/person?page[size]=3&page[number]=4>; rel="last"
+        <http://localhost/api/person?page[size]=3&page[number]=1>; rel="prev"
+        <http://localhost/api/person?page[size]=3&page[number]=3>; rel="next"
 
     """
 
@@ -1333,9 +1334,6 @@ class APIBase(ModelView):
         #: serialization.
         self.serializer = serializer
 
-        #: A custom serialization function for linkage objects.
-        #self.serialize_relationship = simple_relationship_serialize
-
         #: A custom deserialization function for primary resources; see
         #: :ref:`serialization` for more information.
         #:
@@ -1368,12 +1366,13 @@ class APIBase(ModelView):
         # database integrity errors. However, in order to rollback the session,
         # we need to have a session object available to roll back. Therefore we
         # need to manually decorate each of the view functions here.
-        decorate = lambda name, f: setattr(self, name, f(getattr(self, name)))
         for method in ['get', 'post', 'patch', 'delete']:
             # Check if the subclass has the method before trying to decorate
             # it.
             if hasattr(self, method):
-                decorate(method, catch_integrity_errors(self.session))
+                wrapper = catch_integrity_errors(self.session)
+                old_method = getattr(self, method)
+                setattr(self, method, wrapper(old_method))
 
     def collection_processor_type(self, *args, **kw):
         """The suffix for the pre- and postprocessor identifiers for
@@ -1683,7 +1682,8 @@ class APIBase(ModelView):
             #
             # - a collection of primary resources (as in `GET /person`),
             # - a to-many relation (as in `GET /person/1/articles`),
-            # - a to-many relationship (as in `GET /person/1/relationships/articles`)
+            # - a to-many relationship (as in
+            #   `GET /person/1/relationships/articles`)
             #
             items = paginated.items
             # This covers the relationship object case...
@@ -1744,9 +1744,11 @@ class APIBase(ModelView):
             # as in `GET /people`, or a to-many relation, as in `GET
             # /people/1/comments`.
             if resource is None:
-                links = linker.generate_links(None, None, None, None, False, False)
+                links = linker.generate_links(None, None, None, None, False,
+                                              False)
             else:
-                links = linker.generate_links(resource, None, None, False, False)
+                links = linker.generate_links(resource, None, None, False,
+                                              False)
             result['links'].update(links)
 
             # Create the metadata for the response, like headers and
@@ -1807,7 +1809,8 @@ class APIBase(ModelView):
         which resources, other than the primary resource or resources, will be
         included in a compound document response.
 
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources:
+           http://jsonapi.org/format/#fetching-includes
 
         """
         # Add any links requested to be included by URL parameters.

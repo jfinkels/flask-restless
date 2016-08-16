@@ -17,6 +17,8 @@ the JSON API specification.
 .. _Fetching Data: http://jsonapi.org/format/#fetching
 
 """
+from functools import partial
+
 from sqlalchemy import Column
 from sqlalchemy import Float
 from sqlalchemy import ForeignKey
@@ -281,7 +283,8 @@ class TestFetchingData(ManagerTestBase):
         For more information, see the `Fetching Relationships`_ section
         of JSON API specification.
 
-        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
+        .. _Fetching Relationships:
+           http://jsonapi.org/format/#fetching-relationships
 
         """
         article = self.Article(id=1)
@@ -305,7 +308,8 @@ class TestFetchingData(ManagerTestBase):
         For more information, see the `Fetching Relationships`_ section of JSON
         API specification.
 
-        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
+        .. _Fetching Relationships:
+           http://jsonapi.org/format/#fetching-relationships
 
         """
         article = self.Article(id=1)
@@ -326,7 +330,8 @@ class TestFetchingData(ManagerTestBase):
         For more information, see the `Fetching Relationships`_ section
         of JSON API specification.
 
-        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
+        .. _Fetching Relationships:
+           http://jsonapi.org/format/#fetching-relationships
 
         """
         person = self.Person(id=1)
@@ -348,7 +353,8 @@ class TestFetchingData(ManagerTestBase):
         For more information, see the `Fetching Relationships`_ section of JSON
         API specification.
 
-        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
+        .. _Fetching Relationships:
+           http://jsonapi.org/format/#fetching-relationships
 
         """
         article = self.Article(id=1)
@@ -366,7 +372,8 @@ class TestFetchingData(ManagerTestBase):
         For more information, see the `Fetching Relationships`_ section
         of JSON API specification.
 
-        .. _Fetching Relationships: http://jsonapi.org/format/#fetching-relationships
+        .. _Fetching Relationships:
+           http://jsonapi.org/format/#fetching-relationships
 
         """
         article = self.Article(id=1)
@@ -383,7 +390,8 @@ class TestInclusion(ManagerTestBase):
     """Tests corresponding to the `Inclusion of Related Resources`_
     section of the JSON API specification.
 
-    .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+    .. _Inclusion of Related Resources:
+       http://jsonapi.org/format/#fetching-includes
 
     """
 
@@ -425,7 +433,8 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources:
+           http://jsonapi.org/format/#fetching-includes
 
         """
         person = self.Person(id=1)
@@ -452,7 +461,8 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources:
+           http://jsonapi.org/format/#fetching-includes
 
         """
         person = self.Person(id=1)
@@ -480,7 +490,8 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources:
+           http://jsonapi.org/format/#fetching-includes
 
         """
         person = self.Person(id=1, name=u'foo')
@@ -508,7 +519,8 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources:
+           http://jsonapi.org/format/#fetching-includes
 
         """
         person = self.Person(id=1, name=u'foo')
@@ -538,7 +550,8 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources:
+           http://jsonapi.org/format/#fetching-includes
 
         """
         article = self.Article(id=1)
@@ -566,7 +579,8 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources:
+           http://jsonapi.org/format/#fetching-includes
 
         """
         person1 = self.Person(id=1)
@@ -597,7 +611,8 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources:
+           http://jsonapi.org/format/#fetching-includes
 
         """
         person1 = self.Person(id=1)
@@ -641,7 +656,8 @@ class TestInclusion(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_ section
         of the JSON API specification.
 
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources:
+           http://jsonapi.org/format/#fetching-includes
 
         """
         person = self.Person(id=1)
@@ -701,7 +717,8 @@ class TestSparseFieldsets(ManagerTestBase):
         For more information, see the `Sparse Fieldsets`_ section
         of the JSON API specification.
 
-        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
+        .. _Sparse Fieldsets:
+           http://jsonapi.org/format/#fetching-sparse-fieldsets
 
         """
         person = self.Person(id=1, name=u'foo', age=99)
@@ -723,7 +740,8 @@ class TestSparseFieldsets(ManagerTestBase):
         For more information, see the `Sparse Fieldsets`_ section
         of the JSON API specification.
 
-        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
+        .. _Sparse Fieldsets:
+           http://jsonapi.org/format/#fetching-sparse-fieldsets
 
         """
         person = self.Person(id=1, name=u'foo', age=99)
@@ -743,7 +761,8 @@ class TestSparseFieldsets(ManagerTestBase):
         For more information, see the `Sparse Fieldsets`_ section
         of the JSON API specification.
 
-        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
+        .. _Sparse Fieldsets:
+           http://jsonapi.org/format/#fetching-sparse-fieldsets
 
         """
         person1 = self.Person(id=1, name=u'foo', age=99)
@@ -764,7 +783,8 @@ class TestSparseFieldsets(ManagerTestBase):
         For more information, see the `Sparse Fieldsets`_ section
         of the JSON API specification.
 
-        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
+        .. _Sparse Fieldsets:
+           http://jsonapi.org/format/#fetching-sparse-fieldsets
 
         """
         article = self.Article(id=1, title=u'bar')
@@ -915,7 +935,6 @@ class TestSorting(ManagerTestBase):
         articles = document['data']
         assert ['2', '1', '3'] == [c['id'] for c in articles]
 
-
     def test_sort_multiple_relationship_attributes(self):
         """Tests that the client can sort by multiple relationship
         attributes.
@@ -957,7 +976,8 @@ class TestSorting(ManagerTestBase):
             to_string = unicode
         except NameError:
             to_string = str
-        articles = [self.Article(id=i, title=to_string(i), author=person) for i in range(5)]
+        Article = partial(self.Article, author=person)
+        articles = [Article(id=i, title=to_string(i)) for i in range(5)]
         self.session.add(person)
         self.session.add_all(articles)
         self.session.commit()

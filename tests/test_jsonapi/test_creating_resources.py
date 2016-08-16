@@ -85,15 +85,19 @@ class TestCreatingResources(ManagerTestBase):
         For more information, see the `Sparse Fieldsets`_ section
         of the JSON API specification.
 
-        .. _Sparse Fieldsets: http://jsonapi.org/format/#fetching-sparse-fieldsets
+        .. _Sparse Fieldsets:
+           http://jsonapi.org/format/#fetching-sparse-fieldsets
+
         """
-        data = {'data':
-                    {'type': 'person',
-                     'attributes':
-                         {'name': 'foo',
-                          'age': 99}
-                     }
+        data = {
+            'data': {
+                'type': 'person',
+                'attributes': {
+                    'name': 'foo',
+                    'age': 99,
                 }
+            }
+        }
         query_string = {'fields[person]': 'name'}
         response = self.app.post('/api/person', data=dumps(data),
                                  query_string=query_string)
@@ -114,22 +118,25 @@ class TestCreatingResources(ManagerTestBase):
         For more information, see the `Inclusion of Related Resources`_
         section of the JSON API specification.
 
-        .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes
+        .. _Inclusion of Related Resources:
+           http://jsonapi.org/format/#fetching-includes
 
         """
         comment = self.Comment(id=1)
         self.session.add(comment)
         self.session.commit()
-        data = {'data':
-                    {'type': 'person',
-                     'relationships':
-                         {'comments':
-                              {'data':
-                                   [{'type': 'comment', 'id': 1}]
-                               }
-                          }
-                     }
+        data = {
+            'data': {
+                'type': 'person',
+                'relationships': {
+                    'comments': {
+                        'data': [
+                            {'type': 'comment', 'id': 1}
+                        ]
+                    }
                 }
+            }
+        }
         query_string = dict(include='comments')
         response = self.app.post('/api/person', data=dumps(data),
                                  query_string=query_string)
@@ -190,7 +197,8 @@ class TestCreatingResources(ManagerTestBase):
         For more information, see the `Client-Generated IDs`_ section of the
         JSON API specification.
 
-        .. _Client-Generated IDs: http://jsonapi.org/format/#crud-creating-client-ids
+        .. _Client-Generated IDs:
+           http://jsonapi.org/format/#crud-creating-client-ids
 
         """
         generated_id = uuid.uuid1()
@@ -213,7 +221,8 @@ class TestCreatingResources(ManagerTestBase):
         For more information, see the `Client-Generated IDs`_ section of the
         JSON API specification.
 
-        .. _Client-Generated IDs: http://jsonapi.org/format/#crud-creating-client-ids
+        .. _Client-Generated IDs:
+           http://jsonapi.org/format/#crud-creating-client-ids
 
         """
         self.manager.create_api(self.Article, url_prefix='/api2',
@@ -231,7 +240,8 @@ class TestCreatingResources(ManagerTestBase):
         For more information, see the `409 Conflict`_ section of the JSON API
         specification.
 
-        .. _409 Conflict: http://jsonapi.org/format/#crud-creating-responses-409
+        .. _409 Conflict:
+           http://jsonapi.org/format/#crud-creating-responses-409
 
         """
 
@@ -248,7 +258,8 @@ class TestCreatingResources(ManagerTestBase):
         For more information, see the `409 Conflict`_ section of the JSON API
         specification.
 
-        .. _409 Conflict: http://jsonapi.org/format/#crud-creating-responses-409
+        .. _409 Conflict:
+           http://jsonapi.org/format/#crud-creating-responses-409
 
         """
         generated_id = uuid.uuid1()

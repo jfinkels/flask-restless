@@ -58,7 +58,7 @@ from marshmallow import post_load
 from marshmallow_jsonapi import fields
 from marshmallow_jsonapi import Schema
 
-## Flask application and database configuration ##
+# Flask application and database configuration
 
 app = Flask(__name__)
 app.config['DEBUG'] = True
@@ -66,7 +66,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-## Flask-SQLAlchemy model definitions ##
+# Flask-SQLAlchemy model definitions #
 
 
 class Person(db.Model):
@@ -81,7 +81,7 @@ class Article(db.Model):
     author = db.relationship(Person, backref=db.backref('articles'))
 
 
-## Marshmallow schema definitions ##
+# Marshmallow schema definitions #
 
 class PersonSchema(Schema):
 
@@ -134,7 +134,7 @@ class ArticleSchema(Schema):
         return Article(**data)
 
 
-## Serializer and deserializer classes ##
+# Serializer and deserializer classes #
 
 class MarshmallowSerializer(DefaultSerializer):
 

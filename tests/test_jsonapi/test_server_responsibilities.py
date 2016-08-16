@@ -15,7 +15,8 @@ according to the JSON API specification.
 The tests in this module correspond to the `Server Responsibilities`_
 section of the JSON API specification.
 
-.. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+.. _Server Responsibilities:
+   http://jsonapi.org/format/#content-negotiation-servers
 
 """
 from unittest2 import skip
@@ -36,7 +37,8 @@ class TestServerResponsibilities(ManagerTestBase):
     """Tests corresponding to the `Server Responsibilities`_ section of
     the JSON API specification.
 
-    .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+    .. _Server Responsibilities:
+       http://jsonapi.org/format/#content-negotiation-servers
 
     """
 
@@ -48,7 +50,6 @@ class TestServerResponsibilities(ManagerTestBase):
             id = Column(Integer, primary_key=True)
             name = Column(Unicode)
 
-        #self.Person = Person
         self.Base.metadata.create_all()
         self.manager.create_api(Person, methods=['GET', 'POST', 'PATCH',
                                                  'DELETE'])
@@ -60,7 +61,8 @@ class TestServerResponsibilities(ManagerTestBase):
         For more information, see the `Server Responsibilities`_ section
         of the JSON API specification.
 
-        .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+        .. _Server Responsibilities:
+           http://jsonapi.org/format/#content-negotiation-servers
 
         """
         response = self.app.get('/api/person')
@@ -77,7 +79,8 @@ class TestServerResponsibilities(ManagerTestBase):
         For more information, see the `Server Responsibilities`_ section
         of the JSON API specification.
 
-        .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+        .. _Server Responsibilities:
+           http://jsonapi.org/format/#content-negotiation-servers
 
         """
         data = {'data': {'type': 'person'}}
@@ -92,7 +95,8 @@ class TestServerResponsibilities(ManagerTestBase):
         For more information, see the `Server Responsibilities`_ section
         of the JSON API specification.
 
-        .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+        .. _Server Responsibilities:
+           http://jsonapi.org/format/#content-negotiation-servers
 
         """
         person = self.Person(id=1)
@@ -118,7 +122,8 @@ class TestServerResponsibilities(ManagerTestBase):
         For more information, see the `Server Responsibilities`_ section
         of the JSON API specification.
 
-        .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+        .. _Server Responsibilities:
+           http://jsonapi.org/format/#content-negotiation-servers
 
         """
         data = {
@@ -140,7 +145,8 @@ class TestServerResponsibilities(ManagerTestBase):
         For more information, see the `Server Responsibilities`_ section
         of the JSON API specification.
 
-        .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+        .. _Server Responsibilities:
+           http://jsonapi.org/format/#content-negotiation-servers
 
         """
         headers = {'Accept': ''}
@@ -156,7 +162,8 @@ class TestServerResponsibilities(ManagerTestBase):
         For more information, see the `Server Responsibilities`_ section
         of the JSON API specification.
 
-        .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+        .. _Server Responsibilities:
+           http://jsonapi.org/format/#content-negotiation-servers
 
         """
         headers = {'Accept': CONTENT_TYPE}
@@ -173,7 +180,8 @@ class TestServerResponsibilities(ManagerTestBase):
         For more information, see the `Server Responsibilities`_ section
         of the JSON API specification.
 
-        .. _Server Responsibilities: http://jsonapi.org/format/#content-negotiation-servers
+        .. _Server Responsibilities:
+           http://jsonapi.org/format/#content-negotiation-servers
 
         """
         headers = {'Accept': '{0}; q=.8, {0}; q=.9'.format(CONTENT_TYPE)}

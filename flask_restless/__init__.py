@@ -13,12 +13,6 @@
 SQLAlchemy models via the JSON API protocol.
 
 """
-#: The current version of this extension.
-#:
-#: This should be the same as the version specified in the :file:`setup.py`
-#: file.
-__version__ = '1.0.0b2-dev'
-
 # The following names are available as part of the public API for
 # Flask-Restless. End users of this package can import these names by doing
 # ``from flask_restless import APIManager``, for example.
@@ -38,3 +32,28 @@ from .serialization import simple_serialize
 from .serialization import simple_serialize_many
 from .views import CONTENT_TYPE
 from .views import ProcessingException
+
+#: The current version of this extension.
+#:
+#: This should be the same as the version specified in the :file:`setup.py`
+#: file.
+__version__ = '1.0.0b2-dev'
+
+__all__ = [
+    'APIManager',
+    'collection_name',
+    'CONTENT_TYPE',
+    'DefaultDeserializer',
+    'DefaultSerializer',
+    'DeserializationException',
+    'IllegalArgumentError',
+    'model_for',
+    'MultipleExceptions',
+    'primary_key_for',
+    'ProcessingException',
+    'SerializationException',
+    'serializer_for',
+    'simple_serialize',
+    'simple_serialize_many',
+    'url_for',
+]

@@ -23,6 +23,7 @@ app.config['DEBUG'] = True
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 db = flask_sqlalchemy.SQLAlchemy(app)
 
+
 # Create your Flask-SQLALchemy models as usual but with the following two
 # (reasonable) restrictions:
 #   1. They must have a primary key column of type sqlalchemy.Integer or

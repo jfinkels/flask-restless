@@ -14,7 +14,8 @@
 The tests in this module correspond to the `Updating Relationships`_
 section of the JSON API specification.
 
-.. _Updating Relationships: http://jsonapi.org/format/#crud-updating-relationships
+.. _Updating Relationships:
+   http://jsonapi.org/format/#crud-updating-relationships
 
 """
 from operator import attrgetter
@@ -32,7 +33,8 @@ class TestUpdatingRelationships(ManagerTestBase):
     """Tests corresponding to the `Updating Relationships`_ section of the JSON
     API specification.
 
-    .. _Updating Relationships: http://jsonapi.org/format/#crud-updating-relationships
+    .. _Updating Relationships:
+       http://jsonapi.org/format/#crud-updating-relationships
 
     """
 
@@ -69,7 +71,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         For more information, see the `Updating To-One Relationships`_ section
         of the JSON API specification.
 
-        .. _Updating To-One Relationships: http://jsonapi.org/format/#crud-updating-to-one-relationships
+        .. _Updating To-One Relationships:
+           http://jsonapi.org/format/#crud-updating-to-one-relationships
 
         """
         person1 = self.Person(id=1)
@@ -91,7 +94,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         For more information, see the `Updating To-One Relationships`_ section
         of the JSON API specification.
 
-        .. _Updating To-One Relationships: http://jsonapi.org/format/#crud-updating-to-one-relationships
+        .. _Updating To-One Relationships:
+           http://jsonapi.org/format/#crud-updating-to-one-relationships
 
         """
         person1 = self.Person(id=1)
@@ -113,7 +117,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         For more information, see the `Updating To-Many Relationships`_ section
         of the JSON API specification.
 
-        .. _Updating To-Many Relationships: http://jsonapi.org/format/#crud-updating-to-many-relationships
+        .. _Updating To-Many Relationships:
+           http://jsonapi.org/format/#crud-updating-to-many-relationships
 
         """
         person = self.Person(id=1)
@@ -139,7 +144,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         For more information, see the `Updating To-Many Relationships`_ section
         of the JSON API specification.
 
-        .. _Updating To-Many Relationships: http://jsonapi.org/format/#crud-updating-to-many-relationships
+        .. _Updating To-Many Relationships:
+           http://jsonapi.org/format/#crud-updating-to-many-relationships
 
         """
         person = self.Person(id=1)
@@ -163,7 +169,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         For more information, see the `Updating To-Many Relationships`_ section
         of the JSON API specification.
 
-        .. _Updating To-Many Relationships: http://jsonapi.org/format/#crud-updating-to-many-relationships
+        .. _Updating To-Many Relationships:
+           http://jsonapi.org/format/#crud-updating-to-many-relationships
 
         """
         person = self.Person(id=1)
@@ -182,7 +189,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         For more information, see the `Updating To-Many Relationships`_ section
         of the JSON API specification.
 
-        .. _Updating To-Many Relationships: http://jsonapi.org/format/#crud-updating-to-many-relationships
+        .. _Updating To-Many Relationships:
+           http://jsonapi.org/format/#crud-updating-to-many-relationships
 
         """
         person = self.Person(id=1)
@@ -206,7 +214,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         For more information, see the `Updating To-Many Relationships`_ section
         of the JSON API specification.
 
-        .. _Updating To-Many Relationships: http://jsonapi.org/format/#crud-updating-to-many-relationships
+        .. _Updating To-Many Relationships:
+           http://jsonapi.org/format/#crud-updating-to-many-relationships
 
         """
         person = self.Person(id=1)
@@ -227,7 +236,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         For more information, see the `Updating To-Many Relationships`_ section
         of the JSON API specification.
 
-        .. _Updating To-Many Relationships: http://jsonapi.org/format/#crud-updating-to-many-relationships
+        .. _Updating To-Many Relationships:
+           http://jsonapi.org/format/#crud-updating-to-many-relationships
 
         """
         person = self.Person(id=1)
@@ -252,7 +262,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         For more information, see the `Updating To-Many Relationships`_ section
         of the JSON API specification.
 
-        .. _Updating To-Many Relationships: http://jsonapi.org/format/#crud-updating-to-many-relationships
+        .. _Updating To-Many Relationships:
+           http://jsonapi.org/format/#crud-updating-to-many-relationships
 
         """
         person = self.Person(id=1)
@@ -278,7 +289,8 @@ class TestUpdatingRelationships(ManagerTestBase):
         For more information, see the `Updating To-Many Relationships`_ section
         of the JSON API specification.
 
-        .. _Updating To-Many Relationships: http://jsonapi.org/format/#crud-updating-to-many-relationships
+        .. _Updating To-Many Relationships:
+           http://jsonapi.org/format/#crud-updating-to-many-relationships
 
         """
         person = self.Person(id=1)

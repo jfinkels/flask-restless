@@ -165,7 +165,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Resource Objects`_ section of the JSON
         API specification.
 
-        .. _Resource Objects: http://jsonapi.org/format/#document-resource-objects
+        .. _Resource Objects:
+           http://jsonapi.org/format/#document-resource-objects
 
         """
         person = self.Person(id=1)
@@ -184,7 +185,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Resource Object Attributes`_
         section of the JSON API specification.
 
-        .. _Resource Object Attributes: http://jsonapi.org/format/#document-resource-object-attributes
+        .. _Resource Object Attributes:
+           http://jsonapi.org/format/#document-resource-object-attributes
 
         """
         article = self.Article(id=1)
@@ -203,7 +205,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Resource Object Relationships`_
         section of the JSON API specification.
 
-        .. _Resource Object Relationships: http://jsonapi.org/format/#document-resource-object-relationships
+        .. _Resource Object Relationships:
+           http://jsonapi.org/format/#document-resource-object-relationships
 
         """
         person = self.Person(id=1)
@@ -222,7 +225,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Resource Object Relationships`_
         section of the JSON API specification.
 
-        .. _Resource Object Relationships: http://jsonapi.org/format/#document-resource-object-relationships
+        .. _Resource Object Relationships:
+           http://jsonapi.org/format/#document-resource-object-relationships
 
         """
         person = self.Person(id=1)
@@ -241,7 +245,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Resource Object Relationships`_
         section of the JSON API specification.
 
-        .. _Resource Object Relationships: http://jsonapi.org/format/#document-resource-object-relationships
+        .. _Resource Object Relationships:
+           http://jsonapi.org/format/#document-resource-object-relationships
 
         """
         person = self.Person(id=1)
@@ -263,7 +268,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Related Resource Links`_ section
         of the JSON API specification.
 
-        .. _Related Resource Links: http://jsonapi.org/format/#document-resource-object-related-resource-links
+        .. _Related Resource Links:
+           http://jsonapi.org/format/#document-resource-object-related-resource-links
 
         """
         person = self.Person(id=1)
@@ -295,7 +301,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Related Resource Links`_ section
         of the JSON API specification.
 
-        .. _Related Resource Links: http://jsonapi.org/format/#document-resource-object-related-resource-links
+        .. _Related Resource Links:
+           http://jsonapi.org/format/#document-resource-object-related-resource-links
 
         """
         person = self.Person(id=1)
@@ -330,7 +337,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Resource Linkage`_ section of the
         JSON API specification.
 
-        .. _Resource Linkage: http://jsonapi.org/format/#document-resource-object-linkage
+        .. _Resource Linkage:
+           http://jsonapi.org/format/#document-resource-object-linkage
 
         """
         article = self.Article(id=1)
@@ -350,7 +358,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Resource Linkage`_ section of the
         JSON API specification.
 
-        .. _Resource Linkage: http://jsonapi.org/format/#document-resource-object-linkage
+        .. _Resource Linkage:
+           http://jsonapi.org/format/#document-resource-object-linkage
 
         """
         person = self.Person(id=1)
@@ -370,7 +379,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Resource Linkage`_ section of the
         JSON API specification.
 
-        .. _Resource Linkage: http://jsonapi.org/format/#document-resource-object-linkage
+        .. _Resource Linkage:
+           http://jsonapi.org/format/#document-resource-object-linkage
 
         """
         person = self.Person(id=1)
@@ -393,7 +403,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Resource Linkage`_ section of the
         JSON API specification.
 
-        .. _Resource Linkage: http://jsonapi.org/format/#document-resource-object-linkage
+        .. _Resource Linkage:
+           http://jsonapi.org/format/#document-resource-object-linkage
 
         """
         article1 = self.Article(id=1)
@@ -417,7 +428,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Resource Links`_ section of the
         JSON API specification.
 
-        .. _Resource Links: http://jsonapi.org/format/#document-resource-object-links
+        .. _Resource Links:
+           http://jsonapi.org/format/#document-resource-object-links
 
         """
         person = self.Person(id=1)
@@ -440,7 +452,8 @@ class TestDocumentStructure(ManagerTestBase):
         For more information, see the `Resource Identifier Objects`_
         section of the JSON API specification.
 
-        .. _Resource Identifier Objects: http://jsonapi.org/format/#document-resource-identifier-objects
+        .. _Resource Identifier Objects:
+           http://jsonapi.org/format/#document-resource-identifier-objects
 
         """
         person = self.Person(id=1)
@@ -471,25 +484,6 @@ class TestDocumentStructure(ManagerTestBase):
     #     assert links['self'].endswith('/api/person/1/links/articles')
     #     assert links['related'].endswith('/api/person/1/articles')
     #     # TODO should also include pagination links
-
-    # def test_link_object_allowable_keys(self):
-    #     """Tests that only allowable keys exist in the link object.
-
-    #     For more information, see the `Resource Relationships`_ section of the
-    #     JSON API specification.
-
-    #     .. _Resource Relationships: http://jsonapi.org/format/#document-structure-resource-relationships
-
-    #     """
-    #     response = self.app.get('/api/person')
-    #     document = loads(response.data)
-    #     allowed = ('self', 'resource', 'type', 'id', 'meta', 'first', 'last',
-    #                'next', 'prev')
-    #     alphanumeric = string.ascii_letters + string.digits
-    #     for link_name, link_object in document['links'].items():
-    #         if link_name not in ('first', 'last', 'next', 'prev', 'self'):
-    #             assert all(k in allowed or k[0] not in alphanumeric
-    #                        for k in link_object)
 
     def test_top_level_self_link(self):
         """Tests that there is a top-level links object containing a

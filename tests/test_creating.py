@@ -569,7 +569,8 @@ class TestCreating(ManagerTestBase):
         self.session.commit()
         self.manager.create_api(self.Article, methods=['POST'],
                                 url_prefix='/api2')
-        self.manager.create_api(self.Person, serializer_class=raise_s_exception)
+        self.manager.create_api(self.Person,
+                                serializer_class=raise_s_exception)
         data = {
             'data': {
                 'type': 'article',

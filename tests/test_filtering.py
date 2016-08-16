@@ -18,7 +18,7 @@ from unittest2 import skip
 # This import is unused but is required for testing on PyPy. CPython can
 # use psycopg2, but PyPy can only use psycopg2cffi.
 try:
-    import psycopg2
+    import psycopg2  # noqa
 except ImportError:
     from psycopg2cffi import compat
     compat.register()
@@ -968,7 +968,6 @@ class TestSimpleFiltering(ManagerTestBase):
 class TestOperators(SearchTestBase):
     """Tests for each SQLAlchemy operator supported by Flask-Restless."""
 
-
     def setUp(self):
         """Creates the database, the :class:`~flask.Flask` object, the
         :class:`~flask_restless.manager.APIManager` for that application,
@@ -1205,7 +1204,8 @@ class TestNetworkOperators(SearchTestBase):
     For more information, see `Network Address Functions and Operators`_
     in the PostgreSQL documentation.
 
-    .. _Network Address Functions and Operators: http://www.postgresql.org/docs/current/interactive/functions-net.html
+    .. _Network Address Functions and Operators:
+       http://www.postgresql.org/docs/current/interactive/functions-net.html
 
     """
 

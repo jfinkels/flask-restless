@@ -18,9 +18,6 @@ to test that it captures validation errors and returns them to the
 client.
 
 """
-from unittest2 import skipUnless as skip_unless
-import sys
-
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
@@ -137,12 +134,15 @@ class TestSimpleValidation(ManagerTestBase):
         person = self.Person(id=1, age=1)
         self.session.add(person)
         self.session.commit()
-        data = {'data':
-                    {'id': '1',
-                     'type': 'person',
-                     'attributes': {'age': 2}
-                     }
+        data = {
+            'data': {
+                'id': '1',
+                'type': 'person',
+                'attributes': {
+                    'age': 2
                 }
+            }
+        }
         response = self.app.patch('/api/person/1', data=dumps(data))
         assert response.status_code == 204
         assert person.age == 2
@@ -155,12 +155,15 @@ class TestSimpleValidation(ManagerTestBase):
         person = self.Person(id=1, age=1)
         self.session.add(person)
         self.session.commit()
-        data = {'data':
-                    {'id': '1',
-                     'type': 'person',
-                     'attributes': {'age': -1}
-                     }
+        data = {
+            'data': {
+                'id': '1',
+                'type': 'person',
+                'attributes': {
+                    'age': -1
                 }
+            }
+        }
         response = self.app.patch('/api/person/1', data=dumps(data))
         check_sole_error(response, 400, ['age', 'Must be between'])
         # Check that the person was not updated.

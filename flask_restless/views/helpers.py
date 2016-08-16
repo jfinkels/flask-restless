@@ -10,7 +10,6 @@
 # License version 3 and under the 3-clause BSD license. For more
 # information, see LICENSE.AGPL and LICENSE.BSD.
 """Helper functions for view classes."""
-from sqlalchemy.exc import OperationalError
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
 from sqlalchemy.sql import func
 
