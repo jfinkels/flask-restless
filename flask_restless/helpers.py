@@ -381,26 +381,6 @@ def string_to_datetime(model, fieldname, value):
     return value
 
 
-def strings_to_datetimes(model, dictionary):
-    """Returns a new dictionary with all the mappings of `dictionary` but
-    with date strings and intervals mapped to :class:`datetime.datetime` or
-    :class:`datetime.timedelta` objects.
-
-    The keys of `dictionary` are names of fields in the model specified in the
-    constructor of this class. The values are values to set on these fields. If
-    a field name corresponds to a field in the model which is a
-    :class:`sqlalchemy.types.Date`, :class:`sqlalchemy.types.DateTime`, or
-    :class:`sqlalchemy.Interval`, then the returned dictionary will have the
-    corresponding :class:`datetime.datetime` or :class:`datetime.timedelta`
-    Python object as the value of that mapping in place of the string.
-
-    This function outputs a new dictionary; it does not modify the argument.
-
-    """
-    # In Python 2.7+, this should be a dict comprehension.
-    return dict((k, string_to_datetime(model, k, v))
-                for k, v in dictionary.items() if k not in ('type', 'links'))
-
 
 def get_model(instance):
     """Returns the model class of which the specified object is an instance."""
