@@ -70,6 +70,6 @@ yields the response
 
 To specify a default set of related resources to include when the client does
 not specify any `include` query parameter, use the ``includes`` keyword
-argument to the :meth:`APIManager.create_api` method.
+argument to the :meth:`.APIManager.create_api` method.
 
 .. _Inclusion of Related Resources: http://jsonapi.org/format/#fetching-includes

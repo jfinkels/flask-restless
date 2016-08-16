@@ -17,7 +17,7 @@ class SerializationException(Exception):
     SQLAlchemy model to a dictionary representation.
 
     `instance` is the (problematic) instance on which
-    :meth:`Serializer.__call__` was invoked.
+    :meth:`DefaultSerializer.serialize` was invoked.
 
     `message` is an optional string describing the problem in more
     detail.
@@ -45,8 +45,8 @@ class MultipleExceptions(Exception):
     been raised in the code.
 
     You may wish to raise this exception when implementing the
-    :meth:`.Serializer.serialize_many` method, for example, if there are
-    multiple exceptions
+    :meth:`DefaultSerializer.serialize_many` method, for example, if
+    there are multiple exceptions
 
     """
 

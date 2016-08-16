@@ -66,7 +66,7 @@ yields the response
    }
 
 To create a new resource with a client-generated ID (if enabled by setting
-``allow_client_generated_ids`` to ``True`` in :meth:`APIManager.create_api`),
+``allow_client_generated_ids`` to ``True`` in :meth:`.APIManager.create_api`),
 the request
 
 .. sourcecode:: http

@@ -3,8 +3,8 @@ Function evaluation
 
 *This section describes behavior that is not part of the JSON API specification.*
 
-If the ``allow_functions`` keyword argument to :meth:`APIManager.create_api` is
-set to ``True`` when creating an API for a model, then the endpoint
+If the ``allow_functions`` keyword argument to :meth:`.APIManager.create_api`
+is set to ``True`` when creating an API for a model, then the endpoint
 ``/api/eval/person`` will be made available for :http:method:`get`
 requests. This endpoint responds to requests for evaluation of SQL functions on
 *all* instances the model.

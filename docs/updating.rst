@@ -48,7 +48,7 @@ To update an existing resource, the request
 yields a :http:statuscode:`204` response.
 
 If you set the ``allow_to_many_replacement`` keyword argument of
-:meth:`APIManager.create_api` to ``True``, you can replace a to-many
+:meth:`.APIManager.create_api` to ``True``, you can replace a to-many
 relationship entirely by making a request to update a resource. To update a
 to-many relationship, the request
 

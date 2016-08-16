@@ -432,7 +432,7 @@ class DefaultSerializer(Serializer):
         instance of a SQLAlchemy model as its primary data.
 
         The returned dictionary is suitable as an argument to
-        :func:`flask.jsonify`. Specifically, date and time objects
+        :func:`flask.json.jsonify`. Specifically, date and time objects
         (:class:`datetime.date`, :class:`datetime.time`,
         :class:`datetime.datetime`, and :class:`datetime.timedelta`) as
         well as :class:`uuid.UUID` objects are converted to string
