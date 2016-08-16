@@ -259,11 +259,12 @@ man_pages = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
-    'python': ('http://docs.python.org/', None),
     'flask': ('http://flask.pocoo.org/docs', None),
-    'sqlalchemy': ('http://docs.sqlalchemy.org/en/latest', None),
+    'flasklogin': ('https://flask-login.readthedocs.io/en/latest', None),
     'flasksqlalchemy': ('http://flask-sqlalchemy.pocoo.org', None),
-    'flasklogin': ('https://flask-login.readthedocs.org/en/latest', None)
+    'python3': ('https://docs.python.org/3', None),
+    'sqlalchemy': ('http://docs.sqlalchemy.org/en/latest', None),
+    'werkzeug': ('http://werkzeug.pocoo.org/docs', None),
 }
 
 # fall back if theme is not there

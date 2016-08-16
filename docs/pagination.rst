@@ -10,8 +10,8 @@ the client is greater than the maximum page size as configured on the server,
 then the query parameter will be ignored.
 
 To set the default page size for collections of resources, use the
-``page_size`` keyword argument to the :meth:`APIManager.create_api` method.  To
-set the maximum page size that the client can request, use the
+``page_size`` keyword argument to the :meth:`.APIManager.create_api` method.
+To set the maximum page size that the client can request, use the
 ``max_page_size`` argument. Even if ``page_size`` is greater than
 ``max_page_size``, at most ``max_page_size`` resources will be returned in a
 page. If ``max_page_size`` is set to anything but a positive integer, the

@@ -10,12 +10,10 @@ The API Manager class
 ---------------------
 
 .. autoclass:: APIManager
+   :members: init_app, create_api, create_api_blueprint
 
-   .. automethod:: init_app
+.. autoclass:: IllegalArgumentError
 
-   .. automethod:: create_api
-
-   .. automethod:: create_api_blueprint
 
 Global helper functions
 -----------------------
@@ -34,12 +32,19 @@ Serialization and deserialization
 ---------------------------------
 
 .. autoclass:: DefaultSerializer
+   :members: serialize, serialize_many
 
 .. autoclass:: DefaultDeserializer
+   :members: deserialize
 
 .. autoclass:: SerializationException
 
 .. autoclass:: DeserializationException
+   :members: message, detail, status
+
+.. autofunction:: simple_serialize
+
+.. autofunction:: simple_serialize_many
 
 .. autoclass:: MultipleExceptions
 

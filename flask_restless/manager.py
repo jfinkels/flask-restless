@@ -425,10 +425,10 @@ class APIManager(object):
         `model` is the SQLAlchemy model class for which a ReSTful interface
         will be created.
 
-        `app` is the :class:`Flask` object on which we expect the blueprint
-        created in this method to be eventually registered. If not specified,
-        the Flask application specified in the constructor of this class is
-        used.
+        `app` is the :class:`~flask.Flask` object on which we expect the
+        blueprint created in this method to be eventually registered. If
+        not specified, the Flask application specified in the
+        constructor of this class is used.
 
         `methods` is a list of strings specifying the HTTP methods that
         will be made available on the ReSTful API for the specified
@@ -541,9 +541,9 @@ class APIManager(object):
 
         `serializer_class` and `deserializer_class` are custom
         serializer and deserializer classes. The former must be a
-        subclass of :class:`Serializer` and the latter a subclass of
-        :class:`Deserializer`. For more information on using these, see
-        :doc:`serialization`.
+        subclass of :class:`DefaultSerializer` and the latter a subclass
+        of :class:`DefaultDeserializer`. For more information on using
+        these, see :doc:`serialization`.
 
         `preprocessors` is a dictionary mapping strings to lists of
         functions. Each key represents a type of endpoint (for example,

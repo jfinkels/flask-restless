@@ -190,14 +190,20 @@ class DefaultDeserializer(Deserializer):
         return instance
 
     def deserialize(self, document):
-        """Creates and returns an instance of the SQLAlchemy model
-        specified in the JSON API document.
+        """Creates and returns a new instance of the SQLAlchemy model specified
+        in the constructor whose attributes are given in the JSON API
+        document.
 
-        Everything in the `document` other than the `data` element is
-        ignored.
+        `document` must be a dictionary representation of a JSON API
+        document containing a single resource as primary data, as
+        specified in the JSON API specification. For more information,
+        see the `Resource Objects`_ section of the JSON API
+        specification.
 
-        For more information, see the documentation for the
-        :meth:`Deserializer.deserialize` method.
+        *Implementation note:* everything in the document other than the
+        ``data`` element is ignored.
+
+        .. _Resource Objects: http://jsonapi.org/format/#document-structure-resource-objects
 
         """
         if 'data' not in document:

@@ -121,7 +121,7 @@ Flask-Restless)::
         # Here perform any application-specific code...
 
 Next, instruct these preprocessors to be applied by Flask-Restless by using the
-``preprocessors`` keyword argument to :meth:`APIManager.create_api`. The value
+``preprocessors`` keyword argument to :meth:`.APIManager.create_api`. The value
 of this argument must be a dictionary in which each key is a string containing
 a processor name and each value is a list of functions to be applied for that
 request::
@@ -160,8 +160,8 @@ view functions and ultimately returned to the client.
 
 In order to halt the preprocessing or postprocessing and return an error
 response directly to the client, your preprocessor or postprocessor functions
-can raise a :exc:`ProcessingException`. If a function raises this exception, no
-preprocessing or postprocessing functions that appear later in the list
+can raise a :exc:`.ProcessingException`. If a function raises this exception,
+no preprocessing or postprocessing functions that appear later in the list
 specified when the API was created will be invoked. For example, an
 authentication function can be implemented like this::
 
@@ -174,7 +174,7 @@ authentication function can be implemented like this::
             raise ProcessingException(detail='Not Authorized', status=401)
     manager.create_api(Person, preprocessors=dict(GET_SINGLE=[check_auth]))
 
-The :exc:`ProcessingException` allows you to specify as keyword arguments to
+The :exc:`.ProcessingException` allows you to specify as keyword arguments to
 the constructor the elements of the JSON API `error object`_. If no arguments
 are provided, the error is assumed to have status code :http:statuscode:`400`.
 
@@ -189,12 +189,12 @@ Universal preprocessors and postprocessors
 
 The previous section describes how to specify a preprocessor or postprocessor
 on a per-API (that is, a per-model) basis. If you want a function to be
-executed for *all* APIs created by a :class:`APIManager`, you can use the
+executed for *all* APIs created by a :class:`.APIManager`, you can use the
 ``preprocessors`` or ``postprocessors`` keyword arguments in the constructor of
-the :class:`APIManager` class. These keyword arguments have the same format as
-the corresponding ones in the :meth:`APIManager.create_api` method as described
-above. Functions specified in this way are prepended to the list of
-preprocessors or postprocessors specified in the :meth:`APIManager.create_api`
+the :class:`.APIManager` class. These keyword arguments have the same format as
+the corresponding ones in the :meth:`.APIManager.create_api` method as
+described above. Functions specified in this way are prepended to the list of
+preprocessors or postprocessors specified in the :meth:`.APIManager.create_api`
 method.
 
 This may be used, for example, if all :http:method:`post` requests require

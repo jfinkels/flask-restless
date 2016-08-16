@@ -18,7 +18,7 @@ a :http:method:`get` request by using the ``only`` query parameter. On the
 server side, you can specify which fields appear in the resource object
 representation of an instance of the model by setting the ``only``, ``exclude``
 and ``additional_attributes`` keyword arguments to the
-:meth:`APIManager.create_api` method.
+:meth:`.APIManager.create_api` method.
 
 If ``only`` is an iterable of column names or actual column attributes, only
 those fields will appear in the resource object that appears in responses to

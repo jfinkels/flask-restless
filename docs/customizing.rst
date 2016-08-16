@@ -2,7 +2,7 @@ Customizing the ReSTful interface
 =================================
 
 This section describes how to use the keyword arguments to the
-:meth:`~APIManager.create_api` method to customize the interface created by
+:meth:`~.APIManager.create_api` method to customize the interface created by
 Flask-Restless.
 
 .. toctree::
@@ -15,7 +15,7 @@ Flask-Restless.
 HTTP methods
 ------------
 
-By default, the :meth:`APIManager.create_api` method creates a read-only
+By default, the :meth:`.APIManager.create_api` method creates a read-only
 interface; requests with HTTP methods other than :http:method:`GET` will cause
 a response with :http:statuscode:`405`. To explicitly specify which methods
 should be allowed for the endpoint, pass a list as the value of keyword
@@ -62,7 +62,7 @@ The last three allow the client to interact with the relationships of a
 particular resource. The last two must be enabled explicitly by setting the
 ``allow_to_many_replacement`` and ``allow_delete_from_to_many_relationships``,
 respectively, to ``True`` when creating an API using the
-:meth:`APIManager.create_api` method.
+:meth:`.APIManager.create_api` method.
 
 API prefix
 ----------
@@ -89,7 +89,7 @@ example, a class named ``MyModel`` implies a collection name of
 default is ``/api/my_model``.
 
 To provide a different name for the model, provide a string to the
-`collection_name` keyword argument of the :meth:`APIManager.create_api`
+`collection_name` keyword argument of the :meth:`.APIManager.create_api`
 method::
 
     apimanager.create_api(Person, collection_name='people')
@@ -141,7 +141,7 @@ error response.
    the :func:`~sqlalchemy.orm.validates` decorator that comes with SQLAlchemy.
 
 For example, if your validation framework includes an exception called
-``ValidationError``, then call the :meth:`APIManager.create_api` method with
+``ValidationError``, then call the :meth:`.APIManager.create_api` method with
 the ``validation_exceptions`` keyword argument::
 
     from cool_validation_framework import ValidationError

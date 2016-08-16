@@ -478,7 +478,7 @@ def is_conflict(exception):
 
 def jsonpify(*args, **kw):
     """Returns a JSONP response, with the specified arguments passed directly
-    to :func:`flask.jsonify`.
+    to :func:`flask.json.jsonify`.
 
     If the request has a query parameter ``calback=foo``, then the body of the
     response will be ``foo(<json>)``, where ``<json>`` is the JSON object that
@@ -486,7 +486,7 @@ def jsonpify(*args, **kw):
     simply returns ``<json>`` as normal.
 
     The positional and keyword arguments are passed directly to
-    :func:`flask.jsonify`, with the following exceptions.
+    :func:`flask.json.jsonify`, with the following exceptions.
 
     If the keyword arguments include the string specified by :data:`_HEADERS`,
     its value must be a dictionary specifying headers to set before sending the

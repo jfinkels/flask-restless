@@ -10,25 +10,19 @@ Flask-Restless provides serialization and deserialization that work with the
 JSON API specification.  If you wish to have more control over the way
 instances of your models are converted to Python dictionary representations,
 you can specify custom serialization by providing it to
-:meth:`APIManager.create_api` via the ``serializer_class`` keyword argument.
+:meth:`.APIManager.create_api` via the ``serializer_class`` keyword argument.
 Similarly, to provide a deserializer that converts a Python dictionary
 representation to an instance of your model, use the ``deserializer_class``
 keyword argument. However, if you provide a serializer that fails to produce
 resource objects that satisfy the JSON API specification, your client will
 receive non-compliant responses!
 
-Your serializer classes must be a subclass of
-:class:`~flask_restless.Serializer` and can override the
-:meth:`~flask_restless.Serializer.serialize` and
-:meth:`~flask_restless.Serializer.serialize_many` methods to provide custom
-serialization (however, we recommend overriding the
-:class:`~flask_restless.DefaultSerializer` class, as it provides some
-useful behavior in its constructor). These methods take an instance or
-instances as input and return a dictionary representing a JSON API
-document. Each also accepts an ``only`` keyword argument, indicating the sparse
-fieldsets requested by the client. When implementing your custom serializer,
-you may wish to override the :class:`flask_restless.DefaultSerializer`
-class::
+Your serializer classes must be a subclass of :class:`.DefaultSerializer` and
+can override the :meth:`~.DefaultSerializer.serialize` and
+:meth:`~.DefaultSerializer.serialize_many` methods to provide custom
+serialization. These methods take an instance or instances as input and return
+a dictionary representing a JSON API document. Each also accepts an ``only``
+keyword argument, indicating the sparse fieldsets requested by the client::
 
     from flask_restless import DefaultSerializer
 
@@ -57,9 +51,8 @@ and ``'type'`` must always appear, regardless of whether they appear in
 object.
 
 Flask-Restless also provides functional access to the default serialization,
-via the :func:`~flask_restless.simple_serialize` and
-:func:`~flask_restless.simple_serialize_many` functions, which return the
-result of the built-in default serialization.
+via the :func:`.simple_serialize` and :func:`.simple_serialize_many` functions,
+which return the result of the built-in default serialization.
 
 For deserialization, define your custom deserialization class like this::
 
@@ -76,14 +69,14 @@ objects. The function must return an instance of the model that has the
 requested fields. If you override the constructor, it must take two positional
 arguments, `session` and `model`.
 
-Your code can raise a :exc:`~flask_restless.SerializationException` when
-overriding the :meth:`DefaultSerializer.serialize` method, and similarly a
-:exc:`~flask_restless.DeserializationException` in the
-:meth:`DefaultDeserializer.deserialize` method; Flask-Restless will
+Your code can raise a :exc:`.SerializationException` when overriding the
+:meth:`.DefaultSerializer.serialize` method, and similarly a
+:exc:`.DeserializationException` in the
+:meth:`.DefaultDeserializer.deserialize` method; Flask-Restless will
 automatically catch those exceptions and format a `JSON API error response`_.
 If you wish to collect multiple exceptions (for example, if several fields of a
-resource provided to the :meth:`deserialize` method fail validation) you can
-raise a :exc:`~flask_restless.MultipleExceptions` exception, providing a
+resource provided to the :meth:`~.DefaultDeserializer.deserialize` method fail
+validation) you can raise a :exc:`.MultipleExceptions` exception, providing a
 list of other serialization or deserialization exceptions at instantiation
 time.
 
@@ -147,7 +140,7 @@ Per-model serialization
 -----------------------
 
 The correct serialization function will be used for each type of SQLAlchemy
-model for which you invoke :meth:`APIManager.create_api`. For example, if you
+model for which you invoke :meth:`.APIManager.create_api`. For example, if you
 create two APIs, one for ``Person`` objects and one for ``Article`` objects, ::
 
     manager.create_api(Person, serializer=person_serializer)
