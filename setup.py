@@ -101,7 +101,7 @@ setup(
     long_description=__doc__,
     name='Flask-Restless',
     platforms='any',
-    packages=find_packages(),
+    packages=find_packages(exclude=['tests', 'tests.*']),
     test_suite='tests',
     tests_require=['unittest2'],
     url='https://github.com/jfinkels/flask-restless',
