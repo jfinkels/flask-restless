@@ -18,7 +18,8 @@ responsibility is on the calling function to ensure that functions that
 expect, for example, a SQLAlchemy model actually receive a SQLAlchemy
 model.
 
-.. _SQLAlchemy inspection API: https://docs.sqlalchemy.org/en/latest/core/inspection.html
+.. _SQLAlchemy inspection API:
+   https://docs.sqlalchemy.org/en/latest/core/inspection.html
 
 """
 import datetime
@@ -379,7 +380,6 @@ def string_to_datetime(model, fieldname, value):
         return datetime.timedelta(seconds=value)
     # In any other case, simply copy the value unchanged.
     return value
-
 
 
 def get_model(instance):

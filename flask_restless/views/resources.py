@@ -129,7 +129,7 @@ class API(APIBase):
         1 via the ``articles`` relationship. In general, this method is called
         on requests of the form::
 
-            GET /<collection_name>/<resource_id>/<relation_name>/<related_resource_id>
+            GET /<collection>/<resourceid>/<relationname>/<relatedresourceid>
 
         """
         for preprocessor in self.preprocessors['GET_RELATED_RESOURCE']:

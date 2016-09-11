@@ -785,7 +785,8 @@ class TestServerSparseFieldsets(ManagerTestBase):
     #     actual_ids = sorted(article['id'] for article in included)
     #     assert expected_ids == actual_ids
     #     assert all('title' not in article for article in included)
-    #     assert all('comments' in article['relationships'] for article in included)
+    #     assert all('comments' in article['relationships']
+    #                for article in included)
 
     def test_only_as_objects(self):
         """Test for specifying included columns as SQLAlchemy column objects
@@ -887,7 +888,8 @@ class TestServerSparseFieldsets(ManagerTestBase):
         Technically, a resource's attribute MAY contain any valid JSON object,
         so this is allowed by the `JSON API specification`_.
 
-        .. _JSON API specification: http://jsonapi.org/format/#document-structure-resource-object-attributes
+        .. _JSON API specification:
+           http://jsonapi.org/format/#document-structure-resource-object-attributes
 
         """
         article = self.Article(id=1)
@@ -1565,7 +1567,7 @@ class TestAssociationProxy(ManagerTestBase):
             tags = association_proxy('articletags', 'tag',
                                      creator=lambda tag: ArticleTag(tag=tag))
             # tag_names = association_proxy('tags', 'name',
-            #                               creator=lambda name: Tag(name=name))
+            #                            creator=lambda name: Tag(name=name))
 
         class ArticleTag(self.Base):
             __tablename__ = 'articletag'

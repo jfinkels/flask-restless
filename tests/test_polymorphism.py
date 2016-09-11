@@ -14,8 +14,10 @@
 The tests in this module use models defined using `single table
 inheritance`_ and `joined table inheritance`_.
 
-.. _single table inheritance: http://docs.sqlalchemy.org/en/latest/orm/inheritance.html#single-table-inheritance
-.. _joined table inheritance: http://docs.sqlalchemy.org/en/latest/orm/inheritance.html#joined-table-inheritance
+.. _single table inheritance:
+   http://docs.sqlalchemy.org/en/latest/orm/inheritance.html#single-table-inheritance
+.. _joined table inheritance:
+   http://docs.sqlalchemy.org/en/latest/orm/inheritance.html#joined-table-inheritance
 
 """
 from operator import itemgetter

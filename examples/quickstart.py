@@ -8,6 +8,7 @@ app.config['DEBUG'] = True
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/test.db'
 db = flask_sqlalchemy.SQLAlchemy(app)
 
+
 # Create your Flask-SQLALchemy models as usual but with the following
 # restriction: they must have an __init__ method that accepts keyword
 # arguments for all columns (the constructor in
@@ -17,6 +18,7 @@ class Person(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode)
     birth_date = db.Column(db.Date)
+
 
 class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -90,7 +90,8 @@ def create_relationship(model, instance, relation):
     created for the primary model, `model`, or the model of the
     relation.
 
-    .. _Relationships: http://jsonapi.org/format/#document-resource-object-relationships
+    .. _Relationships:
+       http://jsonapi.org/format/#document-resource-object-relationships
 
     """
     result = {}

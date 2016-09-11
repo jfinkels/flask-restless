@@ -73,7 +73,8 @@ class Deserializer(object):
         **This method is not implemented in this base class; subclasses
         must override this method.**
 
-        .. _Resource Objects: http://jsonapi.org/format/#document-structure-resource-objects
+        .. _Resource Objects:
+           http://jsonapi.org/format/#document-structure-resource-objects
 
         """
         raise NotImplementedError
@@ -92,7 +93,8 @@ class Deserializer(object):
         **This method is not implemented in this base class; subclasses
         must override this method.**
 
-        .. _Resource Objects: http://jsonapi.org/format/#document-structure-resource-objects
+        .. _Resource Objects:
+           http://jsonapi.org/format/#document-structure-resource-objects
 
         """
         raise NotImplementedError
@@ -203,7 +205,8 @@ class DefaultDeserializer(Deserializer):
         *Implementation note:* everything in the document other than the
         ``data`` element is ignored.
 
-        .. _Resource Objects: http://jsonapi.org/format/#document-structure-resource-objects
+        .. _Resource Objects:
+           http://jsonapi.org/format/#document-structure-resource-objects
 
         """
         if 'data' not in document:

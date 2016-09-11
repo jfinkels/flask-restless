@@ -262,6 +262,7 @@ class TestAdding(ManagerTestBase):
         self.session.commit()
 
         has_run = []
+
         def enable_flag(*args, **kw):
             has_run.append(True)
 
@@ -299,6 +300,7 @@ class TestAdding(ManagerTestBase):
         assert article.author is person
         self.session.rollback()
         assert article.author is not person
+
 
 class TestDeleting(ManagerTestBase):
     """Tests for deleting a link from a resource's to-many relationship via the
@@ -535,6 +537,7 @@ class TestDeleting(ManagerTestBase):
         self.session.commit()
 
         has_run = []
+
         def enable_flag(was_deleted=None, *args, **kw):
             has_run.append(was_deleted)
 
@@ -816,6 +819,7 @@ class TestUpdatingToMany(ManagerTestBase):
         self.session.commit()
 
         has_run = []
+
         def enable_flag(*args, **kw):
             has_run.append(True)
 

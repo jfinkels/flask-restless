@@ -49,7 +49,7 @@ ALL_METHODS = READONLY_METHODS | WRITEONLY_METHODS
 DEFAULT_URL_PREFIX = '/api'
 
 if sys.version_info < (3, ):
-    STRING_TYPES = (str, unicode)
+    STRING_TYPES = (str, unicode)  # noqa
 else:
     STRING_TYPES = (str, )
 

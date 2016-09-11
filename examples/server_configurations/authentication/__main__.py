@@ -40,9 +40,9 @@
 import os
 import os.path
 
-from flask import Flask, render_template, redirect, url_for
+from flask import flash, Flask, render_template, redirect, url_for
 from flask_login import current_user, login_user, LoginManager, UserMixin
-from flask_restless import APIManager, ProcessingException, NO_CHANGE
+from flask_restless import APIManager, ProcessingException
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import PasswordField, SubmitField, TextField, Form
 

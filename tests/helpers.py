@@ -58,12 +58,14 @@ loads = json.loads
 
 #: The User-Agent string for Microsoft Internet Explorer 8.
 #:
-#: From <http://blogs.msdn.com/b/ie/archive/2008/02/21/the-internet-explorer-8-user-agent-string.aspx>.
+#: From <http://blogs.msdn.com/b/ie/archive/2008/02/21/
+#:       the-internet-explorer-8-user-agent-string.aspx>.
 MSIE8_UA = 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0; Trident/4.0)'
 
 #: The User-Agent string for Microsoft Internet Explorer 9.
 #:
-#: From <http://blogs.msdn.com/b/ie/archive/2010/03/23/introducing-ie9-s-user-agent-string.aspx>.
+#: From <http://blogs.msdn.com/b/ie/archive/2010/03/23/
+#:       introducing-ie9-s-user-agent-string.aspx>.
 MSIE9_UA = 'Mozilla/5.0 (compatible; MSIE 9.0; Windows NT 6.1; Trident/5.0)'
 
 #: Boolean representing whether this code is being executed on Python 2.

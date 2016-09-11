@@ -21,6 +21,14 @@ addons:
   # operator). Travis claims that version 9.4 is installed by default, but it
   # claims that && is unknown unless this addon is here.
   postgresql: "9.4"
+  apt:
+    packages:
+      # These are build dependencies for the documentation; LaTeX is required
+      # for rendering math. These are the required packages for Ubuntu 12.04,
+      # Travis' current build environment!
+      - texlive-latex-base
+      - texlive-latex-extra
+      - dvipng
 
 
 before_install:
@@ -32,14 +40,28 @@ before_install:
     else
         export REQUIREMENTS=requirements-test-cpython.txt
     fi
-  - pip install --upgrade pip
 
 install:
+  # Upgrade pip in case the installed version is out of date.
+  - pip install --upgrade pip
+  # Install the test requirements.
   - pip install -r $REQUIREMENTS
-  - pip install coveralls
+  # Install the requirements specific to Travis tests.
+  - pip install -r requirements-doc.txt
+  - pip install flake8 coveralls
+  # Install Flask-Restless so that it is available for the documentation build.
+  - python setup.py install
 
 script:
-  coverage run --source=flask_restless setup.py test
+  # Code style checks. Flake8 doesn't support Python 2.6.
+  - |
+    if [[ "$TRAVIS_PYTHON_VERSION" != "2.6" ]]; then
+      find flask_restless/ tests/ examples/ setup.py -type f -name \*.py -print0 | xargs -0 flake8
+    fi
+  # Documentation build checks.
+  - sphinx-build -n -W docs/ build/sphinx/html/
+  # Unit tests.
+  - coverage run --source=flask_restless setup.py test
 
 after_success:
   coveralls
