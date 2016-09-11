@@ -1112,6 +1112,44 @@ class Paginated(object):
         return self._num_results
 
 
+class SchemaView(MethodView):
+    """A view of the entire schema of an API.
+
+    This class provides a :meth:`.SchemaView.get` method that returns a
+    JSON API document containing a mapping from resource collection name
+    to the URL for that resource collection.
+
+    `models` is the set of models for which an API has been defined via
+    the :meth:`.APIManager.create_api` method. The
+    :meth:`.SchemaView.get` method will call :func:`.collection_name`
+    and :func:`.url_for` on each model, so if any is unknown, this view
+    will raise a server-side exception.
+
+    """
+
+    #: List of decorators applied to every method of this class.
+    #:
+    #: If a subclass must add more decorators, prepend them to this list::
+    #:
+    #:     class MyView(SchemaView):
+    #:         decorators = [my_decorator] + SchemaView.decorators
+    #:
+    #: This way, the :data:`mimerender` function appears last. It must appear
+    #: last so that it can render the returned dictionary.
+    decorators = [requires_json_api_accept, requires_json_api_mimetype,
+                  mimerender]
+
+    def __init__(self, models):
+        self.models = models
+
+    def get(self):
+        result = JsonApiDocument()
+        # TODO In Python 2.7+, this should be a dict comprehension.
+        result['meta']['urls'] = dict((collection_name(model), url_for(model))
+                                      for model in self.models)
+        return result
+
+
 class ModelView(MethodView):
     """Base class for :class:`flask.MethodView` classes which represent a view
     of a SQLAlchemy model.

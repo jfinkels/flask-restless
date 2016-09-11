@@ -998,9 +998,13 @@ class TestAssociationProxy(ManagerTestBase):
             id = Column(Integer, primary_key=True)
             name = Column(Unicode)
 
+        # HACK It seems that if we don't persist the Article class then
+        # the test sometimes gets confused about which Article class is
+        # being referenced in requests made in the test methods below.
+        self.Article = Article
         self.Tag = Tag
         self.Base.metadata.create_all()
-        self.manager.create_api(Article, methods=['POST'])
+        self.manager.create_api(self.Article, methods=['POST'])
         # HACK Need to create APIs for these other models because otherwise
         # we're not able to create the link URLs to them.
         #
