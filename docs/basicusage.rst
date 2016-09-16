@@ -8,8 +8,8 @@ same.
 If you have defined your models with Flask-SQLAlchemy, first, create your
 :class:`~flask.Flask` object, :class:`~flask_sqlalchemy.SQLAlchemy` object, and
 model classes as usual but with one additional restriction: each model must
-have a primary key column named ``id`` of type
-:class:`~sqlalchemy.types.Integer` or type :class:`~sqlalchemy.types.Unicode`.
+have a primary key column of type either :class:`~sqlalchemy.types.Integer` or
+:class:`~sqlalchemy.types.Unicode`.
 
 .. sourcecode:: python
 

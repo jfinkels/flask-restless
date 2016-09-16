@@ -400,14 +400,6 @@ class TestAPIManager(ManagerTestBase):
             response = func('/api/person')
             assert response.status_code == 405
 
-    def test_missing_id(self):
-        """Tests that calling :meth:`APIManager.create_api` on a model without
-        an ``id`` column raises an exception.
-
-        """
-        with self.assertRaises(IllegalArgumentError):
-            self.manager.create_api(self.Tag)
-
     def test_empty_collection_name(self):
         """Tests that calling :meth:`APIManager.create_api` with an empty
         collection name raises an exception.
