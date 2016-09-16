@@ -355,7 +355,7 @@ class DefaultSerializer(Serializer):
                 # work than it needs to here.)
                 attributes[key] = serialized_val['data']
         # Get the ID and type of the resource.
-        id_ = attributes.pop('id')
+        id_ = attributes.pop('id', None)
         type_ = collection_name(model)
         # Create the result dictionary and add the attributes.
         result = dict(id=id_, type=type_)

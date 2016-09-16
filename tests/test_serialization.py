@@ -225,9 +225,14 @@ class TestFetchResource(ManagerTestBase):
             article_id = Column(Integer, ForeignKey('article.id'))
             article = relationship('Article', backref=backref('comments'))
 
+        class Tag(self.Base):
+            __tablename__ = 'tag'
+            tagid = Column(Integer, primary_key=True)
+
         self.Article = Article
         self.Comment = Comment
         self.Person = Person
+        self.Tag = Tag
         self.Base.metadata.create_all()
 
     def test_hybrid_property(self):
@@ -556,6 +561,23 @@ class TestFetchResource(ManagerTestBase):
 
         response = self.app.get('/api/person/1')
         check_sole_error(response, 500, ['foo'])
+
+    def test_non_id_primary_key(self):
+        """Test for a primary key field that is not named "id".
+
+        For more information, see issue #540.
+
+        """
+        tag = self.Tag(tagid=1)
+        self.session.add(tag)
+        self.session.commit()
+        self.manager.create_api(self.Tag)
+        response = self.app.get('/api/tag/1')
+        document = loads(response.data)
+        tag = document['data']
+        self.assertEqual(tag['id'], '1')
+        self.assertEqual(tag['type'], 'tag')
+        self.assertEqual(tag['attributes']['tagid'], 1)
 
 
 class TestFetchRelation(ManagerTestBase):
