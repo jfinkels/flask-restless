@@ -15,7 +15,6 @@ from datetime import datetime
 from datetime import time
 from datetime import timedelta
 from functools import wraps
-from json import JSONEncoder
 import sys
 import types
 from unittest2 import skipUnless as skip_unless
@@ -259,7 +258,7 @@ class GUID(TypeDecorator):
 # serializable by default so we need to create a custom JSON encoder class.
 #
 # TODO When Flask 0.11 is required, remove this.
-class BetterJSONEncoder(JSONEncoder):
+class BetterJSONEncoder(json.JSONEncoder):
     """Extends the default JSON encoder to serialize objects from the
     :mod:`datetime` module.
 
