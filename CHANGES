@@ -34,6 +34,7 @@ Not yet released.
 - :issue:`546`: adds support for joined table inheritance.
 - :issue:`559`: fixes bug that stripped attributes with JSON API reserved names
   (like "type") when deserializing resources.
+- :issue:`583`: fixes failing tests when using simplejson.
 
 Version 1.0.0b1
 ---------------
