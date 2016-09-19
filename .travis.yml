@@ -56,7 +56,7 @@ install:
     fi
   # Install the requirements specific to Travis tests.
   - pip install -r requirements-doc.txt
-  - pip install flake8 coveralls
+  - pip install coveralls
   # Install Flask-Restless so that it is available for the documentation build.
   - python setup.py install
 
@@ -65,11 +65,6 @@ before_script:
   - psql -c 'create database testdb;' -U postgres
 
 script:
-  # Code style checks. Flake8 doesn't support Python 2.6.
-  - |
-    if [[ "$TRAVIS_PYTHON_VERSION" != "2.6" ]]; then
-      find flask_restless/ tests/ examples/ setup.py -type f -name \*.py -print0 | xargs -0 flake8
-    fi
   # Documentation build checks.
   - sphinx-build -n -W docs/ build/sphinx/html/
   # Unit tests.
