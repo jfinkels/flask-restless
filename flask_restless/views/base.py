@@ -276,24 +276,15 @@ def parse_accept_header(value):
     media type parameters, then ``extra`` is simply ``None``.
 
     """
-    def match_to_pair(match):
-        """Returns the pair ``(name, quality)`` from the given match
-        object for the Accept header regular expression.
-
-        ``name`` is the name of the content type that is accepted, and
-        ``quality`` is the integer given by the header's media type
-        parameter, or ``None`` if it has no such media type paramer.
-
-        """
+    for match in ACCEPT_RE.finditer(value):
         name = match.group(1)
         extra = match.group(2)
         # This is the main difference between our implementation and
         # Werkzeug's implementation: all we want to know is whether
         # there is any media type parameters or not, so we mark the
-        # quality is ``None`` instead of ``1`` here.
+        # quality as ``None`` instead of ``1`` here.
         quality = max(min(float(extra), 1), 0) if extra else None
-        return name, quality
-    return map(match_to_pair, ACCEPT_RE.finditer(value))
+        yield name, quality
 
 
 def requires_json_api_accept(func):
@@ -316,6 +307,9 @@ def requires_json_api_accept(func):
         request's Accept header contains the JSON API media type and all
         instances of that media type are modified with media type
         parameters.
+
+    Headers of the form ``Accept: */*`` are okay, though, as required by
+    :rfc:`2616#sec14.1`.
 
     View methods can be wrapped like this::
 
@@ -347,6 +341,10 @@ def requires_json_api_accept(func):
         # only JSON API mimetypes with media type parameters, we simply
         # proceed as normal with the request.
         if len(header_pairs) == 0:
+            return func(*args, **kw)
+        # If the Accept header includes */*, then proceed as normal,
+        # since */* captures the appropriate JSON API content type.
+        if any(name == '*/*' for name, extra in header_pairs):
             return func(*args, **kw)
         jsonapi_pairs = [(name, extra) for name, extra in header_pairs
                          if name.startswith(CONTENT_TYPE)]

@@ -32,6 +32,7 @@ Not yet released.
 - :issue:`536`: adds support for single-table inheritance.
 - :issue:`540`: correctly support models that don't have a column named "id".
 - :issue:`546`: adds support for joined table inheritance.
+- :issue:`548`: requests can now use the ``Accept: */*`` header.
 - :issue:`559`: fixes bug that stripped attributes with JSON API reserved names
   (like "type") when deserializing resources.
 
