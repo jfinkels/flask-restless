@@ -31,6 +31,7 @@ from sqlalchemy import Time
 from sqlalchemy import Unicode
 from sqlalchemy.dialects.postgresql import INET
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 from testing.postgresql import PostgresqlFactory as PGFactory
@@ -121,6 +122,12 @@ class TestFiltering(SearchTestBase):
             birthday = Column(Date)
             birth_datetime = Column(DateTime)
             bedtime = Column(Time)
+
+            @hybrid_property
+            def is_minor(self):
+                if not hasattr(self, 'age') or self.age is None:
+                    return False
+                return self.age <= 18
 
         class Comment(self.Base):
             __tablename__ = 'comment'
@@ -779,6 +786,25 @@ class TestFiltering(SearchTestBase):
         document = loads(response.data)
         articles = document['data']
         assert ['3', '4'] == sorted(article['id'] for article in articles)
+
+    def test_hybrid_property(self):
+        """Test for filtering on a hybrid property.
+
+        In this test, the hybrid attribute and the SQL expression are of
+        the same type.
+
+        """
+        person1 = self.Person(id=1, age=10)
+        person2 = self.Person(id=2, age=20)
+        self.session.add_all([person1, person2])
+        self.session.commit()
+        filters = [dict(name='is_minor', op='==', val=True)]
+        response = self.search('/api/person', filters)
+        document = loads(response.data)
+        people = document['data']
+        self.assertEqual(len(people), 1)
+        person = people[0]
+        self.assertEqual(person['id'], '1')
 
 
 class TestSimpleFiltering(ManagerTestBase):
