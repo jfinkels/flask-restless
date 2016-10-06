@@ -30,7 +30,7 @@ from .serialization import MultipleExceptions
 from .serialization import SerializationException
 from .serialization import simple_serialize
 from .serialization import simple_serialize_many
-from .views import CONTENT_TYPE
+from .views import JSONAPI_MIMETYPE
 from .views import ProcessingException
 
 #: The current version of this extension.
@@ -42,11 +42,11 @@ __version__ = '1.0.0b2-dev'
 __all__ = [
     'APIManager',
     'collection_name',
-    'CONTENT_TYPE',
     'DefaultDeserializer',
     'DefaultSerializer',
     'DeserializationException',
     'IllegalArgumentError',
+    'JSONAPI_MIMETYPE',
     'model_for',
     'MultipleExceptions',
     'primary_key_for',

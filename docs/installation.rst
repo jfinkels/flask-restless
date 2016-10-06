@@ -15,7 +15,6 @@ installed if you use ``pip``):
 
 * `Flask`_ version 0.10 or greater
 * `SQLAlchemy`_ version 0.8 or greater
-* `mimerender`_ version 0.5.2 or greater
 * `python-dateutil`_ version strictly greater than 2.2
 * `Flask-SQLAlchemy`_, *only if* you want to define your models using
   Flask-SQLAlchemy (which we recommend)
@@ -24,6 +23,5 @@ installed if you use ``pip``):
 .. _GitHub: https://github.com/jfinkels/flask-restless
 .. _Flask: http://flask.pocoo.org
 .. _SQLAlchemy: https://sqlalchemy.org
-.. _mimerender: https://mimerender.readthedocs.org
 .. _python-dateutil: http://labix.org/python-dateutil
 .. _Flask-SQLAlchemy: https://packages.python.org/Flask-SQLAlchemy

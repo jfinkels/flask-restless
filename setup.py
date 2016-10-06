@@ -43,8 +43,7 @@ VERSION_RE = r"^__version__ = ['\"]([^'\"]*)['\"]"
 
 #: The installation requirements for Flask-Restless. Flask-SQLAlchemy is not
 #: required, so the user must install it explicitly.
-REQUIREMENTS = ['flask>=0.10', 'sqlalchemy>=0.8', 'python-dateutil>2.2',
-                'mimerender>=0.5.2']
+REQUIREMENTS = ['flask>=0.10', 'sqlalchemy>=0.8', 'python-dateutil>2.2']
 
 #: The absolute path to this file.
 HERE = os.path.abspath(os.path.dirname(__file__))

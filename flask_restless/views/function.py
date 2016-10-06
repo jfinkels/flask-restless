@@ -25,6 +25,7 @@ from ..search import create_filters
 from ..search import FilterParsingError
 from ..search import FilterCreationError
 from .base import error_response
+from .base import jsonpify
 from .base import ModelView
 from .base import SingleKeyError
 
@@ -109,7 +110,7 @@ class FunctionAPI(ModelView):
 
         # If there are no functions to execute, simply return the empty list.
         if not functions:
-            return dict(data=[])
+            return jsonpify({'data': []})
 
         # Create the function query.
         try:
@@ -153,4 +154,4 @@ class FunctionAPI(ModelView):
             detail = 'unknown function "{0}"'.format(bad_function)
             return error_response(400, cause=exception, detail=detail)
 
-        return dict(data=result)
+        return jsonpify({'data': result})

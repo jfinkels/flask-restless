@@ -21,12 +21,15 @@ Not yet released.
 - Changes serialization/deserialization to class-based implementation instead
   of a function-based implementation. This also adds support for serialization
   of heterogeneous collections.
+- Removes `mimerender`_ as a dependency.
 - :issue:`7`: allows filtering before function evaluation.
 - :issue:`49`: deserializers now expect a complete JSON API document.
 - :issue:`200`: be smarter about determining the ``collection_name`` for
   polymorphic models defined with single-table inheritance.
 - :issue:`253`: don't assign to callable attributes of models.
 - :issue:`268`: adds top-level endpoint that exposes API schema.
+- :issue:`479`: removes duplicate (and sometimes conflicting)
+  :http:header:`Content-Type` header in responses.
 - :issue:`481,488`: added negation (``not``) operator for search.
 - :issue:`492`: support JSON API recommended "simple" filtering.
 - :issue:`508`: flush the session before postprocessors, and commit after.
@@ -204,8 +207,7 @@ Released on April 6, 2014.
 - :issue:`29`: replace custom ``jsonify_status_code`` function with built-in support
   for ``return jsonify(), status_code`` style return statements (new in Flask
   0.9).
-- :issue:`51`: Use `mimerender <http://mimerender.readthedocs.org>`_ to render
-  dictionaries to JSON format.
+- :issue:`51`: Use `mimerender`_ to render dictionaries to JSON format.
 - :issue:`247`: adds support for making :http:method:`post` requests to dictionary-like
   association proxies.
 - :issue:`249`: returns :http:statuscode:`404` if a search reveals no matching results.
@@ -223,6 +225,8 @@ Released on April 6, 2014.
   are sent to the server.
 - :issue:`286`: speed up paginated responses by using optimized count() function.
 - :issue:`293`: allows :class:`sqlalchemy.types.Time` fields in JSON responses.
+
+.. _mimerender: https://mimerender.readthedocs.io
 
 Version 0.12.1
 ~~~~~~~~~~~~~~

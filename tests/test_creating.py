@@ -38,7 +38,7 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
 from flask_restless import APIManager
-from flask_restless import CONTENT_TYPE
+from flask_restless import JSONAPI_MIMETYPE
 from flask_restless import DefaultDeserializer
 from flask_restless import DefaultSerializer
 from flask_restless import ProcessingException
@@ -201,9 +201,9 @@ class TestCreating(ManagerTestBase):
         """
         data = dict(data=dict(type='person'))
         response = self.app.post('/api/person', data=dumps(data),
-                                 content_type=CONTENT_TYPE)
+                                 content_type=JSONAPI_MIMETYPE)
         assert response.status_code == 201
-        assert response.headers['Content-Type'] == CONTENT_TYPE
+        assert response.headers['Content-Type'] == JSONAPI_MIMETYPE
 
     def test_no_content_type(self):
         """Tests that the server responds with :http:status:`415` if the
@@ -214,7 +214,7 @@ class TestCreating(ManagerTestBase):
         response = self.app.post('/api/person', data=dumps(data),
                                  content_type=None)
         assert response.status_code == 415
-        assert response.headers['Content-Type'] == CONTENT_TYPE
+        assert response.headers['Content-Type'] == JSONAPI_MIMETYPE
 
     def test_msie8(self):
         """Tests for compatibility with Microsoft Internet Explorer 8.

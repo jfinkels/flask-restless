@@ -15,7 +15,7 @@ from unittest2 import skip
 from sqlalchemy import Column
 from sqlalchemy import Integer
 
-from flask_restless import CONTENT_TYPE
+from flask_restless import JSONAPI_MIMETYPE
 
 from .helpers import loads
 from .helpers import ManagerTestBase
@@ -58,4 +58,4 @@ class TestMetadata(ManagerTestBase):
         response = self.app.get('/api/person')
         document = loads(response.data)
         meta = document['meta']
-        assert meta['Content-Type'] == CONTENT_TYPE
+        assert meta['Content-Type'] == JSONAPI_MIMETYPE

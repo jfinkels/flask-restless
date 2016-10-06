@@ -47,3 +47,34 @@ class TestServerResponsibilities(ManagerTestBase):
         person = document['data']
         self.assertEqual(person['id'], '1')
         self.assertEqual(person['type'], 'person')
+
+    def test_no_duplicate_headers(self):
+        """Test that each header appears only once in the response.
+
+        For more information, see GitHub issue #479.
+
+        """
+        response = self.app.get('/api/person')
+        self.assertIn('Content-Type', response.headers)
+        self.assertIn('Link', response.headers)
+        headers_list = response.headers.to_wsgi_list()
+        # TODO In Python 2.7+, this should be a set comprehension.
+        headers_set = set(k for k, v in headers_list)
+        self.assertEqual(len(headers_list), len(headers_set))
+
+    def test_jsonp_content_type(self):
+        """Test that the Content-Type for JSONP is application/javascript."""
+        response = self.app.get('/api/person?callback=foo')
+        self.assertEqual(response.content_type, 'application/javascript')
+
+    def test_jsonp_one_content_type(self):
+        """Test that a JSONP response has only one Content-Type header.
+
+        For more information, see GitHub issue #479.
+
+        """
+        response = self.app.get('/api/person?callback=foo')
+        headers_list = response.headers.to_wsgi_list()
+        # TODO In Python 2.7+, this should be a set comprehension.
+        headers_set = set(k for k, v in headers_list)
+        self.assertEqual(len(headers_list), len(headers_set))

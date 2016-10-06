@@ -39,8 +39,6 @@ from flask import json
 from flask import jsonify
 from flask import request
 from flask.views import MethodView
-from mimerender import FlaskMimeRender
-from mimerender import register_mime
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
@@ -71,19 +69,16 @@ from ..serialization import SerializationException
 from .helpers import count
 from .helpers import upper_keys as upper
 
-#: String used internally as a dictionary key for passing header information
-#: from view functions to the :func:`jsonpify` function.
-_HEADERS = '__restless_headers'
-
-#: String used internally as a dictionary key for passing status code
-#: information from view functions to the :func:`jsonpify` function.
-_STATUS = '__restless_status_code'
-
 #: The Content-Type we expect for most requests to APIs.
 #:
 #: The JSON API specification requires the content type to be
 #: ``application/vnd.api+json``.
-CONTENT_TYPE = 'application/vnd.api+json'
+JSONAPI_MIMETYPE = 'application/vnd.api+json'
+
+#: The Content-Type for Javascript data.
+#:
+#: This is used, for example, in JSONP responses.
+JAVASCRIPT_MIMETYPE = 'application/javascript'
 
 #: The highest version of the JSON API specification supported by
 #: Flask-Restless.
@@ -152,9 +147,6 @@ ERROR_FIELDS = ('id_', 'links', 'status', 'code_', 'title', 'detail', 'source',
 
 # For the sake of brevity, rename this function.
 chain = chain.from_iterable
-
-# Register the JSON API content type so that mimerender knows to look for it.
-register_mime('jsonapi', (CONTENT_TYPE, ))
 
 
 class SingleKeyError(KeyError):
@@ -347,7 +339,7 @@ def requires_json_api_accept(func):
         if any(name == '*/*' for name, extra in header_pairs):
             return func(*args, **kw)
         jsonapi_pairs = [(name, extra) for name, extra in header_pairs
-                         if name.startswith(CONTENT_TYPE)]
+                         if name.startswith(JSONAPI_MIMETYPE)]
         # If there are Accept headers but none of them specifies the
         # JSON API media type, respond with `406 Not Acceptable`.
         if len(jsonapi_pairs) == 0:
@@ -399,7 +391,7 @@ def requires_json_api_mimetype(func):
             return func(*args, **kw)
         header = request.headers.get('Content-Type')
         content_type, extra = parse_options_header(header)
-        content_is_json = content_type.startswith(CONTENT_TYPE)
+        content_is_json = content_type.startswith(JSONAPI_MIMETYPE)
         is_msie = _is_msie8or9()
         # Request must have the Content-Type: application/vnd.api+json header,
         # unless the User-Agent string indicates that the client is Microsoft
@@ -407,7 +399,7 @@ def requires_json_api_mimetype(func):
         # 'text/html'; for more information, see issue #267).
         if not is_msie and not content_is_json:
             detail = ('Request must have "Content-Type: {0}"'
-                      ' header').format(CONTENT_TYPE)
+                      ' header').format(JSONAPI_MIMETYPE)
             return error_response(415, detail=detail)
         # JSON API requires that the content type header does not have
         # any media type parameters.
@@ -475,70 +467,28 @@ def is_conflict(exception):
     return any(s in exception_string for s in CONFLICT_INDICATORS)
 
 
-def jsonpify(*args, **kw):
-    """Returns a JSONP response, with the specified arguments passed directly
-    to :func:`flask.json.jsonify`.
+def jsonpify(data):
+    """Creates a HTTP response containing JSON or JSONP data.
 
-    If the request has a query parameter ``calback=foo``, then the body of the
-    response will be ``foo(<json>)``, where ``<json>`` is the JSON object that
-    would have been returned normally. If no such query parameter exists, this
-    simply returns ``<json>`` as normal.
+    `data` is a dictionary representing a JSON object.
 
-    The positional and keyword arguments are passed directly to
-    :func:`flask.json.jsonify`, with the following exceptions.
-
-    If the keyword arguments include the string specified by :data:`_HEADERS`,
-    its value must be a dictionary specifying headers to set before sending the
-    JSONified response to the client. Headers on the response will be
-    overwritten by headers specified in this dictionary.
-
-    If the keyword arguments include the string specified by :data:`_STATUS`,
-    its value must be an integer representing the status code of the response.
-    Otherwise, the status code of the response will be :http:status:`200`.
+    If the incoming HTTP request has no query parameter ``callback``,
+    then the body of the response will be a JSON document and the
+    :http:header:`Content-Type` will be ``application/vnd.api+json``,
+    the JSON API mimetype. If the request has a query parameter
+    ``callback=foo``, then the body of the response will be
+    ``foo(<json>)``, where ``<json>`` is the JSON object that would have
+    been returned, and the :http:header:`Content-Type` will be
+    ``application/javascript``.
 
     """
-    # HACK In order to make the headers and status code available in the
-    # content of the response, we need to send it from the view function to
-    # this jsonpify function via its keyword arguments. This is a limitation of
-    # the mimerender library: it has no way of making the headers and status
-    # code known to the rendering functions.
-    headers = kw['meta'].pop(_HEADERS, {}) if 'meta' in kw else {}
-    status_code = kw['meta'].pop(_STATUS, 200) if 'meta' in kw else 200
-    response = jsonify(*args, **kw)
+    document = json.dumps(data)
+    mimetype = JSONAPI_MIMETYPE
     callback = request.args.get('callback', False)
     if callback:
-        # Reload the data from the constructed JSON string so we can wrap it in
-        # a JSONP function.
-        document = json.loads(response.data)
-        # Force the 'Content-Type' header to be 'application/javascript'.
-        #
-        # Note that this is different from the mimetype used in Flask for JSON
-        # responses; Flask uses 'application/json'. We use
-        # 'application/javascript' because a JSONP response is valid
-        # Javascript, but not valid JSON (and not a valid JSON API document).
-        mimetype = 'application/javascript'
-        headers['Content-Type'] = mimetype
-        # # Add the headers and status code as metadata to the JSONP response.
-        # meta = _headers_to_json(headers) if headers is not None else {}
-        meta = {}
-        meta['status'] = status_code
-        if 'meta' in document:
-            document['meta'].update(meta)
-        else:
-            document['meta'] = meta
-        inner = json.dumps(document)
-        content = '{0}({1})'.format(callback, inner)
-        # Note that this is different from the mimetype used in Flask for JSON
-        # responses; Flask uses 'application/json'. We use
-        # 'application/javascript' because a JSONP response is not valid JSON.
-        response = current_app.response_class(content, mimetype=mimetype)
-    if 'Content-Type' not in headers:
-        headers['Content-Type'] = CONTENT_TYPE
-    # Set the headers on the HTTP response as well.
-    if headers:
-        for key, value in headers.items():
-            response.headers.set(key, value)
-    response.status_code = status_code
+        document = '{0}({1})'.format(callback, document)
+        mimetype = JAVASCRIPT_MIMETYPE
+    response = current_app.response_class(document, mimetype=mimetype)
     return response
 
 
@@ -723,13 +673,6 @@ def errors_response(status, errors):
     representing a JSON API response document and whose right element is
     simply `status`.
 
-    In addition to a list of the error objects under the ``'errors'``
-    key, a jsonapi object, the returned dictionary object also includes
-    under the ``'meta'`` element a key with a special name, stored in
-    the key :data:`_STATUS`, which is used to workaround an
-    incompatibility between Flask and mimerender that doesn't allow
-    setting headers on a global response object.
-
     The keys within each error object are described in the `Errors`_
     section of the JSON API specification.
 
@@ -737,9 +680,8 @@ def errors_response(status, errors):
 
     """
     # TODO Use an error serializer.
-    document = {'errors': errors, 'jsonapi': {'version': JSONAPI_VERSION},
-                'meta': {_STATUS: status}}
-    return document, status
+    document = {'errors': errors, 'jsonapi': {'version': JSONAPI_VERSION}}
+    return jsonpify(document), status
 
 
 def error_from_serialization_exception(exception, included=False):
@@ -784,18 +726,6 @@ def errors_from_serialization_exceptions(exceptions, included=False):
     _to_error = partial(error_from_serialization_exception, included=included)
     errors = list(map(_to_error, exceptions))
     return errors_response(500, errors)
-
-
-#: Creates the mimerender object necessary for decorating responses with a
-#: function that automatically formats the dictionary in the appropriate format
-#: based on the ``Accept`` header.
-#:
-#: Technical details: the first pair of parentheses instantiates the
-#: :class:`mimerender.FlaskMimeRender` class. The second pair of parentheses
-#: creates the decorator, so that we can simply use the variable ``mimerender``
-#: as a decorator.
-# TODO fill in xml renderer
-mimerender = FlaskMimeRender()(default='jsonapi', jsonapi=jsonpify)
 
 
 # TODO Subclasses for different kinds of linkers (relationship, resource
@@ -1126,16 +1056,7 @@ class SchemaView(MethodView):
     """
 
     #: List of decorators applied to every method of this class.
-    #:
-    #: If a subclass must add more decorators, prepend them to this list::
-    #:
-    #:     class MyView(SchemaView):
-    #:         decorators = [my_decorator] + SchemaView.decorators
-    #:
-    #: This way, the :data:`mimerender` function appears last. It must appear
-    #: last so that it can render the returned dictionary.
-    decorators = [requires_json_api_accept, requires_json_api_mimetype,
-                  mimerender]
+    decorators = [requires_json_api_accept, requires_json_api_mimetype]
 
     def __init__(self, models):
         self.models = models
@@ -1145,7 +1066,7 @@ class SchemaView(MethodView):
         # TODO In Python 2.7+, this should be a dict comprehension.
         result['meta']['urls'] = dict((collection_name(model), url_for(model))
                                       for model in self.models)
-        return result
+        return jsonpify(result)
 
 
 class ModelView(MethodView):
@@ -1166,16 +1087,7 @@ class ModelView(MethodView):
     """
 
     #: List of decorators applied to every method of this class.
-    #:
-    #: If a subclass must add more decorators, prepend them to this list::
-    #:
-    #:     class MyView(ModelView):
-    #:         decorators = [my_decorator] + ModelView.decorators
-    #:
-    #: This way, the :data:`mimerender` function appears last. It must appear
-    #: last so that it can render the returned dictionary.
-    decorators = [requires_json_api_accept, requires_json_api_mimetype,
-                  mimerender]
+    decorators = [requires_json_api_accept, requires_json_api_mimetype]
 
     def __init__(self, session, model, *args, **kw):
         super(ModelView, self).__init__(*args, **kw)
@@ -1674,7 +1586,7 @@ class APIBase(ModelView):
         processor_type = 'GET_{0}'.format(self.resource_processor_type(**kw))
         for postprocessor in self.postprocessors[processor_type]:
             postprocessor(result=result)
-        return result, 200
+        return jsonpify(result), 200
 
     def _get_collection_helper(self, resource=None, relation_name=None,
                                filters=None, sort=None, group_by=None,
@@ -1810,9 +1722,7 @@ class APIBase(ModelView):
             # `errors_from_serialization_exception()`.
             return errors_from_serialization_exceptions(e.exceptions,
                                                         included=True)
-        if 'included' not in result:
-            result['included'] = []
-        result['included'].extend(included)
+        result.setdefault('included', []).extend(included)
 
         # This method could have been called on either a request to
         # fetch a collection of resources or a to-many relation.
@@ -1823,17 +1733,10 @@ class APIBase(ModelView):
             postprocessor(result=result, filters=filters, sort=sort,
                           group_by=group_by, single=single)
         # Add the metadata to the JSON API response object.
-        #
-        # HACK Provide the headers directly in the result dictionary, so that
-        # the :func:`jsonpify` function has access to them. See the note there
-        # for more information. They don't really need to be under the ``meta``
-        # key, that's just for semantic consistency.
         status = 200
-        meta = {_HEADERS: headers, _STATUS: status, 'total': num_results}
-        if 'meta' not in result:
-            result['meta'] = {}
-        result['meta'].update(meta)
-        return result, status, headers
+        meta = {'total': num_results}
+        result.setdefault('meta', {}).update(meta)
+        return jsonpify(result), 200, headers
 
     def resources_to_include(self, instance):
         """Returns a set of resources to include in a compound document
