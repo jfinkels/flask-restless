@@ -20,6 +20,42 @@ specification.
    updating
    updatingrelationships
 
+Schema at root endpoint
+-----------------------
+
+A :http:method:`GET` request to the root endpoint responds with a valid JSON
+API document whose `meta` element contains a `urls` object, which itself
+contains one member for each resource object exposed by the API. For example, a
+request like
+
+.. sourcecode:: http
+
+   GET /api HTTP/1.1
+   Host: example.com
+   Accept: application/vnd.api+json
+
+yields the response
+
+.. sourcecode:: http
+
+   HTTP/1.1 200 OK
+   Content-Type: application/vnd.api+json
+
+   {
+     "data": null,
+     "jsonapi": {
+       "version": "1.0"
+     },
+     "included": [],
+     "links": {},
+     "meta": {
+       "urls": {
+         "article": "http://example.com/api/article",
+         "person": "http://example.com/api/person",
+       }
+     }
+   }
+
 .. _idstring:
 
 Resource ID must be a string

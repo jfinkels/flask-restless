@@ -19,6 +19,7 @@ that do most of the work.
 """
 from .base import CONTENT_TYPE
 from .base import ProcessingException
+from .base import SchemaView
 from .resources import API
 from .relationships import RelationshipAPI
 from .function import FunctionAPI
@@ -29,4 +30,5 @@ __all__ = [
     'FunctionAPI',
     'ProcessingException',
     'RelationshipAPI',
+    'SchemaView',
 ]

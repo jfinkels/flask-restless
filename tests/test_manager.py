@@ -263,6 +263,31 @@ class TestLocalAPIManager(SQLAlchemyTestBase):
     #     response = self.app.get('/bar/person')
     #     assert response.status_code == 404
 
+    def test_schema_app_in_constructor(self):
+        manager = APIManager(self.flaskapp, session=self.session)
+        manager.create_api(self.Article)
+        manager.create_api(self.Person)
+        response = self.app.get('/api')
+        self.assertEqual(response.status_code, 200)
+        document = loads(response.data)
+        urls = document['meta']['urls']
+        self.assertEqual(sorted(urls), ['article', 'person'])
+        self.assertTrue(urls['article'].endswith('/api/article'))
+        self.assertTrue(urls['person'].endswith('/api/person'))
+
+    def test_schema_init_app(self):
+        manager = APIManager(session=self.session)
+        manager.create_api(self.Article)
+        manager.create_api(self.Person)
+        manager.init_app(self.flaskapp)
+        response = self.app.get('/api')
+        self.assertEqual(response.status_code, 200)
+        document = loads(response.data)
+        urls = document['meta']['urls']
+        self.assertEqual(sorted(urls), ['article', 'person'])
+        self.assertTrue(urls['article'].endswith('/api/article'))
+        self.assertTrue(urls['person'].endswith('/api/person'))
+
 
 class TestAPIManager(ManagerTestBase):
     """Unit tests for the :class:`flask_restless.manager.APIManager` class."""

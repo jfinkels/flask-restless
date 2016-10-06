@@ -34,6 +34,7 @@ from .serialization import DefaultDeserializer
 from .views import API
 from .views import FunctionAPI
 from .views import RelationshipAPI
+from .views import SchemaView
 
 #: The names of HTTP methods that allow fetching information.
 READONLY_METHODS = frozenset(('GET', ))
@@ -181,6 +182,24 @@ class APIManager(object):
         #: those models.
         self.created_apis_for = {}
 
+        # TODO In Python 2.7, this can just be
+        #
+        #     self.models = self.created_apis_for.viewkeys()
+        #
+        # and in Python 3+,
+        #
+        #     self.models = self.created_apis_for.keys()
+        #
+        # Since we need to support Python 2.6, we need to manually keep
+        # `self.models` updated on each addition to
+        # `self.created_apis_for`.
+
+        #: The set of models for which an API has been created.
+        #:
+        #: This set matches the set of keys of :attr:`.created_apis_for`
+        #: exactly.
+        self.models = set()
+
         #: List of blueprints created by :meth:`create_api` to be registered
         #: to the app when calling :meth:`init_app`.
         self.blueprints = []
@@ -215,6 +234,43 @@ class APIManager(object):
 
         """
         return APIManager.APINAME_FORMAT.format(collection_name)
+
+    def _create_schema(self):
+        """Create a blueprint with an endpoint that exposes the API schema.
+
+        This method returns an instance of :class:`flask.Blueprint` that
+        has a single route at the top-level that exposes the URLs for
+        each created API; for example, `GET /api` yields a response that
+        indicates
+
+        .. sourcecode:: json
+
+           {
+            "person": "http://example.com/api/person",
+            "article": "http://example.com/api/person"
+           }
+
+        The view provided by this blueprint depends on the value of
+        :attr:`.models`, so changes to :attr:`.models` will be reflected
+        in the response.
+
+        """
+        # It is important that `self.models` is being passed as
+        # reference here, since it will be updated each time
+        # `create_api` is called (in the setting where APIManager is
+        # provided with a Flask object at instantiation time).
+        schema_view = SchemaView.as_view('schemaview', self.models)
+        url_prefix = self.url_prefix or DEFAULT_URL_PREFIX
+
+        # The name of this blueprint must be unique, so in order to
+        # accomodate the situation where we have multiple APIManager
+        # instances calling `init_app` on a single Flask instance, we
+        # append the ID of this APIManager object to the name of the
+        # blueprint.
+        name = 'manager{0}.schema'.format(id(self))
+        blueprint = Blueprint(name, __name__, url_prefix=url_prefix)
+        blueprint.add_url_rule('', view_func=schema_view)
+        return blueprint
 
     def model_for(self, collection_name):
         """Returns the SQLAlchemy model class whose type is given by the
@@ -323,7 +379,6 @@ class APIManager(object):
         return self.created_apis_for[model].primary_key
 
     def init_app(self, app):
-
         """Registers any created APIs on the given Flask application.
 
         This function should only be called if no Flask application was
@@ -384,6 +439,9 @@ class APIManager(object):
         # Register any queued blueprints on the given application.
         for blueprint in self.blueprints:
             app.register_blueprint(blueprint)
+        # Create a view for the top-level endpoint that returns the schema.
+        blueprint = self._create_schema()
+        app.register_blueprint(blueprint)
 
     def create_api_blueprint(self, name, model, methods=READONLY_METHODS,
                              url_prefix=None, collection_name=None,
@@ -773,6 +831,7 @@ class APIManager(object):
         # the specified model.
         self.created_apis_for[model] = APIInfo(collection_name, blueprint.name,
                                                serializer, primary_key)
+        self.models.add(model)
         return blueprint
 
     def create_api(self, *args, **kw):
@@ -837,3 +896,11 @@ class APIManager(object):
         # application.
         if self.app is not None:
             self.app.register_blueprint(blueprint)
+            # If this is the first blueprint, create a schema
+            # endpoint. It will be updated indirectly each time
+            # `create_api_blueprint` is called, so it is not necessary
+            # to make any further modifications to the registered
+            # blueprint.
+            if len(self.blueprints) == 1:
+                blueprint = self._create_schema()
+                self.app.register_blueprint(blueprint)
