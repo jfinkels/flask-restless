@@ -51,7 +51,7 @@ class TestNetworkOperators(SearchTestBase):
         # tables in the PostgreSQL database.
         try:
             self.Base.metadata.create_all()
-        except OperationalError as e:
+        except OperationalError:
             self.skipTest('error creating tables in PostgreSQL database')
         self.manager.create_api(Network)
 
