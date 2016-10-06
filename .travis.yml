@@ -15,6 +15,10 @@ python:
   # PyPy3 currently supports Python 3.2, which Flask does not support.
   # - "pypy3"
 
+env:
+  - WITHSIMPLEJSON=true
+  - WITHSIMPLEJSON=false
+
 addons:
   # HACK Need to update the installed version of PostgreSQL, because it doesn't
   # implement all of the network operators (specifically the &&
@@ -46,6 +50,11 @@ install:
   - pip install --upgrade pip
   # Install the test requirements.
   - pip install -r $REQUIREMENTS
+  # Install simplejson, if necessary for this build.
+  - |
+    if [[ "$WITHSIMPLEJSON" = true ]]; then
+      pip install simplejson
+    fi
   # Install the requirements specific to Travis tests.
   - pip install -r requirements-doc.txt
   - pip install flake8 coveralls
