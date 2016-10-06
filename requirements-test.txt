@@ -1,5 +1,2 @@
 -r requirements.txt
 unittest2
-
-# For testing PostgreSQL specific operations...
-testing.postgresql
