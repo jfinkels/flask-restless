@@ -20,10 +20,9 @@ env:
   - WITHSIMPLEJSON=false
 
 addons:
-  # HACK Need to update the installed version of PostgreSQL, because it doesn't
-  # implement all of the network operators (specifically the &&
-  # operator). Travis claims that version 9.4 is installed by default, but it
-  # claims that && is unknown unless this addon is here.
+  # The default Travis build environment uses PostgreSQL 9.1, but some of the
+  # network operators (specifically the && operator) do not exist until version
+  # 9.4, so we manually specify the newer version.
   postgresql: "9.4"
   apt:
     packages:
@@ -60,6 +59,10 @@ install:
   - pip install flake8 coveralls
   # Install Flask-Restless so that it is available for the documentation build.
   - python setup.py install
+
+before_script:
+  # Create the PostgreSQL database for testing PostgreSQL-specific operators.
+  - psql -c 'create database testdb;' -U postgres
 
 script:
   # Code style checks. Flake8 doesn't support Python 2.6.
