@@ -942,6 +942,25 @@ class TestUpdating(ManagerTestBase):
         assert response.status_code == 204
         assert article.type == u'bar'
 
+    def test_integer_id_error_message(self):
+        """Test that an integer ID in the JSON request yields an error.
+
+        For more information, see GitHub issue #534.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        data = {
+            'data': {
+                'type': 'person',
+                'id': 1,
+            }
+        }
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        check_sole_error(response, 409, ['"id" element', 'resource object',
+                                         'must be a JSON string'])
+
 
 class TestProcessors(ManagerTestBase):
     """Tests for pre- and postprocessors."""

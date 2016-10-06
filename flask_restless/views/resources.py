@@ -16,6 +16,8 @@ The main class in this module, :class:`API`, is a
 SQLAlchemy models compatible with the JSON API specification.
 
 """
+import sys
+
 from flask import json
 from flask import request
 from werkzeug.exceptions import BadRequest
@@ -39,6 +41,11 @@ from .base import errors_response
 from .base import MultipleExceptions
 from .base import SingleKeyError
 from .helpers import changes_on_update
+
+STRING_TYPES = (str, )
+
+if sys.version_info < (3, 0):
+    STRING_TYPES += (unicode, )  # noqa
 
 
 def errors_from_deserialization_exceptions(exceptions, included=False):
@@ -685,6 +692,13 @@ class API(APIBase):
         if type_ != self.collection_name:
             detail = 'expected type {0}, not {1}'
             detail = detail.format(self.collection_name, type_)
+            return error_response(409, detail=detail)
+        # Check that the ID is a string, as required by the "Resource
+        # Object: Identification" section of the JSON API specification.
+        if not isinstance(id_, STRING_TYPES):
+            detail = ('The "id" element of the resource object must be a JSON'
+                      ' string: {0}')
+            detail = detail.format(id_)
             return error_response(409, detail=detail)
         if id_ != resource_id:
             message = 'ID must be {0}, not {1}'.format(resource_id, id_)
