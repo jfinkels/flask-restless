@@ -52,8 +52,7 @@ class TestNetworkOperators(SearchTestBase):
         try:
             self.Base.metadata.create_all()
         except OperationalError as e:
-            raise e
-            # self.skipTest('error creating tables in PostgreSQL database')
+            self.skipTest('error creating tables in PostgreSQL database')
         self.manager.create_api(Network)
 
     def database_uri(self):
