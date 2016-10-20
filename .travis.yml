@@ -16,8 +16,18 @@ python:
   # - "pypy3"
 
 env:
-  - WITHSIMPLEJSON=true
-  - WITHSIMPLEJSON=false
+  - WITHSIMPLEJSON=false WITHFUTURE=false
+  - WITHSIMPLEJSON=false WITHFUTURE=true
+  - WITHSIMPLEJSON=true WITHFUTURE=false
+  - WITHSIMPLEJSON=true WITHFUTURE=true
+
+# The "future" package does not support PyPy, according to their FAQ.
+matrix:
+  exclude:
+  - python: "pypy"
+    env: WITHSIMPLEJSON=false WITHFUTURE=true
+  - python: "pypy"
+    env: WITHSIMPLEJSON=true WITHFUTURE=true
 
 addons:
   # The default Travis build environment uses PostgreSQL 9.1, but some of the
@@ -53,6 +63,11 @@ install:
   - |
     if [[ "$WITHSIMPLEJSON" = true ]]; then
       pip install simplejson
+    fi
+  # Install future, if necessary for this build.
+  - |
+    if [[ "$WITHFUTURE" = true ]]; then
+      pip install future
     fi
   # Install the requirements specific to Travis tests.
   - pip install -r requirements-doc.txt

@@ -21,9 +21,23 @@ testing code decoupled from the serialization implementation.
 from datetime import datetime
 from datetime import time
 from datetime import timedelta
+from unittest2 import skipUnless
 from uuid import UUID
 from uuid import uuid1
+import warnings
 
+try:
+    # HACK The future package uses code that is pending deprecation in
+    # Python 3.4 or later. We catch the warning here so that the test
+    # suite does not complain about it.
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', category=PendingDeprecationWarning)
+        from future.standard_library import install_aliases
+    install_aliases()
+except ImportError:
+    is_future_available = False
+else:
+    is_future_available = True
 from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
@@ -578,6 +592,21 @@ class TestFetchResource(ManagerTestBase):
         self.assertEqual(tag['id'], '1')
         self.assertEqual(tag['type'], 'tag')
         self.assertEqual(tag['attributes']['tagid'], 1)
+
+    @skipUnless(is_future_available, 'required "future" library')
+    def test_unicode_self_link(self):
+        """Test that serializing the "self" link handles unicode on Python 2.
+
+        This is a specific test for code using the :mod:`future` library.
+
+        For more information, see GitHub issue #594.
+
+        """
+        person = self.Person(id=1)
+        self.session.add(person)
+        self.session.commit()
+        self.manager.create_api(self.Person)
+        self.app.get('/api/person/1')
 
 
 class TestFetchRelation(ManagerTestBase):

@@ -71,6 +71,14 @@ else:
         return (td.microseconds + secs * 10**6) / 10**6
 
 
+def to_unicode(s):
+    """Convert a string to a Unicode string, if on Python 2."""
+    try:
+        return unicode(s)  # noqa
+    except NameError:
+        return s
+
+
 def create_relationship(model, instance, relation):
     """Creates a relationship from the given relation name.
 
@@ -379,6 +387,11 @@ class DefaultSerializer(Serializer):
             except BuildError:
                 pass
             else:
+                # HACK In order to support users using Python 2.7 with
+                # the `future` compatibility library, we need to ensure
+                # that both `request.url_root` and `path` are of the
+                # same type.
+                path = to_unicode(path)
                 url = urljoin(request.url_root, path)
                 result['links'] = dict(self=url)
         # # add any included methods
