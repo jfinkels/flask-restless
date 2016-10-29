@@ -30,6 +30,8 @@ Not yet released.
 - :issue:`481,488`: added negation (``not``) operator for search.
 - :issue:`492`: support JSON API recommended "simple" filtering.
 - :issue:`508`: flush the session before postprocessors, and commit after.
+- :issue:`534`: when updating a resource, give a clearer error message if the
+  resource ID in the JSON document is not a JSON string.
 - :issue:`536`: adds support for single-table inheritance.
 - :issue:`540`: correctly support models that don't have a column named "id".
 - :issue:`546`: adds support for joined table inheritance.
