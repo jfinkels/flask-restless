@@ -17,7 +17,7 @@ The classes :class:`API`, :class:`FunctionAPI`, and
 that do most of the work.
 
 """
-from .base import CONTENT_TYPE
+from .base import JSONAPI_MIMETYPE
 from .base import ProcessingException
 from .base import SchemaView
 from .resources import API
@@ -26,8 +26,8 @@ from .function import FunctionAPI
 
 __all__ = [
     'API',
-    'CONTENT_TYPE',
     'FunctionAPI',
+    'JSONAPI_MIMETYPE',
     'ProcessingException',
     'RelationshipAPI',
     'SchemaView',

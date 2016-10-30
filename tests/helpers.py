@@ -42,10 +42,10 @@ from sqlalchemy.types import TypeDecorator
 
 from flask_restless import APIManager
 from flask_restless import collection_name
-from flask_restless import CONTENT_TYPE
 from flask_restless import DefaultSerializer
 from flask_restless import DefaultDeserializer
 from flask_restless import DeserializationException
+from flask_restless import JSONAPI_MIMETYPE
 from flask_restless import model_for
 from flask_restless import primary_key_for
 from flask_restless import SerializationException
@@ -214,7 +214,7 @@ def force_content_type_jsonapi(test_client):
                 kw['headers'] = dict()
             headers = kw['headers']
             if 'content_type' not in kw and 'Content-Type' not in headers:
-                kw['content_type'] = CONTENT_TYPE
+                kw['content_type'] = JSONAPI_MIMETYPE
             return func(*args, **kw)
         return new_func
 

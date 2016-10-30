@@ -38,6 +38,7 @@ from .base import error
 from .base import error_response
 from .base import errors_from_serialization_exceptions
 from .base import errors_response
+from .base import jsonpify
 from .base import MultipleExceptions
 from .base import SingleKeyError
 from .helpers import changes_on_update
@@ -442,7 +443,7 @@ class API(APIBase):
         if not was_deleted:
             detail = 'There was no instance to delete.'
             return error_response(404, detail=detail)
-        return {}, 204
+        return jsonpify({}), 204
 
     def post(self):
         """Creates a new resource based on request data.
@@ -507,7 +508,7 @@ class API(APIBase):
         for postprocessor in self.postprocessors['POST_RESOURCE']:
             postprocessor(result=result)
         self.session.commit()
-        return result, status, headers
+        return jsonpify(result), status, headers
 
     def _update_instance(self, instance, data, resource_id):
         """Updates the attributes and relationships of the specified instance
@@ -725,4 +726,4 @@ class API(APIBase):
         for postprocessor in self.postprocessors['PATCH_RESOURCE']:
             postprocessor(result=result)
         self.session.commit()
-        return result, status
+        return jsonpify(result), status

@@ -25,7 +25,7 @@ from sqlalchemy import Column
 from sqlalchemy import Unicode
 from sqlalchemy import Integer
 
-from flask_restless import CONTENT_TYPE
+from flask_restless import JSONAPI_MIMETYPE
 
 from ..helpers import check_sole_error
 from ..helpers import dumps
@@ -66,7 +66,7 @@ class TestServerResponsibilities(ManagerTestBase):
 
         """
         response = self.app.get('/api/person')
-        assert response.mimetype == CONTENT_TYPE
+        assert response.mimetype == JSONAPI_MIMETYPE
 
     def test_post_content_type(self):
         """"Tests that a response to a :http:method:`post` request has
@@ -85,7 +85,7 @@ class TestServerResponsibilities(ManagerTestBase):
         """
         data = {'data': {'type': 'person'}}
         response = self.app.post('/api/person', data=dumps(data))
-        assert response.mimetype == CONTENT_TYPE
+        assert response.mimetype == JSONAPI_MIMETYPE
 
     @skip('we currently do not support updates that have side-effects')
     def test_patch_content_type(self):
@@ -113,7 +113,7 @@ class TestServerResponsibilities(ManagerTestBase):
         }
         # TODO Need to make a request that has side-effects.
         response = self.app.patch('/api/person/1', data=dumps(data))
-        assert response.mimetype == CONTENT_TYPE
+        assert response.mimetype == JSONAPI_MIMETYPE
 
     def test_no_response_media_type_params(self):
         """"Tests that a server responds with :http:status:`415` if any
@@ -131,7 +131,7 @@ class TestServerResponsibilities(ManagerTestBase):
                 'type': 'person',
             }
         }
-        headers = {'Content-Type': '{0}; version=1'.format(CONTENT_TYPE)}
+        headers = {'Content-Type': '{0}; version=1'.format(JSONAPI_MIMETYPE)}
         response = self.app.post('/api/person', data=dumps(data),
                                  headers=headers)
         check_sole_error(response, 415, ['Content-Type',
@@ -166,7 +166,7 @@ class TestServerResponsibilities(ManagerTestBase):
            http://jsonapi.org/format/#content-negotiation-servers
 
         """
-        headers = {'Accept': CONTENT_TYPE}
+        headers = {'Accept': JSONAPI_MIMETYPE}
         response = self.app.get('/api/person', headers=headers)
         assert response.status_code == 200
         document = loads(response.data)
@@ -184,6 +184,6 @@ class TestServerResponsibilities(ManagerTestBase):
            http://jsonapi.org/format/#content-negotiation-servers
 
         """
-        headers = {'Accept': '{0}; q=.8, {0}; q=.9'.format(CONTENT_TYPE)}
+        headers = {'Accept': '{0}; q=.8, {0}; q=.9'.format(JSONAPI_MIMETYPE)}
         response = self.app.get('/api/person', headers=headers)
         check_sole_error(response, 406, ['Accept', 'media type parameter'])
