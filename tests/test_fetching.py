@@ -33,6 +33,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
+from sqlalchemy import Table
 from sqlalchemy import Unicode
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -1635,83 +1636,91 @@ class TestAssociationProxy(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        """Creates the database, the :class:`~flask.Flask` object, the
-        :class:`~flask_restless.manager.APIManager` for that application,
-        and creates the ReSTful API endpoints for the models used in the test
-        methods.
+    def test_association_object(self):
+        """Test for fetching a resource that has a many-to-many relation that
+        uses an association object with an association proxy.
+
+        We serialize an association proxy that proxies a collection of
+        model instances via an association object as a relationship.
 
         """
-        super(TestAssociationProxy, self).setUp()
 
         class Article(self.Base):
             __tablename__ = 'article'
             id = Column(Integer, primary_key=True)
+            articletags = relationship('ArticleTag')
             tags = association_proxy('articletags', 'tag',
                                      creator=lambda tag: ArticleTag(tag=tag))
-            # tag_names = association_proxy('tags', 'name',
-            #                            creator=lambda name: Tag(name=name))
 
         class ArticleTag(self.Base):
             __tablename__ = 'articletag'
             article_id = Column(Integer, ForeignKey('article.id'),
                                 primary_key=True)
-            article = relationship(Article, backref=backref('articletags'))
             tag_id = Column(Integer, ForeignKey('tag.id'), primary_key=True)
             tag = relationship('Tag')
-            # TODO this dummy column is required to create an API for this
-            # object.
-            id = Column(Integer)
 
         class Tag(self.Base):
             __tablename__ = 'tag'
             id = Column(Integer, primary_key=True)
             name = Column(Unicode)
 
-        self.Article = Article
-        self.Tag = Tag
         self.Base.metadata.create_all()
         self.manager.create_api(Article)
-        # HACK Need to create APIs for these other models because otherwise
-        # we're not able to create the link URLs to them.
-        #
-        # TODO Fix this by simply not creating links to related models for
-        # which no API has been made.
         self.manager.create_api(Tag)
-        self.manager.create_api(ArticleTag)
 
-    def test_fetch(self):
-        """Test for fetching a resource that has a many-to-many relation that
-        uses an association proxy.
-
-        """
-        article = self.Article(id=1)
-        tag = self.Tag(id=1)
-        article.tags.append(tag)
+        article = Article(id=1)
+        tag = Tag(id=1)
+        article.tags = [tag]
         self.session.add_all([article, tag])
         self.session.commit()
+
         response = self.app.get('/api/article/1')
         document = loads(response.data)
         article = document['data']
         tags = article['relationships']['tags']['data']
         assert ['1'] == sorted(tag['id'] for tag in tags)
 
-    @skip('Not sure how to implement this.')
-    def test_scalar(self):
+    def test_scalar_list(self):
         """Tests for fetching an association proxy to scalars as a list
         attribute instead of a link object.
 
+        We serialize an association proxy that proxies a collection of
+        scalar values via an association table as a JSON list.
+
         """
-        article = self.Article(id=1)
-        tag1 = self.Tag(name=u'foo')
-        tag2 = self.Tag(name=u'bar')
-        article.tags = [tag1, tag2]
-        self.session.add_all([article, tag1, tag2])
+
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            tags = relationship('Tag', secondary=lambda: articletags_table)
+            tag_names = association_proxy('tags', 'name',
+                                          creator=lambda s: Tag(name=s))
+
+        class Tag(self.Base):
+            __tablename__ = 'tag'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+
+        articletags_table = \
+            Table('articletags', self.Base.metadata,
+                  Column('article_id', Integer, ForeignKey('article.id'),
+                         primary_key=True),
+                  Column('tag_id', Integer, ForeignKey('tag.id'),
+                         primary_key=True))
+
+        self.Base.metadata.create_all()
+        self.manager.create_api(Article)
+
+        article = Article(id=1)
+        article.tag_names = ['foo', 'bar']
+        self.session.add(article)
         self.session.commit()
+
         response = self.app.get('/api/article/1')
         document = loads(response.data)
         article = document['data']
-        assert ['bar', 'foo'] == sorted(article['attributes']['tag_names'])
+        tag_names = sorted(article['attributes']['tag_names'])
+        self.assertEqual(tag_names, ['bar', 'foo'])
 
 
 class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):

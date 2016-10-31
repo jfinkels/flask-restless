@@ -31,6 +31,9 @@ except ImportError:
 
 from flask import request
 from sqlalchemy.exc import NoInspectionAvailable
+from sqlalchemy.ext.associationproxy import _AssociationDict
+from sqlalchemy.ext.associationproxy import _AssociationList
+from sqlalchemy.ext.associationproxy import _AssociationSet
 from sqlalchemy.ext.hybrid import HYBRID_PROPERTY
 from sqlalchemy.inspection import inspect
 from werkzeug.routing import BuildError
@@ -38,6 +41,7 @@ from werkzeug.urls import url_quote_plus
 
 from .exceptions import SerializationException
 from .exceptions import MultipleExceptions
+from ..helpers import assoc_proxy_scalar_collections
 from ..helpers import collection_name
 from ..helpers import foreign_keys
 from ..helpers import get_model
@@ -279,18 +283,23 @@ class DefaultSerializer(Serializer):
         except NoInspectionAvailable:
             message = 'failed to get columns for model {0}'.format(model)
             raise SerializationException(instance, message=message)
+
+        # Determine the columns to serialize as "attributes".
+        #
+        # This include plain old columns (like strings and integers, for
+        # example), hybrid properties, and association proxies to scalar
+        # collections (like a list of strings, for example).
         column_attrs = inspected_instance.column_attrs.keys()
+        assoc_scalars = list(assoc_proxy_scalar_collections(model))
         descriptors = inspected_instance.all_orm_descriptors.items()
-        # hybrid_columns = [k for k, d in descriptors
-        #                   if d.extension_type == hybrid.HYBRID_PROPERTY
-        #                   and not (deep and k in deep)]
         hybrid_columns = [k for k, d in descriptors
                           if d.extension_type == HYBRID_PROPERTY]
-        columns = column_attrs + hybrid_columns
+        columns = column_attrs + assoc_scalars + hybrid_columns
         # Also include any attributes specified by the user.
         if self.additional_attributes is not None:
             columns += self.additional_attributes
 
+        # Serialize each attribute, excluding those that should be excluded.
         attributes = {}
         foreign_key_columns = foreign_keys(model)
         pk_name = primary_key_for(model)
@@ -322,6 +331,15 @@ class DefaultSerializer(Serializer):
             value = getattr(instance, column)
             if callable(value):
                 value = value()
+            # Attributes values that come from association proxy
+            # collections need to be cast to plain old Python data types
+            # so that the JSON serializer can handle them.
+            if isinstance(value, _AssociationList):
+                value = list(value)
+            elif isinstance(value, _AssociationSet):
+                value = set(value)
+            elif isinstance(value, _AssociationDict):
+                value = dict(value)
             # Serialize any date- or time-like objects that appear in
             # the attributes.
             #
@@ -370,6 +388,7 @@ class DefaultSerializer(Serializer):
         result = dict(id=id_, type=type_)
         if attributes:
             result['attributes'] = attributes
+
         # Add the self link unless it has been explicitly excluded.
         is_self_in_default = (self.default_fields is None or
                               'self' in self.default_fields)
@@ -419,25 +438,29 @@ class DefaultSerializer(Serializer):
                 result['id'] = str(result['id'])
             except UnicodeEncodeError:
                 result['id'] = url_quote_plus(result['id'].encode('utf-8'))
-        # If there are relations to convert to dictionary form, put them into a
-        # special `links` key as required by JSON API.
-        relations = get_relations(model)
-        if self.default_fields is not None:
-            relations = [r for r in relations if r in self.default_fields]
-        # Only consider those relations listed in `only`.
-        if only is not None:
-            relations = [r for r in relations if r in only]
-        # Exclude relations specified by the user during the instantiation of
-        # this object.
-        if self.exclude is not None:
-            relations = [r for r in relations if r not in self.exclude]
-        if not relations:
-            return result
-        # For the sake of brevity, rename this function.
-        cr = create_relationship
-        # TODO In Python 2.7 and later, this should be a dict comprehension.
-        result['relationships'] = dict((rel, cr(model, instance, rel))
-                                       for rel in relations)
+
+        # Serialize each relationship, excluding those that should be excluded.
+        relationships = {}
+        for r in get_relations(model):
+            # Only include fields allowed by the user during the
+            # instantiation of this object.
+            if self.default_fields is not None \
+               and r not in self.default_fields:
+                continue
+            # If `only` is a list, only include those columns that are
+            # in the list.
+            if only is not None and r not in only:
+                continue
+            # Exclude columns specified by the user during the
+            # instantiation of this object.
+            if self.exclude is not None and r in self.exclude:
+                continue
+            # Serialize the relationship.
+            relationships[r] = create_relationship(model, instance, r)
+
+        if relationships:
+            result['relationships'] = relationships
+
         return result
 
     def serialize(self, instance, only=None):

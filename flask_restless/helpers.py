@@ -32,7 +32,7 @@ from sqlalchemy import Interval
 from sqlalchemy import Time
 from sqlalchemy.exc import NoInspectionAvailable
 from sqlalchemy.ext.associationproxy import AssociationProxy
-from sqlalchemy.orm import RelationshipProperty as RelProperty
+from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.sql import func
 from sqlalchemy.sql.expression import ColumnElement
 from sqlalchemy.inspection import inspect as sqlalchemy_inspect
@@ -65,53 +65,149 @@ def session_query(session, model):
     return session.query(model)
 
 
+def assoc_proxy_scalar_collections(model):
+    """Yields the name of each association proxy collection as a string.
+
+    This includes each association proxy that proxies to a scalar
+    collection (for example, a list of strings) via an association
+    table. It excludes each association proxy that proxies to a
+    collection of instances (for example, a to-many relationship) via an
+    association object.
+
+    .. seealso::
+
+       :func:`assoc_proxy_inst_collections`
+
+    .. versionadded:: 1.0.0
+
+    """
+    mapper = sqlalchemy_inspect(model)
+    for k, v in mapper.all_orm_descriptors.items():
+        if isinstance(v, AssociationProxy) \
+           and not isinstance(v.remote_attr.property, RelationshipProperty) \
+           and is_like_list(model, v.local_attr.key):
+            yield k
+
+
 def get_relations(model):
-    """Returns a list of relation names of `model` (as a list of strings).
+    """Yields the name of each relationship of a model as a string.
 
     For a relationship via an association proxy, this function shows
     only the remote attribute, not the intermediate relationship. For
     example, if there is a table for ``Article`` and ``Tag`` and a table
     associating the two via a many-to-many relationship, ::
 
-        >>> from sqlalchemy.ext.declarative import declarative_base
-        >>>
-        >>> Base = declarative_base()
-        >>> class Article(Base):
-        ...     __tablename__ = 'article'
-        ...     id = Column(Integer, primary_key=True)
-        ...     tags = association_proxy('articletags', 'tag')
-        ...
-        >>> class ArticleTag(Base):
-        ...     __tablename__ = 'articletag'
-        ...     article_id = Column(Integer, ForeignKey('article.id'),
-        ...                         primary_key=True)
-        ...     article = relationship(Article, backref=backref('articletags'))
-        ...     tag_id = Column(Integer, ForeignKey('tag.id'),
-        ...                     primary_key=True)
-        ...     tag = relationship('Tag')
-        ...
-        >>> class Tag(Base):
-        ...     __tablename__ = 'tag'
-        ...     id = Column(Integer, primary_key=True)
-        ...     name = Column(Unicode)
-        ...
-        >>> get_relations(Article)
+        from sqlalchemy import Column
+        from sqlalchemy import ForeignKey
+        from sqlalchemy import Integer
+        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.orm import relationship
+
+        Base = declarative_base()
+
+        class Article(Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            articletags = relationship('ArticleTag')
+            tags = association_proxy('articletags', 'tag',
+                                     creator=lambda tag: ArticleTag(tag=tag))
+
+        class ArticleTag(Base):
+            __tablename__ = 'articletag'
+            article_id = Column(Integer, ForeignKey('article.id'),
+                                primary_key=True)
+            tag_id = Column(Integer, ForeignKey('tag.id'), primary_key=True)
+            tag = relationship('Tag')
+
+        class Tag(self.Base):
+            __tablename__ = 'tag'
+            id = Column(Integer, primary_key=True)
+
+    then this function reveals the ``tags`` proxy::
+
+        >>> list(get_relations(Article))
         ['tags']
+
+    On the other hand, this will *not* show association proxies that
+    proxy to a scalar collection via an association table. For example,
+    if there is an association proxy for a scalar collection like this::
+
+        from sqlalchemy import Column
+        from sqlalchemy import ForeignKey
+        from sqlalchemy import Integer
+        from sqlalchemy import Table
+        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.orm import relationship
+
+        Base = declarative_base()
+
+        class Article(Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            tags = relationship('Tag', secondary=lambda: articletags_table)
+            tag_names = association_proxy('tags', 'name',
+                                          creator=lambda s: Tag(name=s))
+
+        class Tag(self.Base):
+            __tablename__ = 'tag'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+
+        articletags_table = \
+            Table('articletags', Base.metadata,
+                  Column('article_id', Integer, ForeignKey('article.id'),
+                         primary_key=True),
+                  Column('tag_id', Integer, ForeignKey('tag.id'),
+                         primary_key=True)
+            )
+
+    then this function yields only the ``tags`` relationship, not the
+    ``tag_names`` attribute::
+
+        >>> list(get_relations(Article))
+        []
 
     """
     mapper = sqlalchemy_inspect(model)
+
     # If we didn't have to deal with association proxies, we could just
-    # do `return list(mapper.relationships)`, but we want to replace all
-    # association attributes with the actual remote attributes, as the
-    # user would expect. Therefore, we get a dictionary mapping
-    # relationship name to association proxy local attribute name, then
-    # replace the key with the value wherever such a key appears in the
-    # list of relationships.
-    alldescriptors = mapper.all_orm_descriptors.items()
-    # TODO In Python 2.7+, this should be a dict comprehension.
-    association_proxies = dict((v.local_attr.key, k) for k, v in alldescriptors
-                               if isinstance(v, AssociationProxy))
-    return [association_proxies.get(r, r) for r in mapper.relationships.keys()]
+    # do `return list(mapper.relationships)`.
+    #
+    # However, we need to deal with (at least) two different usages of
+    # association proxies: one in which the proxy is to a scalar
+    # collection (like a list of strings) and one in which the proxy is
+    # to a collection of instances (like a to-many relationship).
+    #
+    # First we record each association proxy and the the local attribute
+    # through which it proxies. This information is stored in a mapping
+    # from local attribute key to proxy name. For example, an
+    # association proxy defined like this::
+    #
+    #     tags = associationproxy('articletags', 'tag')
+    #
+    # is stored below as a dictionary entry mapping 'articletags' to
+    # 'tags'.
+    association_proxies = {}
+    for k, v in mapper.all_orm_descriptors.items():
+        if isinstance(v, AssociationProxy):
+            association_proxies[v.local_attr.key] = k
+
+    # Next we determine which association proxies represent scalar
+    # collections as opposed to to-many relationships. We need to ignore
+    # these.
+    scalar_collections = set(assoc_proxy_scalar_collections(model))
+
+    # Finally we find all plain old relationships and all association
+    # proxy relationships.
+    #
+    # We exclude those assocation proxies that are for scalar
+    # collections.
+    for r in mapper.relationships.keys():
+        if r in association_proxies:
+            if association_proxies[r] not in scalar_collections:
+                yield association_proxies[r]
+        else:
+            yield r
 
 
 def get_related_model(model, relationname):
@@ -238,7 +334,7 @@ def get_field_type(model, fieldname):
         field = field.remote_attr
     if hasattr(field, 'property'):
         prop = field.property
-        if isinstance(prop, RelProperty):
+        if isinstance(prop, RelationshipProperty):
             return None
         return prop.columns[0].type
     return None
