@@ -291,77 +291,78 @@ class DefaultSerializer(Serializer):
         if self.additional_attributes is not None:
             columns += self.additional_attributes
 
-        # Only include fields allowed by the user during the instantiation of
-        # this object.
-        if self.default_fields is not None:
-            columns = (c for c in columns if c in self.default_fields)
-        # If `only` is a list, only include those columns that are in the list.
-        if only is not None:
-            columns = (c for c in columns if c in only)
-
-        # Exclude columns specified by the user during the instantiation of
-        # this object.
-        if self.exclude is not None:
-            columns = (c for c in columns if c not in self.exclude)
-        # Exclude column names that are blacklisted.
-        columns = (c for c in columns
-                   if not c.startswith('__') and c not in COLUMN_BLACKLIST)
-        # Exclude column names that are foreign keys (unless the foreign
-        # key is the primary key for the model; this can happen in the
-        # joined table inheritance database configuration).
+        attributes = {}
         foreign_key_columns = foreign_keys(model)
-        columns = (c for c in columns if c not in foreign_key_columns or
-                   c == primary_key_for(model))
+        pk_name = primary_key_for(model)
+        for column in columns:
+            # Only include fields allowed by the user during the
+            # instantiation of this object.
+            if self.default_fields is not None \
+               and column not in self.default_fields:
+                continue
+            # If `only` is a list, only include those columns that are
+            # in the list.
+            if only is not None and column not in only:
+                continue
+            # Exclude columns specified by the user during the
+            # instantiation of this object.
+            if self.exclude is not None and column in self.exclude:
+                continue
+            # Exclude column names that are blacklisted.
+            if column.startswith('__') or column in COLUMN_BLACKLIST:
+                continue
+            # Exclude column names that are foreign keys (unless the
+            # foreign key is the primary key for the model; this can
+            # happen in the joined table inheritance database
+            # configuration).
+            if column in foreign_key_columns and column != pk_name:
+                continue
 
-        # Create a dictionary mapping attribute name to attribute value for
-        # this particular instance.
-        #
-        # TODO In Python 2.7 and later, this should be a dict comprehension.
-        attributes = dict((column, getattr(instance, column))
-                          for column in columns)
-        # Call any functions that appear in the result.
-        #
-        # TODO In Python 2.7 and later, this should be a dict comprehension.
-        attributes = dict((k, (v() if callable(v) else v))
-                          for k, v in attributes.items())
-        # Serialize any date- or time-like objects that appear in the
-        # attributes.
-        #
-        # TODO In Flask 0.11, the default JSON encoder for the Flask
-        # application object does this automatically. Alternately, the
-        # user could have set a smart JSON encoder on the Flask
-        # application, which would cause these attributes to be
-        # converted to strings when the Response object is created (in
-        # the `jsonify` function, for example). However, we should not
-        # rely on that JSON encoder since the user could set any crazy
-        # encoder on the Flask application.
-        for key, val in attributes.items():
-            if isinstance(val, (date, datetime, time)):
-                attributes[key] = val.isoformat()
-            elif isinstance(val, timedelta):
-                attributes[key] = total_seconds(val)
-        # Recursively serialize any object that appears in the
-        # attributes. This may happen if, for example, the return value
-        # of one of the callable functions is an instance of another
-        # SQLAlchemy model class.
-        for key, val in attributes.items():
+            # Get the value for this column. Call it if it is callable.
+            value = getattr(instance, column)
+            if callable(value):
+                value = value()
+            # Serialize any date- or time-like objects that appear in
+            # the attributes.
+            #
+            # TODO In Flask 0.11, the default JSON encoder for the Flask
+            # application object does this automatically. Alternately,
+            # the user could have set a smart JSON encoder on the Flask
+            # application, which would cause these attributes to be
+            # converted to strings when the Response object is created
+            # (in the `jsonify` function, for example). However, we
+            # should not rely on that JSON encoder since the user could
+            # set any crazy encoder on the Flask application.
+            if isinstance(value, (date, datetime, time)):
+                value = value.isoformat()
+            elif isinstance(value, timedelta):
+                value = total_seconds(value)
+            # Recursively serialize any object that appears in the
+            # attributes. This may happen if, for example, the return
+            # value of one of the callable functions is an instance of
+            # another SQLAlchemy model class.
+            #
             # This is a bit of a fragile test for whether the object
             # needs to be serialized: we simply check if the class of
             # the object is a mapped class.
-            if is_mapped_class(type(val)):
-                model_ = get_model(val)
+            if is_mapped_class(type(value)):
+                model_ = get_model(value)
                 try:
                     serializer = serializer_for(model_)
-                    serialized_val = serializer.serialize(val)
+                    serialized_val = serializer.serialize(value)
                 except ValueError:
                     # TODO Should this cause an exception, or fail
                     # silently? See similar comments in `views/base.py`.
                     # # raise SerializationException(instance)
-                    serialized_val = simple_serialize(val)
+                    serialized_val = simple_serialize(value)
                 # We only need the data from the JSON API document, not
                 # the metadata. (So really the serializer is doing more
                 # work than it needs to here.)
-                attributes[key] = serialized_val['data']
+                value = serialized_val['data']
+
+            # Set this column's value in the attributes dictionary.
+            attributes[column] = value
+
         # Get the ID and type of the resource.
         id_ = attributes.pop('id', None)
         type_ = collection_name(model)
@@ -407,7 +408,6 @@ class DefaultSerializer(Serializer):
 
         # If the primary key is not named "id", we'll duplicate the
         # primary key under the "id" key.
-        pk_name = primary_key_for(model)
         if pk_name != 'id':
             result['id'] = result['attributes'][pk_name]
         # TODO Same problem as above.
