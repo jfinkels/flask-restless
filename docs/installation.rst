@@ -8,7 +8,7 @@ install with ``pip`` (in a virtual environment provided by ``virtualenv``)::
     pip install Flask-Restless
 
 Flask-Restless supports all Python versions that Flask supports, which
-currently include versions 2.6, 2.7, 3.3, and 3.4.
+currently include versions 2.6, 2.7, 3.3, 3.4, and 3.5.
 
 Flask-Restless has the following dependencies (which will be automatically
 installed if you use ``pip``):
