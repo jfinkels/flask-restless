@@ -30,9 +30,11 @@ following code on the server::
 
     class Person(db.Model):
         id = db.Column(db.Integer, primary_key=True)
+        name = db.Column(db.Unicode)
 
     class Article(db.Model):
         id = db.Column(db.Integer, primary_key=True)
+        title = db.Column(db.Unicode)
         author_id = db.Column(db.Integer, db.ForeignKey('person.id'))
         author = db.relationship(Person, backref=db.backref('articles'))
 
@@ -63,6 +65,9 @@ yields the response
    {
      "data": [
        {
+         "attributes": {
+           "name": "John"
+         },
          "id": "1",
          "links": {
            "self": "http://example.com/api/person/1"
@@ -108,6 +113,9 @@ yields the response
 
    {
      "data": {
+       "attributes": {
+         "name": "John"
+       },
        "id": "1",
        "links": {
          "self": "http://example.com/api/person/1"
@@ -142,6 +150,9 @@ yields the response
 
    {
      "data": {
+       "attributes": {
+         "name": "John"
+       },
        "id": "1",
        "links": {
          "self": "http://example.com/api/person/1"
@@ -182,6 +193,9 @@ yields the response
    {
      "data": [
        {
+         "attributes": {
+           "title": "Once upon a time"
+         },
          "id": "2",
          "links": {
            "self": "http://example.com/api/articles/2"
@@ -230,6 +244,9 @@ yields the response
 
    {
      "data": {
+       "attributes": {
+         "title": "Once upon a time"
+       },
        "id": "2",
        "links": {
          "self": "http://example.com/api/articles/2"
