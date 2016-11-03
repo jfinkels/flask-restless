@@ -21,7 +21,6 @@ specification.
 """
 from __future__ import division
 from datetime import datetime
-from unittest2 import skip
 
 import dateutil
 from sqlalchemy import Column
@@ -30,10 +29,8 @@ from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Interval
-from sqlalchemy import Table
 from sqlalchemy import Time
 from sqlalchemy import Unicode
-from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
@@ -959,121 +956,6 @@ class TestProcessors(ManagerTestBase):
         self.session.rollback()
         person_count = self.session.query(self.Person).count()
         assert person_count == 0
-
-
-class TestAssociationProxy(ManagerTestBase):
-    """Tests for creating an object with a relationship using an association
-    proxy.
-
-    """
-
-    def test_association_object(self):
-        """Test for creating a resource with an assocation object."""
-
-        class Article(self.Base):
-            __tablename__ = 'article'
-            id = Column(Integer, primary_key=True)
-            articletags = relationship('ArticleTag')
-            tags = association_proxy('articletags', 'tag',
-                                     creator=lambda tag: ArticleTag(tag=tag))
-
-        class ArticleTag(self.Base):
-            __tablename__ = 'articletag'
-            article_id = Column(Integer, ForeignKey('article.id'),
-                                primary_key=True)
-            tag_id = Column(Integer, ForeignKey('tag.id'), primary_key=True)
-            tag = relationship('Tag')
-
-        class Tag(self.Base):
-            __tablename__ = 'tag'
-            id = Column(Integer, primary_key=True)
-
-        self.Base.metadata.create_all()
-        self.manager.create_api(Article, methods=['POST'])
-        self.manager.create_api(Tag)
-
-        tag = Tag(id=1)
-        self.session.add(tag)
-        self.session.commit()
-
-        data = {
-            'data': {
-                'type': 'article',
-                'relationships': {
-                    'tags': {
-                        'data': [
-                            {'type': 'tag', 'id': '1'},
-                        ]
-                    }
-                }
-            }
-        }
-        response = self.app.post('/api/article', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
-
-        # Check that the response includes the resource identifiers for
-        # the `tags` relationship.
-        document = loads(response.data)
-        article = document['data']
-        tags = article['relationships']['tags']['data']
-        self.assertEqual(tags, [{'type': 'tag', 'id': '1'}])
-
-        # Check that the Article object has been created and has the
-        # appropriate tags.
-        self.assertEqual(self.session.query(Article).count(), 1)
-        article = self.session.query(Article).first()
-        self.assertEqual(article.tags, [tag])
-
-    def test_scalar_list(self):
-        """Tests for creating with an association proxy to a scalar list."""
-
-        class Article(self.Base):
-            __tablename__ = 'article'
-            id = Column(Integer, primary_key=True)
-            tags = relationship('Tag', secondary=lambda: articletags_table)
-            tag_names = association_proxy('tags', 'name',
-                                          creator=lambda s: Tag(name=s))
-
-        class Tag(self.Base):
-            __tablename__ = 'tag'
-            id = Column(Integer, primary_key=True)
-            name = Column(Unicode)
-
-        articletags_table = \
-            Table('articletags', self.Base.metadata,
-                  Column('article_id', Integer, ForeignKey('article.id'),
-                         primary_key=True),
-                  Column('tag_id', Integer, ForeignKey('tag.id'),
-                         primary_key=True))
-
-        self.Base.metadata.create_all()
-        self.manager.create_api(Article, methods=['POST'])
-
-        # article = Article(id=1)
-        # article.tag_names = ['foo', 'bar']
-        # self.session.add(article)
-        # self.session.commit()
-
-        data = {
-            'data': {
-                'type': 'article',
-                'attributes': {
-                    'tag_names': ['foo', 'bar']
-                }
-            }
-        }
-        response = self.app.post('/api/article', data=dumps(data))
-        self.assertEqual(response.status_code, 201)
-
-        # Check that the response includes the `tag_names` attribute.
-        document = loads(response.data)
-        article = document['data']
-        self.assertEqual(article['attributes']['tag_names'], ['foo', 'bar'])
-
-        # Check that the Article object has been created and has the tag names.
-        self.assertEqual(self.session.query(Article).count(), 1)
-        article = self.session.query(Article).first()
-        self.assertEqual(article.tag_names, ['foo', 'bar'])
 
 
 class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
