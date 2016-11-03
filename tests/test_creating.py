@@ -30,11 +30,11 @@ from sqlalchemy import DateTime
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Interval
+from sqlalchemy import Table
 from sqlalchemy import Time
 from sqlalchemy import Unicode
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
 from flask_restless import APIManager
@@ -967,18 +967,13 @@ class TestAssociationProxy(ManagerTestBase):
 
     """
 
-    def setUp(self):
-        """Creates the database, the :class:`~flask.Flask` object, the
-        :class:`~flask_restless.manager.APIManager` for that application,
-        and creates the ReSTful API endpoints for the models used in the test
-        methods.
-
-        """
-        super(TestAssociationProxy, self).setUp()
+    def test_association_object(self):
+        """Test for creating a resource with an assocation object."""
 
         class Article(self.Base):
             __tablename__ = 'article'
             id = Column(Integer, primary_key=True)
+            articletags = relationship('ArticleTag')
             tags = association_proxy('articletags', 'tag',
                                      creator=lambda tag: ArticleTag(tag=tag))
 
@@ -986,43 +981,21 @@ class TestAssociationProxy(ManagerTestBase):
             __tablename__ = 'articletag'
             article_id = Column(Integer, ForeignKey('article.id'),
                                 primary_key=True)
-            article = relationship(Article, backref=backref('articletags'))
             tag_id = Column(Integer, ForeignKey('tag.id'), primary_key=True)
             tag = relationship('Tag')
-            # TODO this dummy column is required to create an API for this
-            # object.
-            id = Column(Integer)
 
         class Tag(self.Base):
             __tablename__ = 'tag'
             id = Column(Integer, primary_key=True)
-            name = Column(Unicode)
 
-        # HACK It seems that if we don't persist the Article class then
-        # the test sometimes gets confused about which Article class is
-        # being referenced in requests made in the test methods below.
-        self.Article = Article
-        self.Tag = Tag
         self.Base.metadata.create_all()
-        self.manager.create_api(self.Article, methods=['POST'])
-        # HACK Need to create APIs for these other models because otherwise
-        # we're not able to create the link URLs to them.
-        #
-        # TODO Fix this by simply not creating links to related models for
-        # which no API has been made.
+        self.manager.create_api(Article, methods=['POST'])
         self.manager.create_api(Tag)
-        self.manager.create_api(ArticleTag)
 
-    def test_create(self):
-        """Test for creating a new instance of the database model that has a
-        many-to-many relation that uses an association object to allow extra
-        information to be stored on the association table.
-
-        """
-        tag1 = self.Tag(id=1)
-        tag2 = self.Tag(id=2)
-        self.session.add_all([tag1, tag2])
+        tag = Tag(id=1)
+        self.session.add(tag)
         self.session.commit()
+
         data = {
             'data': {
                 'type': 'article',
@@ -1030,45 +1003,77 @@ class TestAssociationProxy(ManagerTestBase):
                     'tags': {
                         'data': [
                             {'type': 'tag', 'id': '1'},
-                            {'type': 'tag', 'id': '2'}
                         ]
                     }
                 }
             }
         }
         response = self.app.post('/api/article', data=dumps(data))
-        assert response.status_code == 201
+        self.assertEqual(response.status_code, 201)
+
+        # Check that the response includes the resource identifiers for
+        # the `tags` relationship.
         document = loads(response.data)
         article = document['data']
         tags = article['relationships']['tags']['data']
-        assert ['1', '2'] == sorted(tag['id'] for tag in tags)
+        self.assertEqual(tags, [{'type': 'tag', 'id': '1'}])
 
-    @skip('Not sure how to implement this.')
-    def test_scalar(self):
-        """Tests for creating a resource with an association proxy to scalars
-        as a list attribute instead of a link object.
+        # Check that the Article object has been created and has the
+        # appropriate tags.
+        self.assertEqual(self.session.query(Article).count(), 1)
+        article = self.session.query(Article).first()
+        self.assertEqual(article.tags, [tag])
 
-        """
-        # tag1 = self.Tag(name='foo')
-        # tag2 = self.Tag(name='bar')
-        # self.session.add_all([tag1, tag2])
+    def test_scalar_list(self):
+        """Tests for creating with an association proxy to a scalar list."""
+
+        class Article(self.Base):
+            __tablename__ = 'article'
+            id = Column(Integer, primary_key=True)
+            tags = relationship('Tag', secondary=lambda: articletags_table)
+            tag_names = association_proxy('tags', 'name',
+                                          creator=lambda s: Tag(name=s))
+
+        class Tag(self.Base):
+            __tablename__ = 'tag'
+            id = Column(Integer, primary_key=True)
+            name = Column(Unicode)
+
+        articletags_table = \
+            Table('articletags', self.Base.metadata,
+                  Column('article_id', Integer, ForeignKey('article.id'),
+                         primary_key=True),
+                  Column('tag_id', Integer, ForeignKey('tag.id'),
+                         primary_key=True))
+
+        self.Base.metadata.create_all()
+        self.manager.create_api(Article, methods=['POST'])
+
+        # article = Article(id=1)
+        # article.tag_names = ['foo', 'bar']
+        # self.session.add(article)
         # self.session.commit()
-        # data = dict(data=dict(type='article', tag_names=['foo', 'bar']))
-        # response = self.app.post('/api/article', data=dumps(data))
-        # print(loads(response.data))
-        # assert response.status_code == 201
-        # document = loads(response.data)
-        # article = document['data']
-        # assert ['foo', 'bar'] == article['tag_names']
-        assert False, 'Not implemented'
 
-    @skip('Not sure how to implement this.')
-    def test_dictionary_collection(self):
-        """Tests for creating a resource with a dictionary based collection via
-        an association proxy.
+        data = {
+            'data': {
+                'type': 'article',
+                'attributes': {
+                    'tag_names': ['foo', 'bar']
+                }
+            }
+        }
+        response = self.app.post('/api/article', data=dumps(data))
+        self.assertEqual(response.status_code, 201)
 
-        """
-        assert False, 'Not implemented'
+        # Check that the response includes the `tag_names` attribute.
+        document = loads(response.data)
+        article = document['data']
+        self.assertEqual(article['attributes']['tag_names'], ['foo', 'bar'])
+
+        # Check that the Article object has been created and has the tag names.
+        self.assertEqual(self.session.query(Article).count(), 1)
+        article = self.session.query(Article).first()
+        self.assertEqual(article.tag_names, ['foo', 'bar'])
 
 
 class TestFlaskSQLAlchemy(FlaskSQLAlchemyTestBase):
