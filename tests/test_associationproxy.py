@@ -41,7 +41,8 @@ class TestAssociationObject(ManagerTestBase):
         class Article(self.Base):
             __tablename__ = 'article'
             id = Column(Integer, primary_key=True)
-            articletags = relationship('ArticleTag')
+            articletags = relationship('ArticleTag',
+                                       cascade='all, delete-orphan')
             tags = association_proxy('articletags', 'tag',
                                      creator=lambda tag: ArticleTag(tag=tag))
 
@@ -61,7 +62,7 @@ class TestAssociationObject(ManagerTestBase):
         self.Tag = Tag
         self.Base.metadata.create_all()
 
-    def test_fetch(self):
+    def test_fetching(self):
         """Test for fetching a resource that has a many-to-many relation that
         uses an association object with an association proxy.
 
@@ -82,7 +83,7 @@ class TestAssociationObject(ManagerTestBase):
         document = loads(response.data)
         article = document['data']
         tags = article['relationships']['tags']['data']
-        assert ['1'] == sorted(tag['id'] for tag in tags)
+        self.assertEqual(['1'], sorted(tag['id'] for tag in tags))
 
     def test_creating(self):
         """Test for creating a resource with an assocation object."""
@@ -121,8 +122,139 @@ class TestAssociationObject(ManagerTestBase):
         article = self.session.query(self.Article).first()
         self.assertEqual(article.tags, [tag])
 
+    def test_updating(self):
+        """Test for updating a to-many relationship via association proxy."""
+        self.manager.create_api(self.Article, methods=['PATCH'],
+                                allow_to_many_replacement=True)
+        self.manager.create_api(self.Tag)
+
+        article = self.Article(id=1)
+        tag = self.Tag(id=1)
+        self.session.add_all([article, tag])
+        self.session.commit()
+
+        data = {
+            'data': {
+                'type': 'article',
+                'id': '1',
+                'relationships': {
+                    'tags': {
+                        'data': [
+                            {'type': 'tag', 'id': '1'},
+                        ]
+                    }
+                }
+            }
+        }
+        response = self.app.patch('/api/article/1', data=dumps(data))
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(article.tags, [tag])
+
+    def test_deleting(self):
+        """Test for deleting a resource with a to-many relationship."""
+        self.manager.create_api(self.Article, methods=['DELETE'])
+        self.manager.create_api(self.Tag)
+
+        article = self.Article(id=1)
+        tag = self.Tag(id=1)
+        article.tags = [tag]
+        self.session.add_all([article, tag])
+        self.session.commit()
+
+        data = {
+            'data': {
+                'type': 'article',
+                'id': '1',
+            }
+        }
+        response = self.app.delete('/api/article/1', data=dumps(data))
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual([tag], self.session.query(self.Tag).all())
+
+    def test_fetch_relationships(self):
+        """Test for fetching to-many relationship resource identifiers."""
+        self.manager.create_api(self.Article)
+        self.manager.create_api(self.Tag)
+
+        article = self.Article(id=1)
+        tag = self.Tag(id=1)
+        article.tags = [tag]
+        self.session.add_all([article, tag])
+        self.session.commit()
+
+        response = self.app.get('/api/article/1/relationships/tags')
+        document = loads(response.data)
+        tags = document['data']
+        self.assertEqual(['1'], sorted(tag['id'] for tag in tags))
+
+    def test_adding_to_relationship(self):
+        """Test for adding to a to-many relationship via association proxy."""
+        self.manager.create_api(self.Article, methods=['PATCH'])
+        self.manager.create_api(self.Tag)
+
+        article = self.Article(id=1)
+        tag = self.Tag(id=1)
+        self.session.add_all([article, tag])
+        self.session.commit()
+
+        data = {
+            'data': [
+                {'type': 'tag', 'id': '1'},
+            ]
+        }
+        response = self.app.post('/api/article/1/relationships/tags',
+                                 data=dumps(data))
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(article.tags, [tag])
+
+    def test_removing_from_relationship(self):
+        """Test for removing from a to-many relationship."""
+        self.manager.create_api(self.Article, methods=['PATCH'],
+                                allow_delete_from_to_many_relationships=True)
+        self.manager.create_api(self.Tag)
+
+        article = self.Article(id=1)
+        tag = self.Tag(id=1)
+        article.tags = [tag]
+        self.session.add_all([article, tag])
+        self.session.commit()
+
+        data = {
+            'data': [
+                {'type': 'tag', 'id': '1'},
+            ]
+        }
+        response = self.app.delete('/api/article/1/relationships/tags',
+                                   data=dumps(data))
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(article.tags, [])
+
+    def test_replacing_relationship(self):
+        """Test for replacing a to-many relationship via association proxy."""
+        self.manager.create_api(self.Article, methods=['PATCH'],
+                                allow_to_many_replacement=True)
+        self.manager.create_api(self.Tag)
+
+        article = self.Article(id=1)
+        tag1 = self.Tag(id=1)
+        tag2 = self.Tag(id=2)
+        article.tags = [tag1]
+        self.session.add_all([article, tag1, tag2])
+        self.session.commit()
+
+        data = {
+            'data': [
+                {'type': 'tag', 'id': '2'},
+            ]
+        }
+        response = self.app.patch('/api/article/1/relationships/tags',
+                                  data=dumps(data))
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(article.tags, [tag2])
+
 
 class TestAssociationTable(ManagerTestBase):
+    """Tests for association proxy with an association table."""
 
     def setUp(self):
         super(TestAssociationTable, self).setUp()
@@ -171,7 +303,7 @@ class TestAssociationTable(ManagerTestBase):
         tag_names = sorted(article['attributes']['tag_names'])
         self.assertEqual(tag_names, ['bar', 'foo'])
 
-    def test_scalar_list(self):
+    def test_creating(self):
         """Tests for creating with an association proxy to a scalar list."""
         self.manager.create_api(self.Article, methods=['POST'])
 
@@ -195,3 +327,147 @@ class TestAssociationTable(ManagerTestBase):
         self.assertEqual(self.session.query(self.Article).count(), 1)
         article = self.session.query(self.Article).first()
         self.assertEqual(article.tag_names, ['foo', 'bar'])
+
+    def test_updating(self):
+        """Tests for updating an association proxy to a scalar list."""
+        self.manager.create_api(self.Article, methods=['PATCH'])
+
+        article = self.Article(id=1)
+        article.tag_names = ['foo', 'bar']
+        self.session.add(article)
+        self.session.commit()
+
+        data = {
+            'data': {
+                'type': 'article',
+                'id': '1',
+                'attributes': {
+                    'tag_names': ['baz', 'xyzzy']
+                }
+            }
+        }
+        response = self.app.patch('/api/article/1', data=dumps(data))
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(article.tag_names, ['baz', 'xyzzy'])
+
+    def test_deleting(self):
+        """Test for deleting a resource with a to-many relationship."""
+        self.manager.create_api(self.Article, methods=['DELETE'])
+
+        article = self.Article(id=1)
+        article.tag_names = ['foo', 'bar']
+        self.session.add(article)
+        self.session.commit()
+
+        data = {
+            'data': {
+                'type': 'article',
+                'id': '1',
+            }
+        }
+        response = self.app.delete('/api/article/1', data=dumps(data))
+        self.assertEqual(response.status_code, 204)
+        tags = self.session.query(self.Tag).all()
+        self.assertEqual(['bar', 'foo'], sorted(tag.name for tag in tags))
+
+    def test_fetch_relationships(self):
+        """Test for fetching to-many relationship resource identifiers."""
+        self.manager.create_api(self.Article)
+        self.manager.create_api(self.Tag)
+
+        article = self.Article(id=1)
+        article.tag_names = ['foo', 'bar']
+        self.session.add(article)
+        self.session.commit()
+
+        # TODO What to do about this situation? The `tags` relationship
+        # is not shown in the resource representation of the Article
+        # object because we assume the `tag_names` attribute is the only
+        # thing the user wants to expose. However, the Tag objects
+        # underlying the `tag_names` are visible in the relationships
+        # attribute.
+        response = self.app.get('/api/article/1/relationships/tags')
+        self.assertEqual(response.status_code, 404)
+
+    def test_adding_to_relationship(self):
+        """Test for adding to a to-many relationship via association proxy."""
+        self.manager.create_api(self.Article, methods=['PATCH'])
+        self.manager.create_api(self.Tag)
+
+        article = self.Article(id=1)
+        self.session.add(article)
+        self.session.commit()
+
+        # TODO What to do about this situation? The `tags` relationship
+        # is not shown in the resource representation of the Article
+        # object because we assume the `tag_names` attribute is the only
+        # thing the user wants to expose. However, the Tag objects
+        # underlying the `tag_names` are visible in the relationships
+        # attribute. Maybe we shouldn't actually hide the `tags`
+        # relationship.
+        data = {
+            'data': [
+                {'type': 'tag', 'id': '1'},
+                {'type': 'tag', 'id': '2'},
+            ]
+        }
+        response = self.app.post('/api/article/1/relationships/tags',
+                                 data=dumps(data))
+        self.assertEqual(response.status_code, 404)
+
+    def test_removing_from_relationship(self):
+        """Test for removing from a to-many relationship."""
+        self.manager.create_api(self.Article, methods=['PATCH'],
+                                allow_delete_from_to_many_relationships=True)
+        self.manager.create_api(self.Tag)
+
+        article = self.Article(id=1)
+        tag = self.Tag(id=1)
+        article.tags = [tag]
+        self.session.add_all([article, tag])
+        self.session.commit()
+
+        # TODO What to do about this situation? The `tags` relationship
+        # is not shown in the resource representation of the Article
+        # object because we assume the `tag_names` attribute is the only
+        # thing the user wants to expose. However, the Tag objects
+        # underlying the `tag_names` are visible in the relationships
+        # attribute. Maybe we shouldn't actually hide the `tags`
+        # relationship.
+        data = {
+            'data': [
+                {'type': 'tag', 'id': '1'},
+            ]
+        }
+        response = self.app.delete('/api/article/1/relationships/tags',
+                                   data=dumps(data))
+        self.assertEqual(response.status_code, 404)
+
+    def test_replacing_relationship(self):
+        """Test for replacing a to-many relationship via association proxy."""
+        self.manager.create_api(self.Article, methods=['PATCH'],
+                                allow_to_many_replacement=True)
+        self.manager.create_api(self.Tag)
+
+        article = self.Article(id=1)
+        tag1 = self.Tag(id=1)
+        tag2 = self.Tag(id=2)
+        article.tags = [tag1]
+        self.session.add_all([article, tag1, tag2])
+        self.session.commit()
+
+        # TODO What to do about this situation? The `tags` relationship
+        # is not shown in the resource representation of the Article
+        # object because we assume the `tag_names` attribute is the only
+        # thing the user wants to expose. However, the Tag objects
+        # underlying the `tag_names` are visible in the relationships
+        # attribute. Maybe we shouldn't actually hide the `tags`
+        # relationship.
+        data = {
+            'data': [
+                {'type': 'tag', 'id': '2'},
+            ]
+        }
+        response = self.app.patch('/api/article/1/relationships/tags',
+                                   data=dumps(data))
+        self.assertEqual(response.status_code, 404)
