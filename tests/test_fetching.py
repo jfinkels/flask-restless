@@ -24,9 +24,12 @@ from unittest2 import skip
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import Unicode
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 
@@ -54,15 +57,33 @@ class TestFetchCollection(ManagerTestBase):
             age = Column(Integer)
             name = Column(Unicode)
 
+            @hybrid_property
+            def is_minor(self):
+                if not hasattr(self, 'age') or self.age is None:
+                    return False
+                return self.age <= 18
+
         class Article(self.Base):
             __tablename__ = 'article'
             id = Column(Integer, primary_key=True)
             author_id = Column(Integer, ForeignKey('person.id'))
             author = relationship('Person', backref=backref('articles'))
+            comments = relationship('Comment')
+
+            @hybrid_property
+            def num_comments(self):
+                return len(self.comments)
+
+            @num_comments.expression
+            def num_comments(cls):
+                return select([func.count(self.Comment.id)]).\
+                    where(self.Comment.article_id == cls.id).\
+                    label('numcomments')
 
         class Comment(self.Base):
             __tablename__ = 'comment'
             id = Column(Integer, primary_key=True)
+            article_id = Column(Integer, ForeignKey(Article.id))
 
             @classmethod
             def query(cls):
@@ -301,6 +322,50 @@ class TestFetchCollection(ManagerTestBase):
         assert ['3', '2'] == person_ids[-2:]
         # TODO In Python 2.7 or later, this should be a set literal.
         assert set(['1', '4']) == set(person_ids[:2])
+
+    def test_sorting_hybrid_property(self):
+        """Test for sorting on a hybrid property."""
+        person1 = self.Person(id=1, age=10)
+        person2 = self.Person(id=2, age=20)
+        self.session.add_all([person1, person2])
+        self.session.commit()
+
+        query_string = {'sort': 'is_minor'}
+        response = self.app.get('/api/person', query_string=query_string)
+        document = loads(response.data)
+        people = document['data']
+        self.assertEqual(['2', '1'], list(map(itemgetter('id'), people)))
+
+        query_string = {'sort': '-is_minor'}
+        response = self.app.get('/api/person', query_string=query_string)
+        document = loads(response.data)
+        people = document['data']
+        self.assertEqual(['1', '2'], list(map(itemgetter('id'), people)))
+
+    def test_sorting_hybrid_expression(self):
+        """Test for sorting on a hybrid property with a separate expression.
+
+        For more information, see GitHub issue #562.
+
+        """
+        article1 = self.Article(id=1)
+        article2 = self.Article(id=2)
+        comment = self.Comment(id=1)
+        article1.comments = [comment]
+        self.session.add_all([article1, article2, comment])
+        self.session.commit()
+
+        query_string = {'sort': 'num_comments'}
+        response = self.app.get('/api/article', query_string=query_string)
+        document = loads(response.data)
+        articles = document['data']
+        self.assertEqual(['2', '1'], list(map(itemgetter('id'), articles)))
+
+        query_string = {'sort': '-num_comments'}
+        response = self.app.get('/api/article', query_string=query_string)
+        document = loads(response.data)
+        articles = document['data']
+        self.assertEqual(['1', '2'], list(map(itemgetter('id'), articles)))
 
 
 class TestFetchResource(ManagerTestBase):

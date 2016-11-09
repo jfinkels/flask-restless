@@ -19,8 +19,10 @@ from unittest2 import skip
 from sqlalchemy import Column
 from sqlalchemy import Date
 from sqlalchemy import DateTime
+from sqlalchemy import func
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import Time
 from sqlalchemy import Unicode
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -90,6 +92,16 @@ class TestFiltering(SearchTestBase):
             publishtime = Column(DateTime)
             author_id = Column(Integer, ForeignKey('person.id'))
             author = relationship('Person', backref=backref('articles'))
+
+            @hybrid_property
+            def has_comments(self):
+                return len(self.comments) > 0
+
+            @has_comments.expression
+            def has_comments(cls):
+                return select([func.count(self.Comment.id)]).\
+                    where(self.Comment.article_id == cls.id).\
+                    label('num_comments') > 0
 
         class Person(self.Base):
             __tablename__ = 'person'
@@ -782,6 +794,31 @@ class TestFiltering(SearchTestBase):
         self.assertEqual(len(people), 1)
         person = people[0]
         self.assertEqual(person['id'], '1')
+
+    def test_hybrid_expression(self):
+        """Test for filtering on a hybrid property with a separate expression.
+
+        For more information, see GitHub issue #562.
+
+        """
+        article1 = self.Article(id=1)
+        article2 = self.Article(id=2)
+        comment = self.Comment(id=1)
+        comment.article = article1
+        self.session.add_all([article1, article2, comment])
+        self.session.commit()
+
+        filters = [{'name': 'has_comments', 'op': '==', 'val': True}]
+        response = self.search('/api/article', filters)
+        document = loads(response.data)
+        articles = document['data']
+        self.assertEqual(['1'], sorted(article['id'] for article in articles))
+
+        filters = [{'name': 'has_comments', 'op': '==', 'val': False}]
+        response = self.search('/api/article', filters)
+        document = loads(response.data)
+        articles = document['data']
+        self.assertEqual(['2'], sorted(article['id'] for article in articles))
 
 
 class TestSimpleFiltering(ManagerTestBase):
