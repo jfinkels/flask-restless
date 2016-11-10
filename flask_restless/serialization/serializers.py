@@ -271,6 +271,28 @@ class DefaultSerializer(Serializer):
         self.exclude = exclude
         self.additional_attributes = additional_attributes
 
+    def _is_excluded(self, f, only):
+        """Decide whether a field should be excluded from serialization.
+
+        `f` is a string naming a column (either an attribute or a
+        relationship) of a resource. `only` is a list of strings naming
+        fields, as described in :meth:`.DefaultSerializer.serialize`.
+
+        This function returns a Boolean indicating whether the field
+        should be excluded from serialization. The decision is based on
+        the `only` fields requested by the client as well as the default
+        included or excluded fields specified in the constructor of this
+        class.
+
+        """
+        if self.default_fields is not None and f not in self.default_fields:
+            return True
+        if only is not None and f not in only:
+            return True
+        if self.exclude is not None and f in self.exclude:
+            return True
+        return False
+
     def _dump(self, instance, only=None):
         # Always include at least the type and ID, regardless of what
         # the user requested.
@@ -304,18 +326,7 @@ class DefaultSerializer(Serializer):
         foreign_key_columns = foreign_keys(model)
         pk_name = primary_key_for(model)
         for column in columns:
-            # Only include fields allowed by the user during the
-            # instantiation of this object.
-            if self.default_fields is not None \
-               and column not in self.default_fields:
-                continue
-            # If `only` is a list, only include those columns that are
-            # in the list.
-            if only is not None and column not in only:
-                continue
-            # Exclude columns specified by the user during the
-            # instantiation of this object.
-            if self.exclude is not None and column in self.exclude:
+            if self._is_excluded(column, only=only):
                 continue
             # Exclude column names that are blacklisted.
             if column.startswith('__') or column in COLUMN_BLACKLIST:
@@ -442,21 +453,8 @@ class DefaultSerializer(Serializer):
         # Serialize each relationship, excluding those that should be excluded.
         relationships = {}
         for r in get_relations(model):
-            # Only include fields allowed by the user during the
-            # instantiation of this object.
-            if self.default_fields is not None \
-               and r not in self.default_fields:
-                continue
-            # If `only` is a list, only include those columns that are
-            # in the list.
-            if only is not None and r not in only:
-                continue
-            # Exclude columns specified by the user during the
-            # instantiation of this object.
-            if self.exclude is not None and r in self.exclude:
-                continue
-            # Serialize the relationship.
-            relationships[r] = create_relationship(model, instance, r)
+            if not self._is_excluded(r, only=only):
+                relationships[r] = create_relationship(model, instance, r)
 
         if relationships:
             result['relationships'] = relationships
