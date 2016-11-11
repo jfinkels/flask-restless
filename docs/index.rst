@@ -10,13 +10,7 @@ This is the documentation for version |version|. See also the the most recent
 
 .. warning::
 
-   This is a "beta" version, so there may be more bugs than usual. There is one
-   fairly serious known issue with this version. Updating relationships via
-   `association proxies`_ is not working correctly. We cannot support
-   many-to-many relationships until this is resolved. If you have any insight
-   on how to fix this, please comment on GitHub issue :issue:`480`.
-
-   .. _association proxies: https://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html
+   This is a "beta" version, so there may be more bugs than usual.
 
 .. _stable version documentation: https://flask-restless.readthedocs.org/en/stable/
 .. _development version documentation: https://flask-restless.readthedocs.org/en/latest

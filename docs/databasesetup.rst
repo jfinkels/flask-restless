@@ -7,42 +7,58 @@ Flask-Restless automatically handles SQLAlchemy models defined with
 .. _association proxies: http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html
 .. _polymorphism: http://docs.sqlalchemy.org/en/latest/orm/inheritance.html
 
+
 Association proxies
 -------------------
 
 Flask-Restless handles many-to-many relationships transparently through
 association proxies. It exposes the remote table in the ``relationships``
-element of a resource in the JSON document and hides the intermediate table.
+element of a resource in the JSON document and hides the association table or
+association object.
 
-For example, consider a setup where there are articles and tags in a
-many-to-many relationship::
+
+Proxying association objects
+............................
+
+TODO Add link to the correct section of the SQLAlchemy documentation here.
+
+When proxying a to-many relationship via an association object, the related
+resources will appear in the ``relationships`` element of the resource object
+but the association object will not appear. For example, in the following
+setup, each article has a to-many relationship to tags via the ``ArticleTag``
+object::
 
     from sqlalchemy import Column, Integer, Unicode, ForeignKey
     from sqlalchemy.ext.associationproxy import association_proxy
     from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy.orm import relationship, backref
+    from sqlalchemy.orm import relationship
 
     Base = declarative_base()
 
     class Article(Base):
         __tablename__ = 'article'
         id = Column(Integer, primary_key=True)
-        tags = association_proxy('articletags', 'tag')
+        articletags = relationship('ArticleTag',
+                                   cascade='all, delete-orphan')
+        tags = association_proxy('articletags', 'tag',
+                                 creator=lambda tag: ArticleTag(tag=tag))
 
     class ArticleTag(Base):
         __tablename__ = 'articletag'
         article_id = Column(Integer, ForeignKey('article.id'),
                             primary_key=True)
-        article = relationship(Article, backref=backref('articletags'))
         tag_id = Column(Integer, ForeignKey('tag.id'), primary_key=True)
         tag = relationship('Tag')
 
     class Tag(Base):
         __tablename__ = 'tag'
         id = Column(Integer, primary_key=True)
+        name = Column(Unicode)
 
-Resource objects of type ``'article'`` will have ``tags`` relationship that
-proxies directly to the ``Tag`` resource through the ``ArticleTag`` table:
+Resource objects of type ``'article'`` will have a ``tags`` relationship that
+proxies directly to the ``Tag`` resource through the ``ArticleTag`` table. The
+intermediate ``articletags`` relationship does not appear as a relationship in
+the resource object:
 
 .. sourcecode:: json
 
@@ -67,8 +83,77 @@ proxies directly to the ``Tag`` resource through the ``ArticleTag`` table:
      }
    }
 
-By default, the intermediate ``articletags`` relationship does not appear as a
-relationship in the resource object.
+
+Proxying association tables
+...........................
+
+TODO Add link to the correct section of the SQLAlchemy documentation here.
+
+When proxying an attribute of a to-many relationship via an association table,
+the attribute will appear in the ``attributes`` element of the resource object
+and the to-many relationship will appear in the ``relationships`` element of
+the resource object but the association table will not appear. For example, in
+the following setup, each article has an association proxy ``tag_names`` which
+is a list of the ``name`` attribute of each related tag::
+
+    from sqlalchemy import Column, Integer, Unicode, ForeignKey
+    from sqlalchemy.ext.associationproxy import association_proxy
+    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import relationship
+
+    Base = declarative_base()
+
+    class Article(Base):
+        __tablename__ = 'article'
+        id = Column(Integer, primary_key=True)
+        tags = relationship('Tag', secondary=lambda: articletags_table)
+        tag_names = association_proxy('tags', 'name',
+                                      creator=lambda s: Tag(name=s))
+
+    class Tag(Base):
+        __tablename__ = 'tag'
+        id = Column(Integer, primary_key=True)
+        name = Column(Unicode)
+
+    articletags_table = \
+        Table('articletags', Base.metadata,
+              Column('article_id', Integer, ForeignKey('article.id'),
+                     primary_key=True),
+              Column('tag_id', Integer, ForeignKey('tag.id'),
+                     primary_key=True))
+
+Resource objects of type ``'article'`` will have a ``tag_names`` attribute that
+is a list of tag names in addition to a ``tags`` relationship. The intermediate
+``articletags`` table does not appear as a relationship in the resource object:
+
+.. sourcecode:: json
+
+   {
+     "data": {
+       "id": "1",
+       "type": "article",
+       "attributes": {
+         "tag_names": [
+           "foo",
+           "bar"
+         ]
+       },
+       "relationships": {
+         "tags": {
+           "data": [
+             {
+               "id": "1",
+               "type": "tag"
+             },
+             {
+               "id": "2",
+               "type": "tag"
+             }
+           ],
+         }
+       }
+     }
+   }
 
 
 Polymorphic models
