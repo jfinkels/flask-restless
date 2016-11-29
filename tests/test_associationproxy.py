@@ -469,5 +469,5 @@ class TestAssociationTable(ManagerTestBase):
             ]
         }
         response = self.app.patch('/api/article/1/relationships/tags',
-                                   data=dumps(data))
+                                  data=dumps(data))
         self.assertEqual(response.status_code, 404)
