@@ -14,9 +14,9 @@ To set the default page size for collections of resources, use the
 To set the maximum page size that the client can request, use the
 ``max_page_size`` argument. Even if ``page_size`` is greater than
 ``max_page_size``, at most ``max_page_size`` resources will be returned in a
-page. If ``max_page_size`` is set to anything but a positive integer, the
+page. If ``max_page_size`` is set to ``0``, the
 client will be able to specify arbitrarily large page sizes. If, further,
-``page_size`` is set to anything but a positive integer, pagination will be
+``page_size`` is set to ``0``, pagination will be
 disabled by default, and any :http:method:`get` request that does not specify a
 page size in its query parameters will get a response with all matching
 results.
