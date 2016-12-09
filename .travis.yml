@@ -80,8 +80,12 @@ before_script:
   - psql -c 'create database testdb;' -U postgres
 
 script:
-  # Documentation build checks.
-  - sphinx-build -n -W docs/ build/sphinx/html/
+  # Documentation build checks. Sphinx 1.5 only supports Python version 2.7
+  # and 3.4+, so don't build the documentation on those versions.
+  - |
+    if [[ "$TRAVIS_PYTHON_VERSION" != "2.6" && "$TRAVIS_PYTHON_VERSION" != "3.3" ]]; then
+      sphinx-build -n -W docs/ build/sphinx/html/
+    fi
   # Unit tests.
   - coverage run --source=flask_restless setup.py test
 

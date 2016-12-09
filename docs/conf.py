@@ -233,16 +233,12 @@ latex_documents = [
 # If false, no module index is generated.
 latex_domain_indices = False
 
-# If false, no module index is generated.
-latex_use_modindex = False
-
 latex_elements = {
     'fontpkg':      r'\usepackage{mathpazo}',
     'papersize':    'a4paper',
     'pointsize':    '12pt',
     'preamble':     r'\usepackage{flaskstyle}'
 }
-latex_use_parts = True
 
 latex_additional_files = ['flaskstyle.sty', 'logo.png']
 
