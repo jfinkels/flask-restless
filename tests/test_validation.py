@@ -103,28 +103,36 @@ class TestSimpleValidation(ManagerTestBase):
         response.
 
         """
-        data = dict(data=dict(type='person', age=1))
+        data = {
+            'data': {
+                'type': 'person',
+                'attributes': {
+                    'age': 1
+                }
+            }
+        }
         response = self.app.post('/api/person', data=dumps(data))
-        assert response.status_code == 201
+        self.assertEqual(response.status_code, 201)
         document = loads(response.data)
         person = document['data']
-        assert person['attributes']['age'] == 1
+        self.assertEqual(person['attributes']['age'], 1)
 
     def test_create_invalid(self):
         """Tests that an attempt to create an invalid resource yields an error
         response.
 
         """
-        data = dict(data=dict(type='person', age=-1))
+        data = {
+            'data': {
+                'type': 'person',
+                'attributes': {
+                    'age': -1
+                }
+            }
+        }
         response = self.app.post('/api/person', data=dumps(data))
-        assert response.status_code == 400
-        document = loads(response.data)
-        errors = document['errors']
-        error = errors[0]
-        assert 'validation' in error['title'].lower()
-        assert 'must be between' in error['detail'].lower()
-        # Check that the person was not created.
-        assert self.session.query(self.Person).count() == 0
+        check_sole_error(response, 400, ['age', 'Must be between'])
+        self.assertEqual(self.session.query(self.Person).count(), 0)
 
     def test_update_valid(self):
         """Tests that an attempt to update a resource with valid data yields no

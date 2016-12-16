@@ -157,20 +157,26 @@ class TestCreatingResources(ManagerTestBase):
         .. _Creating Resources: http://jsonapi.org/format/#crud-creating
 
         """
-        data = dict(data=dict(type='person', name='foo'))
+        data = {
+            'data': {
+                'type': 'person',
+                'attributes': {
+                    'name': 'foo',
+                }
+            }
+        }
         response = self.app.post('/api/person', data=dumps(data))
-        assert response.status_code == 201
+        self.assertEqual(response.status_code, 201)
         location = response.headers['Location']
-        # TODO Technically, this test shouldn't know beforehand where the
-        # location of the created object will be. We are testing implementation
-        # here, assuming that the implementation of the server creates a new
-        # Person object with ID 1, which is bad style.
-        assert location.endswith('/api/person/1')
+        people = self.session.query(self.Person).all()
+        self.assertEqual(len(people), 1)
+        person = people[0]
+        self.assertTrue(location.endswith('/api/person/{0}'.format(person.id)))
         document = loads(response.data)
         person = document['data']
-        assert person['type'] == 'person'
-        assert person['id'] == '1'
-        assert person['attributes']['name'] == 'foo'
+        self.assertEqual(person['type'], 'person')
+        self.assertEqual(person['id'], '1')
+        self.assertEqual(person['attributes']['name'], 'foo')
         # # No self link will exist because no GET endpoint was created.
         # assert person['links']['self'] == location
 
@@ -203,6 +209,8 @@ class TestCreatingResources(ManagerTestBase):
         """
         generated_id = uuid.uuid1()
         data = dict(data=dict(type='article', id=generated_id))
+        import warnings
+        warnings.simplefilter('error')
         response = self.app.post('/api/article', data=dumps(data))
         # Our server always responds with 201 when a client-generated ID is
         # specified. It does not return a 204.

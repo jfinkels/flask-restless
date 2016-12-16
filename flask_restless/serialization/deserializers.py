@@ -37,6 +37,7 @@ from ..helpers import get_by
 from ..helpers import has_field
 from ..helpers import is_like_list
 from ..helpers import model_for
+from ..helpers import primary_key_for
 from ..helpers import string_to_datetime as to_datetime
 
 
@@ -114,6 +115,158 @@ class DefaultDeserializer(Deserializer):
         #: Whether to allow client generated IDs.
         self.allow_client_generated_ids = allow_client_generated_ids
 
+    def _check_type_and_id(self, data):
+        """Check that the resource object has a valid type and ID.
+
+        `data` is a dictionary representation of a JSON API resource
+        object. This method does not return anything, but raises
+        :exc:`MissingType` if the ``type`` key is missing and
+        :exc:`ClientGeneratedIDNotAllowed` key is present when not
+        allowed.
+
+        """
+        if 'type' not in data:
+            raise MissingType
+        if 'id' in data and not self.allow_client_generated_ids:
+            raise ClientGeneratedIDNotAllowed
+
+    def _resource_to_model(self, data):
+        """Get the SQLAlchemy model for the type of the given resource.
+
+        `data` is a dictionary representation of a JSON API resource
+        object. This method returns the SQLAlchemy model class
+        corresponding to the resource type given in the ``type`` key of
+        the resource object.
+
+        This method raises :exc:`ConflictingType` if the type of the
+        resource object does not match the SQLAlchemy model specified in
+        the constructor of this class (that is, the
+        :attr:`.Deserializer.model` instance attribute).
+
+        """
+        type_ = data.pop('type')
+        expected_type = collection_name(self.model)
+        try:
+            model = model_for(type_)
+        except ValueError:
+            raise ConflictingType(expected_type, type_)
+        # If we wanted to allow deserializing a subclass of the model,
+        # we could use:
+        #
+        #     if not issubclass(model, self.model) and type != expected_type:
+        #
+        if type_ != expected_type:
+            raise ConflictingType(expected_type, type_)
+        return model
+
+    def _check_unknown_fields(self, data, model):
+        """Check for any unknown fields in a resource object.
+
+        `data` is a dictionary representation of a JSON API resource
+        object.
+
+        `model` is a SQLAlchemy model class. The `data` resource should
+        represent an instance of `model`.
+
+        This method does not return anything, but raises
+        :exc:`UnknownRelationship` or :exc:`UnknownAttribute` if any
+        relationship or attribute, respectively, does not exist on the
+        given model.
+
+        """
+        for relation in data.get('relationships', []):
+            if not has_field(model, relation):
+                raise UnknownRelationship(relation)
+        for attribute in data.get('attributes', []):
+            if not has_field(model, attribute):
+                raise UnknownAttribute(attribute)
+
+    def _load_related_resources(self, data, model):
+        """Generate identifiers for related resources.
+
+        `data` is a dictionary representation of a JSON API resource
+        object.
+
+        `model` is a SQLAlchemy model class. The `data` resource should
+        represent an instance of `model`.
+
+        This method is an iterator generator. It yields pairs in which
+        the left element is a string naming a relationship and the right
+        element is a deserialized version of the JSON API resource
+        identifiers of the relationship. For a to-one relationship, this
+        is just a single SQLAlchemy model instance. For a to-many
+        relationship, it is a list of SQLAlchemy model instances.
+
+        For example::
+
+            >>> # session = ...
+            >>> # class Article(Base): ...
+            >>> deserializer = DefaultDeserializer(session, Article)
+            >>> data = {
+            ...     'relationships': {
+            ...         'comments': [
+            ...             {'type': 'comment', 'id': 1}
+            ...         ],
+            ...         'author': {'type': 'person', 'id': 1}
+            ...     }
+            ... }
+            >>> rels = deserializer._load_related_resources(data, Article)
+            >>> for name, obj in sorted(rels):
+            ...     print(name, obj)
+            author <Person object at 0x...>
+            comments [<Comment object at 0x...>]
+
+        This method raises :exc:`DeserializationException` or
+        :exc:`MultipleExceptions` if there is a problem deserializing
+        any of the related resources.
+
+        """
+        for link_name, link_object in data.get('relationships', {}).items():
+            related_model = get_related_model(model, link_name)
+            # Create the deserializer for this relationship object and
+            # decide whether we need to deserialize a to-one
+            # relationship or a to-many relationship.
+            #
+            # These may raise a DeserializationException or
+            # MultipleExceptions.
+            DRD = DefaultRelationshipDeserializer
+            deserializer = DRD(self.session, related_model, link_name)
+            if is_like_list(model, link_name):
+                deserialize = deserializer.deserialize_many
+            else:
+                deserialize = deserializer.deserialize
+            yield link_name, deserialize(link_object)
+
+    def _extract_attributes(self, data, model):
+        """Generate the attributes given in the resource object.
+
+        `data` is a dictionary representation of a JSON API resource
+        object.
+
+        `model` is a SQLAlchemy model class. The `data` resource should
+        represent an instance of `model`.
+
+        This method is an iterator generator. It yields pairs in which
+        the left element is a string naming an attribute and the right
+        element is the value of the attribute to assign to the instance
+        of `model` being created.
+
+        This method yields the attributes as-is from the resource object
+        given in `data`, with the exception that strings are parsed into
+        :class:`datetime.date` or :class:`datetime.datetime` objects
+        when appropriate, based on the columns of the given `model`.
+
+        """
+        # Yield the primary key name and value, if it exists.
+        pk = primary_key_for(model)
+        if pk in data:
+            yield pk, data[pk]
+        for k, v in data.get('attributes', {}).items():
+            # Special case: if there are any dates, convert the string
+            # form of the date into an instance of the Python
+            # ``datetime`` object.
+            yield k, to_datetime(model, k, v)
+
     def _load(self, data):
         """Returns a new instance of a SQLAlchemy model represented by
         the given resource object.
@@ -128,66 +281,17 @@ class DefaultDeserializer(Deserializer):
         exceptions when deserializing the related instances.
 
         """
-        if 'type' not in data:
-            raise MissingType
-        if 'id' in data and not self.allow_client_generated_ids:
-            raise ClientGeneratedIDNotAllowed
-        # Determine the model from the type name that the the user is
-        # requesting. If no model is known with the given type, raise an
-        # exception.
-        type_ = data.pop('type')
-        expected_type = collection_name(self.model)
-        try:
-            model = model_for(type_)
-        except ValueError:
-            raise ConflictingType(expected_type, type_)
-        # If we wanted to allow deserializing a subclass of the model,
-        # we could use:
-        #
-        #     if not issubclass(model, self.model) and type != expected_type:
-        #
-        if type_ != expected_type:
-            raise ConflictingType(expected_type, type_)
-        # Check for any request parameter naming a column which does not exist
-        # on the current model.
-        for field in data:
-            if field == 'relationships':
-                for relation in data['relationships']:
-                    if not has_field(model, relation):
-                        raise UnknownRelationship(relation)
-            elif field == 'attributes':
-                for attribute in data['attributes']:
-                    if not has_field(model, attribute):
-                        raise UnknownAttribute(attribute)
-        # Determine which related instances need to be added.
-        links = {}
-        if 'relationships' in data:
-            links = data.pop('relationships', {})
-            for link_name, link_object in links.items():
-                related_model = get_related_model(model, link_name)
-                DRD = DefaultRelationshipDeserializer
-                deserializer = DRD(self.session, related_model, link_name)
-                # Create the deserializer for this relationship object.
-                if is_like_list(model, link_name):
-                    deserialize = deserializer.deserialize_many
-                else:
-                    deserialize = deserializer.deserialize
-                # This may raise a DeserializationException or
-                # MultipleExceptions.
-                links[link_name] = deserialize(link_object)
+        self._check_type_and_id(data)
+        model = self._resource_to_model(data)
+        self._check_unknown_fields(data, model)
+        attributes = self._extract_attributes(data, model)
+        instance = model(**dict(attributes))
+        related_resources = self._load_related_resources(data, model)
         # TODO Need to check here if any related instances are None,
         # like we do in the patch() method. We could possibly refactor
         # the code above and the code there into a helper function...
         pass
-        # Move the attributes up to the top level.
-        data.update(data.pop('attributes', {}))
-        # Special case: if there are any dates, convert the string form of the
-        # date into an instance of the Python ``datetime`` object.
-        data = dict((k, to_datetime(model, k, v)) for k, v in data.items())
-        # Create the new instance by keyword attributes.
-        instance = model(**data)
-        # Set each relation specified in the links.
-        for relation_name, related_value in links.items():
+        for relation_name, related_value in related_resources:
             setattr(instance, relation_name, related_value)
         return instance
 
