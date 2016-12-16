@@ -11,6 +11,8 @@ python:
   - "3.3"
   - "3.4"
   - "3.5"
+  - "3.6-dev"
+  - "nightly"
   - "pypy"
   # PyPy3 currently supports Python 3.2, which Flask does not support.
   # - "pypy3"
