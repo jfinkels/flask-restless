@@ -267,6 +267,36 @@ class DefaultDeserializer(Deserializer):
             # ``datetime`` object.
             yield k, to_datetime(model, k, v)
 
+    def _get_or_create(self, model, attributes):
+        """Get or create an instance of a model with the given attributes.
+
+        `model` is a SQLAlchemy model class. `attributes` is a
+        dictionary in which keys are strings naming instance attributes
+        of `model` and values are the values to assign to those
+        attributes.
+
+        This method returns a new instance of the given model (created
+        using the constructor) with the given attributes set on it.
+
+        """
+        return model(**attributes)
+
+    def _assign_related_resources(self, instance, related_resources):
+        """Assign related resources to a given instance of a SQLAlchemy model.
+
+        `instance` is an instance of a SQLAlchemy model class.
+        `related_resources` is a dictionary whose keys are strings
+        naming relationships of the SQLAlchemy model and whose values
+        are the corresponding relationship values.
+
+        This method does not return anything but modifies `instance` by
+        setting the value of the attributes named by
+        `related_resources`.
+
+        """
+        for relation_name, related_value in related_resources.items():
+            setattr(instance, relation_name, related_value)
+
     def _load(self, data):
         """Returns a new instance of a SQLAlchemy model represented by
         the given resource object.
@@ -285,14 +315,12 @@ class DefaultDeserializer(Deserializer):
         model = self._resource_to_model(data)
         self._check_unknown_fields(data, model)
         attributes = self._extract_attributes(data, model)
-        instance = model(**dict(attributes))
+        instance = self._get_or_create(model, dict(attributes))
         related_resources = self._load_related_resources(data, model)
         # TODO Need to check here if any related instances are None,
         # like we do in the patch() method. We could possibly refactor
         # the code above and the code there into a helper function...
-        pass
-        for relation_name, related_value in related_resources:
-            setattr(instance, relation_name, related_value)
+        self._assign_related_resources(instance, dict(related_resources))
         return instance
 
     def deserialize(self, document):
