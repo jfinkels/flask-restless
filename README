@@ -87,10 +87,10 @@ This application requires the following libraries to be installed:
 * [mimerender][9] version 0.5.2 or greater
 
 These requirements (and some additional optional packages) are also listed in
-the `requirements.txt` file. Using `pip` is probably the easiest way to install
-these:
+the `requirements/install.txt` file. Using `pip` is probably the easiest way to
+install these:
 
-    pip install -r requirements.txt
+    pip install -r requirements/install.txt
 
 [8]: https://labix.org/python-dateutil
 [9]: https://github.com/martinblech/mimerender
@@ -111,11 +111,11 @@ For information on how to use this extension, build the documentation here or
 
 If your Python interpreter is `cpython`, run:
 
-    pip install -r requirements-test-cpython.txt
+    pip install -r requirements/test-cpython.txt
 
 Otherwise, if your Python interpreter is `pypy`, run:
 
-    pip install -r requirements-test-pypy.txt
+    pip install -r requirements/test-pypy.txt
 
 To run the tests:
 
@@ -129,10 +129,10 @@ the documentation:
 * [Sphinx][10]
 * [sphinxcontrib-httpdomain][11], version 1.1.7 or greater
 
-These requirements are also listed in the `requirements-doc.txt` file. Using
+These requirements are also listed in the `requirements/doc.txt` file. Using
 `pip` is probably the easiest way to install these:
 
-    pip install -r requirements-doc.txt
+    pip install -r requirements/doc.txt
 
 The documentation is written for Sphinx in [reStructuredText][12] files in the
 `docs/` directory. Documentation for each class and function is provided in the
