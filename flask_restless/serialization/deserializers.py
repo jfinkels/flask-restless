@@ -18,7 +18,9 @@ deserialization as expected by classes that follow the JSON API
 protocol.
 
 The implementations here are closely coupled to the rest of the
-Flask-Restless code.
+Flask-Restless code. Specifically, they use global helper functions
+(like :func:`.model_for`) that rely on information provided to the
+:class:`.APIManager` at the time of API creation.
 
 """
 from .exceptions import ClientGeneratedIDNotAllowed
@@ -101,7 +103,243 @@ class Deserializer(object):
         raise NotImplementedError
 
 
-class DefaultDeserializer(Deserializer):
+class DeserializerBase(Deserializer):
+
+    def __init__(self, session, model):
+        super(DeserializerBase, self).__init__(session, model)
+
+        self.relation_name = None
+
+    def _check_type_and_id(self, data):
+        """Check that an object has a valid type and ID.
+
+        `data` is a dictionary representation of a JSON API resource
+        object or a resource identifier object. This method does not
+        return anything, but implementing subclasses may raise an
+        exception here, for example if the ``type`` key is missing.
+
+        This is an abstract method; concrete subclasses must override
+        and implement it.
+
+        """
+        raise NotImplementedError
+
+    def _resource_to_model(self, data):
+        """Get the SQLAlchemy model for the type of the given resource.
+
+        `data` is a dictionary representation of a JSON API resource
+        object. This method returns the SQLAlchemy model class
+        corresponding to the resource type given in the ``type`` key of
+        the resource object.
+
+        This method raises :exc:`ConflictingType` if the type of the
+        resource object does not match the SQLAlchemy model specified in
+        the constructor of this class (that is, the
+        :attr:`.Deserializer.model` instance attribute).
+
+        """
+        type_ = data['type']
+        expected_type = collection_name(self.model)
+        try:
+            model = model_for(type_)
+        except ValueError:
+            raise ConflictingType(expected_type, type_, self.relation_name)
+        # If we wanted to allow deserializing a subclass of the model,
+        # we could use:
+        #
+        #     if not issubclass(model, self.model) and type != expected_type:
+        #
+        if type_ != expected_type:
+            raise ConflictingType(expected_type, type_, self.relation_name)
+        return model
+
+    def _check_unknown_fields(self, data):
+        """Check for any unknown fields in an object.
+
+        `data` is a dictionary representation of a JSON API resource
+        object or resource identifier object.
+
+        `model` is a SQLAlchemy model class. The `data` object should
+        represent an instance of `model`.
+
+        This method does not return anything, but implementing
+        subclasses may raise an exception here, for example if `data`
+        includes a field that does not exist on `model`.
+
+        This is an abstract method; concrete subclasses must override
+        and implement it.
+
+        """
+        raise NotImplementedError
+
+    def _extract_attributes(self, data, model):
+        """Generate the attributes given in an object.
+
+        `data` is a dictionary representation of a JSON API resource
+        object or resource identifier object.
+
+        `model` is a SQLAlchemy model class. The `data` object should
+        represent an instance of `model`.
+
+        This method is an iterator generator. It yields pairs in which
+        the left element is a string naming an attribute and the right
+        element is the value of the attribute to assign to the instance
+        of `model` being deserialized. The attributes are passed along
+        to the :meth:`._get_or_create` method.
+
+        This is an abstract method; concrete subclasses must override
+        and implement it.
+
+        """
+        raise NotImplementedError
+
+    def _get_or_create(self, model, attributes):
+        """Get or create an instance of a model with the given attributes.
+
+        `model` is a SQLAlchemy model class. `attributes` is a
+        dictionary in which keys are strings naming instance attributes
+        of `model` and values are the values to assign to those
+        attributes.
+
+        This method may return either a new instance or an existing
+        instance of the given model that has the given attributes.
+
+        If an implementing subclass returns an existing instance, it
+        should (but is not obligated to) yield at least a pair of the
+        form ``(pk_name, pk_value)``, where ``pk_name`` is a string
+        naming the primary key attribute of `model` and ``pk_value`` is
+        the primary key value as it appears in `data`.
+
+        This is an abstract method; concrete subclasses must override
+        and implement it.
+
+        """
+        raise NotImplementedError
+
+    def _load_related_resources(self, data, model):
+        """Generate identifiers for related resources, if necessary.
+
+        This method is only relevant for subclasses that deserialize
+        resource objects, not for subclasses that deserialize resource
+        identifier objects (since resource identifier objects do not
+        contain any relationship information).
+
+        `data` is a dictionary representation of a JSON API resource
+        object.
+
+        `model` is a SQLAlchemy model class. The `data` resource object
+        should represent an instance of `model`.
+
+        This method is an iterator generator. It yields pairs in which
+        the left element is a string naming a relationship and the right
+        element is a deserialized version of the JSON API resource
+        identifiers of the relationship. For a to-one relationship, this
+        is just a single SQLAlchemy model instance. For a to-many
+        relationship, it is a list of SQLAlchemy model instances.
+
+        For example::
+
+            >>> # session = ...
+            >>> # class Article(Base): ...
+            >>> deserializer = DefaultDeserializer(session, Article)
+            >>> data = {
+            ...     'relationships': {
+            ...         'comments': [
+            ...             {'type': 'comment', 'id': 1}
+            ...         ],
+            ...         'author': {'type': 'person', 'id': 1}
+            ...     }
+            ... }
+            >>> rels = deserializer._load_related_resources(data, Article)
+            >>> for name, obj in sorted(rels):
+            ...     print(name, obj)
+            author <Person object at 0x...>
+            comments [<Comment object at 0x...>]
+
+        This method raises :exc:`DeserializationException` or
+        :exc:`MultipleExceptions` if there is a problem deserializing
+        any of the related resources.
+
+        This is an abstract method; concrete subclasses must override
+        and implement it.
+
+        """
+        raise NotImplementedError
+
+    def _assign_related_resources(self, instance, related_resources):
+        """Assign related resources to a given instance of a SQLAlchemy model.
+
+        This method is only relevant for subclasses that deserialize
+        resource objects, not for subclasses that deserialize resource
+        identifier objects (since resource identifier objects do not
+        contain any relationship information).
+
+        `instance` is an instance of a SQLAlchemy model class.
+        `related_resources` is a dictionary whose keys are strings
+        naming relationships of the SQLAlchemy model and whose values
+        are the corresponding relationship values.
+
+        This method does not return anything but modifies `instance` by
+        setting the value of the attributes named by
+        `related_resources`.
+
+        This is an abstract method; concrete subclasses must override
+        and implement it.
+
+        """
+        raise NotImplementedError
+
+    def _load(self, data):
+        """Returns a new instance of a SQLAlchemy model represented by
+        the given resource object.
+
+        `data` is a dictionary representation of a JSON API resource
+        object.
+
+        This method may raise one of various
+        :exc:`DeserializationException` subclasses. If the instance has
+        a to-many relationship, this method may raise
+        :exc:`MultipleExceptions` as well, if there are multiple
+        exceptions when deserializing the related instances.
+
+        """
+        self._check_type_and_id(data)
+        model = self._resource_to_model(data)
+        self._check_unknown_fields(data, model)
+        attributes = self._extract_attributes(data, model)
+        instance = self._get_or_create(model, dict(attributes))
+        related_resources = self._load_related_resources(data, model)
+        # TODO Need to check here if any related instances are None,
+        # like we do in the patch() method. We could possibly refactor
+        # the code above and the code there into a helper function...
+        self._assign_related_resources(instance, dict(related_resources))
+        return instance
+
+    def deserialize(self, document):
+        """Creates and returns a new instance of the SQLAlchemy model specified
+        in the constructor whose attributes are given in the JSON API
+        document.
+
+        `document` must be a dictionary representation of a JSON API
+        document containing a single resource as primary data, as
+        specified in the JSON API specification. For more information,
+        see the `Resource Objects`_ section of the JSON API
+        specification.
+
+        *Implementation note:* everything in the document other than the
+        ``data`` element is ignored.
+
+        .. _Resource Objects:
+           http://jsonapi.org/format/#document-structure-resource-objects
+
+        """
+        if 'data' not in document:
+            raise MissingData(self.relation_name)
+        data = document['data']
+        return self._load(data)
+
+
+class DefaultDeserializer(DeserializerBase):
     """A default implementation of a deserializer for SQLAlchemy models.
 
     When called, this object returns an instance of a SQLAlchemy model
@@ -121,43 +359,14 @@ class DefaultDeserializer(Deserializer):
         `data` is a dictionary representation of a JSON API resource
         object. This method does not return anything, but raises
         :exc:`MissingType` if the ``type`` key is missing and
-        :exc:`ClientGeneratedIDNotAllowed` key is present when not
-        allowed.
+        :exc:`ClientGeneratedIDNotAllowed` if the ``id`` key is present
+        when not allowed.
 
         """
         if 'type' not in data:
             raise MissingType
         if 'id' in data and not self.allow_client_generated_ids:
             raise ClientGeneratedIDNotAllowed
-
-    def _resource_to_model(self, data):
-        """Get the SQLAlchemy model for the type of the given resource.
-
-        `data` is a dictionary representation of a JSON API resource
-        object. This method returns the SQLAlchemy model class
-        corresponding to the resource type given in the ``type`` key of
-        the resource object.
-
-        This method raises :exc:`ConflictingType` if the type of the
-        resource object does not match the SQLAlchemy model specified in
-        the constructor of this class (that is, the
-        :attr:`.Deserializer.model` instance attribute).
-
-        """
-        type_ = data.pop('type')
-        expected_type = collection_name(self.model)
-        try:
-            model = model_for(type_)
-        except ValueError:
-            raise ConflictingType(expected_type, type_)
-        # If we wanted to allow deserializing a subclass of the model,
-        # we could use:
-        #
-        #     if not issubclass(model, self.model) and type != expected_type:
-        #
-        if type_ != expected_type:
-            raise ConflictingType(expected_type, type_)
-        return model
 
     def _check_unknown_fields(self, data, model):
         """Check for any unknown fields in a resource object.
@@ -297,55 +506,6 @@ class DefaultDeserializer(Deserializer):
         for relation_name, related_value in related_resources.items():
             setattr(instance, relation_name, related_value)
 
-    def _load(self, data):
-        """Returns a new instance of a SQLAlchemy model represented by
-        the given resource object.
-
-        `data` is a dictionary representation of a JSON API resource
-        object.
-
-        This method may raise one of various
-        :exc:`DeserializationException` subclasses. If the instance has
-        a to-many relationship, this method may raise
-        :exc:`MultipleExceptions` as well, if there are multiple
-        exceptions when deserializing the related instances.
-
-        """
-        self._check_type_and_id(data)
-        model = self._resource_to_model(data)
-        self._check_unknown_fields(data, model)
-        attributes = self._extract_attributes(data, model)
-        instance = self._get_or_create(model, dict(attributes))
-        related_resources = self._load_related_resources(data, model)
-        # TODO Need to check here if any related instances are None,
-        # like we do in the patch() method. We could possibly refactor
-        # the code above and the code there into a helper function...
-        self._assign_related_resources(instance, dict(related_resources))
-        return instance
-
-    def deserialize(self, document):
-        """Creates and returns a new instance of the SQLAlchemy model specified
-        in the constructor whose attributes are given in the JSON API
-        document.
-
-        `document` must be a dictionary representation of a JSON API
-        document containing a single resource as primary data, as
-        specified in the JSON API specification. For more information,
-        see the `Resource Objects`_ section of the JSON API
-        specification.
-
-        *Implementation note:* everything in the document other than the
-        ``data`` element is ignored.
-
-        .. _Resource Objects:
-           http://jsonapi.org/format/#document-structure-resource-objects
-
-        """
-        if 'data' not in document:
-            raise MissingData
-        data = document['data']
-        return self._load(data)
-
     # # TODO JSON API currently doesn't support bulk creation of resources,
     # # so this code cannot be accurately used/tested.
     # def deserialize_many(self, document):
@@ -382,7 +542,7 @@ class DefaultDeserializer(Deserializer):
     #     return result
 
 
-class DefaultRelationshipDeserializer(Deserializer):
+class DefaultRelationshipDeserializer(DeserializerBase):
     """A default implementation of a deserializer for resource
     identifier objects for use in relationships in JSON API documents.
 
@@ -421,49 +581,62 @@ class DefaultRelationshipDeserializer(Deserializer):
         #: The name of the relationship being deserialized, as a string.
         self.relation_name = relation_name
 
-    def _load(self, data):
-        """Gets the resource associated with the given resource
-        identifier object.
+    def _check_type_and_id(self, data):
+        """Check that the resource identifier object has a valid type and ID.
 
-        `data` must be a dictionary containing exactly two elements,
-        ``'type'`` and ``'id'``, or a list of dictionaries of that
-        form. In the former case, the `data` represents a to-one
-        relation and in the latter a to-many relation.
-
-        Returns the instance or instances of the SQLAlchemy model
-        specified in the constructor whose ID or IDs match the given
-        `data`.
-
-        May raise :exc:`MissingID`, :exc:`MissingType`, or
-        :exc:`ConflictingType`.
+        `data` is a dictionary representation of a JSON API resource
+        identifier object. This method does not return anything, but
+        raises :exc:`MissingType` if the ``type`` key is missing and
+        :exc:`MissingID` if the ``id`` key is missing.
 
         """
-        # If this is a to-one relationship, get the sole instance of the model.
-        if 'id' not in data:
-            raise MissingID(self.relation_name)
         if 'type' not in data:
             raise MissingType(self.relation_name)
-        type_ = data['type']
-        if type_ != self.type_name:
-            raise ConflictingType(self.relation_name, self.type_name,
-                                  type_)
-        id_ = data['id']
-        return get_by(self.session, self.model, id_)
+        if 'id' not in data:
+            raise MissingID(self.relation_name)
 
-    def deserialize(self, document):
-        """Returns the SQLAlchemy instance identified by the resource
-        identifier given as the primary data in the given document.
+    def _check_unknown_fields(self, data, model):
+        """Do nothing.
 
-        The type given in the resource identifier must match the
-        collection name associated with the SQLAlchemy model specified
-        in the constructor of this class. If not, this raises
-        :exc:`ConflictingType`.
+        Since there are no attributes or relationships in `data`, a
+        resource identifier object, there is nothing to do here.
 
         """
-        if 'data' not in document:
-            raise MissingData(self.relation_name)
-        resource_identifier = document['data']
-        return self._load(resource_identifier)
+        pass
+
+    def _extract_attributes(self, data, model):
+        """Yield the primary key name/value pair of the resource identifier."""
+        pk_name = primary_key_for(model)
+        yield pk_name, data[pk_name]
+
+    def _get_or_create(self, model, attributes):
+        """Get a resource identified by primary key.
+
+        `model` is a SQLAlchemy model class. `attributes` includes the
+        primary key name/value pair that identifies an instance of the
+        model. This method returns that instance.
+
+        """
+        pk_name = primary_key_for(model)
+        pk_value = attributes[pk_name]
+        return get_by(self.session, model, pk_value)
+
+    def _load_related_resources(self, data, model):
+        """Return an empty list.
+
+        There is no relationship information for a resource identifer.
+
+        """
+        return []
+
+    def _assign_related_resources(self, instance, related_resources):
+        """Do nothing.
+
+        Since there are no relationships in a resource identifier
+        object, there is nothing to do here.
+
+        """
+        pass
 
     def deserialize_many(self, document):
         """Returns a list of SQLAlchemy instances identified by the
