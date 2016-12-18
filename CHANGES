@@ -37,6 +37,8 @@ Not yet released.
   resource ID in the JSON document is not a JSON string.
 - :issue:`536`: adds support for single-table inheritance.
 - :issue:`540`: correctly support models that don't have a column named "id".
+- :issue:`545`: refactors implementation of :class:`.DefaultDeserializer` so
+  that it is easier for subclasses to override different subprocedures.
 - :issue:`546`: adds support for joined table inheritance.
 - :issue:`548`: requests can now use the ``Accept: */*`` header.
 - :issue:`559`: fixes bug that stripped attributes with JSON API reserved names
