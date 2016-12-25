@@ -207,6 +207,34 @@ Flask-Restless also understands the `PostgreSQL network address operators`_
 .. _SQLAlchemy column operators: https://docs.sqlalchemy.org/en/latest/core/expression_api.html#sqlalchemy.sql.operators.ColumnOperators
 .. _PostgreSQL network address operators: https://www.postgresql.org/docs/current/static/functions-net.html
 
+
+Custom operators
+----------------
+
+You can use the :func:`~flask_restless.register_operator` function to extend
+the set of known operators::
+
+    from flask_restless import register_operator
+
+    # Create a custom "greater than" implementation.
+    register_operator('my_gt', lambda x, y: x - y > 0)
+
+Then the client makes a request with a filter object whose ``op`` element is
+the name of this operator:
+
+.. sourcecode:: http
+
+   GET /api/person?filter[objects]=[{"name":"age","op":"my_gt","val":18}] HTTP/1.1
+   Host: example.com
+   Accept: application/vnd.api+json
+
+You can also override existing operators by setting the name of your operator
+to be the name of a existing operator; the built-in operators are listed in
+the :ref:`previous section <operators>`::
+
+    register_operator('gt', lambda x, y: x - y > 0)
+
+
 Simpler filtering
 -----------------
 

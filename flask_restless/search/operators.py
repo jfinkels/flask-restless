@@ -170,6 +170,24 @@ OPERATORS = {
 }
 
 
+def register_operator(name, op):
+    """Register an operator so the system can create expressions involving it.
+
+    `name` is a string naming the operator and `op` is a function that
+    takes up to two arguments as input. If the name provided is one of
+    the built-in operators (see :ref:`operators`), it will override the
+    default behavior of that operator. For example, calling ::
+
+        register_operator('gt', myfunc)
+
+    will cause ``myfunc()`` to be invoked in the SQLAlchemy expression
+    created for this operator instead of the default "greater than"
+    operator.
+
+    """
+    OPERATORS[name] = op
+
+
 def create_operation(arg1, operator, arg2):
     """Creates a SQLAlchemy expression for the given operation.
 

@@ -42,6 +42,7 @@ Not yet released.
 - :issue:`559`: fixes bug that stripped attributes with JSON API reserved names
   (like "type") when deserializing resources.
 - :issue:`583`: fixes failing tests when using simplejson.
+- :issue:`590`: allows user to specify a custom operator for filters.
 - :issue:`599`: fixes `unicode` bug using :func:`!urlparse.urljoin` with the
   `future`_ library in resource serialization.
 

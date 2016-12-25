@@ -30,6 +30,7 @@ from .serialization import MultipleExceptions
 from .serialization import SerializationException
 from .serialization import simple_serialize
 from .serialization import simple_serialize_many
+from .search import register_operator
 from .views import JSONAPI_MIMETYPE
 from .views import ProcessingException
 
@@ -51,6 +52,7 @@ __all__ = [
     'MultipleExceptions',
     'primary_key_for',
     'ProcessingException',
+    'register_operator',
     'SerializationException',
     'serializer_for',
     'simple_serialize',

@@ -15,6 +15,12 @@ The API Manager class
 .. autoclass:: IllegalArgumentError
 
 
+Search helper functions
+-----------------------
+
+.. autofunction:: register_operator
+
+
 Global helper functions
 -----------------------
 

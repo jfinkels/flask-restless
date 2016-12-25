@@ -13,6 +13,7 @@
 from datetime import date
 from datetime import datetime
 from datetime import time
+from operator import gt
 from unittest2 import skip
 
 from sqlalchemy import Column
@@ -26,6 +27,8 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
+
+from flask_restless import register_operator
 
 from .helpers import check_sole_error
 from .helpers import dumps
@@ -1196,6 +1199,23 @@ class TestOperators(SearchTestBase):
         response = self.search('/api/person', filters)
         keywords = ['compare', 'value', 'NULL', 'use', 'is_null', 'operator']
         check_sole_error(response, 400, keywords)
+
+    def test_custom_operator(self):
+        """Test for a custom operator provided by the user.
+
+        For more information, see GitHub pull request #590.
+
+        """
+        person1 = self.Person(id=1)
+        person2 = self.Person(id=2)
+        self.session.add_all([person1, person2])
+        self.session.commit()
+        register_operator('my_gt', gt)
+        filters = [dict(name='id', op='my_gt', val=1)]
+        response = self.search('/api/person', filters)
+        document = loads(response.data)
+        people = document['data']
+        self.assertEqual(['2'], [person['id'] for person in people])
 
 
 class TestAssociationProxy(SearchTestBase):

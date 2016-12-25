@@ -24,16 +24,19 @@ are the exceptions that may be raised by the func:`search` and
 :func:`create_filters` functions.
 
 """
-from .filters import FilterCreationError
-from .filters import FilterParsingError
 from .drivers import create_filters
 from .drivers import search
 from .drivers import search_relationship
+from .filters import FilterCreationError
+from .filters import FilterParsingError
+from .operators import register_operator
+
 
 __all__ = [
     'create_filters',
     'FilterCreationError',
     'FilterParsingError',
+    'register_operator',
     'search',
     'search_relationship',
 ]
