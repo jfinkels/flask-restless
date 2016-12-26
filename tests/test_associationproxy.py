@@ -293,7 +293,7 @@ class TestAssociationTable(ManagerTestBase):
         self.manager.create_api(self.Article)
 
         article = self.Article(id=1)
-        article.tag_names = ['foo', 'bar']
+        article.tag_names = [u'foo', u'bar']
         self.session.add(article)
         self.session.commit()
 
@@ -301,7 +301,7 @@ class TestAssociationTable(ManagerTestBase):
         document = loads(response.data)
         article = document['data']
         tag_names = sorted(article['attributes']['tag_names'])
-        self.assertEqual(tag_names, ['bar', 'foo'])
+        self.assertEqual(tag_names, [u'bar', u'foo'])
 
     def test_creating(self):
         """Tests for creating with an association proxy to a scalar list."""
@@ -311,7 +311,7 @@ class TestAssociationTable(ManagerTestBase):
             'data': {
                 'type': 'article',
                 'attributes': {
-                    'tag_names': ['foo', 'bar']
+                    'tag_names': [u'foo', u'bar']
                 }
             }
         }
@@ -321,19 +321,19 @@ class TestAssociationTable(ManagerTestBase):
         # Check that the response includes the `tag_names` attribute.
         document = loads(response.data)
         article = document['data']
-        self.assertEqual(article['attributes']['tag_names'], ['foo', 'bar'])
+        self.assertEqual(article['attributes']['tag_names'], [u'foo', u'bar'])
 
         # Check that the Article object has been created and has the tag names.
         self.assertEqual(self.session.query(self.Article).count(), 1)
         article = self.session.query(self.Article).first()
-        self.assertEqual(article.tag_names, ['foo', 'bar'])
+        self.assertEqual(article.tag_names, [u'foo', u'bar'])
 
     def test_updating(self):
         """Tests for updating an association proxy to a scalar list."""
         self.manager.create_api(self.Article, methods=['PATCH'])
 
         article = self.Article(id=1)
-        article.tag_names = ['foo', 'bar']
+        article.tag_names = [u'foo', u'bar']
         self.session.add(article)
         self.session.commit()
 
@@ -342,20 +342,20 @@ class TestAssociationTable(ManagerTestBase):
                 'type': 'article',
                 'id': '1',
                 'attributes': {
-                    'tag_names': ['baz', 'xyzzy']
+                    'tag_names': [u'baz', u'xyzzy']
                 }
             }
         }
         response = self.app.patch('/api/article/1', data=dumps(data))
         self.assertEqual(response.status_code, 204)
-        self.assertEqual(article.tag_names, ['baz', 'xyzzy'])
+        self.assertEqual(article.tag_names, [u'baz', u'xyzzy'])
 
     def test_deleting(self):
         """Test for deleting a resource with a to-many relationship."""
         self.manager.create_api(self.Article, methods=['DELETE'])
 
         article = self.Article(id=1)
-        article.tag_names = ['foo', 'bar']
+        article.tag_names = [u'foo', u'bar']
         self.session.add(article)
         self.session.commit()
 
@@ -368,7 +368,7 @@ class TestAssociationTable(ManagerTestBase):
         response = self.app.delete('/api/article/1', data=dumps(data))
         self.assertEqual(response.status_code, 204)
         tags = self.session.query(self.Tag).all()
-        self.assertEqual(['bar', 'foo'], sorted(tag.name for tag in tags))
+        self.assertEqual([u'bar', u'foo'], sorted(tag.name for tag in tags))
 
     def test_fetch_relationships(self):
         """Test for fetching to-many relationship resource identifiers."""
@@ -376,16 +376,14 @@ class TestAssociationTable(ManagerTestBase):
         self.manager.create_api(self.Tag)
 
         article = self.Article(id=1)
-        article.tag_names = ['foo', 'bar']
+        article.tag_names = [u'foo', u'bar']
         self.session.add(article)
         self.session.commit()
 
-        # TODO What to do about this situation? The `tags` relationship
-        # is not shown in the resource representation of the Article
-        # object because we assume the `tag_names` attribute is the only
-        # thing the user wants to expose. However, the Tag objects
-        # underlying the `tag_names` are visible in the relationships
-        # attribute.
+        # The `tags` relationship is not shown in the resource
+        # representation of the Article object because we assume the
+        # `tag_names` attribute is the only thing the user wants to
+        # expose.
         response = self.app.get('/api/article/1/relationships/tags')
         self.assertEqual(response.status_code, 404)
 
@@ -398,13 +396,10 @@ class TestAssociationTable(ManagerTestBase):
         self.session.add(article)
         self.session.commit()
 
-        # TODO What to do about this situation? The `tags` relationship
-        # is not shown in the resource representation of the Article
-        # object because we assume the `tag_names` attribute is the only
-        # thing the user wants to expose. However, the Tag objects
-        # underlying the `tag_names` are visible in the relationships
-        # attribute. Maybe we shouldn't actually hide the `tags`
-        # relationship.
+        # The `tags` relationship is not shown in the resource
+        # representation of the Article object because we assume the
+        # `tag_names` attribute is the only thing the user wants to
+        # expose.
         data = {
             'data': [
                 {'type': 'tag', 'id': '1'},
@@ -427,13 +422,10 @@ class TestAssociationTable(ManagerTestBase):
         self.session.add_all([article, tag])
         self.session.commit()
 
-        # TODO What to do about this situation? The `tags` relationship
-        # is not shown in the resource representation of the Article
-        # object because we assume the `tag_names` attribute is the only
-        # thing the user wants to expose. However, the Tag objects
-        # underlying the `tag_names` are visible in the relationships
-        # attribute. Maybe we shouldn't actually hide the `tags`
-        # relationship.
+        # The `tags` relationship is not shown in the resource
+        # representation of the Article object because we assume the
+        # `tag_names` attribute is the only thing the user wants to
+        # expose.
         data = {
             'data': [
                 {'type': 'tag', 'id': '1'},
@@ -456,13 +448,10 @@ class TestAssociationTable(ManagerTestBase):
         self.session.add_all([article, tag1, tag2])
         self.session.commit()
 
-        # TODO What to do about this situation? The `tags` relationship
-        # is not shown in the resource representation of the Article
-        # object because we assume the `tag_names` attribute is the only
-        # thing the user wants to expose. However, the Tag objects
-        # underlying the `tag_names` are visible in the relationships
-        # attribute. Maybe we shouldn't actually hide the `tags`
-        # relationship.
+        # The `tags` relationship is not shown in the resource
+        # representation of the Article object because we assume the
+        # `tag_names` attribute is the only thing the user wants to
+        # expose.
         data = {
             'data': [
                 {'type': 'tag', 'id': '2'},

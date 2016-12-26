@@ -65,6 +65,35 @@ def session_query(session, model):
     return session.query(model)
 
 
+# TODO Combine this function with the one below.
+def scalar_collection_proxied_relations(model):
+    """Yields the name of each relationship proxied to a scalar collection.
+
+    This includes each relationship to an association table for which
+    there is an association proxy that presents a scalar collection (for
+    example, a list of strings).
+
+    .. seealso::
+
+       :func:`assoc_proxy_scalar_collections`
+          Yields the names of association proxies for the relationships
+          found by this function.
+
+    .. versionadded:: 1.0.0
+
+    """
+    mapper = sqlalchemy_inspect(model)
+    for k, v in mapper.all_orm_descriptors.items():
+        if isinstance(v, AssociationProxy):
+            # HACK SQLAlchemy only loads the association proxy
+            # on-demand. We need to call `hasattr` in order to force
+            # SQLAlchemy to load the attribute.
+            hasattr(model, k)
+            if not isinstance(v.remote_attr.property, RelationshipProperty):
+                if is_like_list(model, v.local_attr.key):
+                    yield v.local_attr.key
+
+
 def assoc_proxy_scalar_collections(model):
     """Yields the name of each association proxy collection as a string.
 
@@ -76,7 +105,7 @@ def assoc_proxy_scalar_collections(model):
 
     .. seealso::
 
-       :func:`assoc_proxy_inst_collections`
+       :func:`scalar_collection_proxied_relations`
 
     .. versionadded:: 1.0.0
 
