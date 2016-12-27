@@ -21,6 +21,12 @@ specification.
 from itertools import product
 from operator import itemgetter
 from unittest2 import skip
+# In Python 3...
+try:
+    from urllib.parse import unquote
+# In Python 2...
+except ImportError:
+    from urlparse import unquote
 
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
@@ -249,12 +255,14 @@ class TestFetchCollection(ManagerTestBase):
         document = loads(response.data)
         pagination = document['links']
         base_url = '{0}?'.format(base_url)
-        assert base_url in pagination['first']
-        assert 'page[number]=1' in pagination['first']
-        assert base_url in pagination['last']
-        assert 'page[number]=1' in pagination['last']
-        assert pagination['prev'] is None
-        assert pagination['next'] is None
+        first = unquote(pagination['first'])
+        self.assertIn(base_url, first)
+        self.assertIn('page[number]=1', first)
+        last = unquote(pagination['last'])
+        self.assertIn(base_url, last)
+        self.assertIn('page[number]=1', last)
+        self.assertIs(pagination['prev'], None)
+        self.assertIs(pagination['next'], None)
 
     def test_link_headers_empty_collection(self):
         """Tests that :http:header:`Link` headers work correctly for an
@@ -263,24 +271,25 @@ class TestFetchCollection(ManagerTestBase):
         """
         base_url = '/api/person'
         response = self.app.get(base_url)
-        assert response.status_code == 200
+        self.assertEqual(response.status_code, 200)
         base_url = '{0}?'.format(base_url)
         # There should be exactly two, one for the first page and one
         # for the last page; there are no previous or next pages, so
         # there cannot be any valid Link headers for them.
         links = response.headers['Link'].split(',')
-        assert len(links) == 2
+        self.assertEqual(len(links), 2)
         # Decide which link is for the first page and which is for the last.
-        if 'first' in links[0]:
-            first, last = links
-        else:
-            last, first = links
-        assert base_url in first
-        assert 'rel="first"' in first
-        assert 'page[number]=1' in first
-        assert base_url in last
-        assert 'rel="last"' in last
-        assert 'page[number]=1' in last
+        first, last = links
+        if 'last' in links[0]:
+            first, last = last, first
+        first = unquote(first)
+        self.assertIn(base_url, first)
+        self.assertIn('rel="first"', first)
+        self.assertIn('page[number]=1', first)
+        last = unquote(last)
+        self.assertIn(base_url, last)
+        self.assertIn('rel="last"', last)
+        self.assertIn('page[number]=1', last)
 
     def test_pagination_with_query_parameter(self):
         """Tests that the URLs produced for pagination links include
@@ -543,23 +552,32 @@ class TestFetchRelation(ManagerTestBase):
         self.session.add(person)
         self.session.add_all(articles)
         self.session.commit()
+
         params = {'page[number]': 3, 'page[size]': 2}
         base_url = '/api/person/1/articles'
         response = self.app.get(base_url, query_string=params)
         document = loads(response.data)
+
         articles = document['data']
-        assert all(article['type'] == 'article' for article in articles)
-        assert ['4', '5'] == sorted(article['id'] for article in articles)
+        article_types = [article['type'] for article in articles]
+        self.assertTrue(all(t == 'article' for t in article_types))
+        self.assertEqual(['4', '5'], sorted(map(itemgetter('id'), articles)))
+
         pagination = document['links']
         base_url = '{0}?'.format(base_url)
-        assert base_url in pagination['first']
-        assert 'page[number]=1' in pagination['first']
-        assert base_url in pagination['last']
-        assert 'page[number]=5' in pagination['last']
-        assert base_url in pagination['prev']
-        assert 'page[number]=2' in pagination['prev']
-        assert base_url in pagination['next']
-        assert 'page[number]=4' in pagination['next']
+        first = unquote(pagination['first'])
+        last = unquote(pagination['last'])
+        next_ = unquote(pagination['next'])
+        prev = unquote(pagination['prev'])
+
+        self.assertIn(base_url, first)
+        self.assertIn('page[number]=1', first)
+        self.assertIn(base_url, last)
+        self.assertIn('page[number]=5', last)
+        self.assertIn(base_url, prev)
+        self.assertIn('page[number]=2', prev)
+        self.assertIn(base_url, next_)
+        self.assertIn('page[number]=4', next_)
 
     def test_to_many_sorting(self):
         """Tests for sorting a to-many relation."""

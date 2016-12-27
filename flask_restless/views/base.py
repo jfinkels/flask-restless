@@ -27,10 +27,14 @@ import math
 import re
 # In Python 3...
 try:
+    from urllib.parse import parse_qs
+    from urllib.parse import urlencode
     from urllib.parse import urlparse
     from urllib.parse import urlunparse
 # In Python 2...
 except ImportError:
+    from urllib import urlencode
+    from urlparse import parse_qs
     from urlparse import urlparse
     from urlparse import urlunparse
 
@@ -911,6 +915,7 @@ class Paginated(object):
         # TODO In Python 3, this should be a dict comprehension.
         new_query = dict((k, v) for k, v in query_params.items()
                          if k not in (PAGE_NUMBER_PARAM, PAGE_SIZE_PARAM))
+        # TODO Use urllib.parse functions here.
         new_query_string = '&'.join(map('='.join, new_query.items()))
         # Join the base URL with the query parameter string.
         return '{0}?{1}'.format(base_url, new_query_string)
@@ -929,12 +934,19 @@ class Paginated(object):
         `query_params` are appended.
 
         """
-        query_string = '&'.join(map('='.join, query_params.items()))
-        scheme, netloc, path, params, query, fragment = urlparse(base_url)
-        if query:
-            query_string = '&'.join((query, query_string))
-        parsed = (scheme, netloc, path, params, query_string, fragment)
-        return urlunparse(parsed)
+        scheme, netloc, path, params, query_str, fragment = urlparse(base_url)
+        query = defaultdict(list)
+        query.update(parse_qs(query_str))
+        for k, v in query_params.items():
+            query[k].append(v)
+        # TODO In Python 3.5+, this should be
+        #
+        #     query_str = urlencode(query, doseq=True, quote_via=quote)
+        #
+        # since otherwise we get + symbols in place of encoded spaces.
+        query_str = urlencode(query, doseq=True)
+        parts = (scheme, netloc, path, params, query_str, fragment)
+        return urlunparse(parts)
 
     def __init__(self, items, first=None, last=None, prev=None, next_=None,
                  page_size=None, num_results=None, filters=None, sort=None,
@@ -948,18 +960,7 @@ class Paginated(object):
         # don't need to compute pagination links or header links.
         if page_size == 0:
             return
-        # Create the pagination link URLs.
-        #
-        # Need to account for filters, sort, and group_by, in addition
-        # to pagination links, so we collect those query parameters
-        # here, if they exist.
         query_params = {}
-        if filters:
-            query_params[FILTER_PARAM] = Paginated._filters_to_string(filters)
-        if sort:
-            query_params[SORT_PARAM] = Paginated._sort_to_string(sort)
-        if group_by:
-            query_params[GROUP_PARAM] = Paginated._group_to_string(group_by)
         # The page size is independent of the link type (first, last,
         # next, or prev).
         query_params[PAGE_SIZE_PARAM] = str(page_size)

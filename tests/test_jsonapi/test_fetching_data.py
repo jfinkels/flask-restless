@@ -18,6 +18,13 @@ the JSON API specification.
 
 """
 from functools import partial
+import re
+# In Python 3...
+try:
+    from urllib.parse import unquote
+# In Python 2...
+except ImportError:
+    from urlparse import unquote
 
 from sqlalchemy import Column
 from sqlalchemy import Float
@@ -29,6 +36,9 @@ from sqlalchemy.orm import relationship
 
 from ..helpers import loads
 from ..helpers import ManagerTestBase
+
+#: A regular expression that captures a relationship name in a Link header.
+REL_REGEX = re.compile('rel="(.*)"')
 
 
 class TestFetchingData(ManagerTestBase):
@@ -1023,10 +1033,10 @@ class TestPagination(ManagerTestBase):
         response = self.app.get('/api/person')
         document = loads(response.data)
         links = document['links']
-        assert 'first' in links
-        assert 'last' in links
-        assert 'prev' in links
-        assert 'next' in links
+        self.assertIn('first', links)
+        self.assertIn('last', links)
+        self.assertIn('prev', links)
+        self.assertIn('next', links)
 
     def test_no_client_parameters(self):
         """Tests that a request without pagination query parameters returns the
@@ -1043,15 +1053,20 @@ class TestPagination(ManagerTestBase):
         self.session.commit()
         response = self.app.get('/api/person')
         document = loads(response.data)
+
         pagination = document['links']
-        assert '/api/person?' in pagination['first']
-        assert 'page[number]=1' in pagination['first']
-        assert '/api/person?' in pagination['last']
-        assert 'page[number]=3' in pagination['last']
-        assert pagination['prev'] is None
-        assert '/api/person?' in pagination['next']
-        assert 'page[number]=2' in pagination['next']
-        assert len(document['data']) == 10
+        first = unquote(pagination['first'])
+        last = unquote(pagination['last'])
+        next_ = unquote(pagination['next'])
+
+        self.assertIn('/api/person?', first)
+        self.assertIn('page[number]=1', first)
+        self.assertIn('/api/person?', last)
+        self.assertIn('page[number]=3', last)
+        self.assertIs(pagination['prev'], None)
+        self.assertIn('/api/person?', next_)
+        self.assertIn('page[number]=2', next_)
+        self.assertEqual(len(document['data']), 10)
 
     def test_client_page_and_size(self):
         """Tests that a request that specifies both page number and page size
@@ -1069,16 +1084,22 @@ class TestPagination(ManagerTestBase):
         query_string = {'page[number]': 2, 'page[size]': 3}
         response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
+
         pagination = document['links']
-        assert '/api/person?' in pagination['first']
-        assert 'page[number]=1' in pagination['first']
-        assert '/api/person?' in pagination['last']
-        assert 'page[number]=9' in pagination['last']
-        assert '/api/person?' in pagination['prev']
-        assert 'page[number]=1' in pagination['prev']
-        assert '/api/person?' in pagination['next']
-        assert 'page[number]=3' in pagination['next']
-        assert len(document['data']) == 3
+        first = unquote(pagination['first'])
+        last = unquote(pagination['last'])
+        next_ = unquote(pagination['next'])
+        prev = unquote(pagination['prev'])
+
+        self.assertIn('/api/person?', first)
+        self.assertIn('page[number]=1', first)
+        self.assertIn('/api/person?', last)
+        self.assertIn('page[number]=9', last)
+        self.assertIn('/api/person?', prev)
+        self.assertIn('page[number]=1', prev)
+        self.assertIn('/api/person?', next_)
+        self.assertIn('page[number]=3', next_)
+        self.assertEqual(len(document['data']), 3)
 
     def test_client_number_only(self):
         """Tests that a request that specifies only the page number returns the
@@ -1096,16 +1117,22 @@ class TestPagination(ManagerTestBase):
         query_string = {'page[number]': 2}
         response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
+
         pagination = document['links']
-        assert '/api/person?' in pagination['first']
-        assert 'page[number]=1' in pagination['first']
-        assert '/api/person?' in pagination['last']
-        assert 'page[number]=3' in pagination['last']
-        assert '/api/person?' in pagination['prev']
-        assert 'page[number]=1' in pagination['prev']
-        assert '/api/person?' in pagination['next']
-        assert 'page[number]=3' in pagination['next']
-        assert len(document['data']) == 10
+        first = unquote(pagination['first'])
+        last = unquote(pagination['last'])
+        next_ = unquote(pagination['next'])
+        prev = unquote(pagination['prev'])
+
+        self.assertIn('/api/person?', first)
+        self.assertIn('page[number]=1', first)
+        self.assertIn('/api/person?', last)
+        self.assertIn('page[number]=3', last)
+        self.assertIn('/api/person?', prev)
+        self.assertIn('page[number]=1', prev)
+        self.assertIn('/api/person?', next_)
+        self.assertIn('page[number]=3', next_)
+        self.assertEqual(len(document['data']), 10)
 
     def test_sorted_pagination(self):
         """Tests that pagination is consistent with sorting.
@@ -1126,26 +1153,33 @@ class TestPagination(ManagerTestBase):
         # IDs 40 through 31, so the second page should have Person instances
         # with IDs 30 through 21.
         people = document['data']
-        assert list(range(30, 20, -1)) == [int(p['id']) for p in people]
+        people_ids = [int(p['id']) for p in people]
+        self.assertEqual(list(range(30, 20, -1)), people_ids)
+
         # The pagination links should include not only the pagination query
         # parameters, but also the same sorting query parameters from the
         # client's original quest.
         pagination = document['links']
-        assert '/api/person?' in pagination['first']
-        assert 'page[number]=1' in pagination['first']
-        assert 'sort=-id' in pagination['first']
+        first = unquote(pagination['first'])
+        last = unquote(pagination['last'])
+        next_ = unquote(pagination['next'])
+        prev = unquote(pagination['prev'])
 
-        assert '/api/person?' in pagination['last']
-        assert 'page[number]=4' in pagination['last']
-        assert 'sort=-id' in pagination['last']
+        self.assertIn('/api/person?', first)
+        self.assertIn('page[number]=1', first)
+        self.assertIn('sort=-id', first)
 
-        assert '/api/person?' in pagination['prev']
-        assert 'page[number]=1' in pagination['prev']
-        assert 'sort=-id' in pagination['prev']
+        self.assertIn('/api/person?', last)
+        self.assertIn('page[number]=4', last)
+        self.assertIn('sort=-id', last)
 
-        assert '/api/person?' in pagination['next']
-        assert 'page[number]=3' in pagination['next']
-        assert 'sort=-id' in pagination['next']
+        self.assertIn('/api/person?', prev)
+        self.assertIn('page[number]=1', prev)
+        self.assertIn('sort=-id', prev)
+
+        self.assertIn('/api/person?', next_)
+        self.assertIn('page[number]=3', next_)
+        self.assertIn('sort=-id', next_)
 
     def test_client_size_only(self):
         """Tests that a request that specifies only the page size returns the
@@ -1163,15 +1197,20 @@ class TestPagination(ManagerTestBase):
         query_string = {'page[size]': 5}
         response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
+
         pagination = document['links']
-        assert '/api/person?' in pagination['first']
-        assert 'page[number]=1' in pagination['first']
-        assert '/api/person?' in pagination['last']
-        assert 'page[number]=5' in pagination['last']
-        assert pagination['prev'] is None
-        assert '/api/person?' in pagination['next']
-        assert 'page[number]=2' in pagination['next']
-        assert len(document['data']) == 5
+        first = unquote(pagination['first'])
+        last = unquote(pagination['last'])
+        next_ = unquote(pagination['next'])
+
+        self.assertIn('/api/person?', first)
+        self.assertIn('page[number]=1', first)
+        self.assertIn('/api/person?', last)
+        self.assertIn('page[number]=5', last)
+        self.assertIs(pagination['prev'], None)
+        self.assertIn('/api/person?', next_)
+        self.assertIn('page[number]=2', next_)
+        self.assertEqual(len(document['data']), 5)
 
     def test_short_page(self):
         """Tests that a request that specifies the last page may get fewer
@@ -1190,14 +1229,17 @@ class TestPagination(ManagerTestBase):
         response = self.app.get('/api/person', query_string=query_string)
         document = loads(response.data)
         pagination = document['links']
-        assert '/api/person?' in pagination['first']
-        assert 'page[number]=1' in pagination['first']
-        assert '/api/person?' in pagination['last']
-        assert 'page[number]=3' in pagination['last']
-        assert '/api/person?' in pagination['prev']
-        assert 'page[number]=2' in pagination['prev']
-        assert pagination['next'] is None
-        assert len(document['data']) == 5
+        first = unquote(pagination['first'])
+        last = unquote(pagination['last'])
+        prev = unquote(pagination['prev'])
+        self.assertIn('/api/person?', first)
+        self.assertIn('page[number]=1', first)
+        self.assertIn('/api/person?', last)
+        self.assertIn('page[number]=3', last)
+        self.assertIn('/api/person?', prev)
+        self.assertIn('page[number]=2', prev)
+        self.assertIs(pagination['next'], None)
+        self.assertEqual(len(document['data']), 5)
 
     def test_server_page_size(self):
         """Tests for setting the default page size on the server side.
@@ -1216,15 +1258,19 @@ class TestPagination(ManagerTestBase):
         response = self.app.get('/api2/person', query_string=query_string)
         document = loads(response.data)
         pagination = document['links']
-        assert '/api2/person?' in pagination['first']
-        assert 'page[number]=1' in pagination['first']
-        assert '/api2/person?' in pagination['last']
-        assert 'page[number]=5' in pagination['last']
-        assert '/api2/person?' in pagination['prev']
-        assert 'page[number]=2' in pagination['prev']
-        assert '/api2/person?' in pagination['next']
-        assert 'page[number]=4' in pagination['next']
-        assert len(document['data']) == 5
+        first = unquote(pagination['first'])
+        last = unquote(pagination['last'])
+        next_ = unquote(pagination['next'])
+        prev = unquote(pagination['prev'])
+        self.assertIn('/api2/person?', first)
+        self.assertIn('page[number]=1', first)
+        self.assertIn('/api2/person?', last)
+        self.assertIn('page[number]=5', last)
+        self.assertIn('/api2/person?', prev)
+        self.assertIn('page[number]=2', prev)
+        self.assertIn('/api2/person?', next_)
+        self.assertIn('page[number]=4', next_)
+        self.assertEqual(len(document['data']), 5)
 
     def test_disable_pagination(self):
         """Tests for disabling default pagination on the server side.
@@ -1242,10 +1288,10 @@ class TestPagination(ManagerTestBase):
         response = self.app.get('/api2/person')
         document = loads(response.data)
         pagination = document['links']
-        assert 'first' not in pagination
-        assert 'last' not in pagination
-        assert 'prev' not in pagination
-        assert 'next' not in pagination
+        self.assertNotIn('first', pagination)
+        self.assertNotIn('last', pagination)
+        self.assertNotIn('prev', pagination)
+        self.assertNotIn('next', pagination)
         assert len(document['data']) == 25
 
     def test_disable_pagination_ignore_client(self):
@@ -1266,11 +1312,11 @@ class TestPagination(ManagerTestBase):
         response = self.app.get('/api2/person', query_string=query_string)
         document = loads(response.data)
         pagination = document['links']
-        assert 'first' not in pagination
-        assert 'last' not in pagination
-        assert 'prev' not in pagination
-        assert 'next' not in pagination
-        assert len(document['data']) == 25
+        self.assertNotIn('first', pagination)
+        self.assertNotIn('last', pagination)
+        self.assertNotIn('prev', pagination)
+        self.assertNotIn('next', pagination)
+        self.assertEqual(len(document['data']), 25)
         # TODO Should there be an error here?
 
     def test_max_page_size(self):
@@ -1330,18 +1376,26 @@ class TestPagination(ManagerTestBase):
         people = [self.Person() for i in range(25)]
         self.session.add_all(people)
         self.session.commit()
+
         query_string = {'page[number]': 4, 'page[size]': 3}
         response = self.app.get('/api/person', query_string=query_string)
+
         links = response.headers['Link'].split(',')
-        assert any(all(('/api/person?' in l, 'page[number]=1' in l,
-                        'page[size]=3' in l, 'rel="first"' in l))
-                   for l in links)
-        assert any(all(('/api/person?' in l, 'page[number]=9' in l,
-                        'page[size]=3' in l, 'rel="last"' in l))
-                   for l in links)
-        assert any(all(('/api/person?' in l, 'page[number]=3' in l,
-                        'page[size]=3' in l, 'rel="prev"' in l))
-                   for l in links)
-        assert any(all(('/api/person?' in l, 'page[number]=5' in l,
-                        'page[size]=3' in l, 'rel="next"' in l))
-                   for l in links)
+        # Sort Link header strings by relationship name.
+        links = sorted(links, key=lambda s: REL_REGEX.search(s).group(1))
+        first, last, next_, prev = map(unquote, links)
+
+        self.assertIn('/api/person?', first)
+        self.assertIn('/api/person?', last)
+        self.assertIn('/api/person?', prev)
+        self.assertIn('/api/person?', next_)
+
+        self.assertIn('page[size]=3', first)
+        self.assertIn('page[size]=3', last)
+        self.assertIn('page[size]=3', prev)
+        self.assertIn('page[size]=3', next_)
+
+        self.assertIn('page[number]=1', first)
+        self.assertIn('page[number]=9', last)
+        self.assertIn('page[number]=3', prev)
+        self.assertIn('page[number]=5', next_)

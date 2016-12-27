@@ -286,9 +286,9 @@ class FlaskTestBase(TestCase):
         app = Flask(__name__)
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
-        # This is required by `manager.url_for()` in order to construct
-        # absolute URLs.
-        app.config['SERVER_NAME'] = 'localhost'
+        # The SERVER_NAME is required by `manager.url_for()` in order to
+        # construct absolute URLs.
+        app.config['SERVER_NAME'] = 'localhost:5000'
         app.logger.disabled = True
         self.flaskapp = app
 

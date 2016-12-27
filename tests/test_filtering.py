@@ -14,6 +14,12 @@ from datetime import date
 from datetime import datetime
 from datetime import time
 from operator import gt
+# In Python 3...
+try:
+    from urllib.parse import unquote
+# In Python 2...
+except ImportError:
+    from urlparse import unquote
 from unittest2 import skip
 
 from sqlalchemy import Column
@@ -61,7 +67,10 @@ class SearchTestBase(ManagerTestBase):
         """
         if filters is None:
             filters = []
-        params = {'filter[objects]': dumps(filters)}
+        # The value provided to the `separators` keyword argument
+        # minimizes whitespace.
+        filters_str = dumps(filters, separators=(',', ':'))
+        params = {'filter[objects]': filters_str}
         if single is not None:
             params['filter[single]'] = 1 if single else 0
         return self.app.get(url, query_string=params)
@@ -819,6 +828,23 @@ class TestFiltering(SearchTestBase):
         document = loads(response.data)
         articles = document['data']
         self.assertEqual(['2'], sorted(article['id'] for article in articles))
+
+    def test_urlencode_pagination_links(self):
+        """Test that filter objects in pagination links are URL-encoded.
+
+        For more information, see GitHub issue #553.
+
+        """
+        people = [self.Person(id=i) for i in range(30)]
+        self.session.add_all(people)
+        self.session.commit()
+        filters = [dict(name='id', op='gte', val=0)]
+        response = self.search('/api/person', filters)
+        document = loads(response.data)
+        links = document['links']
+        expected = 'filter[objects]=[{"name":"id","op":"gte","val":0}]'
+        self.assertIn(expected, unquote(links['first']))
+        self.assertIn(expected, unquote(links['last']))
 
 
 class TestSimpleFiltering(ManagerTestBase):
