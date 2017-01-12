@@ -46,6 +46,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import MultipleResultsFound
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.query import Query
+from sqlalchemy.inspection import inspect as sa_inspect
 from werkzeug import parse_options_header
 from werkzeug.exceptions import HTTPException
 
@@ -1063,8 +1064,26 @@ class SchemaView(MethodView):
 
     def get(self):
         result = JsonApiDocument()
+        result['meta']['urls'] = {}
+
+        def _get_info(model):
+            name = model.__table__.name
+            inspected = sa_inspect(model)
+
+            primary_key = [key.name for key in inspected.primary_key]
+            data = {'name': name, 'primary_key': primary_key,
+                    'collection_name': collection_name(model),
+                    'url': url_for(model)}
+
+            data['relationships'] = {}
+            for name, relationship in inspected.relationships.items():
+                rel = {'target': relationship.target.name}
+                data['relationships'][name] = rel
+
+            return name, data
+
         # TODO In Python 2.7+, this should be a dict comprehension.
-        result['meta']['urls'] = dict((collection_name(model), url_for(model))
+        result['meta']['urls'] = dict(_get_info(model)
                                       for model in self.models)
         return jsonpify(result)
 
