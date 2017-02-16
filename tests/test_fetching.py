@@ -399,6 +399,25 @@ class TestFetchCollection(ManagerTestBase):
         self.assertEqual(person2['id'], u'1')
         self.assertEqual(person2['attributes']['name'], u'B')
 
+    def test_case_insensitive_sorting_relationship_attributes(self):
+        """Test for case-insensitive sorting on relationship attributes."""
+        person1 = self.Person(id=1, name=u'B')
+        person2 = self.Person(id=2, name=u'a')
+        article1 = self.Article(id=1, author=person1)
+        article2 = self.Article(id=2, author=person2)
+        self.session.add_all([article1, article2, person1, person2])
+        self.session.commit()
+        query_string = {'sort': 'author.name', 'ignorecase': 1}
+        response = self.app.get('/api/article', query_string=query_string)
+        # The ASCII character code for the uppercase letter 'B' comes
+        # before the ASCII character code for the lowercase letter 'a',
+        # but in case-insensitive sorting, the 'a' should precede the
+        # 'B'.
+        document = loads(response.data)
+        article1, article2 = document['data']
+        self.assertEqual(article1['id'], u'2')
+        self.assertEqual(article2['id'], u'1')
+
 
 class TestFetchResource(ManagerTestBase):
 
