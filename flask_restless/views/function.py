@@ -124,7 +124,8 @@ class FunctionAPI(ModelView):
 
         # Get the filtering, sorting, and grouping parameters.
         try:
-            filters, sort, group_by, single = self.collection_parameters()
+            filters, sort, group_by, single, ignorecase = \
+                self.collection_parameters()
         except (TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode filter objects as JSON list'
             return error_response(400, cause=exception, detail=detail)

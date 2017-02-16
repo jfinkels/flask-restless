@@ -29,7 +29,7 @@ from .filters import create_filters
 
 
 def search_relationship(session, instance, relation, filters=None, sort=None,
-                        group_by=None):
+                        group_by=None, ignorecase=False):
     """Returns a filtered, sorted, and grouped SQLAlchemy query
     restricted to those objects related to a given instance.
 
@@ -40,8 +40,8 @@ def search_relationship(session, instance, relation, filters=None, sort=None,
 
 `   `relation` is a string naming a to-many relationship of `instance`.
 
-    `filters`, `sort`, and `group_by` are identical to the corresponding
-    arguments of :func:`.search`.
+    `filters`, `sort`, `group_by`, and `ignorecase` are identical to the
+    corresponding arguments of :func:`.search`.
 
     """
     model = get_model(instance)
@@ -60,11 +60,12 @@ def search_relationship(session, instance, relation, filters=None, sort=None,
     query = query.filter(primary_key_value(related_model).in_(primary_keys))
 
     return search(session, related_model, filters=filters, sort=sort,
-                  group_by=group_by, _initial_query=query)
+                  group_by=group_by, ignorecase=ignorecase,
+                  _initial_query=query)
 
 
 def search(session, model, filters=None, sort=None, group_by=None,
-           _initial_query=None):
+           ignorecase=False, _initial_query=None):
     """Returns a filtered, sorted, and grouped SQLAlchemy query.
 
     `session` is the SQLAlchemy session in which to create the query.
@@ -80,7 +81,9 @@ def search(session, model, filters=None, sort=None, group_by=None,
     `sort` is a list of pairs of the form ``(direction, fieldname)``,
     where ``direction`` is either '+' or '-' and ``fieldname`` is a
     string representing an attribute of the model or a dot-separated
-    relationship path (for example, 'owner.name').
+    relationship path (for example, 'owner.name'). If `ignorecase` is
+    True, the sorting will be case-insensitive (so 'a' will precede 'B'
+    instead of the default behavior in which 'B' precedes 'a').
 
     `group_by` is a list of dot-separated relationship paths on which to
     group the query results.
@@ -113,11 +116,15 @@ def search(session, model, filters=None, sort=None, group_by=None,
                 field_name, field_name_in_relation = field_name.split('.')
                 relation_model = aliased(get_related_model(model, field_name))
                 field = getattr(relation_model, field_name_in_relation)
+                if ignorecase:
+                    field = field.collate('NOCASE')
                 direction = getattr(field, direction_name)
                 query = query.join(relation_model)
                 query = query.order_by(direction())
             else:
                 field = getattr(model, field_name)
+                if ignorecase:
+                    field = field.collate('NOCASE')
                 direction = getattr(field, direction_name)
                 query = query.order_by(direction())
     else:

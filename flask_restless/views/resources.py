@@ -226,7 +226,7 @@ class API(APIBase):
 
         """
         try:
-            filters, sort, group_by, single = \
+            filters, sort, group_by, single, ignorecase = \
                 self.collection_parameters(resource_id=resource_id,
                                            relation_name=relation_name)
         except (TypeError, ValueError, OverflowError) as exception:
@@ -283,6 +283,7 @@ class API(APIBase):
                                                relation_name=relation_name,
                                                filters=filters, sort=sort,
                                                group_by=group_by,
+                                               ignorecase=ignorecase,
                                                single=single)
         else:
             resource = getattr(primary_resource, relation_name)
@@ -353,7 +354,8 @@ class API(APIBase):
 
         """
         try:
-            filters, sort, group_by, single = self.collection_parameters()
+            filters, sort, group_by, single, ignorecase = \
+                self.collection_parameters()
         except (TypeError, ValueError, OverflowError) as exception:
             detail = 'Unable to decode filter objects as JSON list'
             return error_response(400, cause=exception, detail=detail)
@@ -366,7 +368,8 @@ class API(APIBase):
                          single=single)
 
         return self._get_collection_helper(filters=filters, sort=sort,
-                                           group_by=group_by, single=single)
+                                           group_by=group_by, single=single,
+                                           ignorecase=ignorecase)
 
     def get(self, resource_id, relation_name, related_resource_id):
         """Returns the JSON document representing a resource or a collection of

@@ -48,6 +48,7 @@ Not yet released.
 - :issue:`599`: fixes `unicode` bug using :func:`!urlparse.urljoin` with the
   `future`_ library in resource serialization.
 - :issue:`625`: adds schema metadata to root endpoint.
+- :issue:`626`: allows the client to request case-insensitive sorting.
 
 .. _future: http://python-future.org/
 

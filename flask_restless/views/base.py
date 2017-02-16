@@ -111,6 +111,9 @@ SINGLE_PARAM = 'filter[single]'
 #: request.
 SORT_PARAM = 'sort'
 
+#: The query parameter key that indicates whether sorting is case-insensitive.
+IGNORECASE_PARAM = 'ignorecase'
+
 #: The query parameter key that identifies grouping fields in a
 #: :http:method:`get` request.
 GROUP_PARAM = 'group'
@@ -1205,6 +1208,7 @@ class ModelView(MethodView):
                     for value in sort.split(',')]
         else:
             sort = []
+        ignorecase = bool(int(request.args.get(IGNORECASE_PARAM, '0')))
 
         # Determine grouping options.
         group_by = request.args.get(GROUP_PARAM)
@@ -1219,7 +1223,7 @@ class ModelView(MethodView):
         except ValueError:
             raise SingleKeyError('failed to extract Boolean from parameter')
 
-        return filters, sort, group_by, single
+        return filters, sort, group_by, single, ignorecase
 
 
 class APIBase(ModelView):
@@ -1601,7 +1605,7 @@ class APIBase(ModelView):
 
     def _get_collection_helper(self, resource=None, relation_name=None,
                                filters=None, sort=None, group_by=None,
-                               single=False):
+                               ignorecase=False, single=False):
         if (resource is None) ^ (relation_name is None):
             raise ValueError('resource and relation must be both None or both'
                              ' not None')
@@ -1614,7 +1618,7 @@ class APIBase(ModelView):
             search_ = partial(search, self.session, self.model)
         try:
             search_items = search_(filters=filters, sort=sort,
-                                   group_by=group_by)
+                                   group_by=group_by, ignorecase=ignorecase)
         except (FilterParsingError, FilterCreationError) as exception:
             detail = 'invalid filter object: {0}'.format(str(exception))
             return error_response(400, cause=exception, detail=detail)
