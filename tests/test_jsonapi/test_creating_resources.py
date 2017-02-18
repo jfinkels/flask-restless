@@ -209,8 +209,6 @@ class TestCreatingResources(ManagerTestBase):
         """
         generated_id = uuid.uuid1()
         data = dict(data=dict(type='article', id=generated_id))
-        import warnings
-        warnings.simplefilter('error')
         response = self.app.post('/api/article', data=dumps(data))
         # Our server always responds with 201 when a client-generated ID is
         # specified. It does not return a 204.
