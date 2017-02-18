@@ -16,8 +16,8 @@ installed if you use ``pip``):
 * `Flask`_ version 0.10 or greater
 * `SQLAlchemy`_ version 0.8 or greater
 * `python-dateutil`_ version strictly greater than 2.2
-* `Flask-SQLAlchemy`_, *only if* you want to define your models using
-  Flask-SQLAlchemy (which we recommend)
+
+`Flask-SQLAlchemy`_ is supported but not required.
 
 .. _Python Package Index: https://pypi.python.org/pypi/Flask-Restless
 .. _GitHub: https://github.com/jfinkels/flask-restless
