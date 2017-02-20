@@ -20,7 +20,6 @@ from flask import json
 from flask import request
 from werkzeug.exceptions import BadRequest
 
-from ..helpers import scalar_collection_proxied_relations
 from ..helpers import collection_name
 from ..helpers import get_by
 from ..helpers import get_related_model
@@ -93,14 +92,6 @@ class RelationshipAPI(APIBase):
                                   self.primary_key)
         if primary_resource is None:
             detail = 'No resource with ID {0}'.format(resource_id)
-            return error_response(404, detail=detail)
-        # Check if the relation is to an association table through which
-        # there is an association proxy that proxies to a scalar
-        # collection. In this situation, we wish to hide the
-        # relationship entirely, since the scalar collection is exposed
-        # as an attribute.
-        if relation_name in scalar_collection_proxied_relations(self.model):
-            detail = 'No relationship named {0}'.format(relation_name)
             return error_response(404, detail=detail)
         if is_like_list(primary_resource, relation_name):
             try:
@@ -234,14 +225,6 @@ class RelationshipAPI(APIBase):
             detail = 'Model {0} has no relation named {1}'
             detail = detail.format(self.model, relation_name)
             return error_response(404, detail=detail)
-        # Check if the relation is to an association table through which
-        # there is an association proxy that proxies to a scalar
-        # collection. In this situation, we wish to hide the
-        # relationship entirely, since the scalar collection is exposed
-        # as an attribute.
-        if relation_name in scalar_collection_proxied_relations(self.model):
-            detail = 'No relationship named {0}'.format(relation_name)
-            return error_response(404, detail=detail)
         related_model = get_related_model(self.model, relation_name)
         # related_value = getattr(instance, relation_name)
 
@@ -359,14 +342,6 @@ class RelationshipAPI(APIBase):
                 resource_id = temp_result
         instance = get_by(self.session, self.model, resource_id,
                           self.primary_key)
-        # Check if the relation is to an association table through which
-        # there is an association proxy that proxies to a scalar
-        # collection. In this situation, we wish to hide the
-        # relationship entirely, since the scalar collection is exposed
-        # as an attribute.
-        if relation_name in scalar_collection_proxied_relations(self.model):
-            detail = 'No relationship named {0}'.format(relation_name)
-            return error_response(404, detail=detail)
         # If no such relation exists, return an error to the client.
         if not hasattr(instance, relation_name):
             detail = 'No such link: {0}'.format(relation_name)

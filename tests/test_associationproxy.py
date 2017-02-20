@@ -59,6 +59,7 @@ class TestAssociationObject(ManagerTestBase):
             name = Column(Unicode)
 
         self.Article = Article
+        self.ArticleTag = ArticleTag
         self.Tag = Tag
         self.Base.metadata.create_all()
 
@@ -71,6 +72,7 @@ class TestAssociationObject(ManagerTestBase):
 
         """
         self.manager.create_api(self.Article)
+        self.manager.create_api(self.ArticleTag)
         self.manager.create_api(self.Tag)
 
         article = self.Article(id=1)
@@ -82,12 +84,21 @@ class TestAssociationObject(ManagerTestBase):
         response = self.app.get('/api/article/1')
         document = loads(response.data)
         article = document['data']
+        articletags = article['relationships']['articletags']['data']
+        self.assertEqual(len(articletags), 1)
+        articletag = articletags[0]
+        self.assertEqual(articletag['type'], 'articletag')
+        self.assertEqual(articletag['id'], '1')
         tags = article['relationships']['tags']['data']
-        self.assertEqual(['1'], sorted(tag['id'] for tag in tags))
+        self.assertEqual(len(tags), 1)
+        tag = tags[0]
+        self.assertEqual(tag['type'], 'tag')
+        self.assertEqual(tag['id'], '1')
 
     def test_creating(self):
         """Test for creating a resource with an assocation object."""
-        self.manager.create_api(self.Article, methods=['POST'])
+        self.manager.create_api(self.Article, methods=['POST'],
+                                exclude=['articletags'])
         self.manager.create_api(self.Tag)
 
         tag = self.Tag(id=1)
@@ -291,21 +302,28 @@ class TestAssociationTable(ManagerTestBase):
 
         """
         self.manager.create_api(self.Article)
+        self.manager.create_api(self.Tag)
 
         article = self.Article(id=1)
         article.tag_names = [u'foo', u'bar']
         self.session.add(article)
         self.session.commit()
 
+        # By default, both the `tags` relationship and the `tag_names`
+        # attributes are exposed.
         response = self.app.get('/api/article/1')
         document = loads(response.data)
         article = document['data']
         tag_names = sorted(article['attributes']['tag_names'])
         self.assertEqual(tag_names, [u'bar', u'foo'])
+        tags = article['relationships']['tags']['data']
+        self.assertEqual([u'1', u'2'], sorted(tag['id'] for tag in tags))
+        self.assertTrue(all(tag['type'] == u'tag' for tag in tags))
 
     def test_creating(self):
         """Tests for creating with an association proxy to a scalar list."""
         self.manager.create_api(self.Article, methods=['POST'])
+        self.manager.create_api(self.Tag)
 
         data = {
             'data': {
@@ -380,12 +398,12 @@ class TestAssociationTable(ManagerTestBase):
         self.session.add(article)
         self.session.commit()
 
-        # The `tags` relationship is not shown in the resource
-        # representation of the Article object because we assume the
-        # `tag_names` attribute is the only thing the user wants to
-        # expose.
         response = self.app.get('/api/article/1/relationships/tags')
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 200)
+        document = loads(response.data)
+        tags = document['data']
+        self.assertEqual([u'1', u'2'], sorted(tag['id'] for tag in tags))
+        self.assertTrue(all(tag['type'] == u'tag' for tag in tags))
 
     def test_adding_to_relationship(self):
         """Test for adding to a to-many relationship via association proxy."""
@@ -393,13 +411,11 @@ class TestAssociationTable(ManagerTestBase):
         self.manager.create_api(self.Tag)
 
         article = self.Article(id=1)
-        self.session.add(article)
+        tag1 = self.Tag(id=1)
+        tag2 = self.Tag(id=2)
+        self.session.add_all([article, tag1, tag2])
         self.session.commit()
 
-        # The `tags` relationship is not shown in the resource
-        # representation of the Article object because we assume the
-        # `tag_names` attribute is the only thing the user wants to
-        # expose.
         data = {
             'data': [
                 {'type': 'tag', 'id': '1'},
@@ -408,7 +424,8 @@ class TestAssociationTable(ManagerTestBase):
         }
         response = self.app.post('/api/article/1/relationships/tags',
                                  data=dumps(data))
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(article.tags, [tag1, tag2])
 
     def test_removing_from_relationship(self):
         """Test for removing from a to-many relationship."""
@@ -417,15 +434,12 @@ class TestAssociationTable(ManagerTestBase):
         self.manager.create_api(self.Tag)
 
         article = self.Article(id=1)
-        tag = self.Tag(id=1)
-        article.tags = [tag]
-        self.session.add_all([article, tag])
+        tag1 = self.Tag(id=1)
+        tag2 = self.Tag(id=2)
+        article.tags = [tag1, tag2]
+        self.session.add_all([article, tag1, tag2])
         self.session.commit()
 
-        # The `tags` relationship is not shown in the resource
-        # representation of the Article object because we assume the
-        # `tag_names` attribute is the only thing the user wants to
-        # expose.
         data = {
             'data': [
                 {'type': 'tag', 'id': '1'},
@@ -433,7 +447,8 @@ class TestAssociationTable(ManagerTestBase):
         }
         response = self.app.delete('/api/article/1/relationships/tags',
                                    data=dumps(data))
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(article.tags, [tag2])
 
     def test_replacing_relationship(self):
         """Test for replacing a to-many relationship via association proxy."""
@@ -448,10 +463,6 @@ class TestAssociationTable(ManagerTestBase):
         self.session.add_all([article, tag1, tag2])
         self.session.commit()
 
-        # The `tags` relationship is not shown in the resource
-        # representation of the Article object because we assume the
-        # `tag_names` attribute is the only thing the user wants to
-        # expose.
         data = {
             'data': [
                 {'type': 'tag', 'id': '2'},
@@ -459,4 +470,5 @@ class TestAssociationTable(ManagerTestBase):
         }
         response = self.app.patch('/api/article/1/relationships/tags',
                                   data=dumps(data))
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(article.tags, [tag2])

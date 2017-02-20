@@ -65,35 +65,6 @@ def session_query(session, model):
     return session.query(model)
 
 
-# TODO Combine this function with the one below.
-def scalar_collection_proxied_relations(model):
-    """Yields the name of each relationship proxied to a scalar collection.
-
-    This includes each relationship to an association table for which
-    there is an association proxy that presents a scalar collection (for
-    example, a list of strings).
-
-    .. seealso::
-
-       :func:`assoc_proxy_scalar_collections`
-          Yields the names of association proxies for the relationships
-          found by this function.
-
-    .. versionadded:: 1.0.0
-
-    """
-    mapper = sqlalchemy_inspect(model)
-    for k, v in mapper.all_orm_descriptors.items():
-        if isinstance(v, AssociationProxy):
-            # HACK SQLAlchemy only loads the association proxy
-            # on-demand. We need to call `hasattr` in order to force
-            # SQLAlchemy to load the attribute.
-            hasattr(model, k)
-            if not isinstance(v.remote_attr.property, RelationshipProperty):
-                if is_like_list(model, v.local_attr.key):
-                    yield v.local_attr.key
-
-
 def assoc_proxy_scalar_collections(model):
     """Yields the name of each association proxy collection as a string.
 
@@ -157,9 +128,10 @@ def get_relations(model):
         >>> list(get_relations(Article))
         ['tags']
 
-    On the other hand, this will *not* show association proxies that
-    proxy to a scalar collection via an association table. For example,
-    if there is an association proxy for a scalar collection like this::
+    Similarly, for association proxies that proxy to a scalar collection
+    via an association table, this will show the related model. For
+    example, if there is an association proxy for a scalar collection
+    like this::
 
         from sqlalchemy import Column
         from sqlalchemy import ForeignKey
@@ -194,7 +166,7 @@ def get_relations(model):
     ``tag_names`` attribute::
 
         >>> list(get_relations(Article))
-        []
+        ['tags']
 
     """
     mapper = sqlalchemy_inspect(model)
@@ -229,10 +201,11 @@ def get_relations(model):
     # Finally we find all plain old relationships and all association
     # proxy relationships.
     #
-    # We exclude those assocation proxies that are for scalar
-    # collections.
+    # If the association proxy is through an association object, we
+    # yield that too.
     for r in mapper.relationships.keys():
         if r in association_proxies:
+            yield r
             if association_proxies[r] not in scalar_collections:
                 yield association_proxies[r]
         else:

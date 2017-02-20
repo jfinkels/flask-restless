@@ -20,13 +20,13 @@ association object.
 Proxying association objects
 ............................
 
-TODO Add link to the correct section of the SQLAlchemy documentation here.
+*For more information on using association proxies with association objects, see
+the `Simplifying Assocation Objects`_ section of the SQLAlchemy documentation.*
 
 When proxying a to-many relationship via an association object, the related
 resources will appear in the ``relationships`` element of the resource object
-but the association object will not appear. For example, in the following
-setup, each article has a to-many relationship to tags via the ``ArticleTag``
-object::
+in addition to the association object. For example, in the following setup,
+each article has a to-many relationship to tags via the ``ArticleTag`` object::
 
     from sqlalchemy import Column, Integer, Unicode, ForeignKey
     from sqlalchemy.ext.associationproxy import association_proxy
@@ -55,10 +55,9 @@ object::
         id = Column(Integer, primary_key=True)
         name = Column(Unicode)
 
-Resource objects of type ``'article'`` will have a ``tags`` relationship that
-proxies directly to the ``Tag`` resource through the ``ArticleTag`` table. The
-intermediate ``articletags`` relationship does not appear as a relationship in
-the resource object:
+Resource objects of type ``'article'`` will have both an ``articletags``
+relationship as well as a ``tags`` relationship that proxies directly to the
+``Tag`` resource through the ``ArticleTag`` table.
 
 .. sourcecode:: json
 
@@ -67,6 +66,18 @@ the resource object:
        "id": "1",
        "type": "article",
        "relationships": {
+         "articletags": {
+           "data": [
+             {
+               "id": "1",
+               "type": "articletag"
+             },
+             {
+               "id": "2",
+               "type": "articletag"
+             }
+           ]
+         },
          "tags": {
            "data": [
              {
@@ -77,17 +88,25 @@ the resource object:
                "id": "2",
                "type": "tag"
              }
-           ],
+           ]
          }
        }
      }
    }
 
+If you wish to exclude the association object relationship, use the ``exclude``
+keyword argument when creating the API for the ``Article`` model::
+
+    manager.create_api(Article, exclude=['articletags'])
+
+.. _Simplifying Association Objects: http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html#simplifying-association-objects
+
 
 Proxying association tables
 ...........................
 
-TODO Add link to the correct section of the SQLAlchemy documentation here.
+*For more information on using association proxies with association objects, see
+the `Simplifying Scalar Collections`_ section of the SQLAlchemy documentation.*
 
 When proxying an attribute of a to-many relationship via an association table,
 the attribute will appear in the ``attributes`` element of the resource object
@@ -154,6 +173,8 @@ is a list of tag names in addition to a ``tags`` relationship. The intermediate
        }
      }
    }
+
+.. _Simplifying Scalar Collections: http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html#simplifying-scalar-collections
 
 
 Polymorphic models
