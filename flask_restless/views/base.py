@@ -40,7 +40,6 @@ except ImportError:
 
 from flask import current_app
 from flask import json
-from flask import jsonify
 from flask import request
 from flask.views import MethodView
 from sqlalchemy.exc import SQLAlchemyError
@@ -1737,7 +1736,7 @@ class APIBase(ModelView):
         status = 200
         meta = {'total': num_results}
         result.setdefault('meta', {}).update(meta)
-        return jsonpify(result), 200, headers
+        return jsonpify(result), status, headers
 
     def resources_to_include(self, instance):
         """Returns a set of resources to include in a compound document
