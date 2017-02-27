@@ -17,19 +17,20 @@ python:
   # PyPy3 currently supports Python 3.2, which Flask does not support.
   # - "pypy3"
 
-env:
-  - WITHSIMPLEJSON=false WITHFUTURE=false
-  - WITHSIMPLEJSON=false WITHFUTURE=true
-  - WITHSIMPLEJSON=true WITHFUTURE=false
-  - WITHSIMPLEJSON=true WITHFUTURE=true
-
-# The "future" package does not support PyPy, according to their FAQ.
 matrix:
-  exclude:
-  - python: "pypy"
-    env: WITHSIMPLEJSON=false WITHFUTURE=true
-  - python: "pypy"
-    env: WITHSIMPLEJSON=true WITHFUTURE=true
+  include:
+    - python: "2.6"
+      env: WITHSIMPLEJSON=false WITHFUTURE=false
+    - python: "2.6"
+      env: WITHSIMPLEJSON=false WITHFUTURE=true
+    - python: "2.6"
+      env: WITHSIMPLEJSON=true WITHFUTURE=false
+    - python: "2.6"
+      env: WITHSIMPLEJSON=true WITHFUTURE=true
+    - python: "2.7"
+      env: WITHFUTURE=false
+    - python: "2.7"
+      env: WITHFUTURE=true
 
 addons:
   # The default Travis build environment uses PostgreSQL 9.1, but some of the
