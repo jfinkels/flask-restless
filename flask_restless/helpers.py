@@ -204,12 +204,10 @@ def get_relations(model):
     # If the association proxy is through an association object, we
     # yield that too.
     for r in mapper.relationships.keys():
-        if r in association_proxies:
-            yield r
-            if association_proxies[r] not in scalar_collections:
+        yield r
+        proxy = association_proxies.get(r)
+        if proxy is not None and proxy not in scalar_collections:
                 yield association_proxies[r]
-        else:
-            yield r
 
 
 def get_related_model(model, relationname):
