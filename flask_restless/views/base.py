@@ -1045,14 +1045,14 @@ class SchemaView(MethodView):
     """A view of the entire schema of an API.
 
     This class provides a :meth:`.SchemaView.get` method that returns a
-    JSON API document containing a mapping from resource collection name
-    to the URL for that resource collection.
+    JSON API document containing metadata about the models exposed by
+    this API.
 
     `models` is the set of models for which an API has been defined via
     the :meth:`.APIManager.create_api` method. The
-    :meth:`.SchemaView.get` method will call :func:`.collection_name`
-    and :func:`.url_for` on each model, so if any is unknown, this view
-    will raise a server-side exception.
+    :meth:`.SchemaView.get` method will call :func:`.collection_name`,
+    :func:`.url_for`, and :func:`.primary_key_for` on each model, so if
+    any is unknown, this view will raise a server-side exception.
 
     """
 
@@ -1064,27 +1064,20 @@ class SchemaView(MethodView):
 
     def get(self):
         result = JsonApiDocument()
-        result['meta']['urls'] = {}
 
-        def _get_info(model):
-            name = model.__table__.name
-            inspected = sa_inspect(model)
+        modelinfo = {}
+        for model in self.models:
+            name = collection_name(model)
+            url = url_for(model)
+            key = primary_key_for(model)
+            modelinfo[name] = {
+                'url': url,
+                'primarykey': key,
+            }
 
-            primary_key = [key.name for key in inspected.primary_key]
-            data = {'name': name, 'primary_key': primary_key,
-                    'collection_name': collection_name(model),
-                    'url': url_for(model)}
+        if modelinfo:
+            result['meta']['modelinfo'] = modelinfo
 
-            data['relationships'] = {}
-            for name, relationship in inspected.relationships.items():
-                rel = {'target': relationship.target.name}
-                data['relationships'][name] = rel
-
-            return name, data
-
-        # TODO In Python 2.7+, this should be a dict comprehension.
-        result['meta']['urls'] = dict(_get_info(model)
-                                      for model in self.models)
         return jsonpify(result)
 
 

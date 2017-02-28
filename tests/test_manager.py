@@ -270,10 +270,10 @@ class TestLocalAPIManager(SQLAlchemyTestBase):
         response = self.app.get('/api')
         self.assertEqual(response.status_code, 200)
         document = loads(response.data)
-        urls = document['meta']['urls']
-        self.assertEqual(sorted(urls), ['article', 'person'])
-        self.assertTrue(urls['article'].endswith('/api/article'))
-        self.assertTrue(urls['person'].endswith('/api/person'))
+        info = document['meta']['modelinfo']
+        self.assertEqual(sorted(info), ['article', 'person'])
+        self.assertTrue(info['article']['url'].endswith('/api/article'))
+        self.assertTrue(info['person']['url'].endswith('/api/person'))
 
     def test_schema_init_app(self):
         manager = APIManager(session=self.session)
@@ -283,10 +283,10 @@ class TestLocalAPIManager(SQLAlchemyTestBase):
         response = self.app.get('/api')
         self.assertEqual(response.status_code, 200)
         document = loads(response.data)
-        urls = document['meta']['urls']
-        self.assertEqual(sorted(urls), ['article', 'person'])
-        self.assertTrue(urls['article'].endswith('/api/article'))
-        self.assertTrue(urls['person'].endswith('/api/person'))
+        info = document['meta']['modelinfo']
+        self.assertEqual(sorted(info), ['article', 'person'])
+        self.assertTrue(info['article']['url'].endswith('/api/article'))
+        self.assertTrue(info['person']['url'].endswith('/api/person'))
 
 
 class TestAPIManager(ManagerTestBase):

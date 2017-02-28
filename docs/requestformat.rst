@@ -24,9 +24,10 @@ Schema at root endpoint
 -----------------------
 
 A :http:method:`GET` request to the root endpoint responds with a valid JSON
-API document whose `meta` element contains a `urls` object, which itself
-contains one member for each resource object exposed by the API. For example, a
-request like
+API document whose ``meta`` element contains a ``modelinfo`` object, which
+itself contains one member for each resource object exposed by the API. Each
+element in ``modelinfo`` contains information about that resource. For example,
+a request like
 
 .. sourcecode:: http
 
@@ -49,9 +50,15 @@ yields the response
      "included": [],
      "links": {},
      "meta": {
-       "urls": {
-         "article": "http://example.com/api/article",
-         "person": "http://example.com/api/person",
+       "modelinfo": {
+         "article": {
+           "primarykey": "id",
+           "url": "http://example.com/api/article"
+         },
+         "person": {
+           "primarykey": "id",
+           "url": "http://example.com/api/person"
+         }
        }
      }
    }
