@@ -20,8 +20,6 @@ python:
 matrix:
   include:
     - python: "2.6"
-      env: WITHSIMPLEJSON=false WITHFUTURE=false
-    - python: "2.6"
       env: WITHSIMPLEJSON=false WITHFUTURE=true
     - python: "2.6"
       env: WITHSIMPLEJSON=true WITHFUTURE=false
