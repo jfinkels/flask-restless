@@ -658,6 +658,10 @@ class APIManager(object):
         obscurity", by (slightly) hindering users from discovering where
         an endpoint exists.
 
+        .. versionchanged:: 1.0.0
+
+           The `hide_disallowed_endpoints` keyword argument is new.
+
         """
         # Perform some sanity checks on the provided keyword arguments.
         if only is not None and exclude is not None:
