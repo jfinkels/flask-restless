@@ -4,7 +4,8 @@ Sorting
 Clients can sort according to the sorting protocol described in the `Sorting
 <http://jsonapi.org/format/#fetching-sorting>`__ section of the JSON API
 specification. Sorting by a nullable attribute will cause resources with null
-attributes to appear first.
+attributes to appear first. The client can request case-insensitive sorting by
+setting the query parameter ``ignorecase=1``.
 
 Clients can also request grouping by using the ``group`` query parameter. For
 example, if your database has two people with name ``'foo'`` and two people

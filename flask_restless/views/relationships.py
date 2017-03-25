@@ -95,7 +95,7 @@ class RelationshipAPI(APIBase):
             return error_response(404, detail=detail)
         if is_like_list(primary_resource, relation_name):
             try:
-                filters, sort, group_by, single = \
+                filters, sort, group_by, single, ignorecase = \
                     self.collection_parameters(resource_id=resource_id,
                                                relation_name=relation_name)
             except (TypeError, ValueError, OverflowError) as exception:
