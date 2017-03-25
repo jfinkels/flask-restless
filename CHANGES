@@ -49,6 +49,10 @@ Not yet released.
   `future`_ library in resource serialization.
 - :issue:`625`: adds schema metadata to root endpoint.
 - :issue:`626`: allows the client to request case-insensitive sorting.
+- :issue:`630`: correctly respond with timezone-naive :class:`datetime`
+  attributes on :http:method:`post` requests when the database doesn't support
+  timezones, even if the request included a timezone-aware :class:`datetime`
+  attribute.
 
 .. _future: http://python-future.org/
 

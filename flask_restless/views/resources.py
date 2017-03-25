@@ -481,6 +481,19 @@ class API(APIBase):
         except self.validation_exceptions as exception:
             return self._handle_validation_exception(exception)
         only = self.sparse_fields.get(self.collection_name)
+        # Refresh the instance's attributes/relationships from the database.
+        #
+        # One place where we need this is when the request has a
+        # timezone-aware datetime attribute. In this case, the
+        # deserialized SQLAlchemy object actually seems to have the
+        # timezone-aware datetime attribute regardless of whether the
+        # underlying database has support for it. When added to the
+        # database however, the timezone is (silently) dropped if the
+        # database does not support it. By refreshing the object, we
+        # force the attribute to be reloaded from the database, thereby
+        # reloading a timezone-naive attribute into the SQLAlchemy
+        # object.
+        self.session.refresh(instance)
         # Get the dictionary representation of the new instance as it
         # appears in the database.
         try:

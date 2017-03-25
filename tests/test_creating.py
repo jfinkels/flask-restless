@@ -20,6 +20,8 @@ specification.
 
 """
 from __future__ import division
+from datetime import timedelta
+from datetime import timezone
 from datetime import datetime
 
 import dateutil
@@ -77,7 +79,7 @@ class TestCreating(ManagerTestBase):
             id = Column(Integer, primary_key=True)
             age = Column(Integer)
             name = Column(Unicode, unique=True)
-            birth_datetime = Column(DateTime, nullable=True)
+            birth_datetime = Column(DateTime(timezone=False), nullable=True)
             bedtime = Column(Time)
             hangtime = Column(Interval)
             articles = relationship('Article')
@@ -884,6 +886,35 @@ class TestCreating(ManagerTestBase):
         article = document['data']
         assert article['type'] == 'article'
         assert article['attributes']['type'] == u'fluff'
+
+    def test_timezone_aware_datetime(self):
+        """A timezone dropped by the DB should be reflected in the response.
+
+        For more information, see GitHub issue #630.
+
+        """
+        # Request to create a person with a timezone-aware datetime attribute.
+        tz = timezone(timedelta(hours=-5))
+        now = datetime.now(tz=tz)
+        data = {
+            'data': {
+                'type': 'person',
+                'attributes': {
+                    'birth_datetime': now.isoformat()
+                }
+            }
+        }
+        response = self.app.post('/api/person', data=dumps(data))
+        self.assertEqual(response.status_code, 201)
+        document = loads(response.data)
+        person = document['data']
+        birth_datetime = person['attributes']['birth_datetime']
+        birth_datetime = dateutil.parser.parse(birth_datetime)
+        # Our request had a timezone-aware attribute, but the database
+        # is timezone-naive so we expect that the database created a
+        # timezone-naive object. The returned resource should reflect
+        # that timezone-naive object.
+        self.assertEqual(birth_datetime, now.replace(tzinfo=None))
 
 
 class TestProcessors(ManagerTestBase):

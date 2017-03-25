@@ -21,7 +21,8 @@ specification.
 from __future__ import division
 
 from datetime import datetime
-from unittest2 import skip
+from datetime import timedelta
+from datetime import timezone
 
 try:
     from flask_sqlalchemy import SQLAlchemy
@@ -37,7 +38,6 @@ from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import Time
 from sqlalchemy import Unicode
-from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
@@ -82,7 +82,7 @@ class TestUpdating(ManagerTestBase):
             name = Column(Unicode, unique=True)
             bedtime = Column(Time)
             date_created = Column(Date)
-            birth_datetime = Column(DateTime)
+            birth_datetime = Column(DateTime(timezone=False))
 
             def foo(self):
                 return u'foo'
@@ -960,6 +960,37 @@ class TestUpdating(ManagerTestBase):
         response = self.app.patch('/api/person/1', data=dumps(data))
         check_sole_error(response, 409, ['"id" element', 'resource object',
                                          'must be a JSON string'])
+
+    def test_timezone_aware_datetime(self):
+        """Test that timezone information is correctly dropped.
+
+        For more information, see GitHub issue #630.
+
+        """
+        # Create a person with a timezone-naive datetime attribute.
+        now = datetime.now()
+        person = self.Person(id=1, birth_datetime=now)
+        self.session.add(person)
+        self.session.commit()
+        # Request to update the attribute with a timezone-aware datetime.
+        tz = timezone(timedelta(hours=-5))
+        later = datetime.now(tz=tz)
+        data = {
+            'data': {
+                'id': '1',
+                'type': 'person',
+                'attributes': {
+                    'birth_datetime': later.isoformat()
+                }
+            }
+        }
+        response = self.app.patch('/api/person/1', data=dumps(data))
+        self.assertEqual(response.status_code, 204)
+        # Our request had a timezone-aware attribute, but the database
+        # is timezone-naive so we expect that the database created a
+        # timezone-naive object. The returned resource should reflect
+        # that timezone-naive object.
+        self.assertEqual(person.birth_datetime, later.replace(tzinfo=None))
 
 
 class TestProcessors(ManagerTestBase):
